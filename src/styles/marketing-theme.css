@@ -1,0 +1,281 @@
+.marketing-theme {
+  background-color: var(--blueprint-paper);
+  color: var(--blueprint-ink);
+}
+
+.marketing-theme main {
+  background: var(--blueprint-paper);
+}
+
+.marketing-theme .bg-cream,
+.marketing-theme .bg-white {
+  background-color: var(--blueprint-paper-soft);
+}
+
+.marketing-theme .text-navy,
+.marketing-theme [class*="text-navy/"] {
+  color: var(--blueprint-ink);
+}
+
+.marketing-theme [class*="border-navy/"] {
+  border-color: var(--blueprint-line);
+}
+
+.marketing-theme .role-card {
+  border-color: var(--blueprint-line-strong);
+  background: var(--blueprint-paper-soft);
+  color: var(--blueprint-ink);
+  box-shadow: 0 18px 50px rgba(20, 33, 61, 0.14);
+}
+
+.marketing-theme .role-card:hover {
+  border-color: rgba(240, 90, 60, 0.7);
+  box-shadow: 0 22px 60px rgba(240, 90, 60, 0.11);
+}
+
+.marketing-theme .role-card [class*="text-navy/10"] {
+  color: rgba(248, 241, 223, 0.09);
+}
+
+.marketing-theme article.bg-white,
+.marketing-theme form.bg-white,
+.marketing-theme aside.bg-white {
+  border-color: rgba(255, 255, 255, 0.1);
+  background: linear-gradient(145deg, #121b28, #0d141f);
+  box-shadow: 0 18px 50px rgba(0, 0, 0, 0.2);
+}
+
+.marketing-theme .image-frame {
+  border-color: #202b3c;
+  background-color: #0b111b;
+  box-shadow: 0 28px 70px rgba(0, 0, 0, 0.42);
+}
+
+.marketing-theme .frame-label {
+  background-color: rgba(7, 11, 19, 0.9);
+  color: #f8f1df;
+  backdrop-filter: blur(12px);
+}
+
+.marketing-theme .form-input {
+  border-color: rgba(255, 255, 255, 0.13);
+  background-color: #0b111b;
+  color: #f8f1df;
+}
+
+.marketing-theme .form-input::placeholder {
+  color: rgba(248, 241, 223, 0.28);
+}
+
+.marketing-theme .form-input:focus {
+  border-color: #f05a3c;
+}
+
+.marketing-theme select.form-input option {
+  background: #0b111b;
+  color: #f8f1df;
+}
+
+.hero-camera-image {
+  animation: camera-image-drift 11s ease-in-out infinite alternate;
+  transform-origin: 65% 45%;
+}
+
+.camera-viewfinder {
+  animation: camera-frame-drift 5.5s ease-in-out infinite alternate;
+  border: 1px solid rgba(248, 241, 223, 0.12);
+  color: rgba(248, 241, 223, 0.72);
+  filter: drop-shadow(0 2px 8px rgba(0, 0, 0, 0.45));
+}
+
+.camera-corner {
+
+  position: absolute;
+  width: clamp(34px, 5vw, 76px);
+  height: clamp(34px, 5vw, 76px);
+  border-color: currentColor;
+}
+
+.camera-corner-tl { left: 0; top: 0; border-left: 2px solid; border-top: 2px solid; }
+.camera-corner-tr { right: 0; top: 0; border-right: 2px solid; border-top: 2px solid; }
+.camera-corner-bl { left: 0; bottom: 0; border-left: 2px solid; border-bottom: 2px solid; }
+.camera-corner-br { right: 0; bottom: 0; border-right: 2px solid; border-bottom: 2px solid; }
+
+.camera-rec,
+.camera-code {
+  position: absolute;
+  top: 14px;
+  font-size: 10px;
+  font-weight: 900;
+  letter-spacing: 0.15em;
+}
+
+.camera-rec { left: clamp(44px, 7vw, 96px); display: flex; align-items: center; gap: 7px; }
+.camera-rec span { width: 8px; height: 8px; border-radius: 999px; background: #f05a3c; animation: camera-rec-pulse 1.25s ease-in-out infinite; }
+.camera-code { right: clamp(44px, 7vw, 96px); color: rgba(248, 241, 223, 0.5); }
+
+.camera-reticle {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 44px;
+  height: 44px;
+  border: 1px solid rgba(248, 241, 223, 0.34);
+  border-radius: 50%;
+  transform: translate(-50%, -50%);
+}
+
+.camera-reticle span:first-child,
+.camera-reticle span:last-child {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  background: rgba(248, 241, 223, 0.42);
+  transform: translate(-50%, -50%);
+}
+.camera-reticle span:first-child { width: 58px; height: 1px; }
+.camera-reticle span:last-child { width: 1px; height: 58px; }
+
+.camera-focus-label {
+  position: absolute;
+  left: 50%;
+  bottom: 13px;
+  transform: translateX(-50%);
+  color: rgba(248, 241, 223, 0.48);
+  font-size: 9px;
+  font-weight: 900;
+  letter-spacing: 0.17em;
+}
+
+.camera-scanline {
+  position: absolute;
+  left: 8%;
+  right: 8%;
+  top: 14%;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, rgba(247, 201, 54, 0.45), transparent);
+  animation: camera-scan 7s linear infinite;
+}
+
+/* .camera-shutter removed: the periodic white flash read as a page flicker. */
+
+@keyframes camera-image-drift {
+
+  from { transform: scale(1.025) translate3d(-0.25%, 0, 0); }
+  to { transform: scale(1.055) translate3d(0.35%, -0.45%, 0); }
+}
+
+@keyframes camera-frame-drift {
+  from { transform: translate3d(-2px, 1px, 0) scale(0.998); opacity: 0.78; }
+  to { transform: translate3d(2px, -1px, 0) scale(1.002); opacity: 1; }
+}
+
+@keyframes camera-rec-pulse {
+  0%, 100% { opacity: 1; box-shadow: 0 0 0 0 rgba(240, 90, 60, 0.4); }
+  50% { opacity: 0.45; box-shadow: 0 0 0 5px rgba(240, 90, 60, 0); }
+}
+
+@keyframes camera-scan {
+  from { transform: translateY(0); opacity: 0; }
+  10% { opacity: 1; }
+  90% { opacity: 0.7; }
+  to { transform: translateY(62vh); opacity: 0; }
+}
+
+
+.story-camera-frame {
+  box-shadow: inset 0 0 90px rgba(0, 0, 0, 0.32), 0 28px 80px rgba(0, 0, 0, 0.36);
+}
+
+.story-camera-frame::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  opacity: 0.13;
+  background-image:
+    linear-gradient(rgba(255, 255, 255, 0.08) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255, 255, 255, 0.08) 1px, transparent 1px);
+  background-size: 80px 80px;
+}
+
+.story-rec-dot {
+  animation: camera-rec-pulse 1.25s ease-in-out infinite;
+}
+
+.story-filmstrip {
+  position: relative;
+  border-block: 1px solid rgba(183, 126, 48, 0.45);
+  background: linear-gradient(180deg, #030507, #090806 45%, #030507);
+  box-shadow: 0 22px 60px rgba(0, 0, 0, 0.35);
+}
+
+.story-filmstrip::before,
+.story-filmstrip::after {
+  content: "";
+  position: absolute;
+  z-index: 2;
+  left: 8px;
+  right: 8px;
+  height: 12px;
+  pointer-events: none;
+  background-image: radial-gradient(circle, rgba(199, 146, 66, 0.55) 0 3px, transparent 3.5px);
+  background-size: 24px 12px;
+  background-repeat: repeat-x;
+}
+
+.story-filmstrip::before { top: 6px; }
+.story-filmstrip::after { bottom: 6px; }
+
+.story-film-card {
+  box-shadow: inset 0 0 30px rgba(0, 0, 0, 0.3);
+}
+
+.story-production-note {
+  background-image: repeating-linear-gradient(0deg, transparent 0 26px, rgba(58, 43, 25, 0.08) 27px);
+  box-shadow: 0 28px 65px rgba(0, 0, 0, 0.45), inset 0 0 30px rgba(85, 59, 27, 0.08);
+}
+
+@media (max-width: 639px) {
+
+  .camera-code,
+  .camera-focus-label { display: none; }
+  .camera-viewfinder { inset: 12px; }
+}
+
+/* Shared light-mode chrome: public pages and player portal use the same paper-and-ink language. */
+.marketing-theme article.bg-white,
+.marketing-theme form.bg-white,
+.marketing-theme aside.bg-white,
+.marketing-theme .role-card {
+  background: var(--blueprint-paper-soft);
+  color: var(--blueprint-ink);
+  border-color: var(--blueprint-line-strong);
+}
+
+.marketing-theme .form-input {
+  background: #ffffff;
+  color: var(--blueprint-ink);
+  border-color: var(--blueprint-line-strong);
+}
+
+.marketing-theme .form-input::placeholder { color: rgba(20, 33, 61, 0.48); }
+
+html[data-display-theme="dark"] .marketing-theme {
+  background: var(--blueprint-paper);
+  color: var(--blueprint-ink);
+}
+
+html[data-display-theme="dark"] .marketing-theme main { background: var(--blueprint-paper); }
+
+
+@media (prefers-reduced-motion: reduce) {
+  .hero-camera-image,
+  .camera-viewfinder,
+  .camera-rec span,
+  .story-rec-dot,
+  .camera-scanline,
+  .camera-shutter {
+    animation: none;
+  }
+}

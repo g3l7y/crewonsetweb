@@ -1,0 +1,259 @@
+/* =========================================================
+   CREW ON SET — THEME A · BLUEPRINT / DRAFTING
+   Public website + player portal.
+   Cream drafting sheet (#F4F1E6) with a refined low-contrast
+   grid, dark charcoal navigation / footer bands.
+   ========================================================= */
+
+:root {
+  --blueprint-paper: #f3efe4;
+  --blueprint-paper-soft: #fffdf7;
+  --blueprint-ink: #14213d;
+  --blueprint-accent: #14213d;
+  --blueprint-accent-hover: #20365f;
+  --blueprint-gold: #c18a16;
+  --blueprint-coral: #c84e3d;
+  --blueprint-line: rgba(20, 33, 61, 0.14);
+  --blueprint-line-strong: rgba(20, 33, 61, 0.22);
+  --charcoal: #14213d;
+  --charcoal-deep: #0c162b;
+}
+
+html[data-display-theme="dark"] {
+  --blueprint-paper: #101a2d;
+  --blueprint-paper-soft: #182641;
+  --blueprint-ink: #f7f3e8;
+  --blueprint-accent: #0b1426;
+  --blueprint-accent-hover: #1c3158;
+  --blueprint-gold: #f3c747;
+  --blueprint-coral: #f0705d;
+  --blueprint-line: rgba(255, 255, 255, 0.12);
+  --blueprint-line-strong: rgba(255, 255, 255, 0.2);
+}
+
+/* --- The drafting sheet ---------------------------------- */
+.blueprint-sheet {
+  background-color: var(--blueprint-paper);
+  color: var(--blueprint-ink);
+}
+
+/* Panels that sit on the sheet keep a crisp drafted edge. */
+.blueprint-panel {
+  border: 1px solid rgba(19, 27, 52, 0.12);
+  background: var(--blueprint-paper-soft);
+  box-shadow: 0 1px 0 rgba(19, 27, 52, 0.05), 0 18px 40px -32px rgba(19, 27, 52, 0.5);
+}
+
+/* Corner ticks, used for drafted callouts. */
+.blueprint-ticks {
+  position: relative;
+}
+.blueprint-ticks::before,
+.blueprint-ticks::after {
+  content: "";
+  position: absolute;
+  width: 14px;
+  height: 14px;
+  pointer-events: none;
+  border-color: rgba(19, 27, 52, 0.28);
+}
+.blueprint-ticks::before {
+  left: -1px;
+  top: -1px;
+  border-left: 2px solid;
+  border-top: 2px solid;
+}
+.blueprint-ticks::after {
+  right: -1px;
+  bottom: -1px;
+  border-right: 2px solid;
+  border-bottom: 2px solid;
+}
+
+/* =========================================================
+   PLAYER PORTAL — blueprint bridge
+   The migrated portal pages were authored against a near-black
+   shell. Inside the drafting sheet those hard-coded darks are
+   remapped to paper surfaces and "white" text reads as ink,
+   without touching any page markup.
+   ========================================================= */
+.portal-theme {
+  --ink-strong: var(--blueprint-ink);
+  --ink-soft: rgba(19, 27, 52, 0.6);
+  --ink-faint: rgba(19, 27, 52, 0.42);
+  --ink-line: rgba(19, 27, 52, 0.12);
+  --ink-wash: rgba(19, 27, 52, 0.04);
+  color: var(--blueprint-ink);
+}
+
+/* Page-level darks disappear so the sheet reads through. */
+.portal-theme :is(
+  .bg-\[\#05080d\],
+  .bg-\[\#0d121c\],
+  .bg-\[\#0b1426\]
+) {
+  background-color: transparent;
+}
+
+/* Card / panel darks become drafted paper panels. */
+.portal-theme :is(
+  .bg-\[\#151c29\],
+  .bg-\[\#1b2433\],
+  .bg-\[\#121d32\],
+  .bg-\[\#202a3a\],
+  .bg-\[\#252f40\],
+  .bg-\[\#182131\],
+  .bg-\[\#17243c\],
+  .bg-\[\#111c30\]
+) {
+  background-color: var(--blueprint-paper-soft);
+  border-color: var(--ink-line);
+  box-shadow: 0 1px 0 rgba(19, 27, 52, 0.04), 0 16px 34px -30px rgba(19, 27, 52, 0.45);
+}
+
+.portal-theme :is(.border-\[\#151c29\], .border-\[\#0d121c\]) {
+  border-color: var(--ink-line);
+}
+
+/* Type + hairlines authored for a dark shell. */
+.portal-theme .text-white { color: var(--ink-strong); }
+.portal-theme [class*="text-white/"] { color: var(--ink-soft); }
+.portal-theme :is(.text-white\/40, .text-white\/45, .text-white\/35, .text-white\/30) { color: var(--ink-faint); }
+.portal-theme [class*="border-white/"] { border-color: var(--ink-line); }
+.portal-theme :is(.bg-white\/10, .bg-white\/5, .bg-white\/\[\.04\], .bg-white\/\[\.06\], .bg-white\/\[\.07\]) {
+  background-color: var(--ink-wash);
+}
+.portal-theme .bg-navy { background-color: var(--blueprint-accent); color: var(--blueprint-paper-soft); }
+.portal-theme header.sticky { background-color: var(--blueprint-accent) !important; border-color: rgba(255,255,255,0.16); color: var(--blueprint-paper-soft); }
+.portal-theme header.sticky .text-navy,
+.portal-theme header.sticky [class*="text-navy/"] { color: var(--blueprint-paper-soft); }
+.portal-theme header.sticky [class*="border-navy/"] { border-color: rgba(255,255,255,0.2); }
+.portal-theme button.bg-yellow,
+.portal-theme a.bg-yellow { background-color: var(--blueprint-accent); color: var(--blueprint-paper-soft); }
+.portal-theme button.bg-yellow:hover,
+.portal-theme a.bg-yellow:hover { background-color: var(--blueprint-accent-hover); }
+.portal-theme footer { background-color: var(--blueprint-accent); color: var(--blueprint-paper-soft); }
+.portal-theme .divide-white\/10 > * + * { border-color: var(--ink-line); }
+
+/* Contrast pass: navy chrome always carries warm white text; paper cards carry ink. */
+.portal-theme header.sticky {
+  background-color: var(--blueprint-accent) !important;
+  color: #f8f4ea !important;
+  border-color: rgba(255,255,255,0.18) !important;
+}
+.portal-theme header.sticky nav a:not(.bg-yellow) { color: #cbd5e1 !important; }
+.portal-theme header.sticky nav a:not(.bg-yellow):hover { color: #ffffff !important; }
+.portal-theme header.sticky nav a.bg-yellow { color: var(--blueprint-ink) !important; }
+.portal-theme header.sticky .text-navy,
+.portal-theme header.sticky [class*="text-navy/"] { color: #f8f4ea !important; }
+.portal-theme header.sticky .text-navy\/50 { color: #cbd5e1 !important; }
+.portal-theme .profile-info { color: var(--blueprint-ink); }
+.portal-theme .profile-info .text-white { color: var(--blueprint-ink); }
+.portal-theme .profile-info [class*="text-white/"] { color: rgba(20,33,61,0.72); }
+.portal-theme .profile-info [class*="border-white/"] { border-color: var(--ink-line); }
+.portal-theme .profile-info [class*="bg-white/"] { background-color: rgba(20,33,61,0.06); }
+.portal-theme .profile-info { background: var(--blueprint-paper-soft); border: 2px solid var(--blueprint-ink); box-shadow: 6px 6px 0 rgba(20,33,61,0.16); }
+.portal-theme.portal-dark .profile-info { background: #f8f4e8; color: #14213d; }
+.portal-theme.portal-dark .profile-info .text-white,
+.portal-theme.portal-dark .profile-info [class*="text-white/"] { color: #14213d; }
+.portal-theme.portal-dark .profile-info [class*="text-white/"] { color: #334155; }
+.portal-theme ::placeholder { color: #64748b; }
+.portal-theme.portal-dark ::placeholder { color: #cbd5e1; }
+
+/* Inputs on paper. */
+.portal-theme :is(input, select, textarea):not([type="checkbox"]):not([type="radio"]) {
+  color: var(--blueprint-ink);
+}
+.portal-theme ::placeholder { color: rgba(19, 27, 52, 0.35); }
+
+/* Accent legibility on paper: brand yellow needs to darken to hold
+   contrast against the cream sheet, and faint hairline type gains weight. */
+.portal-theme {
+  --ink-faint: rgba(19, 27, 52, 0.5);
+}
+
+.portal-theme :is(.text-yellow, [class*="text-yellow/"]) {
+  color: #8f6c05;
+}
+
+.portal-theme .bg-yellow\/10 {
+  background-color: rgba(143, 108, 5, 0.1);
+}
+
+.portal-theme .text-navy\/45,
+.portal-theme .text-navy\/40 {
+  color: rgba(19, 27, 52, 0.55);
+}
+
+/* Escape hatch: panels that sit on artwork/dark media keep their original
+   light-on-dark treatment. Add `on-dark` to such a container. */
+.portal-theme .on-dark .text-white,
+.portal-theme .on-dark [class*="text-white/"] {
+  color: #ffffff;
+}
+
+.portal-theme .on-dark [class*="text-white/"] {
+  color: rgba(255, 255, 255, 0.75);
+}
+
+.portal-theme .on-dark :is(.text-yellow, [class*="text-yellow/"]) {
+  color: var(--color-yellow, #ffc93c);
+}
+
+/* Translucent variants of the legacy dark surfaces: without these the
+   original alpha value paints a grey veil over the paper panel. */
+.portal-theme :is(
+  .bg-\[\#0d121c\]\/40,
+  .bg-\[\#0d121c\]\/50,
+  .bg-\[\#0d121c\]\/60
+) {
+  background-color: var(--ink-wash);
+}
+
+.portal-theme :is(.bg-\[\#151c29\]\/95, .bg-\[\#151c29\]\/90) {
+  background-color: var(--blueprint-paper-soft);
+}
+
+/* Preference switches: the OFF state must stay clearly visible on paper. */
+.portal-switch-off {
+  background-color: rgba(19, 27, 52, 0.22);
+  box-shadow: inset 0 0 0 1px rgba(19, 27, 52, 0.35);
+}
+
+.portal-switch-on {
+  background-color: var(--color-coral, #f05a3c);
+  box-shadow: inset 0 0 0 1px rgba(217, 71, 43, 0.9);
+}
+
+.portal-switch-thumb {
+  background-color: #ffffff;
+  box-shadow: 0 1px 3px rgba(19, 27, 52, 0.45);
+}
+
+.portal-switch-off .portal-switch-thumb {
+  background-color: #ffffff;
+  box-shadow:
+    0 1px 3px rgba(19, 27, 52, 0.4),
+    inset 0 0 0 1px rgba(19, 27, 52, 0.28);
+}
+
+.group:hover .portal-switch-off {
+  background-color: rgba(19, 27, 52, 0.3);
+}
+
+.group:active .portal-switch {
+  transform: scale(0.97);
+}
+
+.portal-theme.portal-dark {
+  --blueprint-paper: #1a1b1e;
+  --blueprint-paper-soft: #22242a;
+  --blueprint-ink: #eceef1;
+  --ink-strong: #f4f6f8;
+  --ink-soft: rgba(236, 238, 241, 0.65);
+  --ink-faint: rgba(236, 238, 241, 0.45);
+  --ink-line: rgba(255, 255, 255, 0.1);
+  --ink-wash: rgba(255, 255, 255, 0.05);
+  background-color: var(--blueprint-paper);
+  color: var(--blueprint-ink);
+}
