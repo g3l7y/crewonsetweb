@@ -12,7 +12,7 @@ export const Route = createFileRoute("/contact")({
   }),
   beforeLoad: async () => {
     const session = await getCrewSession();
-    if (session.isAdmin) throw redirect({ to: "/admin" });
+    if (session?.role === "admin") throw redirect({ to: "/admin" });
   },
   component: ContactPage,
 });
