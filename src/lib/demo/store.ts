@@ -8,93 +8,15 @@
 
 import { useEffect, useRef, useState } from "react";
 
-import { getSupabaseClient, uploadAttachment } from "@/lib/supabase";
+import { isMockMode } from "@/lib/playfab/config";
 
 /* ---------------------------------------------------------------- utilities */
 
-const sharedTables: Record<string, string> = {
-  "cos.playerReports": "cos_player_reports",
-  "cos.bugReports": "cos_bug_reports",
-  "cos.adminNotifications": "cos_admin_notifications",
-  "cos.applications": "cos_partnership_applications",
+const sharedEndpoints: Record<string, string> = {
+  "cos.playerReports": "/api/admin/player-reports",
+  "cos.bugReports": "/api/admin/bug-reports",
+  "cos.applications": "/api/admin/partnerships",
 };
-
-function toDatabaseRow(item: Record<string, unknown>) {
-  const row = Object.fromEntries(
-    Object.entries(item).map(([key, value]) => [
-      key.replace(/[A-Z]/g, (letter) => `_${letter.toLowerCase()}`),
-      value === undefined ? null : value,
-    ]),
-  );
-
-  // The partnership table calls the UI's fileName field attachment_name.
-  if ("file_name" in row) {
-    row["attachment_name"] = row["file_name"];
-    delete row["file_name"];
-  }
-
-  return row;
-}
-
-function fromDatabaseRow<T>(row: Record<string, unknown>): T {
-  const item = Object.fromEntries(
-    Object.entries(row)
-      .filter(([key]) => key !== "created_at")
-      .map(([key, value]) => [
-        key === "attachment_name"
-          ? "fileName"
-          : key.replace(/_([a-z])/g, (_, letter: string) => letter.toUpperCase()),
-        value ?? undefined,
-      ]),
-  ) as Record<string, unknown>;
-  return item as T;
-}
-
-function timestampFor(key: string, item: Record<string, unknown>) {
-  const fields = key === "cos.adminNotifications"
-    ? ["createdAt"]
-    : key === "cos.applications"
-      ? ["submittedAt", "createdAt", "updatedAt"]
-      : ["submittedAt", "createdAt", "updatedAt"];
-  for (const field of fields) {
-    const value = item[field];
-    if (typeof value === "string" && !Number.isNaN(Date.parse(value))) return Date.parse(value);
-  }
-  return 0;
-}
-
-const sharedKeys = new Set(["cos.playerReports", "cos.bugReports", "cos.applications"]);
-
-type SupabaseError = { message: string; details?: string; hint?: string; code?: string };
-
-export function logSupabaseError(operation: string, table: string, id: string | undefined, error: SupabaseError) {
-  console.error(`[Crew On Set] ${operation} FAILED`, {
-    table: `public.${table}`,
-    ...(id ? { id } : {}),
-    message: error.message,
-    details: error.details,
-    hint: error.hint,
-    code: error.code,
-  });
-}
-
-async function verifyDeletedRows(table: string, ids: string[]) {
-  const { data, error } = await getSupabaseClient().from(table).select("id").in("id", ids);
-  if (error) {
-    logSupabaseError("DELETE VERIFICATION", table, ids.join(","), error);
-    return false;
-  }
-  const remaining = (data ?? []).map((row) => String((row as { id: string }).id));
-  if (remaining.length) {
-    console.error("[Crew On Set] BUG DELETE VERIFICATION FAILED", {
-      table: `public.${table}`,
-      requestedIds: ids,
-      remainingIds: remaining,
-    });
-    return false;
-  }
-  return true;
-}
 
 export const reportStatusColors = {
   New: "#F3C747",
@@ -110,89 +32,115 @@ export const partnershipStatusColors = {
   Declined: "#FF6248",
 } as const;
 
-function logSupabaseMutation(table: string, operation: string, id: string, error: { message: string; details?: string; hint?: string }) {
-  logSupabaseError(operation, table, id, error);
+async function responseError(response: Response): Promise<string> {
+  try {
+    const body = (await response.json()) as { error?: string };
+    return body.error || `Request failed with status ${response.status}.`;
+  } catch {
+    return `Request failed with status ${response.status}.`;
+  }
 }
 
 export async function insertSharedRecord<T extends { id: string }>(key: string, item: T, onError?: (message: string) => void) {
-  const table = sharedTables[key];
-  if (!table || !sharedKeys.has(key)) return false;
+  const endpoint = sharedEndpoints[key];
+  if (!endpoint) return false;
+  if (isMockMode()) return true;
+
   try {
-    const { error } = await getSupabaseClient().from(table).insert(toDatabaseRow(item as Record<string, unknown>));
-    if (error) {
-      logSupabaseMutation(table, "INSERT", item.id, error);
-      onError?.(error.message);
+    const record = item as Record<string, unknown>;
+    const response = await fetch(endpoint, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        ...record,
+        attachmentName: record["attachmentName"] ?? record["fileName"],
+      }),
+    });
+    if (!response.ok) {
+      const message = await responseError(response);
+      console.error("[Crew On Set] Failed to create shared record.", { endpoint, message });
+      onError?.(message);
+      return false;
     }
-    return !error;
+    return true;
   } catch (error) {
-    console.error(`[Crew On Set] INSERT FAILED`, { table: `public.${table}`, id: item.id, error });
+    console.error("[Crew On Set] Failed to create shared record.", { endpoint, error });
+    onError?.("The request could not be completed.");
     return false;
   }
 }
 
 export async function updateSharedRecord<T extends { id: string }>(key: string, item: T) {
-  const table = sharedTables[key];
-  if (!table || !sharedKeys.has(key)) return false;
+  const endpoint = sharedEndpoints[key];
+  if (!endpoint) return false;
+  if (isMockMode()) return true;
+
   try {
-    const { error } = await getSupabaseClient().from(table).update(toDatabaseRow(item as Record<string, unknown>)).eq("id", item.id);
-    if (error) logSupabaseMutation(table, "UPDATE", item.id, error);
-    return !error;
+    const response = await fetch(endpoint, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(item),
+    });
+    if (!response.ok) {
+      console.error("[Crew On Set] Failed to update shared record.", {
+        endpoint,
+        message: await responseError(response),
+      });
+      return false;
+    }
+    return true;
   } catch (error) {
-    console.error(`[v0] Supabase UPDATE failed for ${table} ${item.id}:`, error);
+    console.error("[Crew On Set] Failed to update shared record.", { endpoint, error });
     return false;
   }
 }
 
 export async function deleteSharedRecord(key: string, id: string) {
-  const table = sharedTables[key];
-  if (!table || !sharedKeys.has(key)) return false;
-  console.info("[Crew On Set] BUG DELETE REQUEST", { table: `public.${table}`, id });
-  try {
-    const { data, error } = await getSupabaseClient().from(table).delete().eq("id", id).select("id");
-    if (error) {
-      logSupabaseMutation(table, "DELETE", id, error);
-      return false;
-    }
-    console.info("[Crew On Set] BUG DELETE SUCCESS", { table: `public.${table}`, id, data });
-    return await verifyDeletedRows(table, [id]);
-  } catch (error) {
-    console.error(`[Crew On Set] BUG DELETE FAILED`, { table: `public.${table}`, id, error });
-    return false;
-  }
+  return deleteSharedRecords(key, [id]);
 }
 
 export async function deleteSharedRecords(key: string, ids: string[]) {
-  const table = sharedTables[key];
-  if (!table || !sharedKeys.has(key) || ids.length === 0) return false;
-  console.info("[Crew On Set] BUG BULK DELETE REQUEST", { table: `public.${table}`, ids, count: ids.length });
+  const endpoint = sharedEndpoints[key];
+  if (!endpoint || ids.length === 0) return false;
+  if (isMockMode()) return true;
+
   try {
-    const { data, error } = await getSupabaseClient().from(table).delete().in("id", ids).select("id");
-    if (error) {
-      logSupabaseError("DELETE", table, ids.join(","), error);
+    const response = await fetch(endpoint, {
+      method: "DELETE",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ ids }),
+    });
+    if (!response.ok) {
+      console.error("[Crew On Set] Failed to delete shared records.", {
+        endpoint,
+        message: await responseError(response),
+      });
       return false;
     }
-    console.info("[Crew On Set] BUG BULK DELETE SUCCESS", { table: `public.${table}`, ids, count: ids.length, data });
-    return await verifyDeletedRows(table, ids);
+    return true;
   } catch (error) {
-    console.error(`[Crew On Set] BUG BULK DELETE FAILED`, { table: `public.${table}`, ids, error });
+    console.error("[Crew On Set] Failed to delete shared records.", { endpoint, error });
     return false;
   }
 }
 
 async function loadSharedTable<T>(key: string) {
-  const table = sharedTables[key];
-  if (!table) return null;
+  const endpoint = sharedEndpoints[key];
+  if (!endpoint || isMockMode()) return null;
+
   try {
-    const { data, error } = await getSupabaseClient().from(table).select("*");
-    if (error) {
-      logSupabaseError("SELECT", table, undefined, error);
+    const response = await fetch(endpoint);
+    if (!response.ok) {
+      console.error("[Crew On Set] Failed to load shared records.", {
+        endpoint,
+        message: await responseError(response),
+      });
       return null;
     }
-    return (data ?? [])
-    .map((row) => fromDatabaseRow<T>(row as Record<string, unknown>))
-      .sort((a, b) => timestampFor(key, b as Record<string, unknown>) - timestampFor(key, a as Record<string, unknown>));
+    const body = (await response.json()) as { data?: T[] };
+    return Array.isArray(body.data) ? body.data : [];
   } catch (error) {
-    console.error(`[v0] Supabase SELECT failed for ${table}:`, error);
+    console.error("[Crew On Set] Failed to load shared records.", { endpoint, error });
     return null;
   }
 }
@@ -214,7 +162,7 @@ function write<T>(key: string, value: T) {
   try {
     window.localStorage.setItem(key, JSON.stringify(value));
   } catch {
-    /* storage unavailable — shared data stays in Supabase */
+    /* storage unavailable */
   }
   window.dispatchEvent(new CustomEvent(`cos:${key}`));
 }
@@ -240,31 +188,41 @@ function reconcileExpired<T>(key: string, items: T[], now = Date.now()) {
  */
 export function createStore<T>(key: string, seed: T[]) {
   const event = `cos:${key}`;
+  const usesServerApi = key in sharedEndpoints && !isMockMode();
+  let serverItems: T[] = [];
 
   function get() {
+    if (usesServerApi) return serverItems;
     const items = read<T[]>(key, seed);
     return items;
   }
 
   function set(next: T[] | ((current: T[]) => T[])) {
     const current = get();
-    write(key, typeof next === "function" ? next(current) : next);
+    const resolved = typeof next === "function" ? next(current) : next;
+    if (usesServerApi) {
+      serverItems = resolved;
+      if (isBrowser()) window.dispatchEvent(new CustomEvent(event));
+      return;
+    }
+    write(key, resolved);
   }
 
   function useStore(): [T[], (next: T[] | ((current: T[]) => T[])) => void] {
-    const [items, setItems] = useState<T[]>(seed);
+    const [items, setItems] = useState<T[]>(usesServerApi ? [] : seed);
     const localWriteRef = useRef(false);
 
     useEffect(() => {
       let active = true;
       setItems(reconcileExpired(key, get()));
-      void loadSharedTable<T>(key).then((remoteItems) => {
-        if (active && !localWriteRef.current && remoteItems) {
-          const reconciled = reconcileExpired(key, remoteItems);
-          write(key, reconciled);
-          setItems(reconciled);
-        }
-      });
+      if (usesServerApi) {
+        void loadSharedTable<T>(key).then((remoteItems) => {
+          if (active && !localWriteRef.current && remoteItems) {
+            serverItems = reconcileExpired(key, remoteItems);
+            setItems(serverItems);
+          }
+        });
+      }
       const sync = () => setItems(get());
       window.addEventListener(event, sync);
       window.addEventListener("storage", sync);
@@ -589,8 +547,13 @@ export function formatMoney(value: number) {
 }
 
 export async function readAttachmentAsDataUrl(file: File, folder = "submissions"): Promise<string> {
-  const uploaded = await uploadAttachment(file, folder);
-  return uploaded.url;
+  void folder;
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(reader.result as string);
+    reader.onerror = () => reject(reader.error ?? new Error("Could not read attachment."));
+    reader.readAsDataURL(file);
+  });
 }
 
 /* ------------------------------------------------- system requirements (admin) */
