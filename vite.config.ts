@@ -9,12 +9,11 @@ import { loadEnv } from "vite";
 
 export default defineConfig(({ mode }) => {
   const env = loadEnv(mode, process.cwd(), "");
-
   return {
     define: {
-      "import.meta.env.NEXT_PUBLIC_SUPABASE_URL": JSON.stringify(env.NEXT_PUBLIC_SUPABASE_URL || env.SUPABASE_URL || ""),
-      "import.meta.env.NEXT_PUBLIC_SUPABASE_ANON_KEY": JSON.stringify(
-        env.NEXT_PUBLIC_SUPABASE_ANON_KEY || env.SUPABASE_ANON_KEY || env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY || "",
+      ...(
+        // Ensure PlayFab env vars are available
+        process.env["VITE_PLAYFAB_TITLE_ID"] ? {} : { 'import.meta.env.VITE_PLAYFAB_TITLE_ID': JSON.stringify('D4EA4') }
       ),
     },
     tanstackStart: {

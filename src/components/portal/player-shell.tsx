@@ -47,7 +47,7 @@ export function PlayerShell({ children }: { children: React.ReactNode }) {
   }, []);
 
   async function signOut() {
-    await fetch("/api/admin/logout", { method: "POST" });
+    await fetch("/api/auth/logout", { method: "POST" });
     router.push("/login");
     router.refresh();
   }

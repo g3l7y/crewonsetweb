@@ -40,8 +40,15 @@ import { Route as PortalProfileRouteImport } from './routes/portal.profile'
 import { Route as PortalSettingsRouteImport } from './routes/portal.settings'
 import { Route as PortalShopRouteImport } from './routes/portal.shop'
 import { Route as AdminAdsIdRouteImport } from './routes/admin.ads.$id'
-import { Route as ApiAdminLoginRouteImport } from './routes/api/admin/login'
-import { Route as ApiAdminLogoutRouteImport } from './routes/api/admin/logout'
+import { Route as ApiAdminBugReportsRouteImport } from './routes/api/admin/bug-reports'
+import { Route as ApiAdminPartnershipsRouteImport } from './routes/api/admin/partnerships'
+import { Route as ApiAdminPlayerReportsRouteImport } from './routes/api/admin/player-reports'
+import { Route as ApiAdminPlayersRouteImport } from './routes/api/admin/players'
+import { Route as ApiAuthLoginRouteImport } from './routes/api/auth/login'
+import { Route as ApiAuthLogoutRouteImport } from './routes/api/auth/logout'
+import { Route as ApiAuthRegisterRouteImport } from './routes/api/auth/register'
+import { Route as ApiAuthSessionRouteImport } from './routes/api/auth/session'
+import { Route as ApiPlayfabClientRouteImport } from './routes/api/playfab/client'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
@@ -198,14 +205,49 @@ const AdminAdsIdRoute = AdminAdsIdRouteImport.update({
   path: '/ads/$id',
   getParentRoute: () => AdminRoute,
 } as any)
-const ApiAdminLoginRoute = ApiAdminLoginRouteImport.update({
-  id: '/api/admin/login',
-  path: '/api/admin/login',
+const ApiAdminBugReportsRoute = ApiAdminBugReportsRouteImport.update({
+  id: '/api/admin/bug-reports',
+  path: '/api/admin/bug-reports',
   getParentRoute: () => rootRouteImport,
 } as any)
-const ApiAdminLogoutRoute = ApiAdminLogoutRouteImport.update({
-  id: '/api/admin/logout',
-  path: '/api/admin/logout',
+const ApiAdminPartnershipsRoute = ApiAdminPartnershipsRouteImport.update({
+  id: '/api/admin/partnerships',
+  path: '/api/admin/partnerships',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiAdminPlayerReportsRoute = ApiAdminPlayerReportsRouteImport.update({
+  id: '/api/admin/player-reports',
+  path: '/api/admin/player-reports',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiAdminPlayersRoute = ApiAdminPlayersRouteImport.update({
+  id: '/api/admin/players',
+  path: '/api/admin/players',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiAuthLoginRoute = ApiAuthLoginRouteImport.update({
+  id: '/api/auth/login',
+  path: '/api/auth/login',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiAuthLogoutRoute = ApiAuthLogoutRouteImport.update({
+  id: '/api/auth/logout',
+  path: '/api/auth/logout',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiAuthRegisterRoute = ApiAuthRegisterRouteImport.update({
+  id: '/api/auth/register',
+  path: '/api/auth/register',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiAuthSessionRoute = ApiAuthSessionRouteImport.update({
+  id: '/api/auth/session',
+  path: '/api/auth/session',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiPlayfabClientRoute = ApiPlayfabClientRouteImport.update({
+  id: '/api/playfab/client',
+  path: '/api/playfab/client',
   getParentRoute: () => rootRouteImport,
 } as any)
 
@@ -241,8 +283,15 @@ export interface FileRoutesByFullPath {
   '/admin/': typeof AdminIndexRoute
   '/portal/': typeof PortalIndexRoute
   '/admin/ads/$id': typeof AdminAdsIdRoute
-  '/api/admin/login': typeof ApiAdminLoginRoute
-  '/api/admin/logout': typeof ApiAdminLogoutRoute
+  '/api/admin/bug-reports': typeof ApiAdminBugReportsRoute
+  '/api/admin/partnerships': typeof ApiAdminPartnershipsRoute
+  '/api/admin/player-reports': typeof ApiAdminPlayerReportsRoute
+  '/api/admin/players': typeof ApiAdminPlayersRoute
+  '/api/auth/login': typeof ApiAuthLoginRoute
+  '/api/auth/logout': typeof ApiAuthLogoutRoute
+  '/api/auth/register': typeof ApiAuthRegisterRoute
+  '/api/auth/session': typeof ApiAuthSessionRoute
+  '/api/playfab/client': typeof ApiPlayfabClientRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -274,8 +323,15 @@ export interface FileRoutesByTo {
   '/admin': typeof AdminIndexRoute
   '/portal': typeof PortalIndexRoute
   '/admin/ads/$id': typeof AdminAdsIdRoute
-  '/api/admin/login': typeof ApiAdminLoginRoute
-  '/api/admin/logout': typeof ApiAdminLogoutRoute
+  '/api/admin/bug-reports': typeof ApiAdminBugReportsRoute
+  '/api/admin/partnerships': typeof ApiAdminPartnershipsRoute
+  '/api/admin/player-reports': typeof ApiAdminPlayerReportsRoute
+  '/api/admin/players': typeof ApiAdminPlayersRoute
+  '/api/auth/login': typeof ApiAuthLoginRoute
+  '/api/auth/logout': typeof ApiAuthLogoutRoute
+  '/api/auth/register': typeof ApiAuthRegisterRoute
+  '/api/auth/session': typeof ApiAuthSessionRoute
+  '/api/playfab/client': typeof ApiPlayfabClientRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -310,8 +366,15 @@ export interface FileRoutesById {
   '/admin/': typeof AdminIndexRoute
   '/portal/': typeof PortalIndexRoute
   '/admin/ads/$id': typeof AdminAdsIdRoute
-  '/api/admin/login': typeof ApiAdminLoginRoute
-  '/api/admin/logout': typeof ApiAdminLogoutRoute
+  '/api/admin/bug-reports': typeof ApiAdminBugReportsRoute
+  '/api/admin/partnerships': typeof ApiAdminPartnershipsRoute
+  '/api/admin/player-reports': typeof ApiAdminPlayerReportsRoute
+  '/api/admin/players': typeof ApiAdminPlayersRoute
+  '/api/auth/login': typeof ApiAuthLoginRoute
+  '/api/auth/logout': typeof ApiAuthLogoutRoute
+  '/api/auth/register': typeof ApiAuthRegisterRoute
+  '/api/auth/session': typeof ApiAuthSessionRoute
+  '/api/playfab/client': typeof ApiPlayfabClientRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -347,8 +410,15 @@ export interface FileRouteTypes {
     | '/admin/'
     | '/portal/'
     | '/admin/ads/$id'
-    | '/api/admin/login'
-    | '/api/admin/logout'
+    | '/api/admin/bug-reports'
+    | '/api/admin/partnerships'
+    | '/api/admin/player-reports'
+    | '/api/admin/players'
+    | '/api/auth/login'
+    | '/api/auth/logout'
+    | '/api/auth/register'
+    | '/api/auth/session'
+    | '/api/playfab/client'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -380,8 +450,15 @@ export interface FileRouteTypes {
     | '/admin'
     | '/portal'
     | '/admin/ads/$id'
-    | '/api/admin/login'
-    | '/api/admin/logout'
+    | '/api/admin/bug-reports'
+    | '/api/admin/partnerships'
+    | '/api/admin/player-reports'
+    | '/api/admin/players'
+    | '/api/auth/login'
+    | '/api/auth/logout'
+    | '/api/auth/register'
+    | '/api/auth/session'
+    | '/api/playfab/client'
   id:
     | '__root__'
     | '/'
@@ -415,8 +492,15 @@ export interface FileRouteTypes {
     | '/admin/'
     | '/portal/'
     | '/admin/ads/$id'
-    | '/api/admin/login'
-    | '/api/admin/logout'
+    | '/api/admin/bug-reports'
+    | '/api/admin/partnerships'
+    | '/api/admin/player-reports'
+    | '/api/admin/players'
+    | '/api/auth/login'
+    | '/api/auth/logout'
+    | '/api/auth/register'
+    | '/api/auth/session'
+    | '/api/playfab/client'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -432,8 +516,15 @@ export interface RootRouteChildren {
   StoryRoute: typeof StoryRoute
   TeamRoute: typeof TeamRoute
   AdminLoginRoute: typeof AdminLoginRoute
-  ApiAdminLoginRoute: typeof ApiAdminLoginRoute
-  ApiAdminLogoutRoute: typeof ApiAdminLogoutRoute
+  ApiAdminBugReportsRoute: typeof ApiAdminBugReportsRoute
+  ApiAdminPartnershipsRoute: typeof ApiAdminPartnershipsRoute
+  ApiAdminPlayerReportsRoute: typeof ApiAdminPlayerReportsRoute
+  ApiAdminPlayersRoute: typeof ApiAdminPlayersRoute
+  ApiAuthLoginRoute: typeof ApiAuthLoginRoute
+  ApiAuthLogoutRoute: typeof ApiAuthLogoutRoute
+  ApiAuthRegisterRoute: typeof ApiAuthRegisterRoute
+  ApiAuthSessionRoute: typeof ApiAuthSessionRoute
+  ApiPlayfabClientRoute: typeof ApiPlayfabClientRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -655,18 +746,67 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AdminAdsIdRouteImport
       parentRoute: typeof AdminRoute
     }
-    '/api/admin/login': {
-      id: '/api/admin/login'
-      path: '/api/admin/login'
-      fullPath: '/api/admin/login'
-      preLoaderRoute: typeof ApiAdminLoginRouteImport
+    '/api/admin/bug-reports': {
+      id: '/api/admin/bug-reports'
+      path: '/api/admin/bug-reports'
+      fullPath: '/api/admin/bug-reports'
+      preLoaderRoute: typeof ApiAdminBugReportsRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/api/admin/logout': {
-      id: '/api/admin/logout'
-      path: '/api/admin/logout'
-      fullPath: '/api/admin/logout'
-      preLoaderRoute: typeof ApiAdminLogoutRouteImport
+    '/api/admin/partnerships': {
+      id: '/api/admin/partnerships'
+      path: '/api/admin/partnerships'
+      fullPath: '/api/admin/partnerships'
+      preLoaderRoute: typeof ApiAdminPartnershipsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/admin/player-reports': {
+      id: '/api/admin/player-reports'
+      path: '/api/admin/player-reports'
+      fullPath: '/api/admin/player-reports'
+      preLoaderRoute: typeof ApiAdminPlayerReportsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/admin/players': {
+      id: '/api/admin/players'
+      path: '/api/admin/players'
+      fullPath: '/api/admin/players'
+      preLoaderRoute: typeof ApiAdminPlayersRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/auth/login': {
+      id: '/api/auth/login'
+      path: '/api/auth/login'
+      fullPath: '/api/auth/login'
+      preLoaderRoute: typeof ApiAuthLoginRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/auth/logout': {
+      id: '/api/auth/logout'
+      path: '/api/auth/logout'
+      fullPath: '/api/auth/logout'
+      preLoaderRoute: typeof ApiAuthLogoutRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/auth/register': {
+      id: '/api/auth/register'
+      path: '/api/auth/register'
+      fullPath: '/api/auth/register'
+      preLoaderRoute: typeof ApiAuthRegisterRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/auth/session': {
+      id: '/api/auth/session'
+      path: '/api/auth/session'
+      fullPath: '/api/auth/session'
+      preLoaderRoute: typeof ApiAuthSessionRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/playfab/client': {
+      id: '/api/playfab/client'
+      path: '/api/playfab/client'
+      fullPath: '/api/playfab/client'
+      preLoaderRoute: typeof ApiPlayfabClientRouteImport
       parentRoute: typeof rootRouteImport
     }
   }
@@ -740,8 +880,15 @@ const rootRouteChildren: RootRouteChildren = {
   StoryRoute: StoryRoute,
   TeamRoute: TeamRoute,
   AdminLoginRoute: AdminLoginRoute,
-  ApiAdminLoginRoute: ApiAdminLoginRoute,
-  ApiAdminLogoutRoute: ApiAdminLogoutRoute,
+  ApiAdminBugReportsRoute: ApiAdminBugReportsRoute,
+  ApiAdminPartnershipsRoute: ApiAdminPartnershipsRoute,
+  ApiAdminPlayerReportsRoute: ApiAdminPlayerReportsRoute,
+  ApiAdminPlayersRoute: ApiAdminPlayersRoute,
+  ApiAuthLoginRoute: ApiAuthLoginRoute,
+  ApiAuthLogoutRoute: ApiAuthLogoutRoute,
+  ApiAuthRegisterRoute: ApiAuthRegisterRoute,
+  ApiAuthSessionRoute: ApiAuthSessionRoute,
+  ApiPlayfabClientRoute: ApiPlayfabClientRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

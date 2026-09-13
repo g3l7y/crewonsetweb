@@ -6,11 +6,11 @@ import { getCrewSession } from "@/lib/session.functions";
 export const Route = createFileRoute("/admin")({
   beforeLoad: async () => {
     const session = await getCrewSession();
-    if (session.isPlayer) {
-      throw redirect({ to: "/portal" });
-    }
-    if (!session.isAdmin) {
+    if (!session) {
       throw redirect({ to: "/admin/login" });
+    }
+    if (session.role !== "admin") {
+      throw redirect({ to: "/portal" });
     }
   },
   component: AdminLayout,

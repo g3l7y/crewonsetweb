@@ -1,12 +1,53 @@
 import { createServerFn } from "@tanstack/react-start";
-import { getCookie } from "@tanstack/react-start/server";
+import { deleteCookie, getRequest } from "@tanstack/react-start/server";
+import { PLAYFAB_SESSION_COOKIE, PLAYFAB_ROLE_COOKIE } from "./session.constants";
+import { validateSessionFromRequest } from "./playfab/session";
 
-import { ADMIN_COOKIE, ADMIN_SESSION, PLAYER_COOKIE, PLAYER_SESSION } from "./session.constants";
-import type { CrewSession } from "./session.constants";
+export interface CrewSession {
+  playFabId: string;
+  sessionTicket?: string;
+  displayName: string;
+  email: string;
+  role: "admin" | "player";
+}
 
+/**
+ * Server function to read the PlayFab session from cookies.
+ * Safe to import and call anywhere — TanStack Start creates an RPC endpoint on client
+ * and executes directly on the server.
+ */
 export const getCrewSession = createServerFn({ method: "GET" }).handler(
-  async (): Promise<CrewSession> => ({
-    isAdmin: getCookie(ADMIN_COOKIE) === ADMIN_SESSION,
-    isPlayer: getCookie(PLAYER_COOKIE) === PLAYER_SESSION,
-  }),
+  async (): Promise<CrewSession | null> => {
+    try {
+      const session = await validateSessionFromRequest(getRequest());
+      if (!session) {
+        deleteCookie(PLAYFAB_SESSION_COOKIE, { path: "/" });
+        deleteCookie(PLAYFAB_ROLE_COOKIE, { path: "/" });
+        return null;
+      }
+
+      return {
+        playFabId: session.playFabId,
+        displayName: session.displayName || "Player",
+        email: session.email || "",
+        role: session.role === "admin" ? "admin" : "player",
+      };
+    } catch {
+      return null;
+    }
+  },
+);
+
+export const isAdminSession = createServerFn({ method: "GET" }).handler(
+  async (): Promise<boolean> => {
+    const session = await getCrewSession();
+    return session?.role === "admin";
+  },
+);
+
+export const isPlayerSession = createServerFn({ method: "GET" }).handler(
+  async (): Promise<boolean> => {
+    const session = await getCrewSession();
+    return session != null;
+  },
 );

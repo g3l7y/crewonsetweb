@@ -4,6 +4,7 @@ import { FormEvent, useState } from "react";
 import { useRouter } from "@/components/next-compat/navigation";
 import { ArrowLeft, Eye, EyeOff, KeyRound, LoaderCircle, Send, UserPlus, X } from "lucide-react";
 import { EMAIL_ERROR, PASSWORD_ERROR, USERNAME_ERROR, isValidEmail, isValidPassword, isValidUsername } from "@/lib/validation";
+import { isMockMode } from "@/lib/playfab/config";
 
 type CrewAccessPageProps = {
   mode: "login" | "signup";
@@ -11,17 +12,17 @@ type CrewAccessPageProps = {
 };
 
 async function loginWithCredentials(
-  username: string,
+  identifier: string,
   password: string,
   scope: "player" | "admin",
 ) {
-  const response = await fetch("/api/admin/login", {
+  const response = await fetch("/api/auth/login", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ username, password, scope }),
+    body: JSON.stringify({ email: identifier, password, scope }),
   });
-  const result = (await response.json()) as { error?: string; destination?: string };
-  if (!response.ok) throw new Error(result.error ?? "Unable to sign in.");
+  const result = (await response.json()) as { error?: string; destination?: string; success?: boolean };
+  if (!response.ok || result.success === false) throw new Error(result.error ?? "Unable to sign in.");
   return result.destination ?? (scope === "admin" ? "/admin" : "/portal");
 }
 
@@ -63,20 +64,21 @@ export function CrewAccessPage({ mode, scope = "player" }: CrewAccessPageProps) 
       return;
     }
 
-    const username = String(data.get("username") ?? "");
-    if (!isAdmin && !username.includes("@")) {
-      setError(USERNAME_ERROR);
-      return;
-    }
-    if (isAdmin && !isValidUsername(username)) {
-      setError(USERNAME_ERROR);
+    const identifier = String(data.get("username") ?? "").trim();
+    if (isAdmin) {
+      if (!isValidEmail(identifier) && !isValidUsername(identifier)) {
+        setError("Please enter a valid email address or username.");
+        return;
+      }
+    } else if (!isValidEmail(identifier)) {
+      setError(EMAIL_ERROR);
       return;
     }
     setError("");
     setLoading(true);
     try {
       const destination = await loginWithCredentials(
-        username,
+        identifier,
         String(data.get("password") ?? ""),
         scope,
       );
@@ -93,7 +95,7 @@ export function CrewAccessPage({ mode, scope = "player" }: CrewAccessPageProps) 
     setGoogleLoading(true);
     await new Promise((resolve) => setTimeout(resolve, 1200));
     try {
-      const destination = await loginWithCredentials("player@gmail.com", "player", "player");
+      const destination = await loginWithCredentials("player@crewonset.com", "player", "player");
       router.push(destination);
       router.refresh();
     } catch (err) {
@@ -121,11 +123,11 @@ export function CrewAccessPage({ mode, scope = "player" }: CrewAccessPageProps) 
           <p className="mt-3 leading-relaxed text-navy/60">
             {isAdmin ? "Enter your studio admin credentials to open the Crew On Set console." : isLogin ? "Enter your account credentials to open your private Crew On Set portal." : "Join the community list for production updates and playtest calls."}
           </p>
-          {isLogin && <div className="mt-4 space-y-1 rounded-md border border-navy/10 bg-navy/5 px-3 py-2 text-xs font-bold text-navy/55"><p>--This is demo accounts only--</p>{isAdmin ? <p>Admin: admin / admin</p> : <p>Player: player@gmail.com / player</p>}</div>}
+          {isLogin && isMockMode() && <div className="mt-4 space-y-1 rounded-md border border-navy/10 bg-navy/5 px-3 py-2 text-xs font-bold text-navy/55"><p>--This is demo accounts only--</p>{isAdmin ? <p>Admin: admin@crewonset.com / admin</p> : <p>Player: player@crewonset.com / player</p>}</div>}
           <form onSubmit={handleSubmit} className="mt-7">
             {isLogin ? (
               <>
-                <label className="form-label">{isAdmin ? "USERNAME" : "EMAIL"}<input className="form-input" name="username" autoComplete="username" required placeholder={isAdmin ? "admin" : "player@gmail.com"} /></label>
+                <label className="form-label">{isAdmin ? "EMAIL OR USERNAME" : "EMAIL"}<input className="form-input" name="username" autoComplete="username" required placeholder={isMockMode() ? (isAdmin ? "admin@crewonset.com" : "player@crewonset.com") : (isAdmin ? "admin@crewonset.com" : "player@example.com")} /></label>
                 <label className="form-label mt-4">PASSWORD
 
                   <span className="relative block">
@@ -168,7 +170,7 @@ export function CrewAccessPage({ mode, scope = "player" }: CrewAccessPageProps) 
               {loading ? <><LoaderCircle className="size-4 animate-spin" /> SIGNING IN</> : <>{isAdmin ? "ENTER CONSOLE" : isLogin ? "ENTER PORTAL" : "JOIN THE CREW"} <Send className="size-4" /></>}
             </button>
 
-            {!isAdmin && (
+            {!isAdmin && isMockMode() && (
               <>
                 <div className="my-4 flex items-center gap-3 text-[10px] font-black uppercase tracking-widest text-navy/35">
                   <span className="h-px flex-1 bg-navy/10" /> or <span className="h-px flex-1 bg-navy/10" />

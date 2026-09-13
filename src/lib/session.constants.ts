@@ -1,6 +1,5 @@
-export const ADMIN_SESSION = "crew-on-set-demo-admin";
-export const PLAYER_SESSION = "crew-on-set-demo-player";
-export const ADMIN_COOKIE = "crew_admin_session";
-export const PLAYER_COOKIE = "crew_player_session";
+/** Cookie name for the PlayFab session data (JSON-encoded). */
+export const PLAYFAB_SESSION_COOKIE = 'crew_playfab_session';
 
-export type CrewSession = { isAdmin: boolean; isPlayer: boolean };
+/** Cookie name for the user role ("admin" | "player"). */
+export const PLAYFAB_ROLE_COOKIE = 'crew_playfab_role';
