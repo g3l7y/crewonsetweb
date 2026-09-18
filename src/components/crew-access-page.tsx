@@ -106,8 +106,8 @@ export function CrewAccessPage({ mode, scope = "player" }: CrewAccessPageProps) 
 
   return (
 
-    <main className="relative grid min-h-screen place-items-center overflow-hidden bg-navy px-5 py-24 text-white">
-      <Image src="/assets/hero-key-art.png" alt="" fill className="object-cover opacity-20" priority />
+    <main className="crew-access-page relative grid min-h-screen place-items-center overflow-hidden bg-navy px-5 py-24 text-white">
+      <Image src="/assets/crew-set-illustration.png" alt="" fill className="object-cover opacity-20" priority />
       <div className="absolute inset-0 bg-[linear-gradient(90deg,rgba(19,27,52,.98),rgba(19,27,52,.8))]" />
       <div className="relative w-full max-w-md">
         <Link href="/" className="mb-8 inline-flex items-center gap-2 text-xs font-black tracking-[.14em] text-white/65 transition hover:text-yellow">
@@ -203,6 +203,11 @@ export function CrewAccessPage({ mode, scope = "player" }: CrewAccessPageProps) 
             )}
 
           </form>
+          {!isAdmin && (
+            <p className="mt-6 text-center text-sm text-navy/65">
+              {isLogin ? (<>Don&apos;t have an account? <Link href="/signup" className="font-black text-coral underline-offset-4 hover:underline">Sign up.</Link></>) : (<>Already have an account? <Link href="/login" className="font-black text-coral underline-offset-4 hover:underline">Log in.</Link></>)}
+            </p>
+          )}
         </section>
       </div>
 

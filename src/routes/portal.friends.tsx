@@ -12,7 +12,7 @@ export const Route = createFileRoute("/portal/friends")({
   component: FriendsPage,
 });
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import type { MouseEvent, ReactNode } from "react";
 import {
   Ban,
@@ -31,6 +31,10 @@ import {
   Twitter,
   X,
 } from "lucide-react";
+import { friendRosterStore } from "@/lib/demo/friends";
+import { getProfileArtwork } from "@/lib/demo/profile-art";
+import { isMockMode } from "@/lib/playfab/config";
+import { useAddFriend, useFriends, usePlayerProfile, useRemoveFriend } from "@/lib/playfab/hooks";
 
 type Socials = {
   instagram?: string;
@@ -82,8 +86,7 @@ const initialFriends: Friend[] = [
     role: "Sound Mixer",
     online: true,
     crewId: "COS-1942-BM",
-    profileImage:
-      "https://images.unsplash.com/photo-1500648767791-00dcc994a43e?auto=format&fit=crop&w=500&q=80",
+    profileImage: "/assets/team-kelvin.png",
     bio: "Sound enthusiast focused on clean production audio and creating immersive soundscapes for every project.",
     joinedDate: "March 14, 2024",
     socials: {
@@ -107,8 +110,7 @@ const initialFriends: Friend[] = [
     role: "Camera Operator",
     online: true,
     crewId: "COS-7381-DD",
-    profileImage:
-      "https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=500&q=80",
+    profileImage: "/assets/team-rae.png",
     bio: "Camera operator who loves dynamic movement, practical lighting, and finding the perfect shot.",
     joinedDate: "July 22, 2024",
     socials: {
@@ -132,8 +134,7 @@ const initialFriends: Friend[] = [
     role: "Lighting Artist",
     online: false,
     crewId: "COS-4920-LL",
-    profileImage:
-      "https://images.unsplash.com/photo-1494790108377-be9c29b29330?auto=format&fit=crop&w=500&q=80",
+    profileImage: "/assets/team-princess.png",
     bio: "Lighting artist creating cinematic atmosphere through color, contrast, and carefully controlled light.",
     joinedDate: "November 3, 2023",
     socials: {
@@ -156,8 +157,7 @@ const initialFriends: Friend[] = [
     role: "Prop Master",
     online: false,
     crewId: "COS-6157-PM",
-    profileImage:
-      "https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?auto=format&fit=crop&w=500&q=80",
+    profileImage: "/assets/team-joseph.png",
     bio: "Prop master specializing in detailed environments, practical props, and believable production worlds.",
     joinedDate: "January 9, 2024",
     socials: {
@@ -222,6 +222,7 @@ const searchablePlayers: Player[] = [
     role: "Director",
     online: true,
     crewId: "COS-3812-FH",
+    profileImage: "/assets/director.png",
     bio: "Director focused on character-driven stories and strong visual composition.",
     joinedDate: "February 18, 2025",
     socials: {
@@ -375,14 +376,51 @@ const crewId = "COS-2847-CP";
 function FriendsPage() {
   const [tab, setTab] = useState("Friends");
 
-  const [friends, setFriends] =
-    useState<Friend[]>(initialFriends);
+  const mockMode = isMockMode();
+  const [demoFriends, setDemoFriends] = friendRosterStore.useStore();
+  const friendsQuery = useFriends();
+  const profileQuery = usePlayerProfile();
+  const addFriendMutation = useAddFriend();
+  const removeFriendMutation = useRemoveFriend();
+  const realFriends = useMemo<Friend[]>(() =>
+    (friendsQuery.data ?? []).map((friend) => ({
+      name: friend.displayName,
+      level: friend.level ?? 1,
+      role: String(friend.role ?? "Crew Member"),
+      online: false,
+      crewId: friend.playFabId,
+      profileImage: friend.avatarUrl,
+      bio: "Crew profile synced from PlayFab.",
+      joinedDate: "—",
+      socials: {},
+      career: {
+        productionsCompleted: 0,
+        yearsExperience: 0,
+        specialties: [String(friend.role ?? "Crew Member")],
+      },
+    })),
+    [friendsQuery.data],
+  );
+  const [realFriendState, setRealFriendState] = useState<Friend[]>([]);
+
+  useEffect(() => {
+    setRealFriendState(realFriends);
+  }, [realFriends]);
+
+  const friends = mockMode ? demoFriends : realFriendState;
+  const setFriends = (update: (current: Friend[]) => Friend[]) => {
+    if (mockMode) {
+      setDemoFriends(update);
+    } else {
+      setRealFriendState(update);
+    }
+  };
 
   const [requests, setRequests] =
-    useState<FriendRequest[]>(initialRequests);
+    useState<FriendRequest[]>(mockMode ? initialRequests : []);
 
   const [sentRequests, setSentRequests] =
-    useState<SentRequest[]>(initialSentRequests);
+    useState<SentRequest[]>(mockMode ? initialSentRequests : []);
 
   const [blocked, setBlocked] =
     useState<Player[]>([]);
@@ -392,6 +430,9 @@ function FriendsPage() {
 
   const [search, setSearch] = useState("");
   const [addSearch, setAddSearch] = useState("");
+  const currentCrewId = mockMode
+    ? crewId
+    : profileQuery.data?.crewId || profileQuery.data?.playFabId || "—";
 
   const [copied, setCopied] = useState(false);
   const [message, setMessage] = useState("");
@@ -423,7 +464,7 @@ function FriendsPage() {
   const searchResults = useMemo(() => {
     const query = addSearch.trim().toLowerCase();
 
-    if (!query) {
+    if (!query || !mockMode) {
       return [];
     }
 
@@ -436,7 +477,7 @@ function FriendsPage() {
 
   async function copyId() {
     try {
-      await navigator.clipboard.writeText(crewId);
+      await navigator.clipboard.writeText(currentCrewId);
 
       setCopied(true);
 
@@ -453,7 +494,7 @@ function FriendsPage() {
       if (navigator.share) {
         await navigator.share({
           title: "Add me on Crew On Set!",
-          text: `My Crew ID is ${crewId}`,
+          text: "My Crew ID is " + currentCrewId,
         });
       } else {
         await copyId();
@@ -496,6 +537,17 @@ function FriendsPage() {
       return;
     }
 
+    if (!mockMode) {
+      void addFriendMutation.mutateAsync(player.crewId).then(() => {
+        setFriends((current) => [...current, player]);
+        setMessage(player.name + " has been added to your friends.");
+        setAddSearch("");
+      }).catch(() => {
+        setMessage("PlayFab could not add this friend.");
+      });
+      return;
+    }
+
     setFriends((current) => [
       ...current,
       player,
@@ -528,6 +580,12 @@ function FriendsPage() {
 
     const name = removeTarget.name;
 
+    if (!mockMode) {
+      void removeFriendMutation.mutateAsync(removeTarget.crewId).catch(() => {
+        setMessage("PlayFab could not remove this friend.");
+      });
+    }
+
     setFriends((current) =>
       current.filter(
         (friend) => friend.name !== name
@@ -546,6 +604,12 @@ function FriendsPage() {
   }
 
   function blockFriend(friend: Friend) {
+    if (!mockMode) {
+      setOpenMenu(null);
+      setMessage("Blocking is not available in the PlayFab friend service yet.");
+      return;
+    }
+
     setBlockedFriends((current) => ({
       ...current,
       [friend.name]: friend,
@@ -687,24 +751,24 @@ function FriendsPage() {
   return (
     <>
       <div
-        className="min-h-screen bg-[#0d121c] text-white"
+        className="portal-title-page min-h-screen bg-[#0d121c] text-white"
         onClick={() => setOpenMenu(null)}
       >
-        <div className="mx-auto max-w-[1500px] px-4 pb-12 pt-8 sm:px-6 sm:pt-10 lg:px-8">
+        <div className="portal-title-container mx-auto max-w-[1500px] pb-12 pt-8 sm:pt-10">
 
           {/* =====================================================
               HEADER
           ===================================================== */}
 
-          <header className="flex flex-col justify-between gap-5 sm:flex-row sm:items-end">
+          <header className="portal-title-header flex flex-col justify-between gap-5 sm:flex-row sm:items-end">
 
             <div>
 
-              <p className="text-xs font-black tracking-[.18em] text-coral">
+              <p className="portal-title-eyebrow text-xs font-black tracking-[.18em] text-coral">
                 SOCIAL HUB
               </p>
 
-              <h1 className="mt-2 text-4xl font-black uppercase tracking-tight text-white sm:text-5xl">
+              <h1 className="portal-title-heading mt-2 text-4xl font-black uppercase tracking-tight text-white sm:text-5xl">
                 Friends
               </h1>
 
@@ -749,7 +813,7 @@ function FriendsPage() {
                 onClick={() =>
                   changeTab(item)
                 }
-                className={`whitespace-nowrap border-b-2 pb-3 text-xs font-black uppercase tracking-[0.1em] transition ${
+                className={`friends-tab whitespace-nowrap border-b-2 pb-3 text-xs font-black uppercase tracking-[0.1em] transition ${
                   tab === item
                     ? "border-coral text-white"
                     : "border-transparent text-white/35 hover:text-white/70"
@@ -827,7 +891,7 @@ function FriendsPage() {
 
               </div>
 
-              <div className="mt-4 overflow-hidden rounded-2xl border border-white/[0.07] bg-[#151c29]">
+              <div className="friends-list-scroll player-account-scroll-list mt-4 overflow-hidden rounded-2xl border border-white/[0.07] bg-[#151c29]">
 
                 {filteredFriends.length === 0 ? (
                   <EmptyState
@@ -963,7 +1027,7 @@ function FriendsPage() {
                   </div>
 
                   {addSearch && (
-                    <div className="mt-5 space-y-2">
+                    <div className="player-account-scroll-list mt-5 space-y-2">
 
                       {searchResults.length === 0 ? (
                         <div className="rounded-md border border-white/[0.07] px-4 py-5 text-sm text-white/40">
@@ -1056,7 +1120,7 @@ function FriendsPage() {
                   </p>
 
                   <p className="mt-2 text-xl font-black text-yellow">
-                    {crewId}
+                    {currentCrewId}
                   </p>
 
                   <div className="mt-5 flex gap-2">
@@ -1116,7 +1180,7 @@ function FriendsPage() {
 
               </div>
 
-              <div className="mt-4 overflow-hidden rounded-2xl border border-white/[0.07] bg-[#151c29]">
+              <div className="friends-list-scroll player-account-scroll-list mt-4 overflow-hidden rounded-2xl border border-white/[0.07] bg-[#151c29]">
 
                 {sentRequests.length === 0 ? (
                   <EmptyState
@@ -1131,9 +1195,10 @@ function FriendsPage() {
                       className="flex cursor-pointer items-center gap-4 border-b border-white/[0.06] p-4 transition last:border-b-0 hover:bg-white/[0.025] sm:p-5"
                     >
 
-                      <div className="grid size-12 shrink-0 place-items-center rounded-full bg-[#0d121c] text-xs font-black text-yellow">
-                        {request.name.slice(0, 2).toUpperCase()}
-                      </div>
+                      <PlayerAvatar
+                        player={resolveProfile(request)}
+                        showStatus={false}
+                      />
 
                       <div className="min-w-0 flex-1">
 
@@ -1193,7 +1258,7 @@ function FriendsPage() {
 
               </div>
 
-              <div className="mt-4 overflow-hidden rounded-2xl border border-white/[0.07] bg-[#151c29]">
+              <div className="friends-list-scroll player-account-scroll-list mt-4 overflow-hidden rounded-2xl border border-white/[0.07] bg-[#151c29]">
 
                 {requests.length === 0 ? (
                   <EmptyState
@@ -1213,14 +1278,10 @@ function FriendsPage() {
                         className="flex cursor-pointer items-center gap-4 border-b border-white/[0.06] p-4 transition last:border-b-0 hover:bg-white/[0.025] sm:p-5"
                       >
 
-                        <div className="grid size-12 shrink-0 place-items-center rounded-full bg-[#0d121c] text-xs font-black text-yellow">
-                          {request.name
-                            .slice(
-                              0,
-                              2
-                            )
-                            .toUpperCase()}
-                        </div>
+                        <PlayerAvatar
+                          player={resolveProfile(request)}
+                          showStatus={false}
+                        />
 
                         <div className="min-w-0 flex-1">
 
@@ -1298,10 +1359,11 @@ function FriendsPage() {
 
               </div>
 
-              <div className="mt-4 overflow-hidden rounded-2xl border border-white/[0.07] bg-[#151c29]">
+              <div className="friends-list-scroll player-account-scroll-list mt-4 overflow-hidden rounded-2xl border border-white/[0.07] bg-[#151c29]">
 
                 {blocked.length === 0 ? (
                   <EmptyState
+                    className="blocked-empty-state"
                     title="No blocked players"
                     description="Players you block will appear here."
                   />
@@ -1447,6 +1509,8 @@ function PlayerProfile({
   player: Friend;
   onClose: () => void;
 }) {
+  const profileImage = player.profileImage ?? getProfileArtwork(player.name);
+
   return (
     <div
       className="fixed inset-0 z-50 overflow-y-auto bg-[#05080d]/85 p-3 backdrop-blur-md sm:p-6 lg:p-10"
@@ -1492,9 +1556,9 @@ function PlayerProfile({
 
                 <div className="size-28 overflow-hidden rounded-2xl border-[3px] border-yellow bg-[#151c29] shadow-[0_10px_30px_rgba(0,0,0,0.35)] sm:size-32">
 
-                  {player.profileImage ? (
+                  {profileImage ? (
                     <img
-                      src={player.profileImage}
+                      src={profileImage}
                       alt={`${player.name} profile`}
                       className="h-full w-full object-cover"
                     />
@@ -1910,16 +1974,20 @@ function FriendRow({
 
 function PlayerAvatar({
   player,
+  showStatus = true,
 }: {
   player: Player;
+  showStatus?: boolean;
 }) {
+  const profileImage = player.profileImage ?? getProfileArtwork(player.name);
+
   return (
     <div className="relative grid size-12 shrink-0 place-items-center overflow-hidden rounded-full bg-[#0d121c] text-xs font-black text-yellow">
 
-      {player.profileImage ? (
+      {profileImage ? (
         <img
-          src={player.profileImage}
-          alt=""
+          src={profileImage}
+          alt={`${player.name} profile`}
           className="h-full w-full object-cover"
         />
       ) : (
@@ -1928,13 +1996,15 @@ function PlayerAvatar({
           .toUpperCase()
       )}
 
-      <span
-        className={`absolute bottom-0 right-0 size-3 rounded-full border-2 border-[#151c29] ${
-          player.online
-            ? "bg-[#2d9d8f]"
-            : "bg-white/20"
-        }`}
-      />
+      {showStatus && (
+        <span
+          className={`absolute bottom-0 right-0 size-3 rounded-full border-2 border-[#151c29] ${
+            player.online
+              ? "bg-[#2d9d8f]"
+              : "bg-white/20"
+          }`}
+        />
+      )}
 
     </div>
   );
@@ -2027,12 +2097,14 @@ function SocialLink({
 function EmptyState({
   title,
   description,
+  className,
 }: {
   title: string;
   description: string;
+  className?: string;
 }) {
   return (
-    <div className="px-6 py-14 text-center">
+    <div className={`px-6 py-14 text-center ${className ?? ""}`}>
 
       <Users className="mx-auto size-8 text-white/15" />
 

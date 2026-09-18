@@ -31,9 +31,10 @@ function DownloadPage() {
 
   return (
     <MarketingShell>
+      <div className="download-page">
       {/* HERO */}
-      <section className="relative overflow-hidden border-b border-white/10 bg-[#070b13] pb-16 pt-32 text-white sm:pb-20 sm:pt-40">
-        <Image src="/assets/hero-key-art.png" alt="Key art from Crew On Set!" fill priority className="object-cover opacity-30 saturate-[.8]" />
+      <section className="download-hero relative overflow-hidden border-b border-white/10 bg-[#070b13] pb-16 pt-32 text-white sm:pb-20 sm:pt-40">
+        <Image src="/assets/crew-set-illustration.png" alt="Key art from Crew On Set!" fill priority className="object-cover opacity-30 saturate-[.8]" />
         <div className="absolute inset-0 bg-[linear-gradient(90deg,rgba(4,7,13,.99),rgba(7,11,19,.84),rgba(7,11,19,.48))]" />
         <div className="absolute inset-0 opacity-20 [background-image:linear-gradient(rgba(255,255,255,.07)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,.07)_1px,transparent_1px)] [background-size:72px_72px]" />
 
@@ -41,7 +42,11 @@ function DownloadPage() {
           <span className="eyebrow mb-5 bg-coral/15 text-coral-light">GET THE GAME</span>
 
           <h1 className="section-title max-w-4xl text-white">
-            Download <span className="text-yellow">Crew On Set!</span>
+            Download{" "}
+            <span className="text-yellow">Crew </span>
+            <span className="text-coral">On</span>
+            <span className="text-yellow"> Set</span>
+            <span className="text-coral">!</span>
           </h1>
           <p className="mt-6 max-w-2xl text-lg leading-relaxed text-white/70 sm:text-xl">
             Grab the latest build, check your rig against the requirements, and get your crew on set in minutes.
@@ -99,7 +104,7 @@ function DownloadPage() {
             </p>
 
             {currentBuild?.releaseNotes && (
-              <p className="mt-4 rounded-md border border-white/10 bg-white/5 px-4 py-3 text-sm leading-relaxed text-white/60">
+              <p className="download-card mt-4 rounded-md border border-[#fefaef]/80 bg-[#fefaef] px-4 py-3 text-sm leading-relaxed text-[#0a0e19]/75">
                 <span className="font-black uppercase tracking-wider text-yellow">
                   Version {currentBuild.version}
                 </span>{" "}
@@ -108,34 +113,34 @@ function DownloadPage() {
             )}
 
             <div className="mt-8 grid gap-3 sm:grid-cols-2">
-              <div className="flex items-center gap-3 rounded-md border border-white/10 bg-white/5 px-4 py-3">
+              <div className="download-card flex items-center gap-3 rounded-md border border-[#fefaef]/80 bg-[#fefaef] px-4 py-3 text-[#0a0e19]">
                 <Gamepad2 className="size-5 shrink-0 text-yellow" />
                 <span className="text-sm font-bold">1–4 player co-op</span>
               </div>
-              <div className="flex items-center gap-3 rounded-md border border-white/10 bg-white/5 px-4 py-3">
+              <div className="download-card flex items-center gap-3 rounded-md border border-[#fefaef]/80 bg-[#fefaef] px-4 py-3 text-[#0a0e19]">
                 <MonitorPlay className="size-5 shrink-0 text-yellow" />
                 <span className="text-sm font-bold">Commercial Making</span>
               </div>
-              <div className="flex items-center gap-3 rounded-md border border-white/10 bg-white/5 px-4 py-3">
+              <div className="download-card flex items-center gap-3 rounded-md border border-[#fefaef]/80 bg-[#fefaef] px-4 py-3 text-[#0a0e19]">
                 <HardDrive className="size-5 shrink-0 text-yellow" />
                 <span className="text-sm font-bold">{buildInfo?.installSize ?? "~~ GB install size"}</span>
               </div>
-              <div className="flex items-center gap-3 rounded-md border border-white/10 bg-white/5 px-4 py-3">
+              <div className="download-card flex items-center gap-3 rounded-md border border-[#fefaef]/80 bg-[#fefaef] px-4 py-3 text-[#0a0e19]">
                 <ShieldCheck className="size-5 shrink-0 text-yellow" />
                 <span className="text-sm font-bold">Play Online</span>
               </div>
             </div>
           </div>
 
-          <div className="overflow-hidden rounded-lg border border-white/10 bg-white/[.03]">
-            <div className="border-b border-white/10 px-5 py-4">
+          <div className="download-card overflow-hidden rounded-lg border border-[#fefaef]/80 bg-[#fefaef] text-[#0a0e19]">
+            <div className="border-b border-[#0a0e19]/15 px-5 py-4">
               <h3 className="text-lg font-black uppercase tracking-wide">System Requirements</h3>
             </div>
 
             <div className="overflow-x-auto">
               <table className="w-full min-w-[420px] border-collapse text-left text-sm">
                 <thead>
-                  <tr className="border-b border-white/10 text-xs uppercase tracking-wider text-white/50">
+                  <tr className="border-b border-[#0a0e19]/15 text-xs uppercase tracking-wider text-[#0a0e19]/65">
                     <th className="px-5 py-3 font-black">Component</th>
                     <th className="px-5 py-3 font-black">Minimum</th>
                     <th className="px-5 py-3 font-black">Recommended</th>
@@ -143,10 +148,10 @@ function DownloadPage() {
                 </thead>
                 <tbody>
                   {requirements.map((row) => (
-                    <tr key={row.id} className="border-b border-white/5 align-top last:border-0">
+                    <tr key={row.id} className="border-b border-[#0a0e19]/10 align-top last:border-0">
                       <td className="px-5 py-3 font-black text-yellow">{row.label}</td>
-                      <td className="px-5 py-3 text-white/75">{row.minimum}</td>
-                      <td className="px-5 py-3 text-white/75">{row.recommended}</td>
+                      <td className="px-5 py-3 text-[#0a0e19]/80">{row.minimum}</td>
+                      <td className="px-5 py-3 text-[#0a0e19]/80">{row.recommended}</td>
                     </tr>
                   ))}
                 </tbody>
@@ -166,17 +171,18 @@ function DownloadPage() {
 
           <div className="mt-12 grid gap-5 sm:grid-cols-2 lg:grid-cols-4">
             {steps.map((step, index) => (
-              <div key={step.id} className="rounded-lg border border-white/10 bg-white/5 p-5">
-                <span className="grid size-9 place-items-center rounded-md bg-coral text-sm font-black text-white">
+              <div key={step.id} className="download-card rounded-lg border border-[#fefaef]/80 bg-[#fefaef] p-5 text-[#0a0e19]">
+                <span className="grid size-9 place-items-center rounded-md bg-coral text-sm font-black text-[#0a0e19]">
                   {index + 1}
                 </span>
                 <h3 className="mt-4 text-base font-black uppercase tracking-tight">{step.title}</h3>
-                <p className="mt-2 text-sm leading-relaxed text-white/60">{step.text}</p>
+                <p className="mt-2 text-sm leading-relaxed text-[#0a0e19]/70">{step.text}</p>
               </div>
             ))}
           </div>
         </div>
       </section>
+      </div>
     </MarketingShell>
   );
 }

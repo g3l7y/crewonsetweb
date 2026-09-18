@@ -1,5 +1,8 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { Clock, Star, Trophy, X } from "lucide-react";
+import { isMockMode } from "@/lib/playfab/config";
+import { useProductionLogs } from "@/lib/playfab/hooks";
+import type { ProductionLog as PlayFabProductionLog } from "@/lib/playfab/types";
 
 type ProductionLog = {
   id: string;
@@ -255,8 +258,39 @@ function formatDate(value: string) {
   });
 }
 
+function mapRealProductionLog(log: PlayFabProductionLog): ProductionLog {
+  const stats = Array.isArray(log.stats)
+    ? log.stats.map((stat) =>
+        Array.isArray(stat)
+          ? [String(stat[0]), String(stat[1])] as [string, string]
+          : [String(stat.label), String(stat.value)] as [string, string],
+      )
+    : [];
+
+  return {
+    id: log.productionId || log.id || ("production-" + log.date),
+    production: log.title || log.clientName || "Production",
+    role: log.rolePlayed || log.role || "Crew",
+    client: log.clientName || log.client || "Commercial Client",
+    date: (log.date || "").slice(0, 10),
+    score: Number(log.overallScore ?? log.score ?? 0),
+    rank: log.rank || log.letterGrade || "—",
+    runtime: log.runtime || "—",
+    summary: log.feedback || "Production completed.",
+    setupNotes: "Synced from PlayFab production history.",
+    result: log.success ? "Production completed successfully." : "Production requires review.",
+    stats,
+  };
+}
+
 export function ProductionLogs() {
+  const mockMode = isMockMode();
+  const realLogsQuery = useProductionLogs();
   const [openLog, setOpenLog] = useState<ProductionLog | null>(null);
+  const logs = useMemo(
+    () => (mockMode ? productionLogs : (realLogsQuery.data ?? []).map(mapRealProductionLog)),
+    [mockMode, realLogsQuery.data],
+  );
 
   return (
     <section className="mt-14">
@@ -269,7 +303,7 @@ export function ProductionLogs() {
           Every production you wrapped, scored and ranked.
         </p>
 
-        <div className="admin-table-wrap mt-5 border-navy/10">
+        <div className="player-account-scroll-list production-logs-list admin-table-wrap mt-5 border-navy/10">
           <table className="admin-table">
             <thead>
               <tr>
@@ -283,16 +317,16 @@ export function ProductionLogs() {
               </tr>
             </thead>
             <tbody>
-              {productionLogs.map((log) => (
+              {logs.map((log) => (
                 <tr key={log.id}>
-                  <td className="font-bold text-navy">{log.production}</td>
+                  <td className="font-bold">{log.production}</td>
                   <td>{log.role}</td>
                   <td>{log.client}</td>
                   <td className="whitespace-nowrap">{formatDate(log.date)}</td>
-                  <td className="font-black text-navy">{log.score}%</td>
+                  <td className="font-black">{log.score}%</td>
                   <td>
                     <span
-                      className={`inline-grid size-7 place-items-center rounded-md border text-xs font-black ${
+                      className={`production-log-rank inline-grid size-7 place-items-center rounded-md border text-xs font-black ${
                         rankTone[log.rank] ?? rankTone["B"]
                       }`}
                     >
@@ -303,7 +337,7 @@ export function ProductionLogs() {
                     <button
                       type="button"
                       onClick={() => setOpenLog(log)}
-                      className="rounded-md border border-navy/15 px-3 py-1.5 text-[11px] font-black uppercase tracking-wider text-navy transition hover:bg-navy/5"
+                      className="production-log-info rounded-md border border-navy/15 px-3 py-1.5 text-[11px] font-black uppercase tracking-wider text-navy transition hover:bg-navy/5"
                     >
                       See Info
                     </button>
@@ -326,14 +360,14 @@ export function ProductionLogs() {
             aria-modal="true"
             aria-label={openLog.production}
             onClick={(event) => event.stopPropagation()}
-            className="my-auto w-full max-w-3xl rounded-xl bg-white shadow-2xl"
+            className="production-log-dialog my-auto w-full max-w-3xl rounded-xl bg-white shadow-2xl"
           >
             <header className="flex items-start gap-4 border-b border-navy/10 p-5 sm:p-6">
               <div className="min-w-0 flex-1">
                 <p className="text-[10px] font-black uppercase tracking-[.18em] text-coral">
                   {openLog.id} · {openLog.role}
                 </p>
-                <h3 className="section-title mt-1 text-2xl text-navy sm:text-3xl">
+                <h3 className="production-log-title section-title mt-1 text-2xl text-navy sm:text-3xl">
                   {openLog.production}
                 </h3>
                 <p className="mt-1 text-xs font-semibold text-navy/50">

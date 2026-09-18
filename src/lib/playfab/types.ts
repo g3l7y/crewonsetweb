@@ -82,6 +82,8 @@ export interface PlayerProfile {
   bio?: string | undefined;
   /** Studio crew identifier, e.g. "COS-0001" */
   crewId?: string | undefined;
+  /** Portal profile links persisted in PlayFab player data. */
+  socialLinks?: { twitter?: string; instagram?: string; youtube?: string } | undefined;
   /** ISO timestamp when the account was registered */
   joinedAt: string;
   /** ISO timestamp of most recent login */

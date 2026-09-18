@@ -14,6 +14,8 @@ export const Route = createFileRoute("/portal/almanac")({
 
 import { useMemo, useState } from "react";
 import { ProductionLogs } from "@/components/portal/production-logs";
+import { isMockMode } from "@/lib/playfab/config";
+import { useAchievements } from "@/lib/playfab/hooks";
 import {
   Award,
   Camera,
@@ -44,7 +46,7 @@ type Achievement = {
   unlocks: string;
 };
 
-const achievements: Achievement[] = [
+const demoAchievements: Achievement[] = [
   {
     name: "Perfect Take",
     description: "Earn a 100% production rating.",
@@ -143,6 +145,25 @@ function AlmanacPage() {
   const [achievementSort, setAchievementSort] = useState("Recent");
   const [selectedAchievement, setSelectedAchievement] =
     useState<Achievement | null>(null);
+  const mockMode = isMockMode();
+  const achievementsQuery = useAchievements();
+  const realAchievementIcons = [Star, Trophy, Clapperboard, Camera, Film, Award, Users, Crown];
+  const realAchievements = useMemo<Achievement[]>(() =>
+    (achievementsQuery.data ?? []).map((item, index) => ({
+      name: item.title,
+      description: item.description,
+      date: undefined,
+      unlocked: item.unlocked,
+      icon: realAchievementIcons[index % realAchievementIcons.length],
+      progress: item.maxProgress > 0 ? String(item.progress) + "/" + String(item.maxProgress) : undefined,
+      percent: item.maxProgress > 0 ? Math.min(100, Math.round((item.progress / item.maxProgress) * 100)) : undefined,
+      requirement: item.description,
+      levelUnlocked: 0,
+      unlocks: "No additional content metadata provided by PlayFab.",
+    })),
+    [achievementsQuery.data],
+  );
+  const achievements = mockMode ? demoAchievements : realAchievements;
 
   const shownAchievements = useMemo(() => {
     const filtered = achievements.filter((item) => {
@@ -162,15 +183,15 @@ function AlmanacPage() {
       if (!a.unlocked && b.unlocked) return 1;
       return 0;
     });
-  }, [filter, achievementSort]);
+  }, [achievements, filter, achievementSort]);
 
   return (
-    <div className="portal-page almanac-page">
-      <div className="almanac-container">
-        <header className="almanac-header">
+    <div className="portal-page almanac-page portal-title-page">
+      <div className="almanac-container portal-title-container">
+        <header className="almanac-header portal-title-header">
           <div className="header-title-area">
-            <p className="page-eyebrow">PRODUCTION ARCHIVE</p>
-            <h1 className="almanac-title">ALMANAC</h1>
+            <p className="page-eyebrow portal-title-eyebrow">PRODUCTION ARCHIVE</p>
+            <h1 className="almanac-title portal-title-heading">ALMANAC</h1>
           </div>
         </header>
 
@@ -231,7 +252,7 @@ function AlmanacPage() {
               </select>
             </div>
 
-            <div className="achievements-grid">
+            <div className="player-account-scroll-list achievements-grid">
               {shownAchievements.map((achievement) => {
                 const AchievementIcon = achievement.icon;
                 return (
@@ -269,7 +290,7 @@ function AlmanacPage() {
 
                     <div className="achievement-level-row">
                       <span className="achievement-level-badge">
-                        Level {achievement.levelUnlocked}
+                        Level {achievement.levelUnlocked > 0 ? achievement.levelUnlocked : "—"}
                       </span>
                       <span className="achievement-level-label">
                         {achievement.unlocked

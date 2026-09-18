@@ -29,7 +29,9 @@ import type {
   RegisterRequest,
   AuthResponse,
   CurrencyType,
+  ItemRarity,
 } from './types';
+import { cosmeticCatalog } from '@/lib/demo/portal-shop';
 
 // Helper for simulated delay
 function delay(ms: number): Promise<void> {
@@ -61,14 +63,14 @@ let MOCK_PLAYER_PROFILE: PlayerProfile = {
   email: 'player@crewonset.com',
   displayName: 'CAMERA_PRO',
   username: 'CAMERA_PRO',
-  avatarUrl: '/assets/hero-key-art.png',
+  avatarUrl: '/assets/crew-set-illustration.png',
   primaryRole: 'cameraman',
   crewId: 'COS-2847-CP',
   joinedAt: '2025-03-14T08:00:00Z',
   lastLoginAt: new Date().toISOString(),
 };
 
-let MOCK_PROGRESSION: PlayerProgression = {
+const MOCK_PROGRESSION: PlayerProgression = {
   level: 27,
   currentXp: 6820,
   xpToNextLevel: 10000,
@@ -86,12 +88,12 @@ let MOCK_PROGRESSION: PlayerProgression = {
   multiplayerUnlocked: true,
 };
 
-let MOCK_WALLET: PlayerWallet = {
+const MOCK_WALLET: PlayerWallet = {
   bCoins: 45000,
   cCoins: 12500,
 };
 
-let MOCK_INVENTORY: InventoryItem[] = [
+const MOCK_INVENTORY: InventoryItem[] = [
   { itemId: 'cos-classic-vest', displayName: 'Classic Crew Vest', category: 'costumes', rarity: 'common', quantity: 1, acquiredAt: '2025-03-14T08:15:00Z' },
   { itemId: 'cos-director-beret', displayName: "Director's Beret", category: 'costumes', rarity: 'rare', quantity: 1, acquiredAt: '2025-04-02T14:30:00Z' },
   { itemId: 'cos-golden-clapper', displayName: 'Golden Clapper Board', category: 'decorators', rarity: 'epic', quantity: 1, acquiredAt: '2025-05-10T11:20:00Z' },
@@ -420,16 +422,16 @@ const MOCK_ROLE_STATISTICS: RoleStatistics[] = [
 ];
 
 const MOCK_LEADERBOARDS: LeaderboardEntry[] = [
-  { playFabId: 'PF-002', displayName: 'DIRECTOR_X', position: 1, statValue: 312450, avatarUrl: '/assets/hero-key-art.png' },
-  { playFabId: 'MOCK-PLAYER-001', displayName: 'CAMERA_PRO', position: 2, statValue: 276820, avatarUrl: '/assets/hero-key-art.png' },
-  { playFabId: 'PF-003', displayName: 'LIGHT_MASTER', position: 3, statValue: 245600, avatarUrl: '/assets/hero-key-art.png' },
-  { playFabId: 'PF-004', displayName: 'EDIT_KING', position: 4, statValue: 198300, avatarUrl: '/assets/hero-key-art.png' },
-  { playFabId: 'PF-005', displayName: 'SCENE_SETTER', position: 5, statValue: 187650, avatarUrl: '/assets/hero-key-art.png' },
-  { playFabId: 'PF-006', displayName: 'FOCUS_PULLER', position: 6, statValue: 176200, avatarUrl: '/assets/hero-key-art.png' },
-  { playFabId: 'PF-007', displayName: 'BOOM_OPERATOR', position: 7, statValue: 165800, avatarUrl: '/assets/hero-key-art.png' },
-  { playFabId: 'PF-008', displayName: 'GRIP_MASTER', position: 8, statValue: 154300, avatarUrl: '/assets/hero-key-art.png' },
-  { playFabId: 'PF-009', displayName: 'SLATE_RUNNER', position: 9, statValue: 143900, avatarUrl: '/assets/hero-key-art.png' },
-  { playFabId: 'PF-010', displayName: 'DOLLY_GRIP', position: 10, statValue: 132500, avatarUrl: '/assets/hero-key-art.png' },
+  { playFabId: 'PF-002', displayName: 'DIRECTOR_X', position: 1, statValue: 312450, avatarUrl: '/assets/crew-set-illustration.png' },
+  { playFabId: 'MOCK-PLAYER-001', displayName: 'CAMERA_PRO', position: 2, statValue: 276820, avatarUrl: '/assets/crew-set-illustration.png' },
+  { playFabId: 'PF-003', displayName: 'LIGHT_MASTER', position: 3, statValue: 245600, avatarUrl: '/assets/crew-set-illustration.png' },
+  { playFabId: 'PF-004', displayName: 'EDIT_KING', position: 4, statValue: 198300, avatarUrl: '/assets/crew-set-illustration.png' },
+  { playFabId: 'PF-005', displayName: 'SCENE_SETTER', position: 5, statValue: 187650, avatarUrl: '/assets/crew-set-illustration.png' },
+  { playFabId: 'PF-006', displayName: 'FOCUS_PULLER', position: 6, statValue: 176200, avatarUrl: '/assets/crew-set-illustration.png' },
+  { playFabId: 'PF-007', displayName: 'BOOM_OPERATOR', position: 7, statValue: 165800, avatarUrl: '/assets/crew-set-illustration.png' },
+  { playFabId: 'PF-008', displayName: 'GRIP_MASTER', position: 8, statValue: 154300, avatarUrl: '/assets/crew-set-illustration.png' },
+  { playFabId: 'PF-009', displayName: 'SLATE_RUNNER', position: 9, statValue: 143900, avatarUrl: '/assets/crew-set-illustration.png' },
+  { playFabId: 'PF-010', displayName: 'DOLLY_GRIP', position: 10, statValue: 132500, avatarUrl: '/assets/crew-set-illustration.png' },
 ];
 
 const MOCK_FRIENDS: FriendInfo[] = [
@@ -483,18 +485,18 @@ let MOCK_ADS: AdEntry[] = [
   { id: 'AD-002', brand: 'Vantage Apparel', product: 'Backlot Lookbook', impressions: 32100, clicks: 2940, revenue: 11800, startDate: '2026-08-10', status: 'Active' },
 ];
 
-let MOCK_REVENUE: RevenueEntry[] = [
+const MOCK_REVENUE: RevenueEntry[] = [
   { id: 'REV-001', source: 'C-Coin Microtransactions', amount: 84500, date: '2026-08-01' },
   { id: 'REV-002', source: 'Brand Partnerships', amount: 125000, date: '2026-08-15' },
   { id: 'REV-003', source: 'In-Game Ad Displays', amount: 27200, date: '2026-08-20' },
 ];
 
-let MOCK_GAME_BUILDS: GameBuild[] = [
+const MOCK_GAME_BUILDS: GameBuild[] = [
   { id: 'build-001', version: '0.9.2-beta', platform: 'Windows', status: 'Active', releaseDate: '2026-08-15T00:00:00Z', size: '2.4 GB', downloadUrl: 'https://downloads.crewonset.com/CrewOnSet-v0.9.2-beta.zip', notes: 'Latest stable beta build with level 4 optimizations.', changelog: 'Fixed audio clip timing; added 4K texture support.' },
   { id: 'build-002', version: '0.9.1-beta', platform: 'Windows', status: 'Archived', releaseDate: '2026-07-20T00:00:00Z', size: '2.3 GB', downloadUrl: '#', notes: 'Previous release.' },
 ];
 
-let MOCK_BUILD_HISTORY: BuildHistoryEntry[] = [
+const MOCK_BUILD_HISTORY: BuildHistoryEntry[] = [
   { id: 'BH-001', version: '0.9.2-beta', date: '2026-08-15T00:00:00Z', status: 'Active', notes: 'Public beta release' },
   { id: 'BH-002', version: '0.9.1-beta', date: '2026-07-20T00:00:00Z', status: 'Archived', notes: 'Hotfix build' },
   { id: 'BH-003', version: '0.9.0-alpha', date: '2026-06-10T00:00:00Z', status: 'Archived', notes: 'Initial alpha testing' },
@@ -523,26 +525,24 @@ let MOCK_SOCIAL_LINKS: SocialLink[] = [
   { id: 'soc-yt', platform: 'YouTube', url: 'https://youtube.com/crewonset', enabled: true },
 ];
 
-let MOCK_ADMIN_NOTIFS: AdminNotification[] = [
+const MOCK_ADMIN_NOTIFS: AdminNotification[] = [
   { id: 'an-1', title: 'New Partnership Submitted', body: 'Northline Optics submitted an equipment partnership application.', kind: 'partnership', href: '/admin/partnerships', read: false, createdAt: '2026-08-25T16:00:00Z' },
   { id: 'an-2', title: 'New Bug Report', body: 'BR-001: Gimbal axis slips in camera mode.', kind: 'bug-report', href: '/admin/bugs', read: false, createdAt: '2026-08-25T10:00:00Z' },
   { id: 'an-3', title: 'Build 0.9.2-beta Live', body: 'Game build 0.9.2-beta has been published.', kind: 'build', href: '/admin/game', read: true, createdAt: '2026-08-15T01:00:00Z' },
 ];
 
-const MOCK_SHOP_CATALOG: InventoryItem[] = [
-  { itemId: 'cos-director-chair-skin', displayName: "Director's Chair Skin", category: 'decorators', rarity: 'rare', quantity: 1, acquiredAt: '' },
-  { itemId: 'cos-cameraman-gloves', displayName: 'Cameraman Gloves', category: 'costumes', rarity: 'uncommon', quantity: 1, acquiredAt: '' },
-  { itemId: 'cos-boom-mic-charm', displayName: 'Boom Mic Charm', category: 'decorators', rarity: 'common', quantity: 1, acquiredAt: '' },
-  { itemId: 'cos-film-reel-backpack', displayName: 'Film Reel Backpack', category: 'costumes', rarity: 'epic', quantity: 1, acquiredAt: '' },
-  { itemId: 'cos-spotlight-aura', displayName: 'Spotlight Aura', category: 'decorators', rarity: 'legendary', quantity: 1, acquiredAt: '' },
-  { itemId: 'cos-vintage-filter', displayName: 'Vintage Filter Frame', category: 'decorators', rarity: 'uncommon', quantity: 1, acquiredAt: '' },
-  { itemId: 'cos-classic-vest', displayName: 'Classic Crew Vest', category: 'costumes', rarity: 'common', quantity: 1, acquiredAt: '' },
-  { itemId: 'cos-director-beret', displayName: "Director's Beret", category: 'costumes', rarity: 'rare', quantity: 1, acquiredAt: '' },
-  { itemId: 'cos-golden-clapper', displayName: 'Golden Clapper Board', category: 'decorators', rarity: 'epic', quantity: 1, acquiredAt: '' },
-  { itemId: 'cos-neon-headset', displayName: 'Neon Studio Headset', category: 'equipment', rarity: 'uncommon', quantity: 1, acquiredAt: '' },
-  { itemId: 'cos-vintage-lens', displayName: 'Vintage Anamorphic Lens', category: 'equipment', rarity: 'rare', quantity: 1, acquiredAt: '' },
-];
-
+const MOCK_SHOP_CATALOG: InventoryItem[] = cosmeticCatalog.map((item) => ({
+  itemId: item.id,
+  displayName: item.name,
+  category: "costumes",
+  rarity: item.rarity.toLowerCase() as ItemRarity,
+  price: item.price,
+  currency: 'cCoins',
+  quantity: 1,
+  acquiredAt: '',
+  description: item.description,
+  customData: { assetKey: item.assetKey, priceCoins: String(item.price), currency: 'cCoins' },
+}));
 // ============================================================================
 // Service Factory
 // ============================================================================

@@ -127,32 +127,34 @@ function AdminDashboardPage() {
         {stats.map((stat) => (
           <article
             key={stat.label}
-            className="rounded-lg border border-white/[0.06] bg-[#182330] p-5 shadow-xl"
+            className="admin-dashboard-stat min-w-0 rounded-lg border border-white/[0.06] bg-[#182330] p-4 shadow-xl sm:p-5"
           >
-            <div className="flex items-start justify-between">
+            <div className="flex min-w-0 items-start justify-between gap-2">
               <div
-                className={`grid size-10 place-items-center rounded-md ${stat.color} text-white`}
+                className={`grid size-9 shrink-0 place-items-center rounded-md ${stat.color} text-white`}
               >
                 <stat.icon className="size-5" />
               </div>
 
-              <span className="rounded bg-[#2d9d8f]/15 px-2 py-1 text-[10px] font-black text-[#4bc4b4]">
+              <span className="shrink-0 rounded bg-[#2d9d8f]/15 px-2 py-1 text-[10px] font-black text-[#4bc4b4]">
                 {stat.change}
               </span>
             </div>
 
-            <p className="mt-6 text-3xl font-black tracking-tight !text-white">{stat.value}</p>
+            <p className="admin-stat-value mt-5 max-w-full whitespace-nowrap text-[clamp(1.2rem,1.55vw,1.4rem)] font-black leading-none tracking-tight !text-white">
+              {stat.value}
+            </p>
 
-            <p className="mt-1 text-xs font-bold uppercase tracking-wider !text-white/35">
+            <p className="mt-2 text-[11px] font-bold uppercase leading-snug tracking-wider !text-white/35">
               {stat.label}
             </p>
           </article>
         ))}
 
         {/* SERVER STATUS */}
-        <article className="rounded-lg border border-white/[0.06] bg-[#182330] p-5 shadow-xl">
-          <div className="flex items-start justify-between">
-            <div className="grid size-10 place-items-center rounded-md bg-[#2d9d8f] text-white">
+        <article className="admin-dashboard-stat min-w-0 rounded-lg border border-white/[0.06] bg-[#182330] p-4 shadow-xl sm:p-5">
+          <div className="flex min-w-0 items-start justify-between gap-2">
+            <div className="grid size-9 shrink-0 place-items-center rounded-md bg-[#2d9d8f] text-white">
               <ServerCog className="size-5" />
             </div>
 
@@ -162,11 +164,13 @@ function AdminDashboardPage() {
             </span>
           </div>
 
-          <p className="mt-6 text-3xl font-black tracking-tight !text-white">Operational</p>
+          <p className="admin-stat-value mt-5 max-w-full whitespace-nowrap text-[clamp(1.1rem,1.45vw,1.3rem)] font-black leading-none tracking-tight !text-white">
+            Operational
+          </p>
 
-          <p className="mt-1 flex items-center gap-1.5 text-xs font-bold uppercase tracking-wider !text-white/35">
-            <Activity className="size-3" />
-            Server Status · 99.98% uptime
+          <p className="mt-2 flex min-w-0 items-start gap-1.5 text-[11px] font-bold uppercase leading-snug tracking-wider !text-white/35">
+            <Activity className="size-3 shrink-0" />
+            <span>Server Status · 99.98% uptime</span>
           </p>
         </article>
       </section>
@@ -178,7 +182,7 @@ function AdminDashboardPage() {
 
       {/* MANAGEMENT SUMMARY CARDS */}
       <section className="mt-8 grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-        <article className="rounded-lg border border-white/[0.06] bg-[#182330] p-5 shadow-xl">
+        <article className="admin-dashboard-card min-w-0 rounded-lg border border-white/[0.06] bg-[#182330] p-4 shadow-xl sm:p-5">
           <div className="flex items-center justify-between">
             <div className="grid size-10 place-items-center rounded-md bg-coral text-white">
               <Users className="size-5" />
@@ -204,7 +208,7 @@ function AdminDashboardPage() {
           </div>
         </article>
 
-        <article className="rounded-lg border border-white/[0.06] bg-[#182330] p-5 shadow-xl">
+        <article className="admin-dashboard-card min-w-0 rounded-lg border border-white/[0.06] bg-[#182330] p-4 shadow-xl sm:p-5">
           <div className="flex items-center justify-between">
             <div className="grid size-10 place-items-center rounded-md bg-[#7c5cff] text-white">
               <Images className="size-5" />
@@ -216,7 +220,7 @@ function AdminDashboardPage() {
               View →
             </Link>
           </div>
-          <p className="mt-5 text-3xl font-black tracking-tight !text-white">
+          <p className="mt-5 max-w-full whitespace-nowrap text-[clamp(1.2rem,1.55vw,1.4rem)] font-black leading-none tracking-tight !text-white">
             {contentTotals?.galleryItems ?? 0}
           </p>
           <p className="mt-1 text-xs font-bold uppercase tracking-wider !text-white/35">
@@ -224,7 +228,7 @@ function AdminDashboardPage() {
           </p>
         </article>
 
-        <article className="rounded-lg border border-white/[0.06] bg-[#182330] p-5 shadow-xl">
+        <article className="admin-dashboard-card min-w-0 rounded-lg border border-white/[0.06] bg-[#182330] p-4 shadow-xl sm:p-5">
           <div className="flex items-center justify-between">
             <div className="grid size-10 place-items-center rounded-md bg-[#4b9bff] text-white">
               <MessageSquare className="size-5" />
@@ -236,13 +240,13 @@ function AdminDashboardPage() {
               View Inbox →
             </Link>
           </div>
-          <p className="mt-5 text-3xl font-black tracking-tight !text-white">
+          <p className="mt-5 max-w-full whitespace-nowrap text-[clamp(1.2rem,1.55vw,1.4rem)] font-black leading-none tracking-tight !text-white">
             {messageCounts.total}
           </p>
           <p className="mt-1 text-xs font-bold uppercase tracking-wider !text-white/35">Messages</p>
         </article>
 
-        <article className="rounded-lg border border-white/[0.06] bg-[#182330] p-5 shadow-xl">
+        <article className="admin-dashboard-card min-w-0 rounded-lg border border-white/[0.06] bg-[#182330] p-4 shadow-xl sm:p-5">
           <div className="flex items-center justify-between">
             <div className="grid size-10 place-items-center rounded-md bg-[#d9a514] text-white">
               <Gamepad2 className="size-5" />
@@ -254,7 +258,7 @@ function AdminDashboardPage() {
               Manage →
             </Link>
           </div>
-          <p className="mt-5 text-lg font-black tracking-tight !text-white">
+          <p className="mt-5 max-w-full truncate text-[clamp(1rem,1.2vw,1.15rem)] font-black leading-tight tracking-tight !text-white">
             v{gameBuild?.version ?? "—"} · Build {gameBuild?.buildNumber ?? "—"}
           </p>
           <p className="mt-1 text-xs font-bold uppercase tracking-wider !text-white/35">
@@ -282,11 +286,11 @@ function AdminDashboardPage() {
           ].map((item) => (
             <article
               key={item.label}
-              className="rounded-lg border border-white/[0.06] bg-[#182330] p-5 shadow-xl"
+              className="admin-dashboard-card min-w-0 rounded-lg border border-white/[0.06] bg-[#182330] p-4 shadow-xl sm:p-5"
             >
               <item.icon className="size-5 !text-white/40" />
-              <p className="mt-4 text-2xl font-black tracking-tight !text-white">{item.value}</p>
-              <p className="mt-1 text-xs font-bold uppercase tracking-wider !text-white/35">
+              <p className="mt-4 max-w-full whitespace-nowrap text-[clamp(1.2rem,1.55vw,1.4rem)] font-black leading-none tracking-tight !text-white">{item.value}</p>
+              <p className="mt-2 text-[11px] font-bold uppercase leading-snug tracking-wider !text-white/35">
                 {item.label}
               </p>
             </article>
@@ -309,10 +313,10 @@ function AdminDashboardPage() {
           ].map((item) => (
             <article
               key={item.label}
-              className="rounded-lg border border-white/[0.06] bg-[#182330] p-5 shadow-xl"
+              className="admin-dashboard-card min-w-0 rounded-lg border border-white/[0.06] bg-[#182330] p-4 shadow-xl sm:p-5"
             >
-              <p className="text-2xl font-black tracking-tight !text-white">{item.value}</p>
-              <p className="mt-1 text-xs font-bold uppercase tracking-wider !text-white/35">
+              <p className="max-w-full whitespace-nowrap text-[clamp(1.2rem,1.55vw,1.4rem)] font-black leading-none tracking-tight !text-white">{item.value}</p>
+              <p className="mt-2 text-[11px] font-bold uppercase leading-snug tracking-wider !text-white/35">
                 {item.label}
               </p>
             </article>
@@ -343,10 +347,10 @@ function AdminDashboardPage() {
           ].map((item) => (
             <article
               key={item.label}
-              className="rounded-lg border border-white/[0.06] bg-[#182330] p-5 shadow-xl"
+              className="admin-dashboard-card min-w-0 rounded-lg border border-white/[0.06] bg-[#182330] p-4 shadow-xl sm:p-5"
             >
-              <p className="truncate text-lg font-black tracking-tight !text-white">{item.value}</p>
-              <p className="mt-1 text-xs font-bold uppercase tracking-wider !text-white/35">
+              <p className="max-w-full truncate text-[clamp(1rem,1.2vw,1.15rem)] font-black leading-tight tracking-tight !text-white">{item.value}</p>
+              <p className="mt-2 text-[11px] font-bold uppercase leading-snug tracking-wider !text-white/35">
                 {item.label}
               </p>
             </article>

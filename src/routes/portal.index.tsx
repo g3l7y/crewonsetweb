@@ -14,6 +14,8 @@ export const Route = createFileRoute("/portal/")({
 
 import Image from "@/components/next-compat/image";
 import Link from "@/components/next-compat/link";
+import { getProfileArtwork } from "@/lib/demo/profile-art";
+import { useMemo } from "react";
 import {
   Clock3,
   Film,
@@ -29,7 +31,11 @@ import {
   User,
 } from "lucide-react";
 import { cosmeticCatalog, ownedItemsStore } from "@/lib/demo/portal-shop";
+import type { CosmeticItem } from "@/lib/demo/portal-shop";
+import { CosmeticArt } from "@/components/portal/cosmetic-art";
 import { Leaderboards } from "@/components/portal/leaderboards";
+import { useAchievements, useCatalog, usePlayerInventory, usePlayerProfile, usePlayerProgression, useProductionLogs } from "@/lib/playfab/hooks";
+import { isMockMode } from "@/lib/playfab/config";
 import { sortNewestFirst } from "@/lib/validation";
 
 const badges = [
@@ -124,7 +130,7 @@ const recentActivity: ActivityItem[] = sortNewestFirst([
     id: "act-5",
     kind: "level",
     title: "Reached Crew Level 27",
-    detail: "6,820 / 10,000 XP toward Level 28",
+    detail: "{currentXp.toLocaleString()} / {xpToNextLevel.toLocaleString()} XP toward Level 28",
     time: "4 days ago",
     createdAt: "2026-08-31T12:00:00.000Z",
     icon: Sparkles,
@@ -132,16 +138,85 @@ const recentActivity: ActivityItem[] = sortNewestFirst([
 ], (activity) => activity.createdAt);
 
 function PlayerDashboardPage() {
-  const [ownedIds] = ownedItemsStore.useStore();
-  const ownedItems = cosmeticCatalog.filter((item) => ownedIds.includes(item.id)).slice(0, 4);
+  const mockMode = isMockMode();
+  const [demoOwnedIds] = ownedItemsStore.useStore();
+  const catalogQuery = useCatalog();
+  const inventoryQuery = usePlayerInventory();
+  const profileQuery = usePlayerProfile();
+  const progressionQuery = usePlayerProgression();
+  const achievementsQuery = useAchievements();
+  const productionLogsQuery = useProductionLogs();
+
+  const displayName = mockMode
+    ? "CAMERA_PRO"
+    : profileQuery.data?.displayName || profileQuery.data?.username || "PLAYER";
+  const displayAvatar = mockMode
+    ? getProfileArtwork(displayName)
+    : profileQuery.data?.avatarUrl || getProfileArtwork(displayName);
+  const level = mockMode ? 27 : progressionQuery.data?.level ?? 1;
+  const currentXp = mockMode ? 6820 : progressionQuery.data?.currentXp ?? 0;
+  const xpToNextLevel = mockMode ? 10000 : progressionQuery.data?.xpToNextLevel ?? 0;
+  const progressPercent = xpToNextLevel > 0 ? Math.min(100, Math.round((currentXp / xpToNextLevel) * 100)) : 0;
+  const dashboardCareer = mockMode
+    ? career
+    : [
+        { label: "Productions Completed", value: String(productionLogsQuery.data?.length ?? 0), icon: Film },
+        { label: "Sessions Played", value: String(productionLogsQuery.data?.length ?? 0), icon: Play },
+        { label: "Total Play Time", value: "—", icon: Clock3 },
+        { label: "Best Rating", value: productionLogsQuery.data?.length ? Math.max(...productionLogsQuery.data.map((log) => Number(log.overallScore ?? log.score ?? 0))) + "%" : "—", icon: Star },
+        { label: "Global Rank", value: "—", icon: Hash },
+      ];
+  const dashboardBadges = mockMode
+    ? badges
+    : (achievementsQuery.data ?? []).slice(0, 6).map((achievement, index) => ({
+        icon: ["🎬", "⭐", "🏆", "🎥", "👑", "💯"][index] ?? "🎬",
+        name: achievement.title,
+        unlocked: achievement.unlocked,
+      }));
+  const dashboardActivity = mockMode
+    ? recentActivity
+    : (productionLogsQuery.data ?? []).slice(0, 5).map((log, index) => ({
+        id: log.productionId || log.id || "production-" + index,
+        kind: "production" as const,
+        title: "Wrapped " + (log.clientName || log.client || log.title || "production"),
+        detail: "Scored " + String(log.overallScore ?? log.score ?? 0) + "%",
+        time: new Date(log.date).toLocaleDateString(),
+        createdAt: log.date,
+        icon: Film,
+      }));
+
+  const catalog = useMemo(() => {
+    if (mockMode) return cosmeticCatalog;
+    return (catalogQuery.data ?? [])
+      .map((remote) => {
+        const base = cosmeticCatalog.find((item) => item.id === remote.itemId);
+        if (!base) return null;
+        return {
+          ...base,
+          name: remote.displayName || base.name,
+          price: remote.price ?? base.price,
+          description: remote.description || base.description,
+        };
+      })
+      .filter((item): item is CosmeticItem => item !== null);
+  }, [catalogQuery.data, mockMode]);
+
+  const ownedIds = mockMode
+    ? demoOwnedIds
+    : (inventoryQuery.data ?? []).map((item) => item.itemId);
+  const ownedItems = useMemo(
+    () => catalog.filter((item) => ownedIds.includes(item.id)),
+    [catalog, ownedIds],
+  );
+  const ownedItemsLoading = !mockMode && (catalogQuery.isLoading || inventoryQuery.isLoading);
 
   return (
-    <div className="portal-page min-h-screen bg-[#0b1426] px-4 py-8 text-white sm:px-6 sm:py-10 lg:px-8">
-      <div className="mx-auto max-w-[1500px]">
+    <div className="portal-page portal-title-page min-h-screen bg-[#0b1426] px-4 py-8 text-white sm:px-6 sm:py-10 lg:px-8">
+      <div className="portal-title-container mx-auto max-w-[1500px]">
         {/* HEADER */}
-        <header>
-          <p className="text-xs font-black tracking-[.18em] text-coral">PLAYER PORTAL</p>
-          <h1 className="mt-2 text-4xl font-black uppercase tracking-tight text-white sm:text-5xl">
+        <header className="portal-title-header">
+          <p className="portal-title-eyebrow text-xs font-black tracking-[.18em] text-coral">PLAYER PORTAL</p>
+          <h1 className="portal-title-heading mt-2 text-4xl font-black uppercase tracking-tight text-white sm:text-5xl">
             Dashboard
           </h1>
         </header>
@@ -151,8 +226,8 @@ function PlayerDashboardPage() {
           <div className="flex flex-col gap-5 sm:flex-row sm:items-center">
             <div className="relative size-24 shrink-0 overflow-hidden rounded-full border-4 border-yellow shadow-lg">
               <Image
-                src="/assets/hero-key-art.png"
-                alt="CAMERA_PRO avatar"
+                src={displayAvatar}
+                alt={displayName + " avatar"}
                 fill
                 className="object-cover object-[62%_45%]"
               />
@@ -163,22 +238,22 @@ function PlayerDashboardPage() {
                 Call time confirmed
               </p>
               <h2 className="mt-1 text-3xl font-black uppercase tracking-tight text-navy sm:text-4xl">
-                Welcome back, CAMERA_PRO!
+                Welcome back, {displayName}!
               </h2>
               <div className="mt-4 flex items-center gap-3">
                 <span className="rounded bg-yellow px-3 py-1 text-xs font-black text-navy">
-                  LEVEL 27
+                  LEVEL {level}
                 </span>
                 <div className="h-2 max-w-md flex-1 overflow-hidden rounded-full bg-navy/10">
-                  <div className="h-full w-[68%] rounded-full bg-coral" />
+                  <div className="h-full rounded-full bg-coral" style={{ width: progressPercent + "%" }} />
                 </div>
-                <span className="text-xs font-bold text-navy/45">6,820 / 10,000 XP</span>
+                <span className="text-xs font-bold text-navy/45">{currentXp.toLocaleString()} / {xpToNextLevel.toLocaleString()} XP</span>
               </div>
             </div>
 
             <Link
               href="/portal/profile"
-              className="inline-flex shrink-0 items-center justify-center gap-2 rounded-md bg-coral px-5 py-3 text-xs font-black uppercase tracking-[0.08em] text-white shadow-lg shadow-coral/20 transition hover:-translate-y-0.5 hover:bg-coral/90"
+              className="dashboard-view-profile-button inline-flex shrink-0 items-center justify-center gap-2 rounded-md bg-coral px-5 py-3 text-xs font-black uppercase tracking-[0.08em] text-white shadow-lg shadow-coral/20 transition hover:-translate-y-0.5 hover:bg-coral/90"
             >
               <User className="size-4" />
               View Profile
@@ -187,9 +262,9 @@ function PlayerDashboardPage() {
         </section>
 
         {/* LATEST UPDATE */}
-        <section className="on-dark relative mt-6 overflow-hidden rounded-xl bg-[#111c30] shadow-xl">
+        <section className="latest-update-card on-dark relative mt-6 overflow-hidden rounded-xl bg-[#111c30]">
           <Image
-            src="/assets/gameplay-shot.png"
+            src={displayAvatar}
             alt="Crew On Set version 1.4"
             fill
             className="object-cover opacity-40"
@@ -203,7 +278,7 @@ function PlayerDashboardPage() {
             <p className="mt-4 text-lg text-white/75">Miss your crew? Play the game now.</p>
             <a
               href="notes://"
-              className="mt-7 inline-flex items-center gap-2 rounded-md bg-coral px-5 py-3 text-sm font-black text-white transition hover:bg-coral-dark"
+              className="latest-update-play-button mt-7 inline-flex items-center gap-2 rounded-md bg-coral px-5 py-3 text-sm font-black text-white transition hover:bg-coral-dark"
             >
               <Play className="size-4 fill-current" />
               PLAY NOW
@@ -212,14 +287,14 @@ function PlayerDashboardPage() {
         </section>
 
         {/* CAREER OVERVIEW */}
-        <section className="mt-8">
+        <section className="career-overview-panel mt-8">
           <div className="mb-4 flex items-center gap-3">
             <Trophy className="size-5 text-[#d9a514]" />
             <h2 className="text-lg font-black uppercase text-white">Career Overview</h2>
           </div>
 
           <div className="grid gap-px overflow-hidden rounded-xl border border-white/10 bg-white/10 sm:grid-cols-2 xl:grid-cols-5">
-            {career.map((stat) => {
+            {dashboardCareer.map((stat) => {
               const Icon = stat.icon;
               return (
                 <article key={stat.label} className="bg-[#121d32] p-5 transition hover:bg-[#17243c]">
@@ -235,11 +310,11 @@ function PlayerDashboardPage() {
         </section>
 
         {/* BADGES */}
-        <section className="mt-8 overflow-hidden rounded-xl border border-white/10 bg-[#121d32] p-5 sm:p-7">
+        <section className="badges-panel mt-8 overflow-hidden rounded-xl border border-white/10 bg-[#121d32] p-5 sm:p-7">
           <div className="flex items-center justify-between gap-4">
             <div>
-              <h2 className="text-lg font-black uppercase text-white">Badges</h2>
-              <p className="mt-1 text-sm text-white/40">
+              <h2 className="badges-copy text-lg font-black uppercase !text-[#0a0e19]">Badges</h2>
+              <p className="badges-copy mt-1 text-sm !text-[#0a0e19]">
                 Your collected production milestones
               </p>
             </div>
@@ -253,7 +328,7 @@ function PlayerDashboardPage() {
           </div>
 
           <div className="mt-5 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
-            {badges.map((badge) => (
+            {dashboardBadges.map((badge) => (
               <div
                 key={badge.name}
                 className={`group rounded-xl border p-5 text-center transition ${
@@ -266,7 +341,7 @@ function PlayerDashboardPage() {
                   {badge.unlocked ? badge.icon : "🔒"}
                 </span>
 
-                <p className="mt-3 text-xs font-black uppercase text-white/80">
+                <p className="badge-label mt-3 text-xs font-black uppercase text-white/80">
                   {badge.name}
                 </p>
               </div>
@@ -277,7 +352,7 @@ function PlayerDashboardPage() {
         {/* RECENT ACTIVITY + OWNED ITEMS */}
         <div className="mt-8 grid gap-6 lg:grid-cols-[1.4fr_1fr]">
           {/* RECENT ACTIVITY */}
-          <section className="overflow-hidden rounded-xl border border-white/10 bg-[#121d32]">
+          <section className="dashboard-recent-activity-card overflow-hidden rounded-xl border border-white/10 bg-[#121d32]">
             <div className="flex items-center justify-between border-b border-white/10 px-5 py-4">
               <h2 className="text-sm font-black uppercase tracking-wide text-white">
                 Recent Activity
@@ -285,7 +360,7 @@ function PlayerDashboardPage() {
               <span className="text-[10px] font-bold uppercase text-white/30">Last 7 days</span>
             </div>
             <ul className="divide-y divide-white/5">
-              {recentActivity.map((activity) => {
+              {dashboardActivity.map((activity) => {
                 const Icon = activity.icon;
                 return (
                   <li key={activity.id} className="flex items-start gap-3 px-5 py-4">
@@ -306,13 +381,17 @@ function PlayerDashboardPage() {
           </section>
 
           {/* OWNED ITEMS */}
-          <section className="overflow-hidden rounded-xl border border-white/10 bg-[#121d32]">
+          <section className="dashboard-owned-items-card overflow-hidden rounded-xl border border-white/10 bg-[#121d32]">
             <div className="flex items-center justify-between border-b border-white/10 px-5 py-4">
               <h2 className="text-sm font-black uppercase tracking-wide text-white">Owned Items</h2>
-              <span className="text-[10px] font-bold uppercase text-white/30">{ownedIds.length} total</span>
+              <span className="text-[10px] font-bold uppercase text-white/30">{ownedItems.length} total</span>
             </div>
 
-            {ownedItems.length === 0 ? (
+            {ownedItemsLoading ? (
+              <p className="px-5 py-8 text-center text-sm text-white/40">
+                Syncing your collection…
+              </p>
+            ) : ownedItems.length === 0 ? (
               <p className="px-5 py-8 text-center text-sm text-white/40">
                 You haven&apos;t collected any cosmetics yet.
               </p>
@@ -323,11 +402,7 @@ function PlayerDashboardPage() {
                     key={item.id}
                     className="rounded-lg border border-white/10 bg-white/[0.03] p-3 text-center"
                   >
-                    <div
-                      className={`mx-auto grid size-12 place-items-center rounded-full bg-gradient-to-br text-sm font-black text-white ${item.gradient}`}
-                    >
-                      {item.initials}
-                    </div>
+                    <CosmeticArt item={item} className="owned-item-art" />
                     <p className="mt-2 truncate text-xs font-bold text-white">{item.name}</p>
                     <p className="text-[10px] uppercase text-white/30">{item.category}</p>
                   </div>
@@ -338,7 +413,7 @@ function PlayerDashboardPage() {
             <div className="border-t border-white/10 p-4">
               <Link
                 href="/portal/shop"
-                className="flex w-full items-center justify-center gap-2 rounded-md bg-coral px-4 py-2.5 text-xs font-black uppercase tracking-wide text-white transition hover:opacity-90"
+                className="dashboard-collection-button flex w-full items-center justify-center gap-2 rounded-md bg-coral px-4 py-2.5 text-xs font-black uppercase tracking-wide text-white transition hover:opacity-90"
               >
                 View Full Collection
                 <ArrowRight className="size-3.5" />
@@ -354,15 +429,15 @@ function PlayerDashboardPage() {
         <div className="mt-6 flex flex-wrap gap-3">
           <Link
             href="/portal/friends"
-            className="inline-flex items-center gap-2 rounded-md border border-white/10 bg-[#121d32] px-4 py-2.5 text-xs font-bold text-white/70 transition hover:border-coral/40 hover:text-white"
+            className="dashboard-action-manage-friends inline-flex items-center gap-2 rounded-md border border-navy bg-[#121d32] px-4 py-2.5 text-xs font-bold text-white/70 transition hover:brightness-95"
           >
             <UserPlus className="size-4" /> Manage Friends
           </Link>
           <Link
             href="/portal/almanac"
-            className="inline-flex items-center gap-2 rounded-md border border-white/10 bg-[#121d32] px-4 py-2.5 text-xs font-bold text-white/70 transition hover:border-coral/40 hover:text-white"
+            className="dashboard-action-almanac inline-flex items-center gap-2 rounded-md border border-navy bg-[#121d32] px-4 py-2.5 text-xs font-bold text-white/70 transition hover:brightness-95"
           >
-            <Award className="size-4" /> View Achievements
+            <Award className="size-4" /> View Almanac
           </Link>
         </div>
       </div>

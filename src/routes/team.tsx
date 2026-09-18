@@ -32,7 +32,6 @@ import {
   Palette,
   Play,
   Rocket,
-  Trophy,
   Wrench,
 } from "lucide-react";
 
@@ -46,45 +45,49 @@ import "@/styles/team-page.css";
 const team = [
   {
     number: "01",
-    name: "Mc Kelvin Bocateja",
-    role: "Programmer",
-    icon: Crown,
+    name: "Princess Angela Cartel",
+    role: "Technical Writer",
+    icon: Coffee,
+    image: "/assets/team-princess.png",
     imagePosition: "member-one",
     description:
-      "Writes the engine side — camera rig physics, lighting simulation, the editing timeline and the live services powering this portal.",
-    skills: ["CODE", "TECH", "TOOLS"],
+      "Turns production systems into clear briefs, guides, and copy the whole crew can actually use.",
+    skills: ["DOCUMENTATION", "STORYTELLING", "CLARITY"],
   },
   {
     number: "02",
-    name: "Joseph Namuag",
-    role: "System Analyst",
-    icon: Gamepad2,
+    name: "Mc Kelvin Bocateja",
+    role: "Programmer",
+    icon: Code2,
+    image: "/assets/team-kelvin.png",
     imagePosition: "member-two",
     description:
-      "Maps the production loop into systems: scoring curves, C-Coin economy, ad placement rules and the data model behind the Almanac.",
-    skills: ["GAMEPLAY", "SYSTEMS", "LEVEL DESIGN"],
+      "Builds the engine side — camera rig physics, lighting simulation, the editing timeline, and the live services powering the portal.",
+    skills: ["CODE", "TECH", "TOOLS"],
   },
   {
     number: "03",
-    name: "Princess Angela Cartel",
-    role: "Technical Writer",
+    name: "Rae Yshene Acido",
+    role: "Designer",
     icon: Palette,
+    image: "/assets/team-rae.png",
     imagePosition: "member-three",
     description:
-      "Owns the documentation, the in-game briefs and every word a client character says. If it reads clearly on set, Angela wrote it.",
-    skills: ["VISION", "LEADERSHIP", "STORYTELLING"],
+      "Shapes the 2D visual language — characters, cosmetics, UI framing, and the ink-line look across the game and site.",
+    skills: ["ART", "ANIMATION", "CHARACTERS"],
   },
   {
     number: "04",
-    name: "Rae Yshene Acido",
-    role: "Designer",
-    icon: Code2,
+    name: "Joseph Namuag",
+    role: "System Analyst",
+    icon: Gamepad2,
+    image: "/assets/team-joseph.png",
     imagePosition: "member-four",
     description:
-      "Built the whole 2D anime visual language — characters, cosmetics, UI framing and the ink-line look that runs across the game and this site.",
-    skills: ["ART", "ANIMATION", "CHARACTERS"],
+      "Maps the production loop into systems: scoring curves, the C-Coin economy, ad rules, and the data model behind the Almanac.",
+    skills: ["GAMEPLAY", "SYSTEMS", "LEVEL DESIGN"],
   },
-];
+]
 
 /* =========================================================
    TOOLS
@@ -104,8 +107,8 @@ const tools = [
     image: "/assets/medibang.png",
   },
   {
-    name: "AUDACITY",
-    image: "/assets/audacity.png",
+    name: "PIXABAY",
+    image: "/assets/pixabay.svg",
   },
   {
     name: "GITHUB",
@@ -187,7 +190,7 @@ function TeamPage() {
                       aria-label={`View ${person.name}`}
                     >
                       <Image
-                        src="/assets/team-portrait.png"
+                        src={person.image}
                         alt={person.name}
                         fill
                         className={`mini-member-image ${person.imagePosition}`}
@@ -373,7 +376,7 @@ function TeamPage() {
                 <div className="crew-profile-image">
 
                   <Image
-                    src="/assets/team-portrait.png"
+                    src={member.image}
                     alt={`${member.name} - ${member.role}`}
                     fill
                     priority={activeMember === 0}
@@ -500,7 +503,7 @@ function TeamPage() {
 
                     <div>
                       <Image
-                        src="/assets/team-portrait.png"
+                        src={person.image}
                         alt={person.name}
                         fill
                         className={person.imagePosition}
@@ -590,7 +593,7 @@ function TeamPage() {
 
                 <div className="behind-photo behind-photo-one">
                   <Image
-                    src="/assets/team-portrait.png"
+                    src="/assets/team-rae.png"
                     alt="Behind the scenes"
                     fill
                   />
@@ -598,7 +601,7 @@ function TeamPage() {
 
                 <div className="behind-photo behind-photo-two">
                   <Image
-                    src="/assets/team-portrait.png"
+                    src="/assets/team-princess.png"
                     alt="Team production"
                     fill
                   />
@@ -606,7 +609,7 @@ function TeamPage() {
 
                 <div className="behind-photo behind-photo-three">
                   <Image
-                    src="/assets/team-portrait.png"
+                    src="/assets/team-kelvin.png"
                     alt="Game development"
                     fill
                   />

@@ -656,9 +656,9 @@ const daysAgo = (days: number) => new Date(Date.now() - days * 24 * 60 * 60 * 10
 export const seedTransactions: PlayerTransaction[] = [
   {
     id: "tx-seed-1",
-    label: "Director's Trench Coat",
-    detail: "Shop purchase — Outfits",
-    amount: -1800,
+    label: "Coral Call Sheet Tee",
+    detail: "Shop purchase — Tops",
+    amount: -300,
     kind: "purchase",
     createdAt: daysAgo(2),
   },

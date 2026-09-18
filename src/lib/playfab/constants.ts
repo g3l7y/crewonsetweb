@@ -12,6 +12,9 @@ export const PLAYFAB_DATA_KEYS = {
   loadout: 'loadout',
   almanac_unlocked: 'almanac_unlocked',
   production_logs: 'production_logs',
+  transactions: 'transactions',
+  notifications: 'notifications',
+  profile_metadata: 'profile_metadata',
   // Backward compatibility / alias keys
   achievements: 'achievements',
   knowledge: 'knowledge',

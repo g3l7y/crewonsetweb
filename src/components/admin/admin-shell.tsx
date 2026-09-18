@@ -31,7 +31,7 @@ import {
   Users,
   X,
 } from "lucide-react";
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 
 function useUnreadAlertsCount() {
   const [applications] = applicationsStore.useStore();
@@ -69,7 +69,7 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
   const displayTheme = useDisplayTheme("admin");
   const [mobileOpen, setMobileOpen] = useState(false);
   const [collapsed, setCollapsed] = useState(false);
-  const [identityHover, setIdentityHover] = useState(false);
+  const [identityOpen, setIdentityOpen] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [logoutConfirmOpen, setLogoutConfirmOpen] = useState(false);
   const [notificationsOpen, setNotificationsOpen] = useState(false);
@@ -98,9 +98,9 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
         onClick={() => setNotificationsOpen((current) => !current)}
         aria-label={`Notifications${unread ? `, ${unread} unread` : ""}`}
         aria-expanded={notificationsOpen}
-        className="relative grid size-10 place-items-center rounded-md border border-white/10 text-white/60 transition hover:border-white/25 hover:text-white"
+        className="admin-notification-trigger relative grid size-8 place-items-center rounded-md border border-white/10 text-white/60 transition hover:border-white/25 hover:text-white"
       >
-        <Bell className="size-5" />
+        <Bell className="size-4.5" />
         {unread > 0 && (
           <span className="absolute -right-1 -top-1 grid min-w-[17px] place-items-center rounded-full bg-coral px-1 text-[9px] font-black leading-[17px] text-white">
             {unread > 9 ? "9+" : unread}
@@ -136,15 +136,6 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
     </div>
   );
 
-  useEffect(() => {
-    const stored = window.localStorage.getItem("cos.admin.sidebar.collapsed");
-    if (stored === "1") setCollapsed(true);
-  }, []);
-
-  useEffect(() => {
-    window.localStorage.setItem("cos.admin.sidebar.collapsed", collapsed ? "1" : "0");
-  }, [collapsed]);
-
   async function logout() {
     await fetch("/api/auth/logout", { method: "POST" });
     router.push("/admin/login");
@@ -157,16 +148,6 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
     <div className="flex h-full min-h-0 flex-col">
       {/* LOGO / ADMIN PANEL */}
       <div className="relative shrink-0 border-b border-white/10 px-4 py-5">
-        {/* COLLAPSE TOGGLE (desktop only, top-right) */}
-        <button
-          onClick={() => setCollapsed((current) => !current)}
-          title={collapsed ? "Expand sidebar" : "Collapse sidebar"}
-          aria-label={collapsed ? "Expand sidebar" : "Collapse sidebar"}
-          className="absolute right-2 top-2 z-10 hidden size-9 place-items-center rounded-md text-white/40 transition hover:bg-white/10 hover:text-white md:grid"
-        >
-          {collapsed ? <ChevronsRight className="size-4" /> : <ChevronsLeft className="size-4" />}
-        </button>
-
         <Link href="/admin" className="relative flex h-auto w-full flex-col items-center">
           <div className={`relative h-14 ${collapsed ? "w-14" : "w-60"} transition-all`}>
             <img
@@ -180,6 +161,16 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
             <p className="mt-2 text-[11px] font-black tracking-[.28em] text-yellow">ADMIN PANEL</p>
           )}
         </Link>
+
+        {/* COLLAPSE TOGGLE: keep it beside ADMIN PANEL when expanded. */}
+        <button
+          onClick={() => setCollapsed((current) => !current)}
+          title={collapsed ? "Expand sidebar" : "Collapse sidebar"}
+          aria-label={collapsed ? "Expand sidebar" : "Collapse sidebar"}
+          className={"sidebar-toggle absolute z-10 hidden size-8 place-items-center rounded-md text-white/40 transition hover:bg-white/10 hover:text-white md:grid " + (collapsed ? "bottom-1 right-2" : "bottom-5 right-2")}
+        >
+          {collapsed ? <ChevronsRight className="size-4" /> : <ChevronsLeft className="size-4" />}
+        </button>
       </div>
 
       {/* NAVIGATION */}
@@ -198,11 +189,11 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
               href={item.href}
               onClick={() => setMobileOpen(false)}
               title={collapsed ? item.label : undefined}
-              className={`relative flex items-center gap-3 rounded-md px-3 py-2 text-[13px] font-bold transition ${
+              className={`admin-nav-link relative flex items-center gap-3 rounded-lg px-3 py-2 text-[13px] font-bold transition ${
                 collapsed ? "justify-center px-0" : ""
               } ${
                 active
-                  ? "bg-coral text-white shadow-lg shadow-coral/15"
+                  ? "admin-nav-active bg-coral text-white shadow-lg shadow-coral/15"
                   : "text-white/60 hover:bg-white/[.07] hover:text-white"
               }`}
             >
@@ -227,52 +218,17 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
         })}
       </nav>
 
-      {/* QUICK ACTIONS */}
-      <div className="shrink-0 border-t border-white/10 p-3">
-        <div className={`flex gap-1 ${collapsed ? "flex-col items-center" : "items-center"}`}>
-          <Link
-            href="/"
-            title="Visit Website"
-            className={`flex items-center gap-2 rounded-md px-3 py-2.5 text-xs font-bold text-white/55 transition hover:bg-white/5 hover:text-white ${
-              collapsed ? "justify-center px-0" : "min-w-0 flex-1 justify-between"
-            }`}
-          >
-            {!collapsed && <span className="truncate">Visit Website</span>}
-            <ExternalLink className="size-4 shrink-0" />
-          </Link>
-
-          <button
-            onClick={() => {
-              setMobileOpen(false);
-              setLogoutConfirmOpen(true);
-            }}
-            title="Log out"
-            aria-label="Log out"
-            className={`flex items-center gap-2 rounded-md px-3 py-2.5 text-xs font-bold text-white/55 transition hover:bg-coral/15 hover:text-coral-light ${
-              collapsed ? "justify-center px-0" : "shrink-0"
-            }`}
-          >
-            <LogOut className="size-4 shrink-0" />
-            {!collapsed && <span>Log out</span>}
-          </button>
-        </div>
-      </div>
-
       {/* BOTTOM ACCOUNT AREA */}
       <div className="shrink-0 border-t border-white/10 p-3">
-        <div
-          onMouseEnter={() => setIdentityHover(true)}
-          onMouseLeave={() => {
-            setIdentityHover(false);
-            setShowPassword(false);
-          }}
-          className="relative"
-        >
+        <div className="relative">
           <button
             type="button"
-            onClick={() => setIdentityHover((current) => !current)}
-            aria-expanded={identityHover}
-            className={`flex w-full items-center gap-3 rounded-md px-2 py-1.5 text-left transition hover:bg-white/5 ${
+            onClick={() => {
+              setIdentityOpen((current) => !current);
+              setShowPassword(false);
+            }}
+            aria-expanded={identityOpen}
+            className={`admin-profile-summary flex w-full items-center gap-3 rounded-md px-2 py-1.5 text-left transition hover:bg-white/5 ${
               collapsed ? "justify-center px-0" : ""
             }`}
           >
@@ -290,10 +246,10 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
             )}
           </button>
 
-          {identityHover && (
+          {identityOpen && (
             <div
               role="tooltip"
-              className={`absolute z-50 w-[min(15rem,72vw)] rounded-lg border border-white/12 bg-[#111827] p-3 shadow-2xl shadow-black/60 ${
+              className={`admin-profile-menu absolute z-50 w-[min(15rem,72vw)] rounded-lg border border-white/12 bg-[#111827] p-3 shadow-2xl shadow-black/60 ${
                 collapsed ? "bottom-0 left-full ml-2" : "bottom-full left-0 mb-2"
               }`}
             >
@@ -321,6 +277,28 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
                   {showPassword ? <EyeOff className="size-3.5" /> : <Eye className="size-3.5" />}
                 </button>
               </div>
+              <div className="mt-3 space-y-1 border-t border-white/10 pt-2">
+                <Link
+                  href="/"
+                  onClick={() => setMobileOpen(false)}
+                  className="flex items-center gap-2 rounded-md px-2.5 py-2 text-xs font-black uppercase tracking-wide transition"
+                >
+                  <ExternalLink className="size-4 shrink-0" />
+                  Visit Website
+                </Link>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setIdentityOpen(false);
+                    setMobileOpen(false);
+                    setLogoutConfirmOpen(true);
+                  }}
+                  className="admin-profile-logout flex w-full items-center gap-2 rounded-md px-2.5 py-2 text-left text-xs font-black uppercase tracking-wide transition"
+                >
+                  <LogOut className="size-4 shrink-0" />
+                  Log out
+                </button>
+              </div>
             </div>
           )}
         </div>
@@ -342,7 +320,7 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
       </aside>
 
       {/* MOBILE HEADER */}
-      <header className="fixed inset-x-0 top-0 z-40 flex h-16 shrink-0 items-center justify-between border-b border-navy/10 bg-navy px-5 md:hidden">
+      <header className="admin-notification-header fixed inset-x-0 top-0 z-40 flex h-16 shrink-0 items-center justify-between border-b border-navy/10 bg-navy px-5 md:hidden">
         <button
           onClick={() => setMobileOpen(true)}
           className="relative grid size-10 place-items-center rounded-md border border-white/15 text-white"
@@ -428,14 +406,16 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
 
       {/* MAIN CONTENT */}
       <main
-        className={`h-dvh min-h-0 min-w-0 overflow-hidden pt-16 transition-all md:pt-0 ${
+        className={`flex h-dvh min-h-0 min-w-0 flex-col overflow-hidden pt-16 transition-all md:pt-0 ${
           collapsed ? "md:ml-20" : "md:ml-64"
         }`}
       >
-        <div className="hidden h-16 items-center justify-end border-b border-white/[0.06] bg-navy px-6 md:flex">
+        <div className="admin-notification-header admin-notification-bar hidden h-16 items-center justify-end border-b border-white/[0.06] bg-navy px-6 md:flex">
           {notificationBell}
         </div>
-        {children}
+        <div className="admin-shell-content min-h-0 min-w-0 flex-1 overflow-hidden">
+          {children}
+        </div>
       </main>
     </div>
   );

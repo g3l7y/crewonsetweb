@@ -804,7 +804,7 @@ function PlayersPage() {
      ========================================================= */
 
   return (
-    <div className="flex h-full min-h-0 flex-col overflow-hidden bg-[#0d1217] text-white">
+    <div className="admin-player-management flex h-full min-h-0 flex-col overflow-hidden bg-[#0d1217] text-white">
       {/* =====================================================
           PAGE HEADER
           ===================================================== */}
@@ -812,7 +812,7 @@ function PlayersPage() {
       <header className="shrink-0 border-b border-white/[.06] px-5 pb-6 pt-7">
         <p className="text-xs font-black tracking-[.18em] text-[#ff6248]">COMMUNITY</p>
 
-        <h1 className="mt-2 text-[30px] font-black uppercase leading-none tracking-[-.025em] text-white">
+        <h1 className="admin-heading mt-2 !text-white">
           Player Management
         </h1>
 

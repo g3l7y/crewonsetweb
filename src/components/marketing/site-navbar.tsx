@@ -25,9 +25,9 @@ export function SiteNavbar() {
     queryKey: ["crew-session"],
     queryFn: () => getCrewSession(),
   });
-  const portalHref = session?.isAdmin ? "/admin" : "/portal";
-  const isAuthenticated = session?.isAdmin || session?.isPlayer;
-  const visibleNavItems = session?.isAdmin ? navItems.filter((item) => item.href !== "/contact") : navItems;
+  const portalHref = session?.role === "admin" ? "/admin" : "/portal";
+  const isAuthenticated = session?.role === "admin" || session?.role === "player";
+  const visibleNavItems = session?.role === "admin" ? navItems.filter((item) => item.href !== "/contact") : navItems;
 
   useEffect(() => {
     const handleScroll = () => setScrolled(window.scrollY > 40);
@@ -44,7 +44,7 @@ export function SiteNavbar() {
   }, []);
 
   return (
-    <header className={`fixed inset-x-0 top-0 z-50 transition-all duration-500 ${scrolled ? "bg-navy/95 shadow-xl shadow-navy/15 backdrop-blur-md" : "bg-[linear-gradient(180deg,rgba(19,27,52,.6),transparent)]"}`}>
+    <header className={`fixed inset-x-0 top-0 z-50 transition-all duration-500 ${scrolled ? "header-scrolled backdrop-blur-md" : "header-at-top"}`}>
       <div className={`flex w-full items-center justify-between border-b px-5 transition-all duration-500 sm:px-8 lg:px-12 ${scrolled ? "h-16 border-white/10" : "h-20 border-transparent"}`}>
         <Link href="/" className="relative h-14 w-44 shrink-0" aria-label="Crew On Set home">
           <Image src="/assets/crew-on-set-logo.png" alt="Crew On Set!" fill className="object-contain object-left" priority />

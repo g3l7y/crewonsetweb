@@ -216,13 +216,13 @@ html[data-display-theme="dark"] {
 
 /* Preference switches: the OFF state must stay clearly visible on paper. */
 .portal-switch-off {
-  background-color: rgba(19, 27, 52, 0.22);
-  box-shadow: inset 0 0 0 1px rgba(19, 27, 52, 0.35);
+  background-color: #9ca3af;
+  box-shadow: inset 0 0 0 1px #6b7280;
 }
 
 .portal-switch-on {
-  background-color: var(--color-coral, #f05a3c);
-  box-shadow: inset 0 0 0 1px rgba(217, 71, 43, 0.9);
+  background-color: #f0573d;
+  box-shadow: inset 0 0 0 1px #c74431;
 }
 
 .portal-switch-thumb {
@@ -238,7 +238,7 @@ html[data-display-theme="dark"] {
 }
 
 .group:hover .portal-switch-off {
-  background-color: rgba(19, 27, 52, 0.3);
+  background-color: #aeb4bd;
 }
 
 .group:active .portal-switch {

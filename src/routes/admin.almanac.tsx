@@ -18,7 +18,7 @@ import { BookOpen, Pencil, Plus, Search, Trash2, X } from "lucide-react";
 import { logAdminActivity, uid } from "@/lib/demo/store";
 import { almanacStore, type AlmanacEntry } from "@/lib/demo/almanac";
 
-const DEFAULT_IMAGE = "/assets/gameplay-shot.png";
+const DEFAULT_IMAGE = "/assets/crew-set-illustration.png";
 
 type FormState = {
   id: string | null;

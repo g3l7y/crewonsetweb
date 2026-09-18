@@ -1,5 +1,9 @@
 import { useMemo, useState } from "react";
-import { Award, Crown, Film, Star, TrendingUp, Users, X } from "lucide-react";
+import { Award, ChevronDown, Crown, Film, Star, TrendingUp, Users, X } from "lucide-react";
+import { friendRosterStore } from "@/lib/demo/friends";
+import { getProfileArtwork } from "@/lib/demo/profile-art";
+import { isMockMode } from "@/lib/playfab/config";
+import { useFriends, useLeaderboard, usePlayerProfile } from "@/lib/playfab/hooks";
 
 type Leader = {
   name: string;
@@ -9,6 +13,7 @@ type Leader = {
   productions: number;
   rating: number;
   legendary?: boolean;
+  profileImage?: string;
 };
 
 const globalLeaders: Leader[] = [
@@ -55,40 +60,68 @@ const globalLeaders: Leader[] = [
   },
 ];
 
-const friendLeaders: Leader[] = [
-  {
-    name: "CAMERA_PRO",
-    level: 27,
-    score: 984250,
-    xp: 7020,
-    productions: 87,
-    rating: 94,
-  },
-  {
-    name: "FRAMEPERFECT",
-    level: 42,
-    score: 1284920,
-    xp: 9820,
-    productions: 126,
-    rating: 98,
-    legendary: true,
-  },
-  {
-    name: "DOLLYDASH",
-    level: 31,
-    score: 921860,
-    xp: 7780,
-    productions: 102,
-    rating: 93,
-  },
-];
-
 const formatNumber = (value: number) => value.toLocaleString();
 
 export function Leaderboards() {
   const [leaderTab, setLeaderTab] = useState("Global");
   const [leaderSort, setLeaderSort] = useState("Total Score");
   const [selectedLeader, setSelectedLeader] = useState<Leader | null>(null);
+  const mockMode = isMockMode();
+  const [friends] = friendRosterStore.useStore();
+  const realLeaderboardQuery = useLeaderboard("total_score");
+  const realFriendsQuery = useFriends();
+  const currentProfileQuery = usePlayerProfile();
+  const currentPlayerName = mockMode
+    ? "CAMERA_PRO"
+    : currentProfileQuery.data?.displayName || "";
+
+  const realGlobalLeaders = useMemo<Leader[]>(
+    () =>
+      (realLeaderboardQuery.data ?? []).map((entry) => ({
+        name: entry.displayName,
+        level: 0,
+        score: entry.statValue,
+        xp: 0,
+        productions: 0,
+        rating: 0,
+        profileImage: entry.avatarUrl,
+      })),
+    [realLeaderboardQuery.data],
+  );
+
+  const friendLeaders = useMemo<Leader[]>(() => {
+    if (!mockMode) {
+      return (realFriendsQuery.data ?? []).map((friend) => ({
+        name: friend.displayName,
+        level: friend.level ?? 1,
+        score: 0,
+        xp: 0,
+        productions: 0,
+        rating: 0,
+        profileImage: friend.avatarUrl,
+      }));
+    }
+
+    return [
+      {
+        name: "CAMERA_PRO",
+        level: 27,
+        score: 984250,
+        xp: 7020,
+        productions: 87,
+        rating: 94,
+      },
+      ...friends.map((friend) => ({
+        name: friend.name,
+        level: friend.level,
+        score: friend.career.productionsCompleted * 12000 + friend.level * 1000,
+        xp: friend.career.productionsCompleted * 70 + friend.level * 40,
+        productions: friend.career.productionsCompleted,
+        rating: Math.min(99, 78 + Math.round(friend.level / 4)),
+        profileImage: friend.profileImage,
+      })),
+    ];
+  }, [friends, mockMode, realFriendsQuery.data]);
 
   const currentLeaders = useMemo(() => {
     let data: Leader[];
@@ -96,7 +129,7 @@ export function Leaderboards() {
     if (leaderTab === "Friends") {
       data = friendLeaders;
     } else {
-      data = globalLeaders;
+      data = mockMode ? globalLeaders : realGlobalLeaders;
     }
 
     return [...data].sort((a, b) => {
@@ -114,7 +147,7 @@ export function Leaderboards() {
 
       return b.score - a.score;
     });
-  }, [leaderTab, leaderSort]);
+  }, [currentPlayerName, friendLeaders, leaderSort, leaderTab, mockMode]);
 
   return (
     <section className="mt-12">
@@ -134,10 +167,10 @@ export function Leaderboards() {
                 key={tab}
                 type="button"
                 onClick={() => setLeaderTab(tab)}
-                className={`border-b-2 pb-2 text-xs font-black uppercase tracking-[0.1em] transition ${
+                className={`leaderboard-tab text-xs font-black uppercase tracking-[0.1em] transition ${
                   leaderTab === tab
-                    ? "border-coral text-white"
-                    : "border-transparent text-white/35 hover:text-white/70"
+                    ? "is-active"
+                    : ""
                 }`}
               >
                 {tab}
@@ -148,42 +181,37 @@ export function Leaderboards() {
 
         </div>
 
-        <select
-          value={leaderSort}
-          onChange={(e) => setLeaderSort(e.target.value)}
-          className="rounded-md border border-white/10 bg-[#151c29] px-4 py-3 text-xs font-black uppercase tracking-[0.08em] text-white/70 outline-none transition focus:border-coral"
-        >
-          <option value="Total Score">
-            Total Score
-          </option>
-
-          <option value="XP">
-            XP
-          </option>
-
-          <option value="Productions">
-            Productions
-          </option>
-
-          <option value="Rating">
-            Rating
-          </option>
-        </select>
+        <div className="relative shrink-0">
+          <select
+            value={leaderSort}
+            onChange={(e) => setLeaderSort(e.target.value)}
+            className="leaderboard-sort-select appearance-none rounded-md border border-white/10 bg-[#151c29] px-4 py-3 pr-10 text-xs font-black uppercase tracking-[0.08em] !text-[#0a0e19] outline-none transition focus:border-coral"
+          >
+            <option value="Total Score">Total Score</option>
+            <option value="XP">XP</option>
+            <option value="Productions">Productions</option>
+            <option value="Rating">Rating</option>
+          </select>
+          <ChevronDown className="leaderboard-sort-arrow pointer-events-none absolute right-3 top-1/2 size-4 -translate-y-1/2 text-[#0a0e19]" aria-hidden="true" />
+        </div>
 
       </div>
 
-      {leaderTab === "Friends" && currentLeaders.length > 0 && (
-        <div className="mt-4 flex items-center gap-2 text-xs font-bold text-white/35">
-          <Users className="size-4" />
-          Comparing your performance with your friends.
-        </div>
-      )}
+      <div
+        className={`mt-4 flex min-h-4 items-center gap-2 text-xs font-bold ${
+          leaderTab === "Friends" ? "text-white/35" : "invisible"
+        }`}
+        aria-hidden={leaderTab !== "Friends"}
+      >
+        <Users className="size-4" />
+        Comparing your performance with your friends.
+      </div>
 
       {/* TABLE */}
 
-      <div className="mt-4 overflow-x-auto rounded-2xl border border-white/[0.07] bg-[#151c29]">
+      <div className="leaderboard-scroll-list player-account-scroll-list mt-4 overflow-x-auto rounded-2xl border border-white/[0.07] bg-[#151c29]">
 
-        <table className="min-w-[640px] w-full text-left">
+        <table className="leaderboard-list-table min-w-[640px] w-full text-left">
 
           <thead className="border-b border-white/[0.07] bg-white/[0.025]">
 
@@ -221,7 +249,7 @@ export function Leaderboards() {
 
             {currentLeaders.map((leader, index) => {
 
-              const isCurrentPlayer = leader.name === "CAMERA_PRO";
+              const isCurrentPlayer = Boolean(currentPlayerName) && leader.name === currentPlayerName;
 
               return (
                 <tr
@@ -235,7 +263,7 @@ export function Leaderboards() {
                   <td className="px-5 py-4">
 
                     <span
-                      className={`grid size-8 place-items-center rounded-md font-black ${
+                      className={`leaderboard-rank grid size-8 place-items-center rounded-md font-black ${
                         index === 0
                           ? "bg-yellow text-[#0d121c]"
                           : "bg-white/[0.06] text-white/60"
@@ -250,8 +278,16 @@ export function Leaderboards() {
 
                     <div className="flex items-center gap-3">
 
-                      <div className="grid size-9 place-items-center rounded-full bg-coral text-xs font-black text-white">
-                        {leader.name.slice(0, 2)}
+                      <div className="relative grid size-9 place-items-center overflow-hidden rounded-full border-2 border-yellow bg-coral text-xs font-black text-white">
+                        {(leader.profileImage ?? friends.find((friend) => friend.name === leader.name)?.profileImage ?? getProfileArtwork(leader.name)) ? (
+                          <img
+                            src={leader.profileImage ?? friends.find((friend) => friend.name === leader.name)?.profileImage ?? getProfileArtwork(leader.name)}
+                            alt={`${leader.name} portrait`}
+                            className="size-full object-cover"
+                          />
+                        ) : (
+                          leader.name.slice(0, 2)
+                        )}
                       </div>
 
                       <div className="flex items-center gap-2">
@@ -338,15 +374,19 @@ export function Leaderboards() {
 
               <div className="flex items-center gap-4">
 
-                <div className="grid size-16 place-items-center rounded-full bg-coral text-lg font-black text-white">
-                  {selectedLeader.name.slice(0, 2)}
+                <div className="relative grid size-16 place-items-center overflow-hidden rounded-full border-2 border-yellow bg-coral text-lg font-black text-white">
+                  <img
+                    src={selectedLeader.profileImage ?? friends.find((friend) => friend.name === selectedLeader.name)?.profileImage ?? getProfileArtwork(selectedLeader.name)}
+                    alt={`${selectedLeader.name} portrait`}
+                    className="size-full object-cover"
+                  />
                 </div>
 
                 <div>
 
                   <div className="flex items-center gap-2">
 
-                    <h2 className="text-xl font-black">
+                    <h2 className="leaderboard-profile-name text-xl font-black">
                       {selectedLeader.name}
                     </h2>
 

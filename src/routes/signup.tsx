@@ -13,8 +13,8 @@ export const Route = createFileRoute("/signup")({
   }),
   beforeLoad: async () => {
     const session = await getCrewSession();
-    if (session.isAdmin) throw redirect({ to: "/admin" });
-    if (session.isPlayer) throw redirect({ to: "/portal" });
+    if (session?.role === "admin") throw redirect({ to: "/admin" });
+    if (session?.role === "player") throw redirect({ to: "/portal" });
   },
   component: SignupPage,
 });

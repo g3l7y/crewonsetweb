@@ -37,6 +37,8 @@ import {
 } from "lucide-react";
 import { EMAIL_ERROR, USERNAME_ERROR, PASSWORD_ERROR, isValidEmail, isValidPassword, isValidUsername } from "@/lib/validation";
 import { DisplayThemeSwitcher } from "@/components/theme/display-theme-switcher";
+import { isMockMode } from "@/lib/playfab/config";
+import { usePlayerProfile, useUpdateProfile } from "@/lib/playfab/hooks";
 import {
   bugCategories,
   adminNotificationsStore,
@@ -102,7 +104,7 @@ const defaultAccount: AccountData = {
   username: "CAMERA_PRO",
   email: "player@gmail.com",
   displayName: "Camera Pro",
-  avatar: "/assets/hero-key-art.png",
+  avatar: "/assets/crew-set-illustration.png",
 };
 
 const defaultPreferences: Preferences = {
@@ -121,6 +123,19 @@ const defaultPreferences: Preferences = {
 
 function SettingsPage() {
   const [section, setSection] = useState("Account");
+  const mockMode = isMockMode();
+  const profileQuery = usePlayerProfile();
+  const updateProfileMutation = useUpdateProfile();
+  const reportPlayerName = mockMode ? BUG_REPORT_PLAYER_NAME : profileQuery.data?.displayName || profileQuery.data?.username || "Player";
+  const reportPlayerId = mockMode ? BUG_REPORT_PLAYER_ID : profileQuery.data?.playFabId || "unknown";
+
+  useEffect(() => {
+    const requestedSection = new URLSearchParams(window.location.search).get("section");
+
+    if (requestedSection && sections.some((item) => item.name === requestedSection)) {
+      setSection(requestedSection);
+    }
+  }, []);
 
   const [account, setAccount] = useState<AccountData>(defaultAccount);
 
@@ -188,6 +203,21 @@ function SettingsPage() {
   ========================================================= */
 
   useEffect(() => {
+    if (!mockMode) {
+      const profile = profileQuery.data;
+      if (!profile) return;
+      const loadedAccount: AccountData = {
+        username: profile.username || profile.displayName || "player",
+        email: profile.email || "",
+        displayName: profile.displayName || profile.username || "Player",
+        avatar: profile.avatarUrl || defaultAccount.avatar,
+      };
+      setAccount(loadedAccount);
+      setSavedAccount(loadedAccount);
+      setLoaded(true);
+      return;
+    }
+
     try {
       const storedAccount = localStorage.getItem("player-account");
 
@@ -217,7 +247,7 @@ function SettingsPage() {
     } finally {
       setLoaded(true);
     }
-  }, []);
+  }, [mockMode, profileQuery.data]);
 
   /* =========================================================
      UNSAVED CHANGES
@@ -244,10 +274,27 @@ function SettingsPage() {
      SAVE
   ========================================================= */
 
-  const saveChanges = () => {
-    try {
-      localStorage.setItem("player-account", JSON.stringify(account));
+  const saveChanges = async () => {
+    if (!mockMode && account.username !== savedAccount.username) {
+      showMessage("Username changes are managed by the PlayFab account service.", "error");
+      return;
+    }
 
+    if (!mockMode && account.email !== savedAccount.email) {
+      showMessage("Email changes are managed by the PlayFab account service.", "error");
+      return;
+    }
+
+    try {
+      if (!mockMode && account.displayName !== savedAccount.displayName) {
+        await updateProfileMutation.mutateAsync({
+          displayName: account.displayName,
+        });
+      }
+
+      if (mockMode) {
+        localStorage.setItem("player-account", JSON.stringify(account));
+      }
       localStorage.setItem("player-preferences", JSON.stringify(preferences));
 
       setSavedAccount(account);
@@ -258,7 +305,7 @@ function SettingsPage() {
 
       showMessage("Your settings have been saved.");
     } catch {
-      showMessage("Unable to save your settings.", "error");
+      showMessage("Unable to save your settings through PlayFab.", "error");
     }
   };
 
@@ -337,6 +384,10 @@ function SettingsPage() {
   ========================================================= */
 
   const handleAvatarChange = (event: ChangeEvent<HTMLInputElement>) => {
+    if (!mockMode) {
+      showMessage("Avatar uploads are not connected to PlayFab yet.", "error");
+      return;
+    }
     const file = event.target.files?.[0];
 
     if (!file) return;
@@ -381,6 +432,10 @@ function SettingsPage() {
   ========================================================= */
 
   const handlePasswordChange = () => {
+    if (!mockMode) {
+      setPasswordError("Password changes must be completed through the PlayFab account service.");
+      return;
+    }
     setPasswordError("");
     setPasswordSuccess(false);
 
@@ -422,6 +477,10 @@ function SettingsPage() {
   ========================================================= */
 
   const handleDeleteAccount = () => {
+    if (!mockMode) {
+      setDeleteError("Account deletion must be completed through the PlayFab account service.");
+      return;
+    }
     setDeleteError("");
 
     if (deleteText !== "DELETE") {
@@ -538,8 +597,8 @@ function SettingsPage() {
 
     const bugReport = {
       id: uid("BUG"),
-      playerName: BUG_REPORT_PLAYER_NAME,
-      playerId: BUG_REPORT_PLAYER_ID,
+      playerName: reportPlayerName,
+      playerId: reportPlayerId,
       category: bugCategory,
       description: bugDescription.trim(),
       email: bugEmail.trim(),
@@ -594,8 +653,8 @@ function SettingsPage() {
     const submittedAt = new Date().toISOString();
     const playerReport = {
       id: reportId,
-      reporterName: BUG_REPORT_PLAYER_NAME,
-      reporterId: BUG_REPORT_PLAYER_ID,
+      reporterName: reportPlayerName,
+      reporterId: reportPlayerId,
       reportType: playerReportType,
       description: playerReportDescription.trim(),
       reportedUsername: playerReportUsername.trim(),
@@ -612,7 +671,7 @@ function SettingsPage() {
     playerReportsStore.set((current) => [playerReport, ...current.filter((item) => item.id !== playerReport.id)]);
     adminNotificationsStore.set([
       ...adminNotificationsStore.get(),
-      { id: `player-report-${reportId}`, title: "New player report submitted", body: `${reportId}: ${BUG_REPORT_PLAYER_NAME} reported ${playerReportUsername.trim()}.`, kind: "player-report", href: "/admin/player-reports", entityId: reportId, entityType: "player-report", read: false, createdAt: submittedAt },
+      { id: `player-report-${reportId}`, title: "New player report submitted", body: reportId + ": " + reportPlayerName + " reported " + playerReportUsername.trim() + ".", kind: "player-report", href: "/admin/player-reports", entityId: reportId, entityType: "player-report", read: false, createdAt: submittedAt },
     ]);
     setPlayerReportType("");
     setPlayerReportUsername("");
@@ -713,19 +772,19 @@ function SettingsPage() {
   }
 
   return (
-    <div className="min-h-screen bg-[#0d121c] px-4 pb-20 text-white sm:px-6 lg:px-8">
-      <div className="mx-auto max-w-[1450px] pt-8 sm:pt-10">
+    <div className="portal-title-page min-h-screen bg-[#0d121c] px-4 pb-20 text-white sm:px-6 lg:px-8">
+      <div className="portal-title-container mx-auto max-w-[1450px] pt-8 sm:pt-10">
         {/* =====================================================
             HEADER
         ===================================================== */}
 
-        <header className="flex flex-col justify-between gap-5 sm:flex-row sm:items-end">
+        <header className="portal-title-header flex flex-col justify-between gap-5 sm:flex-row sm:items-end">
           <div>
-            <p className="text-xs font-black uppercase tracking-[.18em] text-coral">
+            <p className="portal-title-eyebrow text-xs font-black uppercase tracking-[.18em] text-coral">
               ACCOUNT CONTROL
             </p>
 
-            <h1 className="mt-2 text-4xl font-black uppercase tracking-tight text-white sm:text-5xl">
+            <h1 className="portal-title-heading mt-2 text-4xl font-black uppercase tracking-tight text-white sm:text-5xl">
               Settings
             </h1>
           </div>
@@ -744,15 +803,16 @@ function SettingsPage() {
               </button>
             )}
 
-            <button
-              type="button"
-              onClick={saveChanges}
-              disabled={!hasUnsavedChanges}
-              className="inline-flex items-center justify-center gap-2 rounded-md bg-coral px-4 py-2.5 text-xs font-black text-white transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-30"
-            >
-              <Save className="size-4" />
-              SAVE CHANGES
-            </button>
+            {hasUnsavedChanges && (
+              <button
+                type="button"
+                onClick={saveChanges}
+                className="inline-flex items-center justify-center gap-2 rounded-md bg-coral px-4 py-2.5 text-xs font-black text-white transition hover:opacity-90"
+              >
+                <Save className="size-4" />
+                SAVE CHANGES
+              </button>
+            )}
           </div>
         </header>
 
@@ -787,15 +847,15 @@ function SettingsPage() {
               SIDEBAR
           =================================================== */}
 
-          <aside className="h-fit rounded-xl border border-white/[0.07] bg-[#151c29] p-2">
+          <aside className="settings-nav-card h-fit rounded-xl border border-white/[0.07] bg-[#151c29] p-2">
             {sections.map((item) => (
               <button
                 type="button"
                 key={item.name}
                 onClick={() => setSection(item.name)}
-                className={`flex w-full items-center gap-3 rounded-md px-4 py-3 text-left text-sm font-bold transition ${
+                className={`settings-nav-item flex w-full items-center gap-3 rounded-md px-4 py-3 text-left text-sm font-bold transition ${
                   section === item.name
-                    ? "bg-[#0d121c] text-white shadow-sm"
+                    ? "settings-nav-item-active bg-[#0d121c] text-white shadow-sm"
                     : "text-white/40 hover:bg-white/[0.04] hover:text-white/75"
                 }`}
               >
@@ -841,7 +901,7 @@ function SettingsPage() {
                       setPasswordError("");
                       setPasswordSuccess(false);
                     }}
-                    className="inline-flex items-center justify-center gap-2 rounded-md border border-white/10 bg-[#1b2433] px-4 py-2.5 text-xs font-black text-white/70 transition hover:border-yellow/40 hover:text-white"
+                    className="change-password-button inline-flex items-center justify-center gap-2 rounded-md border border-white/10 bg-[#1b2433] px-4 py-2.5 text-xs font-black text-white/70 transition hover:border-yellow/40 hover:text-white"
                   >
                     <Lock className="size-4" />
                     CHANGE PASSWORD
@@ -1175,7 +1235,7 @@ function SettingsPage() {
               <div className="space-y-6">
                 {/* REPORT A BUG */}
 
-                <section className="overflow-hidden rounded-xl border border-white/[0.07] bg-[#151c29]">
+                <section className="report-card overflow-hidden rounded-xl border border-white/[0.07] bg-[#151c29]">
                   <div className="flex flex-col justify-between gap-4 border-b border-white/[0.07] p-7 sm:flex-row sm:items-center">
                     <div>
                       <p className="text-[10px] font-black uppercase tracking-[.18em] text-coral">
@@ -1211,7 +1271,7 @@ function SettingsPage() {
 
                 {/* REPORT A PLAYER */}
 
-                <section className="overflow-hidden rounded-xl border border-white/[0.07] bg-[#151c29]">
+                <section className="report-card overflow-hidden rounded-xl border border-white/[0.07] bg-[#151c29]">
                   <div className="flex flex-col justify-between gap-4 border-b border-white/[0.07] p-7 sm:flex-row sm:items-center">
                     <div>
                       <p className="text-[10px] font-black uppercase tracking-[.18em] text-coral">
@@ -1785,7 +1845,7 @@ function PreferenceRow({
       role="switch"
       aria-checked={checked}
       aria-label={label}
-      className="group flex w-full items-center justify-between gap-5 rounded-lg border border-white/[0.07] bg-[#1b2433] p-4 text-left transition hover:border-white/[0.13] hover:bg-[#202a3a] focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-coral/25"
+      className="preference-row group flex w-full items-center justify-between gap-5 rounded-lg border border-white/[0.07] bg-[#1b2433] p-4 text-left transition hover:border-white/[0.13] hover:bg-[#202a3a] focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-coral/25"
     >
       <div>
         <span className="text-sm font-bold text-white/85">{label}</span>

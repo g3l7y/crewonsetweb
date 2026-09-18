@@ -114,8 +114,8 @@ function RootShell({ children }: { children: ReactNode }) {
     const scope = isAdmin ? "admin" : "player";
     const key = isAdmin ? "cos.display.admin" : "cos.display.player";
     const stored = window.localStorage.getItem(key);
-    document.documentElement.dataset.displayThemeScope = scope;
-    document.documentElement.dataset.displayTheme = isPlayer || !isAdmin ? (stored === "dark" && isPlayer ? "dark" : "light") : stored === "light" ? "light" : "dark";
+    document.documentElement.dataset["displayThemeScope"] = scope;
+    document.documentElement.dataset["displayTheme"] = isPlayer || !isAdmin ? (stored === "dark" && isPlayer ? "dark" : "light") : stored === "light" ? "light" : "dark";
   }, []);
 
   return (

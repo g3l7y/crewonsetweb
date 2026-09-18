@@ -1,12 +1,8 @@
-/**
- * Demo cosmetics catalog for the player shop + checkout flow.
- * Ownership + wallet state live in localStorage via createStore, matching
- * the shape used by the rest of the demo data layer.
- */
+/** Cosmetic-only catalog shared by the demo provider and PlayFab adapter. */
 
 import { createStore } from "@/lib/demo/store";
 
-export type CosmeticCategory = "Hair" | "Outfits" | "Accessories";
+export type CosmeticCategory = "Hair" | "Tops" | "Bottoms" | "Eyeglasses";
 
 export type CosmeticItem = {
   id: string;
@@ -14,41 +10,43 @@ export type CosmeticItem = {
   category: CosmeticCategory;
   price: number;
   rarity: "Common" | "Rare" | "Epic" | "Legendary";
-  gradient: string;
-  initials: string;
+  description: string;
+  assetKey: string;
+  gradient?: string;
+  initials?: string;
 };
 
 export const cosmeticCatalog: CosmeticItem[] = [
-  { id: "hair-buzz", name: "Buzz Cut", category: "Hair", price: 250, rarity: "Common", gradient: "from-slate-400 to-slate-600", initials: "BZ" },
-  { id: "hair-curls", name: "Studio Curls", category: "Hair", price: 400, rarity: "Rare", gradient: "from-amber-400 to-orange-600", initials: "SC" },
-  { id: "hair-mohawk", name: "Director's Mohawk", category: "Hair", price: 650, rarity: "Epic", gradient: "from-fuchsia-500 to-purple-700", initials: "DM" },
-  { id: "hair-silver", name: "Silver Streak", category: "Hair", price: 1200, rarity: "Legendary", gradient: "from-slate-200 to-slate-500", initials: "SS" },
-  { id: "outfit-pa", name: "PA Windbreaker", category: "Outfits", price: 300, rarity: "Common", gradient: "from-sky-400 to-blue-600", initials: "PA" },
-  { id: "outfit-gaffer", name: "Gaffer Overalls", category: "Outfits", price: 550, rarity: "Rare", gradient: "from-yellow-400 to-amber-600", initials: "GA" },
-  { id: "outfit-director", name: "Director's Jacket", category: "Outfits", price: 900, rarity: "Epic", gradient: "from-rose-500 to-red-700", initials: "DJ" },
-  { id: "outfit-legend", name: "Legendary Crew Vest", category: "Outfits", price: 1800, rarity: "Legendary", gradient: "from-yellow-300 via-amber-400 to-orange-600", initials: "LV" },
-  { id: "acc-headphones", name: "Boom Headphones", category: "Accessories", price: 200, rarity: "Common", gradient: "from-emerald-400 to-teal-600", initials: "BH" },
-  { id: "acc-clapper", name: "Golden Clapperboard", category: "Accessories", price: 700, rarity: "Rare", gradient: "from-yellow-400 to-yellow-600", initials: "GC" },
-  { id: "acc-lanyard", name: "VIP Crew Lanyard", category: "Accessories", price: 450, rarity: "Rare", gradient: "from-indigo-400 to-indigo-700", initials: "VL" },
-  { id: "acc-visor", name: "Cinematic Visor", category: "Accessories", price: 1100, rarity: "Epic", gradient: "from-cyan-400 to-blue-700", initials: "CV" },
+  { id: "hair-soft-crop", name: "Soft Crop", category: "Hair", price: 350, rarity: "Common", description: "A tidy, low-maintenance crop for call sheets and coffee runs.", assetKey: "soft-crop" },
+  { id: "hair-coral-bob", name: "Coral Bob", category: "Hair", price: 550, rarity: "Rare", description: "A sharp bob with a warm coral streak that reads great on camera.", assetKey: "coral-bob" },
+  { id: "hair-studio-curls", name: "Studio Curls", category: "Hair", price: 650, rarity: "Rare", description: "Expressive curls with enough bounce for a last-minute retake.", assetKey: "studio-curls" },
+  { id: "hair-indigo-swoop", name: "Indigo Swoop", category: "Hair", price: 900, rarity: "Epic", description: "A clean swept shape with a confident muted-lavender accent.", assetKey: "indigo-swoop" },
+  { id: "hair-gold-pompadour", name: "Gold Pompadour", category: "Hair", price: 1350, rarity: "Legendary", description: "A statement silhouette for the crew member who calls the final take.", assetKey: "gold-pompadour" },
+  { id: "top-coral-tee", name: "Coral Call Sheet Tee", category: "Tops", price: 300, rarity: "Common", description: "A clean coral tee with a bold crew-ready silhouette.", assetKey: "coral-tee" },
+  { id: "top-blue-overshirt", name: "Blue Overshirt", category: "Tops", price: 475, rarity: "Common", description: "A muted-blue overshirt for long days in the production bay.", assetKey: "blue-overshirt" },
+  { id: "top-utility-hoodie", name: "Utility Hoodie", category: "Tops", price: 700, rarity: "Rare", description: "A structured hoodie with a practical front pocket and soft lining.", assetKey: "utility-hoodie" },
+  { id: "top-mustard-sweater", name: "Mustard Knit", category: "Tops", price: 850, rarity: "Epic", description: "Warm mustard knitwear with a neat, graphic collar shape.", assetKey: "mustard-knit" },
+  { id: "top-plum-jacket", name: "Plum Work Jacket", category: "Tops", price: 1100, rarity: "Legendary", description: "A polished plum layer with crisp pockets and a studio-ready cut.", assetKey: "plum-jacket" },
+  { id: "bottom-charcoal-jeans", name: "Charcoal Jeans", category: "Bottoms", price: 325, rarity: "Common", description: "Straight-leg charcoal denim that works with every department.", assetKey: "charcoal-jeans" },
+  { id: "bottom-olive-cargos", name: "Olive Cargos", category: "Bottoms", price: 520, rarity: "Rare", description: "A practical olive pair with roomy pockets for set essentials.", assetKey: "olive-cargos" },
+  { id: "bottom-coral-skirt", name: "Coral Pleat Skirt", category: "Bottoms", price: 640, rarity: "Rare", description: "A graphic pleated skirt that adds motion to the crew wardrobe.", assetKey: "coral-skirt" },
+  { id: "bottom-indigo-trousers", name: "Indigo Trousers", category: "Bottoms", price: 800, rarity: "Epic", description: "Tailored indigo trousers with a clean, production-floor drape.", assetKey: "indigo-trousers" },
+  { id: "glasses-round-ink", name: "Round Ink Frames", category: "Eyeglasses", price: 425, rarity: "Common", description: "Classic round frames with a confident dark outline.", assetKey: "round-ink" },
+  { id: "glasses-square-coral", name: "Coral Square Frames", category: "Eyeglasses", price: 600, rarity: "Rare", description: "Graphic square frames with a small coral bridge accent.", assetKey: "square-coral" },
+  { id: "glasses-cat-eye", name: "Cat-Eye Frames", category: "Eyeglasses", price: 780, rarity: "Epic", description: "Playful lifted frames for a little extra editorial attitude.", assetKey: "cat-eye" },
+  { id: "glasses-gold-wire", name: "Gold Wire Frames", category: "Eyeglasses", price: 1050, rarity: "Legendary", description: "Fine gold frames with a warm, polished finish.", assetKey: "gold-wire" },
 ];
 
-export type CoinPackage = {
-  id: string;
-  coins: number;
-  bonus?: number;
-  priceLabel: string;
-};
+export type CoinPackage = { id: string; coins: number; bonus?: number; priceLabel: string };
 
 export const coinPackages: CoinPackage[] = [
-  { id: "pack-500", coins: 500, priceLabel: "₱4.99" },
-  { id: "pack-1200", coins: 1200, bonus: 150, priceLabel: "₱9.99" },
-  { id: "pack-2600", coins: 2600, bonus: 500, priceLabel: "₱19.99" },
-  { id: "pack-6000", coins: 6000, bonus: 1500, priceLabel: "₱39.99" },
+  { id: "pack-500", coins: 500, priceLabel: "\u20b14.99" },
+  { id: "pack-1200", coins: 1200, bonus: 150, priceLabel: "\u20b19.99" },
+  { id: "pack-2600", coins: 2600, bonus: 500, priceLabel: "\u20b119.99" },
+  { id: "pack-6000", coins: 6000, bonus: 1500, priceLabel: "\u20b139.99" },
 ];
 
 export type PaymentMethodId = "card" | "gcash" | "unionbank" | "paypal";
-
 export const paymentMethods: { id: PaymentMethodId; label: string; hint: string }[] = [
   { id: "card", label: "Card", hint: "Visa, Mastercard" },
   { id: "gcash", label: "GCash", hint: "Mobile wallet" },
@@ -56,30 +54,17 @@ export const paymentMethods: { id: PaymentMethodId; label: string; hint: string 
   { id: "paypal", label: "PayPal", hint: "Pay with balance" },
 ];
 
-/** Owned cosmetic item ids for the demo player. */
-export const ownedItemsStore = createStore<string>("cos.ownedItems", [
-  "hair-buzz",
-  "outfit-pa",
-  "acc-headphones",
-]);
-
+export const ownedItemsStore = createStore<string>("cos.ownedItems", ["hair-soft-crop", "top-coral-tee", "glasses-round-ink"]);
 export type CartLine = { itemId: string; qty: number };
-
-/** Player's cosmetic shopping cart, persisted across sessions. */
 export const cartStore = createStore<CartLine>("cos.cart", []);
 
-/** Pending checkout payload, set by Shop, consumed by Checkout (coin packages only). */
 export type CheckoutPayload = { kind: "coins"; packageId: string };
-
 const CHECKOUT_KEY = "cos.checkoutPayload";
 
 export function setCheckoutPayload(payload: CheckoutPayload | null) {
   if (typeof window === "undefined") return;
-  if (!payload) {
-    window.localStorage.removeItem(CHECKOUT_KEY);
-  } else {
-    window.localStorage.setItem(CHECKOUT_KEY, JSON.stringify(payload));
-  }
+  if (!payload) window.localStorage.removeItem(CHECKOUT_KEY);
+  else window.localStorage.setItem(CHECKOUT_KEY, JSON.stringify(payload));
 }
 
 export function getCheckoutPayload(): CheckoutPayload | null {

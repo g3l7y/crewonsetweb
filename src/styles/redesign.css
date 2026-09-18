@@ -1,0 +1,1182 @@
+/* Crew On Set! — unified visual system refresh
+ * Shared visual tokens and context-aware surface treatments. Functional markup,
+ * routing, data, and interactions remain owned by the existing components.
+ */
+
+:root {
+  --cos-cream: #f6f0e2;
+  --cos-midnight: #0b1320;
+  --cos-charcoal: #4a4a4a;
+  --cos-panel: #d5d4d5;
+  --cos-border: #0c1524;
+  --cos-gold: #f2c94c;
+  --cos-orange: #f28c28;
+  --cos-orange-dark: #c86b14;
+  --cos-ink-muted: rgba(11, 19, 32, 0.64);
+  --cos-dark-muted: rgba(246, 240, 226, 0.68);
+  --cos-shadow: 0 18px 42px rgba(11, 19, 32, 0.14);
+  --cos-shadow-dark: 0 18px 42px rgba(0, 0, 0, 0.28);
+  --cos-radius: 0.5rem;
+  --cos-transition: 180ms cubic-bezier(.2, .75, .25, 1);
+
+  --blueprint-paper: var(--cos-cream);
+  --blueprint-paper-soft: var(--cos-panel);
+  --blueprint-ink: var(--cos-midnight);
+  --blueprint-accent: var(--cos-midnight);
+  --blueprint-accent-hover: #172640;
+  --blueprint-gold: var(--cos-gold);
+  --blueprint-coral: var(--cos-orange);
+  --blueprint-line: rgba(12, 21, 36, 0.2);
+  --blueprint-line-strong: var(--cos-border);
+  --charcoal: var(--cos-charcoal);
+  --charcoal-deep: #303030;
+}
+
+html,
+body {
+  background: var(--cos-cream);
+  color: var(--cos-midnight);
+}
+
+body {
+  font-size: 0.98rem;
+  line-height: 1.55;
+}
+
+a,
+button,
+input,
+select,
+textarea {
+  transition:
+    color var(--cos-transition),
+    background-color var(--cos-transition),
+    border-color var(--cos-transition),
+    box-shadow var(--cos-transition),
+    transform var(--cos-transition),
+    opacity var(--cos-transition);
+}
+
+:where(a, button, input, select, textarea):focus-visible {
+  outline: 3px solid var(--cos-gold);
+  outline-offset: 3px;
+}
+
+:where(button, a):disabled {
+  cursor: not-allowed;
+}
+
+h1,
+h2,
+h3,
+h4 {
+  color: inherit;
+}
+
+.marketing-theme {
+  min-height: 100vh;
+  background: var(--cos-cream);
+  color: var(--cos-midnight);
+}
+
+.marketing-theme main {
+  background: var(--cos-cream);
+}
+
+.marketing-theme .eyebrow {
+  border: 1px solid currentColor;
+  border-radius: 2px;
+  background: var(--cos-midnight);
+  color: var(--cos-gold);
+  box-shadow: 4px 4px 0 rgba(11, 19, 32, 0.12);
+}
+
+.marketing-theme .display-title,
+.marketing-theme .section-title {
+  text-shadow: 3px 3px 0 rgba(11, 19, 32, 0.12);
+}
+
+.marketing-theme .text-coral,
+.marketing-theme [class*="text-coral/"] {
+  color: var(--cos-orange);
+}
+
+.marketing-theme .text-yellow,
+.marketing-theme [class*="text-yellow/"] {
+  color: var(--cos-gold);
+}
+
+.marketing-theme .nav-link {
+  color: rgba(246, 240, 226, 0.82);
+  text-decoration: none;
+}
+
+.marketing-theme .nav-link::after {
+  background: var(--cos-orange);
+}
+
+.marketing-theme .nav-link:hover,
+.marketing-theme .nav-link[aria-current="page"] {
+  color: var(--cos-gold) !important;
+}
+
+.marketing-theme .cta-primary,
+.marketing-theme .cta-secondary,
+.marketing-theme .story-button,
+.marketing-theme .team-button,
+.marketing-theme .contact-button {
+  min-height: 3.25rem;
+  width: auto;
+  border: 2px solid var(--cos-border);
+  border-radius: var(--cos-radius);
+  box-shadow: 5px 5px 0 rgba(11, 19, 32, 0.16);
+  font-weight: 900;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.marketing-theme .cta-primary {
+  display: inline-flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1.2rem;
+  overflow: visible;
+  padding: 0.75rem 0.85rem 0.75rem 1.35rem;
+  background: var(--cos-midnight);
+  color: var(--cos-cream);
+}
+
+.marketing-theme .cta-primary .cta-text {
+  transform: none;
+  color: inherit;
+  font-size: 0.78rem;
+}
+
+.marketing-theme .cta-primary .cta-icon {
+  position: static;
+  display: grid;
+  width: 2.1rem;
+  height: 2.1rem;
+  transform: none;
+  place-items: center;
+  border-radius: 2px;
+  background: var(--cos-gold);
+}
+
+.marketing-theme .cta-primary .cta-icon svg {
+  width: 1.1rem;
+  height: 1.1rem;
+  stroke: var(--cos-midnight);
+}
+
+.marketing-theme .cta-primary:hover,
+.marketing-theme .story-button:hover,
+.marketing-theme .team-button:hover,
+.marketing-theme .contact-button:hover {
+  transform: translate(-2px, -2px);
+  background: var(--cos-orange);
+  color: var(--cos-midnight);
+}
+
+.marketing-theme .cta-primary:hover .cta-text {
+  color: inherit;
+}
+
+.marketing-theme .cta-secondary {
+  background: transparent;
+  color: var(--cos-cream);
+}
+
+.marketing-theme .story-button,
+.marketing-theme .team-button {
+  background: var(--cos-midnight);
+  color: var(--cos-cream);
+}
+
+.marketing-theme .contact-button {
+  background: var(--cos-gold);
+  color: var(--cos-midnight);
+}
+
+.marketing-theme .image-frame {
+  border: 8px solid var(--cos-border);
+  border-radius: 2px;
+  background: var(--cos-panel);
+  box-shadow: 10px 10px 0 rgba(11, 19, 32, 0.18);
+}
+
+.marketing-theme .frame-label {
+  border-radius: 2px;
+  background: var(--cos-gold);
+  color: var(--cos-midnight);
+  box-shadow: 4px 4px 0 rgba(11, 19, 32, 0.18);
+}
+
+.marketing-theme .form-label,
+.marketing-theme .admin-input,
+.marketing-theme .form-input {
+  color: var(--cos-midnight);
+}
+
+.marketing-theme .form-label {
+  font-size: 0.68rem;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+}
+
+.marketing-theme .form-input {
+  min-height: 2.9rem;
+  border: 2px solid rgba(12, 21, 36, 0.5);
+  border-radius: 2px;
+  background: #fffdf7;
+  color: var(--cos-midnight);
+  box-shadow: inset 0 0 0 1px rgba(246, 240, 226, 0.8);
+}
+
+.marketing-theme .form-input::placeholder {
+  color: rgba(11, 19, 32, 0.48);
+}
+
+.marketing-theme .form-input:focus {
+  border-color: var(--cos-orange);
+  box-shadow: 0 0 0 4px rgba(242, 140, 40, 0.18);
+}
+
+.marketing-theme .form-input option {
+  background: #fffdf7;
+  color: var(--cos-midnight);
+}
+
+.marketing-theme .role-card,
+.marketing-theme article.bg-white,
+.marketing-theme form.bg-white,
+.marketing-theme aside.bg-white {
+  border: 3px solid var(--cos-border);
+  border-radius: 2px;
+  background: var(--cos-panel);
+  color: var(--cos-midnight);
+  box-shadow: var(--cos-shadow);
+}
+
+.marketing-theme .role-card:hover {
+  border-color: var(--cos-orange);
+  box-shadow: 8px 8px 0 rgba(242, 140, 40, 0.2);
+}
+
+.marketing-theme .social-link {
+  border: 2px solid rgba(246, 240, 226, 0.28);
+  border-radius: 2px;
+  background: rgba(246, 240, 226, 0.08);
+  color: var(--cos-cream);
+}
+
+.marketing-theme .social-link:hover {
+  border-color: var(--cos-gold);
+  background: var(--cos-gold);
+  color: var(--cos-midnight);
+}
+
+/* Public section rhythm */
+.marketing-theme .home-hero {
+  background: var(--cos-midnight);
+}
+
+.marketing-theme .hero-overlay {
+  background:
+    linear-gradient(90deg, rgba(11, 19, 32, 0.96), rgba(11, 19, 32, 0.68) 46%, rgba(11, 19, 32, 0.1) 82%),
+    linear-gradient(0deg, rgba(11, 19, 32, 0.82), transparent 40%);
+}
+
+.marketing-theme .hero-bottom-gradient {
+  background: linear-gradient(0deg, var(--cos-midnight), transparent);
+}
+
+.marketing-theme #story {
+  background: var(--cos-midnight);
+}
+
+.marketing-theme .story-journey {
+  background: var(--cos-cream);
+  color: var(--cos-midnight);
+}
+
+.marketing-theme .story-journey::before {
+  opacity: 0.35;
+  background-image:
+    linear-gradient(rgba(11, 19, 32, 0.08) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(11, 19, 32, 0.08) 1px, transparent 1px);
+}
+
+.marketing-theme .journey-heading h2,
+.marketing-theme .story-journey .story-eyebrow {
+  color: var(--cos-midnight);
+}
+
+.marketing-theme .story-filmstrip {
+  border-top: 18px solid var(--cos-midnight);
+  border-bottom: 18px solid var(--cos-midnight);
+  background: var(--cos-midnight);
+  box-shadow: var(--cos-shadow-dark);
+}
+
+.marketing-theme .story-chapter {
+  border: 2px solid var(--cos-gold);
+  background: #111d2e;
+}
+
+.marketing-theme .chapter-content {
+  border-top-color: rgba(246, 240, 226, 0.2);
+}
+
+.marketing-theme .chapter-content h3,
+.marketing-theme .chapter-kicker,
+.marketing-theme .chapter-number {
+  color: var(--cos-gold);
+}
+
+.marketing-theme .story-note {
+  border: 3px solid var(--cos-border);
+  border-radius: 2px;
+  background: var(--cos-gold);
+  color: var(--cos-midnight);
+  box-shadow: 8px 8px 0 rgba(11, 19, 32, 0.18);
+}
+
+.marketing-theme .note-main,
+.marketing-theme .note-signature {
+  color: var(--cos-midnight);
+}
+
+.marketing-theme .roles-section,
+.marketing-theme .team-section {
+  background: var(--cos-cream);
+  color: var(--cos-midnight);
+}
+
+.marketing-theme .roles-section .section-title,
+.marketing-theme .team-section .section-title {
+  color: var(--cos-midnight);
+}
+
+.marketing-theme .roles-section .role-card {
+  min-height: 0;
+  padding: 0 0 1.5rem;
+}
+
+.marketing-theme .role-card h3 {
+  padding-inline: 1.5rem;
+  margin-top: 1.35rem;
+}
+
+.marketing-theme .role-card p {
+  padding-inline: 1.5rem;
+  color: var(--cos-ink-muted);
+}
+
+.marketing-theme .role-image {
+  border-bottom: 3px solid var(--cos-border);
+  border-radius: 0;
+}
+
+.marketing-theme .role-number {
+  color: var(--cos-gold);
+}
+
+.marketing-theme .roles-section .text-navy\/65,
+.marketing-theme .team-section .text-navy\/70,
+.marketing-theme .team-section .text-navy\/60 {
+  color: var(--cos-ink-muted);
+}
+
+.marketing-theme section.bg-navy.text-white,
+.marketing-theme .contact-section {
+  background: var(--cos-charcoal);
+  color: var(--cos-cream);
+}
+
+.marketing-theme section.bg-navy.text-white h2,
+.marketing-theme .contact-section h2 {
+  color: var(--cos-cream);
+}
+
+.marketing-theme section.bg-navy.text-white .text-white\/70,
+.marketing-theme section.bg-navy.text-white .text-white\/60,
+.marketing-theme section.bg-navy.text-white .text-white\/50 {
+  color: var(--cos-dark-muted);
+}
+
+.marketing-theme section.bg-navy.text-white > div > div > div.rounded-md,
+.marketing-theme section.bg-navy.text-white .rounded-md.border {
+  border-color: rgba(246, 240, 226, 0.28);
+  background: var(--cos-midnight);
+}
+
+.marketing-theme section.bg-navy.text-white .text-yellow {
+  color: var(--cos-gold);
+}
+
+/* Shared public hero for inner pages */
+.marketing-page-hero,
+.marketing-theme .page-hero {
+  position: relative;
+  overflow: hidden;
+  border-bottom: 3px solid var(--cos-gold);
+  background: var(--cos-midnight);
+  color: var(--cos-cream);
+}
+
+.marketing-page-hero::after,
+.marketing-theme .page-hero::after {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background-image:
+    linear-gradient(rgba(246, 240, 226, 0.05) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(246, 240, 226, 0.05) 1px, transparent 1px);
+  background-size: 72px 72px;
+  content: "";
+}
+
+.marketing-page-hero > div:last-child,
+.marketing-theme .page-hero > div:last-child {
+  position: relative;
+  z-index: 1;
+}
+
+.marketing-page-hero .eyebrow,
+.marketing-theme .page-hero .eyebrow {
+  background: var(--cos-orange);
+  color: var(--cos-midnight);
+}
+
+.marketing-page-hero p,
+.marketing-theme .page-hero p {
+  color: var(--cos-dark-muted);
+}
+
+/* Feature/almanac page: light workflow, dark selector, light detail, dark reference. */
+.marketing-theme .features-almanac {
+  background: var(--cos-cream);
+  color: var(--cos-midnight);
+}
+
+.marketing-theme .features-almanac .story-timeline,
+.marketing-theme .features-almanac .almanac-details-section {
+  background: var(--cos-cream);
+  color: var(--cos-midnight);
+}
+
+.marketing-theme .features-almanac .story-timeline h2,
+.marketing-theme .features-almanac .timeline-item h3,
+.marketing-theme .features-almanac .almanac-details-heading h2,
+.marketing-theme .features-almanac .almanac-role-title {
+  color: var(--cos-midnight);
+}
+
+.marketing-theme .features-almanac .story-timeline .story-eyebrow,
+.marketing-theme .features-almanac .timeline-number,
+.marketing-theme .features-almanac .timeline-arrow {
+  color: var(--cos-orange);
+}
+
+.marketing-theme .features-almanac .timeline-line {
+  background: rgba(12, 21, 36, 0.28);
+}
+
+.marketing-theme .features-almanac .timeline-number {
+  border: 2px solid var(--cos-border);
+  background: var(--cos-panel);
+}
+
+.marketing-theme .features-almanac .timeline-item p,
+.marketing-theme .features-almanac .almanac-details-heading p,
+.marketing-theme .features-almanac .almanac-role-description {
+  color: var(--cos-ink-muted);
+}
+
+.marketing-theme .features-almanac .almanac-selector-section {
+  border-block: 3px solid var(--cos-gold);
+  background: var(--cos-charcoal);
+  color: var(--cos-cream);
+}
+
+.marketing-theme .features-almanac .almanac-role-selector {
+  border-color: rgba(246, 240, 226, 0.2);
+}
+
+.marketing-theme .features-almanac .almanac-role-button {
+  color: rgba(246, 240, 226, 0.68);
+  border-color: rgba(246, 240, 226, 0.2);
+  background: transparent;
+}
+
+.marketing-theme .features-almanac .almanac-role-button:hover,
+.marketing-theme .features-almanac .almanac-role-button.active {
+  background: var(--cos-midnight);
+  color: var(--cos-gold);
+}
+
+.marketing-theme .features-almanac .almanac-role-active-line {
+  background: var(--cos-orange);
+}
+
+.marketing-theme .features-almanac .almanac-details-box,
+.marketing-theme .features-almanac .almanac-info-card {
+  border: 3px solid var(--cos-border);
+  border-radius: 2px;
+  background: var(--cos-panel);
+  box-shadow: var(--cos-shadow);
+}
+
+.marketing-theme .features-almanac .almanac-role-image {
+  border: 3px solid var(--cos-border);
+  border-radius: 2px;
+}
+
+.marketing-theme .features-almanac .almanac-info-card h3,
+.marketing-theme .features-almanac .almanac-role-label span,
+.marketing-theme .features-almanac .almanac-tool-icon,
+.marketing-theme .features-almanac .almanac-responsibility svg,
+.marketing-theme .features-almanac .almanac-skill svg {
+  color: var(--cos-orange);
+}
+
+.marketing-theme .features-almanac .almanac-role-information,
+.marketing-theme .features-almanac .almanac-info-card,
+.marketing-theme .features-almanac .almanac-info-card span,
+.marketing-theme .features-almanac .almanac-role-information p {
+  color: var(--cos-midnight);
+}
+
+.marketing-theme .features-almanac .almanac-quote-card {
+  border: 3px solid var(--cos-border);
+  border-radius: 2px;
+  background: var(--cos-gold);
+  color: var(--cos-midnight);
+  box-shadow: 6px 6px 0 rgba(11, 19, 32, 0.14);
+}
+
+.marketing-theme .features-almanac .almanac-reference-section {
+  background: var(--cos-charcoal);
+  color: var(--cos-cream);
+}
+
+.marketing-theme .features-almanac .almanac-reference-heading h2,
+.marketing-theme .features-almanac .almanac-reference-heading p {
+  color: var(--cos-cream);
+}
+
+.marketing-theme .features-almanac .almanac-reference-grid {
+  overflow: hidden;
+  border: 3px solid var(--cos-cream);
+  border-radius: 2px;
+  background: var(--cos-midnight);
+}
+
+.marketing-theme .features-almanac .almanac-reference-header {
+  background: rgba(246, 240, 226, 0.1);
+  color: var(--cos-gold);
+}
+
+.marketing-theme .features-almanac .almanac-reference-row {
+  border-top-color: rgba(246, 240, 226, 0.16);
+}
+
+.marketing-theme .features-almanac .almanac-reference-row:hover {
+  background: rgba(242, 201, 76, 0.1);
+}
+
+.marketing-theme .features-almanac .almanac-reference-item p {
+  color: rgba(246, 240, 226, 0.72);
+}
+
+.marketing-theme .features-almanac .almanac-reference-role h3,
+.marketing-theme .features-almanac .almanac-reference-icon {
+  color: var(--cos-gold);
+}
+
+/* Team page uses its existing layout and carousel behavior, with shared tokens. */
+.marketing-theme .team-page {
+  --team-bg: var(--cos-cream);
+  --team-panel: var(--cos-panel);
+  --team-panel-2: #ece8dc;
+  --team-red: var(--cos-orange);
+  --team-green: var(--cos-gold);
+  --team-white: var(--cos-midnight);
+  --team-muted: var(--cos-ink-muted);
+  background: var(--cos-cream);
+  color: var(--cos-midnight);
+}
+
+.marketing-theme .team-page .team-hero {
+  background: var(--cos-midnight);
+  color: var(--cos-cream);
+}
+
+.marketing-theme .team-page .journey-section,
+.marketing-theme .team-page .behind-section,
+.marketing-theme .team-page .tools-section {
+  background: var(--cos-cream);
+  color: var(--cos-midnight);
+}
+
+.marketing-theme .team-page .crew-section {
+  background: var(--cos-charcoal);
+  color: var(--cos-cream);
+}
+
+.marketing-theme .team-page .crew-profile {
+  border: 3px solid var(--cos-cream);
+  border-radius: 2px;
+  background: var(--cos-midnight);
+  color: var(--cos-cream);
+  box-shadow: var(--cos-shadow-dark);
+}
+
+.marketing-theme .team-page .crew-profile-info,
+.marketing-theme .team-page .crew-heading p {
+  color: var(--cos-dark-muted);
+}
+
+.marketing-theme .team-page .behind-photo,
+.marketing-theme .team-page .hero-photo {
+  border-color: var(--cos-border);
+}
+
+.marketing-theme .team-page .tools-box {
+  border: 3px solid var(--cos-border);
+  border-radius: 2px;
+  background: var(--cos-panel);
+  color: var(--cos-midnight);
+  box-shadow: var(--cos-shadow);
+}
+
+.marketing-theme .team-page .journey-icon,
+.marketing-theme .team-page .crew-arrow,
+.marketing-theme .team-page .crew-thumbnail.active {
+  border-color: var(--cos-orange);
+  color: var(--cos-orange);
+}
+
+.marketing-theme .team-page .journey-icon {
+  background: var(--cos-cream);
+}
+
+.marketing-theme .team-page .crew-progress i {
+  background: var(--cos-gold);
+}
+
+.marketing-theme .team-page .crew-thumbnail.active {
+  box-shadow: 0 0 0 3px var(--cos-gold);
+}
+
+/* Contact + access surfaces */
+.contact-form-section {
+  background: var(--cos-cream);
+  color: var(--cos-midnight);
+}
+
+.contact-form-section > div > aside > h2 {
+  color: var(--cos-midnight);
+}
+
+.crew-access-page {
+  background: var(--cos-midnight);
+  color: var(--cos-cream);
+}
+
+.crew-access-page > section {
+  border: 3px solid var(--cos-border);
+  border-radius: 2px;
+  background: var(--cos-cream);
+  color: var(--cos-midnight);
+  box-shadow: 8px 8px 0 rgba(242, 201, 76, 0.24);
+}
+
+.crew-access-page .form-input {
+  border-color: rgba(12, 21, 36, 0.52);
+  background: #fffdf7;
+}
+
+.crew-access-page .form-input:focus {
+  border-color: var(--cos-orange);
+}
+
+.crew-access-page .bg-coral {
+  background: var(--cos-orange);
+  color: var(--cos-midnight);
+}
+
+/* Player portal: light paper mode with charcoal/midnight bands. */
+.portal-theme:not(.portal-dark) {
+  --blueprint-paper: var(--cos-cream);
+  --blueprint-paper-soft: var(--cos-panel);
+  --blueprint-ink: var(--cos-midnight);
+  --ink-strong: var(--cos-midnight);
+  --ink-soft: rgba(11, 19, 32, 0.68);
+  --ink-faint: rgba(11, 19, 32, 0.48);
+  --ink-line: rgba(12, 21, 36, 0.2);
+  --ink-wash: rgba(11, 19, 32, 0.06);
+  background: var(--cos-cream);
+  color: var(--cos-midnight);
+}
+
+.portal-theme.portal-dark {
+  --blueprint-paper: var(--cos-charcoal);
+  --blueprint-paper-soft: var(--cos-midnight);
+  --blueprint-ink: var(--cos-cream);
+  --ink-strong: var(--cos-cream);
+  --ink-soft: rgba(246, 240, 226, 0.7);
+  --ink-faint: rgba(246, 240, 226, 0.48);
+  --ink-line: rgba(246, 240, 226, 0.2);
+  --ink-wash: rgba(246, 240, 226, 0.08);
+  background: var(--cos-charcoal);
+  color: var(--cos-cream);
+}
+
+.portal-theme header.sticky {
+  background: var(--cos-midnight) !important;
+  border-color: rgba(246, 240, 226, 0.18) !important;
+  color: var(--cos-cream) !important;
+}
+
+.portal-theme header.sticky nav a:not(.bg-yellow) {
+  color: rgba(246, 240, 226, 0.72) !important;
+}
+
+.portal-theme header.sticky nav a:hover,
+.portal-theme header.sticky nav a.bg-yellow {
+  color: var(--cos-gold) !important;
+}
+
+.portal-theme header.sticky .text-navy,
+.portal-theme header.sticky [class*="text-navy/"] {
+  color: var(--cos-cream) !important;
+}
+
+.portal-theme .portal-page {
+  background: var(--cos-cream) !important;
+  color: var(--cos-midnight) !important;
+}
+
+.portal-theme.portal-dark .portal-page {
+  background: var(--cos-charcoal) !important;
+  color: var(--cos-cream) !important;
+}
+
+.portal-theme .portal-page > div > section,
+.portal-theme .portal-card,
+.portal-theme [class*="bg-[#151c29]"],
+.portal-theme [class*="bg-[#121d32]"],
+.portal-theme [class*="bg-[#1b2433]"] {
+  border-color: var(--cos-border);
+  border-radius: 2px;
+  background: var(--cos-panel);
+  color: var(--cos-midnight);
+  box-shadow: var(--cos-shadow);
+}
+
+.portal-theme.portal-dark .portal-page > div > section,
+.portal-theme.portal-dark .portal-card,
+.portal-theme.portal-dark [class*="bg-[#151c29]"],
+.portal-theme.portal-dark [class*="bg-[#121d32]"],
+.portal-theme.portal-dark [class*="bg-[#1b2433]"] {
+  border-color: rgba(246, 240, 226, 0.22);
+  background: var(--cos-midnight);
+  color: var(--cos-cream);
+  box-shadow: var(--cos-shadow-dark);
+}
+
+.portal-theme [class*="bg-[#0d121c]"],
+.portal-theme [class*="bg-[#0b1426]"],
+.portal-theme [class*="bg-[#111c30]"] {
+  background: var(--cos-cream) !important;
+  color: var(--cos-midnight);
+}
+
+.portal-theme.portal-dark [class*="bg-[#0d121c]"],
+.portal-theme.portal-dark [class*="bg-[#0b1426]"],
+.portal-theme.portal-dark [class*="bg-[#111c30]"] {
+  background: var(--cos-charcoal) !important;
+  color: var(--cos-cream);
+}
+
+.portal-theme .portal-page h1,
+.portal-theme .portal-page h2,
+.portal-theme .portal-page h3,
+.portal-theme .portal-page p,
+.portal-theme .portal-page span,
+.portal-theme .portal-page a:not(.bg-coral) {
+  color: inherit;
+}
+
+.portal-theme .portal-page .text-coral,
+.portal-theme .portal-page [class*="text-coral"] {
+  color: var(--cos-orange) !important;
+}
+
+.portal-theme .portal-page .text-yellow,
+.portal-theme .portal-page [class*="text-yellow"] {
+  color: var(--cos-gold) !important;
+}
+
+.portal-theme .portal-page [class*="border-white/"],
+.portal-theme .portal-page [class*="border-navy/"] {
+  border-color: rgba(12, 21, 36, 0.28);
+}
+
+.portal-theme.portal-dark .portal-page [class*="border-white/"],
+.portal-theme.portal-dark .portal-page [class*="border-navy/"] {
+  border-color: rgba(246, 240, 226, 0.2);
+}
+
+.portal-theme .portal-page input:not([type="checkbox"]),
+.portal-theme .portal-page select,
+.portal-theme .portal-page textarea {
+  border: 2px solid rgba(12, 21, 36, 0.38);
+  border-radius: 2px;
+  background: #fffdf7;
+  color: var(--cos-midnight) !important;
+}
+
+.portal-theme.portal-dark .portal-page input:not([type="checkbox"]),
+.portal-theme.portal-dark .portal-page select,
+.portal-theme.portal-dark .portal-page textarea {
+  border-color: rgba(246, 240, 226, 0.25);
+  background: var(--cos-midnight);
+  color: var(--cos-cream) !important;
+}
+
+.portal-theme .portal-page input:focus,
+.portal-theme .portal-page select:focus,
+.portal-theme .portal-page textarea:focus {
+  border-color: var(--cos-orange);
+  box-shadow: 0 0 0 4px rgba(242, 140, 40, 0.16);
+}
+
+.portal-theme .portal-button,
+.portal-theme .portal-page a.bg-coral,
+.portal-theme .portal-page button.bg-coral {
+  border: 2px solid var(--cos-border);
+  border-radius: 2px;
+  background: var(--cos-orange);
+  color: var(--cos-midnight) !important;
+  box-shadow: 4px 4px 0 rgba(11, 19, 32, 0.16);
+}
+
+.portal-theme .portal-button:hover,
+.portal-theme .portal-page a.bg-coral:hover,
+.portal-theme .portal-page button.bg-coral:hover {
+  background: var(--cos-gold);
+}
+
+/* Admin console: charcoal control-room with cream outlines and gold/orange actions. */
+.admin-theme {
+  --control-bg: var(--cos-charcoal);
+  --control-surface: var(--cos-midnight);
+  --control-surface-2: #172235;
+  --control-line: rgba(246, 240, 226, 0.18);
+  background: var(--cos-charcoal) !important;
+  color: var(--cos-cream);
+}
+
+.admin-theme.admin-light {
+  --control-bg: var(--cos-cream);
+  --control-surface: var(--cos-panel);
+  --control-surface-2: #fffdf7;
+  --control-line: rgba(12, 21, 36, 0.24);
+  background: var(--cos-cream) !important;
+  color: var(--cos-midnight);
+}
+
+.admin-theme [class*="bg-[#101923]"],
+.admin-theme [class*="bg-[#090e12]"],
+.admin-theme [class*="bg-[#0d1217]"] {
+  background: var(--control-bg) !important;
+}
+
+.admin-theme [class*="bg-[#182330]"],
+.admin-theme [class*="bg-[#141e29]"],
+.admin-theme [class*="bg-[#151c21]"],
+.admin-theme [class*="bg-[#11171b]"],
+.admin-theme [class*="bg-[#151c28]"] {
+  background: var(--control-surface) !important;
+}
+
+.admin-theme [class*="bg-[#1c2636]"],
+.admin-theme [class*="bg-[#1d2a38]"],
+.admin-theme [class*="bg-[#202a3a]"],
+.admin-theme [class*="bg-[#243241]"],
+.admin-theme [class*="bg-[#222b31]"] {
+  background: var(--control-surface-2) !important;
+}
+
+.admin-theme aside.bg-navy,
+.admin-theme header.bg-navy {
+  background: var(--cos-midnight) !important;
+  border-color: rgba(246, 240, 226, 0.18);
+}
+
+.admin-theme .admin-card,
+.admin-theme .admin-table-wrap,
+.admin-theme [class*="border-white/"] {
+  border-color: var(--control-line);
+}
+
+.admin-theme .admin-card,
+.admin-theme .admin-table-wrap {
+  border-width: 2px;
+  border-radius: 2px;
+  background: var(--control-surface);
+  box-shadow: var(--cos-shadow-dark);
+}
+
+.admin-theme .admin-heading {
+  color: var(--cos-cream);
+}
+
+.admin-theme .admin-kicker {
+  color: rgba(246, 240, 226, 0.72);
+}
+
+.admin-theme .admin-table thead {
+  background: rgba(246, 240, 226, 0.09);
+  color: var(--cos-gold);
+}
+
+.admin-theme .admin-table td {
+  border-color: var(--control-line);
+  color: rgba(246, 240, 226, 0.78);
+}
+
+.admin-theme .admin-table tbody tr:hover {
+  background: rgba(242, 201, 76, 0.1);
+}
+
+.admin-theme .admin-input,
+.admin-theme input,
+.admin-theme select,
+.admin-theme textarea {
+  border: 2px solid var(--control-line);
+  border-radius: 2px;
+  background: var(--control-surface-2) !important;
+  color: var(--cos-cream) !important;
+}
+
+.admin-theme .admin-input::placeholder,
+.admin-theme input::placeholder,
+.admin-theme textarea::placeholder {
+  color: rgba(246, 240, 226, 0.46) !important;
+}
+
+.admin-theme :is(input, select, textarea):focus {
+  border-color: var(--cos-orange) !important;
+  box-shadow: 0 0 0 4px rgba(242, 140, 40, 0.18);
+}
+
+.admin-theme :is(button, a).bg-coral,
+.admin-theme :is(button, a).bg-yellow {
+  border: 2px solid var(--cos-border);
+  border-radius: 2px;
+  background: var(--cos-orange);
+  color: var(--cos-midnight) !important;
+}
+
+.admin-theme :is(button, a).bg-coral:hover,
+.admin-theme :is(button, a).bg-yellow:hover {
+  background: var(--cos-gold);
+}
+
+.admin-theme.admin-light .admin-heading {
+  color: var(--cos-midnight);
+}
+
+.admin-theme.admin-light .admin-kicker,
+.admin-theme.admin-light .admin-table td {
+  color: var(--cos-ink-muted);
+}
+
+.admin-theme.admin-light .admin-card,
+.admin-theme.admin-light .admin-table-wrap {
+  color: var(--cos-midnight);
+  background: var(--cos-panel);
+  box-shadow: var(--cos-shadow);
+}
+
+.admin-theme.admin-light aside.bg-navy,
+.admin-theme.admin-light header.bg-navy {
+  background: var(--cos-midnight) !important;
+}
+
+.site-footer {
+  background: var(--cos-midnight);
+  color: var(--cos-cream);
+}
+
+.site-footer a:hover,
+.site-footer a[aria-current="page"],
+.site-footer .text-yellow {
+  color: var(--cos-gold) !important;
+}
+
+.site-footer .social-link,
+.site-footer a[aria-label] {
+  border-radius: 2px;
+}
+
+@media (max-width: 900px) {
+  .marketing-theme .site-navbar-inner {
+    min-height: 4.5rem;
+  }
+
+  .marketing-theme .features-almanac .almanac-container {
+    padding-inline: 1.25rem;
+  }
+
+  .marketing-theme .features-almanac .almanac-role-selector {
+    gap: 0.35rem;
+  }
+
+  .marketing-theme .team-container {
+    width: min(100% - 2.5rem, 1200px);
+  }
+}
+
+@media (max-width: 640px) {
+  .marketing-theme .display-title {
+    font-size: clamp(3.2rem, 16vw, 5.6rem);
+  }
+
+  .marketing-theme .section-title {
+    font-size: clamp(2.4rem, 13vw, 4.4rem);
+  }
+
+  .marketing-theme .cta-primary,
+  .marketing-theme .cta-secondary,
+  .marketing-theme .story-button,
+  .marketing-theme .team-button,
+  .marketing-theme .contact-button {
+    width: 100%;
+    justify-content: center;
+  }
+
+  .marketing-theme .story-filmstrip {
+    padding-inline: 0.5rem;
+  }
+
+  .marketing-theme .story-chapters {
+    grid-template-columns: 1fr;
+    gap: 0.75rem;
+  }
+
+  .marketing-theme .story-chapter {
+    min-height: 0;
+  }
+
+  .marketing-theme .features-almanac .timeline-line {
+    display: none;
+  }
+
+  .marketing-theme .features-almanac .timeline {
+    grid-template-columns: 1fr 1fr;
+    gap: 1rem;
+  }
+
+  .marketing-theme .features-almanac .almanac-role-selector {
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .marketing-theme .team-page .team-hero {
+    min-height: auto;
+  }
+
+  .marketing-theme .team-page .crew-profile {
+    border-width: 2px;
+  }
+
+  .portal-theme .portal-page {
+    padding-inline: 1rem;
+  }
+
+  .admin-theme .admin-page {
+    padding-inline: 1rem;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
+
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+  }
+}
+
+/* Semantic state accents stay within the brand palette on dense consoles. */
+.admin-theme [class*="bg-[#2d9d8f]/"],
+.admin-theme [class*="bg-[#7c5cff]/"],
+.admin-theme [class*="bg-[#4b9bff]/"],
+.admin-theme [class*="bg-[#43b581]/"],
+.admin-theme [class*="bg-[#3a7bd5]/"] {
+  background: rgba(242, 201, 76, 0.14) !important;
+}
+
+.admin-theme [class*="bg-[#2d9d8f]"]:not([class*="/"]),
+.admin-theme [class*="bg-[#7c5cff]"]:not([class*="/"]),
+.admin-theme [class*="bg-[#4b9bff]"]:not([class*="/"]),
+.admin-theme [class*="bg-[#43b581]"]:not([class*="/"]),
+.admin-theme [class*="bg-[#3a7bd5]"]:not([class*="/"]) {
+  background: var(--cos-gold) !important;
+  color: var(--cos-midnight) !important;
+}
+
+.admin-theme [class*="text-[#4bc4b4]"],
+.admin-theme [class*="text-[#a894ff]"],
+.admin-theme [class*="text-[#7fb6ff]"],
+.admin-theme [class*="text-[#6cd6a3]"],
+.admin-theme [class*="text-[#7cb0ee]"] {
+  color: var(--cos-gold) !important;
+}
+
+.portal-theme [class*="bg-[#2d9d8f]/"],
+.portal-theme [class*="bg-[#3a7bd5]/"] {
+  background: rgba(242, 201, 76, 0.14) !important;
+}
+
+.portal-theme [class*="bg-[#2d9d8f]"]:not([class*="/"]),
+.portal-theme [class*="bg-[#3a7bd5]"]:not([class*="/"]) {
+  background: var(--cos-gold) !important;
+  color: var(--cos-midnight) !important;
+}
+
+.portal-theme [class*="text-[#4bc4b4]"],
+.portal-theme [class*="text-[#7cb0ee]"] {
+  color: var(--cos-orange) !important;
+}
+
+.portal-theme .portal-page section.on-dark {
+  background: var(--cos-midnight) !important;
+  color: var(--cos-cream) !important;
+}
+
+.portal-theme header.sticky nav a.bg-coral {
+  background: var(--cos-gold) !important;
+  color: var(--cos-midnight) !important;
+}
+
+.portal-theme.portal-dark .portal-page section.on-dark {
+  background: var(--cos-midnight) !important;
+}
+
+.marketing-theme [class*="bg-[#278b78]"] {
+  background: var(--cos-orange) !important;
+}
+
+.marketing-theme [class*="hover:bg-[#1f7464]"]:hover {
+  background: var(--cos-orange-dark) !important;
+}

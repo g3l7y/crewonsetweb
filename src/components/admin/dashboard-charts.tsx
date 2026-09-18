@@ -43,14 +43,14 @@ function ChartCard({
       <div className="mb-6">
         <h2
           className="text-lg font-black uppercase tracking-tight"
-          style={{ color: "#ffffff" }}
+          style={{ color: "var(--control-ink, #ffffff)" }}
         >
           {title}
         </h2>
 
         <p
           className="mt-1 text-xs"
-          style={{ color: "rgba(255,255,255,0.45)" }}
+          style={{ color: "var(--control-muted, rgba(255,255,255,0.45))" }}
         >
           {subtitle}
         </p>
@@ -94,7 +94,7 @@ function ChartCard({
 
             {/* GRID */}
             <CartesianGrid
-              stroke="rgba(255,255,255,0.08)"
+              stroke="var(--control-line-soft, rgba(255,255,255,0.08))"
               strokeDasharray="4 4"
               vertical={false}
             />
@@ -105,7 +105,7 @@ function ChartCard({
               axisLine={false}
               tickLine={false}
               tick={{
-                fill: "rgba(255,255,255,0.55)",
+                fill: "var(--control-muted, rgba(255,255,255,0.55))",
                 fontSize: 12,
               }}
               dy={10}
@@ -116,7 +116,7 @@ function ChartCard({
               axisLine={false}
               tickLine={false}
               tick={{
-                fill: "rgba(255,255,255,0.45)",
+                fill: "var(--control-muted, rgba(255,255,255,0.45))",
                 fontSize: 11,
               }}
               tickFormatter={(value) =>
@@ -129,23 +129,23 @@ function ChartCard({
             {/* TOOLTIP */}
             <Tooltip
               cursor={{
-                stroke: "rgba(255,255,255,0.2)",
+                stroke: "var(--control-line-soft, rgba(255,255,255,0.2))",
                 strokeWidth: 1,
               }}
               contentStyle={{
                 backgroundColor: "var(--control-bg, #101923)",
-                border: "1px solid rgba(255,255,255,0.12)",
+                border: "1px solid var(--control-line, rgba(255,255,255,0.12))",
                 borderRadius: "8px",
-                boxShadow: "0 12px 30px rgba(0,0,0,0.4)",
-                color: "#ffffff",
+                boxShadow: "var(--control-tooltip-shadow, 0 12px 30px rgba(0,0,0,0.4))",
+                color: "var(--control-ink, #ffffff)",
                 fontSize: "12px",
               }}
               labelStyle={{
-                color: "rgba(255,255,255,0.55)",
+                color: "var(--control-muted, rgba(255,255,255,0.55))",
                 marginBottom: "4px",
               }}
               itemStyle={{
-                color: "#ffffff",
+                color: "var(--control-ink, #ffffff)",
               }}
               formatter={(value) =>
                 currency
@@ -176,7 +176,7 @@ function ChartCard({
               activeDot={{
                 r: 6,
                 fill: color,
-                stroke: "#ffffff",
+                stroke: "var(--control-active-dot, #ffffff)",
                 strokeWidth: 2,
               }}
             />

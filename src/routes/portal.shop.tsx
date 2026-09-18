@@ -4,9 +4,9 @@ export const Route = createFileRoute("/portal/shop")({
   head: () => ({
     meta: [
       { title: "Studio Shop — Crew On Set!" },
-      { name: "description", content: "Spend C-Coins on hair, outfits, and accessories." },
+      { name: "description", content: "Spend C-Coins on cosmetic crew items." },
       { property: "og:title", content: "Studio Shop — Crew On Set!" },
-      { property: "og:description", content: "Spend C-Coins on hair, outfits, and accessories." },
+      { property: "og:description", content: "Spend C-Coins on cosmetic crew items." },
     ],
   }),
   component: ShopPage,
@@ -16,9 +16,7 @@ import { useMemo, useState } from "react";
 import {
   Check,
   Coins,
-  Minus,
   Package,
-  Plus,
   Search,
   ShoppingBag,
   ShoppingCart,
@@ -26,6 +24,7 @@ import {
   X,
 } from "lucide-react";
 import CheckoutPage from "@/components/portal/checkout";
+import { CosmeticArt } from "@/components/portal/cosmetic-art";
 import {
   cosmeticCatalog,
   coinPackages,
@@ -42,88 +41,101 @@ import {
   transactionsStore,
   uid,
 } from "@/lib/demo/store";
+import { isMockMode } from "@/lib/playfab/config";
+import {
+  useCatalog,
+  usePlayerInventory,
+  usePlayerWallet,
+  usePurchaseItem,
+} from "@/lib/playfab/hooks";
 
 type Category = "All" | CosmeticCategory;
 type ViewMode = "shop" | "owned";
-
-const categories: Category[] = ["All", "Hair", "Outfits", "Accessories"];
+const categories: Category[] = ["All", "Hair", "Tops", "Bottoms", "Eyeglasses"];
 
 const rarityStyles: Record<string, string> = {
-  Common: "text-white/60 border-white/15",
-  Rare: "text-sky-300 border-sky-400/30",
-  Epic: "text-fuchsia-300 border-fuchsia-400/30",
-  Legendary: "text-yellow border-yellow/40",
+  Common: "cos-rarity-common",
+  Rare: "cos-rarity-rare",
+  Epic: "cos-rarity-epic",
+  Legendary: "cos-rarity-legendary",
 };
 
-type ConfirmTarget =
-  | { mode: "cart" }
-  | { mode: "single"; itemId: string };
-
-function ItemBadge({ item, size = "size-20" }: { item: CosmeticItem; size?: string }) {
-  return (
-    <div
-      className={`grid ${size} place-items-center rounded-full bg-gradient-to-br text-xl font-black text-white shadow-lg ${item.gradient}`}
-    >
-      {item.initials}
-    </div>
-  );
-}
+type ConfirmTarget = { mode: "cart" } | { mode: "single"; itemId: string };
 
 function ShopPage() {
+  const mockMode = isMockMode();
   const [view, setView] = useState<ViewMode>("shop");
   const [activeCategory, setActiveCategory] = useState<Category>("All");
   const [search, setSearch] = useState("");
-  const [ownedIds, setOwnedIds] = ownedItemsStore.useStore();
+  const [selectedItem, setSelectedItem] = useState<CosmeticItem | null>(null);
+  const [shopError, setShopError] = useState("");
+  const [purchaseBusy, setPurchaseBusy] = useState(false);
+
+  const catalogQuery = useCatalog();
+  const walletQuery = usePlayerWallet();
+  const inventoryQuery = usePlayerInventory();
+  const purchaseItem = usePurchaseItem();
+
+  const [demoOwnedIds, setDemoOwnedIds] = ownedItemsStore.useStore();
   const [cart, setCart] = cartStore.useStore();
-  const [wallet, setWallet] = walletStore.useStore();
+  const [demoWallet, setDemoWallet] = walletStore.useStore();
   const [notifications, setNotifications] = notificationsStore.useStore();
   const [transactions, setTransactions] = transactionsStore.useStore();
-  const balance = wallet[0] ?? 0;
-  const [checkoutOpen, setCheckoutOpen] = useState(false);
-  const [cartOpen, setCartOpen] = useState(false);
-  const [confirmTarget, setConfirmTarget] = useState<ConfirmTarget | null>(null);
-  const [purchaseSuccess, setPurchaseSuccess] = useState<{ names: string[]; spent: number } | null>(null);
-  const [clearCartOpen, setClearCartOpen] = useState(false);
+
+  const catalog = useMemo(() => {
+    if (mockMode) return cosmeticCatalog;
+    return (catalogQuery.data ?? [])
+      .map((remote) => {
+        const base = cosmeticCatalog.find((item) => item.id === remote.itemId);
+        if (!base) return null;
+        return {
+          ...base,
+          name: remote.displayName || base.name,
+          price: remote.price ?? base.price,
+          description: remote.description || base.description,
+        };
+      })
+      .filter((item): item is CosmeticItem => item !== null);
+  }, [catalogQuery.data, mockMode]);
+
+  const ownedIds = mockMode
+    ? demoOwnedIds
+    : (inventoryQuery.data ?? []).map((item) => item.itemId);
+  const balance = mockMode ? (demoWallet[0] ?? 0) : (walletQuery.data?.cCoins ?? 0);
+  const loading = !mockMode && (catalogQuery.isLoading || walletQuery.isLoading || inventoryQuery.isLoading);
 
   const filteredItems = useMemo(() => {
-    return cosmeticCatalog.filter((item) => {
+    const normalizedSearch = search.trim().toLowerCase();
+    return catalog.filter((item) => {
       const matchesCategory = activeCategory === "All" || item.category === activeCategory;
-      const matchesSearch = item.name.toLowerCase().includes(search.trim().toLowerCase());
-      return matchesCategory && matchesSearch;
+      return matchesCategory && item.name.toLowerCase().includes(normalizedSearch);
     });
-  }, [activeCategory, search]);
+  }, [activeCategory, catalog, search]);
 
   const ownedCatalogItems = useMemo(
-    () => cosmeticCatalog.filter((item) => ownedIds.includes(item.id)),
-    [ownedIds],
+    () => catalog.filter((item) => ownedIds.includes(item.id)),
+    [catalog, ownedIds],
   );
 
   const cartLines = useMemo(
     () =>
       cart
-        .map((line) => ({ line, item: cosmeticCatalog.find((i) => i.id === line.itemId) }))
+        .map((line) => ({ line, item: catalog.find((item) => item.id === line.itemId) }))
         .filter((entry): entry is { line: (typeof cart)[number]; item: CosmeticItem } => !!entry.item),
-    [cart],
+    [cart, catalog],
   );
 
-  const cartCount = cart.reduce((sum, line) => sum + line.qty, 0);
-  const cartTotal = cartLines.reduce((sum, { line, item }) => sum + line.qty * item.price, 0);
+  const cartCount = cart.length;
+  const cartTotal = cartLines.reduce((sum, { item }) => sum + item.price, 0);
 
   function addToCart(itemId: string) {
-    const existing = cart.find((line) => line.itemId === itemId);
-    if (existing) {
-      setCart(cart.map((line) => (line.itemId === itemId ? { ...line, qty: line.qty + 1 } : line)));
-    } else {
-      setCart([...cart, { itemId, qty: 1 }]);
+    setShopError("");
+    if (ownedIds.includes(itemId)) return;
+    if (cart.some((line) => line.itemId === itemId)) {
+      setShopError("That cosmetic is already in your cart. Each cosmetic can be purchased once.");
+      return;
     }
-  }
-
-  function updateQty(itemId: string, delta: number) {
-    setCart(
-      cart.map((line) =>
-        line.itemId === itemId ? { ...line, qty: Math.max(1, line.qty + delta) } : line,
-      ),
-    );
+    setCart([...cart, { itemId, qty: 1 }]);
   }
 
   function removeFromCart(itemId: string) {
@@ -131,37 +143,76 @@ function ShopPage() {
   }
 
   function startPackageCheckout(packageId: string) {
+    setShopError("");
+    if (!mockMode) {
+      setShopError("Live C-Coin top-ups are paused until a verified payment provider is configured.");
+      return;
+    }
     setCheckoutPayload({ kind: "coins", packageId });
     setCheckoutOpen(true);
   }
 
-  // ----- confirmation popup data -----
+  const [checkoutOpen, setCheckoutOpen] = useState(false);
+  const [cartOpen, setCartOpen] = useState(false);
+  const [confirmTarget, setConfirmTarget] = useState<ConfirmTarget | null>(null);
+  const [purchaseSuccess, setPurchaseSuccess] = useState<{ names: string[]; spent: number; remaining: number } | null>(null);
+  const [clearCartOpen, setClearCartOpen] = useState(false);
+
   const confirmLines = useMemo(() => {
     if (!confirmTarget) return [];
     if (confirmTarget.mode === "cart") return cartLines;
-    const single = cartLines.find((entry) => entry.item.id === confirmTarget.itemId);
-    if (single) return [single];
-    const item = cosmeticCatalog.find((i) => i.id === confirmTarget.itemId);
+    const item = catalog.find((candidate) => candidate.id === confirmTarget.itemId);
     return item ? [{ line: { itemId: item.id, qty: 1 }, item }] : [];
-  }, [confirmTarget, cartLines]);
+  }, [catalog, cartLines, confirmTarget]);
 
-  const confirmTotal = confirmLines.reduce((sum, { line, item }) => sum + line.qty * item.price, 0);
+  const confirmTotal = confirmLines.reduce((sum, { item }) => sum + item.price, 0);
   const canAffordConfirm = balance >= confirmTotal;
 
-  function confirmPurchase() {
-    if (!confirmTarget || confirmLines.length === 0 || !canAffordConfirm) return;
+  async function confirmPurchase() {
+    if (!confirmTarget || confirmLines.length === 0 || !canAffordConfirm || purchaseBusy) return;
 
     const purchasedIds = confirmLines.map(({ item }) => item.id);
     const names = confirmLines.map(({ item }) => item.name);
+    setShopError("");
+    setPurchaseBusy(true);
 
-    setWallet([balance - confirmTotal]);
-    setOwnedIds([...new Set([...ownedIds, ...purchasedIds])]);
+    if (!mockMode) {
+      try {
+        for (const { item } of confirmLines) {
+          const result = await purchaseItem.mutateAsync({
+            itemId: item.id,
+            price: item.price,
+            currency: "cCoins",
+          });
+          if (typeof result === "boolean" ? !result : !result.success) {
+            throw new Error(typeof result === "boolean" ? "PlayFab rejected the purchase." : result.error || "PlayFab rejected the purchase.");
+          }
+        }
+        const refreshedWallet = await walletQuery.refetch();
+        await inventoryQuery.refetch();
+        const remaining = refreshedWallet.data?.cCoins ?? Math.max(balance - confirmTotal, 0);
+        setCart(cart.filter((line) => !purchasedIds.includes(line.itemId)));
+        setConfirmTarget(null);
+        setPurchaseSuccess({ names, spent: confirmTotal, remaining });
+      } catch (error) {
+        await walletQuery.refetch();
+        await inventoryQuery.refetch();
+        setShopError(error instanceof Error ? error.message : "The purchase was not completed.");
+      } finally {
+        setPurchaseBusy(false);
+      }
+      return;
+    }
+
+    const remaining = Math.max(0, balance - confirmTotal);
+    setDemoWallet([remaining]);
+    setDemoOwnedIds([...new Set([...demoOwnedIds, ...purchasedIds])]);
     setCart(cart.filter((line) => !purchasedIds.includes(line.itemId)));
     setNotifications([
       {
         id: uid("ntf"),
         title: purchasedIds.length > 1 ? "Cart purchase complete" : `Purchased ${names[0]}`,
-        body: `${formatCoins(confirmTotal)} C-Coins were spent. Item${purchasedIds.length > 1 ? "s are" : " is"} now in your collection.`,
+        body: `${formatCoins(confirmTotal)} C-Coins were spent. Your cosmetic is now in your collection.`,
         createdAt: new Date().toISOString(),
         kind: "shop",
         read: false,
@@ -169,19 +220,19 @@ function ShopPage() {
       ...notifications,
     ]);
     setTransactions([
-      ...confirmLines.map(({ line, item }) => ({
+      ...confirmLines.map(({ item }) => ({
         id: uid("tx"),
         label: item.name,
-        detail: `Shop purchase — ${item.category}${line.qty > 1 ? ` ×${line.qty}` : ""}`,
-        amount: -(line.qty * item.price),
+        detail: `Shop purchase — ${item.category}`,
+        amount: -item.price,
         kind: "purchase" as const,
         createdAt: new Date().toISOString(),
       })),
       ...transactions,
     ]);
-
     setConfirmTarget(null);
-    setPurchaseSuccess({ names, spent: confirmTotal });
+    setPurchaseSuccess({ names, spent: confirmTotal, remaining });
+    setPurchaseBusy(false);
   }
 
   if (checkoutOpen) {
@@ -196,480 +247,148 @@ function ShopPage() {
   }
 
   return (
-    <div className="min-h-screen bg-[#0d121c] px-4 pb-16 text-white sm:px-6 lg:px-8">
-      <div className="mx-auto max-w-[1500px] pt-8 sm:pt-10">
-        {/* HEADER */}
-        <header className="flex flex-col gap-5 sm:flex-row sm:items-end sm:justify-between">
+    <div className="portal-shop-page portal-title-page">
+      <div className="portal-shop-inner portal-title-container">
+        <header className="shop-heading portal-title-header">
           <div>
-            <p className="text-xs font-black tracking-[.18em] text-coral">PLAYER MARKETPLACE</p>
-            <h1 className="mt-2 text-4xl font-black uppercase tracking-tight text-white sm:text-5xl">
-              Crew Shop
-            </h1>
+            <p className="portal-kicker portal-title-eyebrow">PLAYER MARKETPLACE / COSMETICS ONLY</p>
+            <h1 className="portal-title-heading">Studio Shop</h1>
+            <p className="shop-subtitle">Style the crew. Keep the stats honest. Every item here is cosmetic-only.</p>
           </div>
-
-          <div className="flex flex-wrap items-center gap-3">
-            <div className="inline-flex items-center gap-3 rounded-lg border border-yellow/30 bg-yellow/10 px-4 py-3">
-              <Coins className="size-6 text-yellow" />
-              <div>
-                <p className="text-[10px] font-black uppercase tracking-wider text-yellow/70">
-                  C-Coin Balance
-                </p>
-                <p className="text-lg font-black text-yellow">{formatCoins(balance)}</p>
-              </div>
+          <div className="shop-toolbar">
+            <div className="coin-balance">
+              <Coins aria-hidden="true" />
+              <span><small>C-COIN BALANCE</small><strong>{loading ? "—" : formatCoins(balance)}</strong></span>
             </div>
-
-            <button
-              type="button"
-              onClick={() => setCartOpen(true)}
-              className="relative inline-flex items-center gap-2 rounded-lg border border-white/15 bg-[#151c29] px-4 py-3 text-xs font-black uppercase tracking-wide text-white transition hover:border-coral"
-            >
-              <ShoppingCart className="size-5" />
-              Cart
-              {cartCount > 0 && (
-                <span className="absolute -right-2 -top-2 grid size-5 place-items-center rounded-full bg-coral text-[10px] font-black text-white">
-                  {cartCount}
-                </span>
-              )}
+            <button type="button" className="shop-cart-button" onClick={() => setCartOpen(true)} aria-label={`Open cart, ${cartCount} items`}>
+              <ShoppingCart aria-hidden="true" /> Cart
+              {cartCount > 0 && <b>{cartCount}</b>}
             </button>
           </div>
         </header>
 
-        {/* VIEW SWITCH */}
-        <div className="mt-6 inline-flex rounded-full border border-white/10 bg-[#151c29] p-1">
-          <button
-            type="button"
-            onClick={() => setView("shop")}
-            className={`inline-flex items-center gap-2 rounded-full px-4 py-2 text-xs font-black uppercase tracking-wide transition ${
-              view === "shop" ? "bg-coral text-white" : "text-white/50 hover:text-white"
-            }`}
-          >
-            <ShoppingBag className="size-4" /> Shop
-          </button>
-          <button
-            type="button"
-            onClick={() => setView("owned")}
-            className={`inline-flex items-center gap-2 rounded-full px-4 py-2 text-xs font-black uppercase tracking-wide transition ${
-              view === "owned" ? "bg-coral text-white" : "text-white/50 hover:text-white"
-            }`}
-          >
-            <Package className="size-4" /> Owned Items
-          </button>
+        {shopError && <div className="shop-alert" role="alert">{shopError}<button type="button" onClick={() => setShopError("")} aria-label="Dismiss message"><X /></button></div>}
+
+        <div className="shop-tabs" role="tablist" aria-label="Shop views">
+          <button type="button" role="tab" aria-selected={view === "shop"} onClick={() => setView("shop")} className={view === "shop" ? "active" : ""}><ShoppingBag /> Shop</button>
+          <button type="button" role="tab" aria-selected={view === "owned"} onClick={() => setView("owned")} className={view === "owned" ? "active" : ""}><Package /> Owned items</button>
         </div>
 
         {view === "shop" ? (
           <>
-            {/* FILTERS */}
-            <div className="mt-7 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-              <div className="flex flex-wrap gap-2">
+            <div className="shop-filters">
+              <div className="shop-category-list" role="list">
                 {categories.map((category) => (
-                  <button
-                    key={category}
-                    type="button"
-                    onClick={() => setActiveCategory(category)}
-                    className={`rounded-full border px-4 py-2 text-xs font-black uppercase tracking-wide transition ${
-                      activeCategory === category
-                        ? "border-coral bg-coral text-white"
-                        : "border-white/10 text-white/60 hover:border-white/25 hover:text-white"
-                    }`}
-                  >
-                    {category}
-                  </button>
+                  <button key={category} type="button" onClick={() => setActiveCategory(category)} className={activeCategory === category ? "active" : ""}>{category}</button>
                 ))}
               </div>
-
-              <label className="relative sm:w-64">
-                <Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-white/25" />
-                <input
-                  value={search}
-                  onChange={(event) => setSearch(event.target.value)}
-                  placeholder="Search cosmetics..."
-                  className="w-full rounded-md border border-white/10 bg-[#151c29] px-4 py-2.5 pl-10 text-sm text-white outline-none placeholder:text-white/25 focus:border-coral"
-                />
-              </label>
+              <label className="shop-search"><Search aria-hidden="true" /><span className="sr-only">Search cosmetics</span><input value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Search cosmetics" /></label>
             </div>
 
-            {/* PRODUCT GRID */}
-            <section className="mt-6 grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4">
-              {filteredItems.map((item) => {
-                const owned = ownedIds.includes(item.id);
-                const inCart = cart.find((line) => line.itemId === item.id);
-                const canAfford = balance >= item.price;
-
-                return (
-                  <article
-                    key={item.id}
-                    className="flex flex-col overflow-hidden rounded-xl border border-white/10 bg-[#151c29] transition hover:border-white/20"
-                  >
-                    <div className="relative flex aspect-square items-center justify-center bg-[#0d121c]">
-                      <ItemBadge item={item} />
-                      <span
-                        className={`absolute left-2 top-2 rounded-full border px-2 py-0.5 text-[9px] font-black uppercase tracking-wide ${rarityStyles[item.rarity]}`}
-                      >
-                        {item.rarity}
-                      </span>
-                      {owned && (
-                        <span className="absolute right-2 top-2 grid size-6 place-items-center rounded-full bg-emerald-500 text-white">
-                          <Check className="size-3.5" />
-                        </span>
-                      )}
-                    </div>
-
-                    <div className="flex flex-1 flex-col gap-2 p-3.5">
-                      <p className="text-[10px] font-black uppercase tracking-wider text-white/35">
-                        {item.category}
-                      </p>
-                      <h3 className="truncate text-sm font-black text-white">{item.name}</h3>
-                      <div className="mt-auto flex items-center justify-between gap-2 pt-2">
-                        <span className="inline-flex items-center gap-1 text-sm font-black text-yellow">
-                          <Coins className="size-3.5" />
-                          {formatCoins(item.price)}
-                        </span>
+            {loading ? (
+              <div className="shop-empty">Syncing the catalog from PlayFab…</div>
+            ) : (
+              <section className="shop-grid" aria-label="Cosmetics catalog">
+                {filteredItems.map((item) => {
+                  const owned = ownedIds.includes(item.id);
+                  const inCart = cart.some((line) => line.itemId === item.id);
+                  return (
+                    <article key={item.id} className="shop-card">
+                      <button type="button" className="shop-art-button" onClick={() => setSelectedItem(item)} aria-label={`View ${item.name} details`}>
+                        <CosmeticArt item={item} />
+                        <span className={`cos-rarity ${rarityStyles[item.rarity]}`}>{item.rarity}</span>
+                        {owned && <span className="owned-mark"><Check /></span>}
+                      </button>
+                      <div className="shop-card-copy">
+                        <p className="shop-category">{item.category}</p>
+                        <h2>{item.name}</h2>
+                        <p className="shop-description">{item.description}</p>
+                        <div className="shop-card-bottom"><span className="shop-price"><Coins /> {formatCoins(item.price)}</span><span className="shop-status">{owned ? "Owned" : inCart ? "In cart" : "Available"}</span></div>
+                        {owned ? (
+                          <button type="button" className="shop-secondary-button" disabled>Owned</button>
+                        ) : (
+                          <div className="shop-card-actions">
+                            <button type="button" className="shop-secondary-button" onClick={() => addToCart(item.id)}>{inCart ? "In cart" : "Add to cart"}</button>
+                            <button type="button" className="shop-primary-button" onClick={() => setConfirmTarget({ mode: "single", itemId: item.id })}>Buy now</button>
+                          </div>
+                        )}
                       </div>
+                    </article>
+                  );
+                })}
+              </section>
+            )}
 
-                      {owned ? (
-                        <button
-                          type="button"
-                          disabled
-                          className="mt-1 w-full cursor-not-allowed rounded-md bg-white/[0.06] px-3 py-2 text-xs font-black uppercase tracking-wide text-white/30"
-                        >
-                          Owned
-                        </button>
-                      ) : (
-                        <div className="mt-1 grid grid-cols-2 gap-2">
-                          <button
-                            type="button"
-                            onClick={() => addToCart(item.id)}
-                            className="w-full rounded-md border border-white/15 px-2 py-2 text-[11px] font-black uppercase tracking-wide text-white transition hover:border-coral"
-                          >
-                            {inCart ? `In Cart (${inCart.qty})` : "Add to Cart"}
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => setConfirmTarget({ mode: "single", itemId: item.id })}
-                            className={`w-full rounded-md px-2 py-2 text-[11px] font-black uppercase tracking-wide transition ${
-                              canAfford
-                                ? "bg-coral text-white hover:opacity-90"
-                                : "bg-white/10 text-white/60 hover:bg-white/15"
-                            }`}
-                          >
-                            Buy Now
-                          </button>
-                        </div>
-                      )}
-                    </div>
-                  </article>
-                );
-              })}
+            {!loading && filteredItems.length === 0 && <div className="shop-empty">No cosmetics match your search.</div>}
 
-              {filteredItems.length === 0 && (
-                <div className="col-span-full rounded-xl border border-dashed border-white/10 p-10 text-center text-sm text-white/40">
-                  No cosmetics match your search.
+            <section className="coin-pack-section" aria-labelledby="coin-pack-title">
+              <div>
+                <p className="portal-kicker">DEMO WALLET TOP-UP</p>
+                <h2 id="coin-pack-title">More C-Coins, when the set needs them.</h2>
+                <p>{mockMode ? "Demo checkout is clearly marked and never runs in real mode." : "Live top-ups are disabled until a verified payment provider is connected."}</p>
+              </div>
+              {mockMode ? (
+                <div className="coin-pack-grid">
+                  {coinPackages.map((pack) => (
+                    <article key={pack.id} className="coin-pack-card"><Coins /><strong>{formatCoins(pack.coins)} <small>C-COINS</small></strong>{pack.bonus && <span>+{formatCoins(pack.bonus)} bonus</span>}<p>{pack.priceLabel}</p><button type="button" onClick={() => startPackageCheckout(pack.id)}>Buy demo pack</button></article>
+                  ))}
                 </div>
+              ) : (
+                <div className="top-up-disabled"><Coins /><strong>Real-money top-ups unavailable</strong><span>No fake balance changes are made in real mode.</span></div>
               )}
-            </section>
-
-            {/* C-COIN PACKAGES */}
-            <section className="mt-12" id="coin-shop">
-              <div className="mb-4">
-                <p className="text-xs font-black tracking-[.18em] text-coral">TOP UP</p>
-                <h2 className="mt-1 text-2xl font-black uppercase tracking-tight text-white">
-                  C-Coin Packages
-                </h2>
-                <p className="mt-1 text-sm text-white/40">
-                  Purchase more C-Coins using a mock payment method — Card, GCash, UnionBank or PayPal.
-                </p>
-              </div>
-
-              <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
-                {coinPackages.map((pack) => (
-                  <article
-                    key={pack.id}
-                    className="flex flex-col items-center gap-2 rounded-xl border border-white/10 bg-[#151c29] p-5 text-center transition hover:border-yellow/40"
-                  >
-                    <Coins className="size-8 text-yellow" />
-                    <p className="text-lg font-black text-white">{formatCoins(pack.coins)}</p>
-                    {pack.bonus ? (
-                      <p className="text-[11px] font-bold text-emerald-400">+{formatCoins(pack.bonus)} bonus</p>
-                    ) : (
-                      <p className="text-[11px] text-white/20">&nbsp;</p>
-                    )}
-                    <p className="text-sm font-bold text-white/60">{pack.priceLabel}</p>
-                    <button
-                      type="button"
-                      onClick={() => startPackageCheckout(pack.id)}
-                      className="mt-2 inline-flex w-full items-center justify-center gap-2 rounded-md bg-yellow px-3 py-2 text-xs font-black uppercase tracking-wide text-navy transition hover:opacity-90"
-                    >
-                      <ShoppingBag className="size-4" />
-                      Buy
-                    </button>
-                  </article>
-                ))}
-              </div>
             </section>
           </>
         ) : (
-          /* OWNED ITEMS */
-          <section className="mt-7 grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4">
+          <section className="shop-grid" aria-label="Owned cosmetics">
             {ownedCatalogItems.map((item) => (
-              <article
-                key={item.id}
-                className="flex flex-col overflow-hidden rounded-xl border border-white/10 bg-[#151c29]"
-              >
-                <div className="relative flex aspect-square items-center justify-center bg-[#0d121c]">
-                  <ItemBadge item={item} />
-                  <span className="absolute right-2 top-2 grid size-6 place-items-center rounded-full bg-emerald-500 text-white">
-                    <Check className="size-3.5" />
-                  </span>
-                </div>
-                <div className="flex flex-col gap-1 p-3.5">
-                  <p className="text-[10px] font-black uppercase tracking-wider text-white/35">
-                    {item.category}
-                  </p>
-                  <h3 className="truncate text-sm font-black text-white">{item.name}</h3>
-                  <span className="mt-1 inline-block w-fit rounded-full border border-emerald-400/30 px-2 py-0.5 text-[10px] font-black uppercase tracking-wide text-emerald-400">
-                    Owned
-                  </span>
-                </div>
-              </article>
+              <article key={item.id} className="shop-card owned-card"><button type="button" className="shop-art-button" onClick={() => setSelectedItem(item)} aria-label={`View ${item.name} details`}><CosmeticArt item={item} /><span className="owned-mark"><Check /></span></button><div className="shop-card-copy"><p className="shop-category">{item.category}</p><h2>{item.name}</h2><span className="shop-owned-label">Owned</span></div></article>
             ))}
-
-            {ownedCatalogItems.length === 0 && (
-              <div className="col-span-full rounded-xl border border-dashed border-white/10 p-10 text-center text-sm text-white/40">
-                You don't own any cosmetics yet — head to the Shop tab to get started.
-              </div>
-            )}
+            {ownedCatalogItems.length === 0 && <div className="shop-empty">No synced cosmetics yet. Purchase a cosmetic to start your collection.</div>}
           </section>
         )}
       </div>
 
-      {/* CART DRAWER */}
+      {selectedItem && (
+        <div className="shop-modal-backdrop" role="presentation" onMouseDown={() => setSelectedItem(null)}>
+          <section className="shop-modal" role="dialog" aria-modal="true" aria-labelledby="cosmetic-modal-title" onMouseDown={(event) => event.stopPropagation()}>
+            <button type="button" className="modal-close" onClick={() => setSelectedItem(null)} aria-label="Close product details"><X /></button>
+            <div className="modal-art"><CosmeticArt item={selectedItem} /></div>
+            <div className="modal-copy"><p className="shop-category">{selectedItem.category}</p><h2 id="cosmetic-modal-title">{selectedItem.name}</h2><p>{selectedItem.description}</p><strong className="modal-price"><Coins /> {formatCoins(selectedItem.price)} C-Coins</strong><div className="modal-meta"><span>{ownedIds.includes(selectedItem.id) ? "Owned" : "Not owned"}</span><span>{cart.some((line) => line.itemId === selectedItem.id) ? "In cart" : "Not in cart"}</span></div><div className="modal-actions"><button type="button" className="shop-secondary-button" disabled={ownedIds.includes(selectedItem.id) || cart.some((line) => line.itemId === selectedItem.id)} onClick={() => addToCart(selectedItem.id)}>{ownedIds.includes(selectedItem.id) ? "Owned" : cart.some((line) => line.itemId === selectedItem.id) ? "In cart" : "Add to cart"}</button><button type="button" className="shop-primary-button" disabled={ownedIds.includes(selectedItem.id)} onClick={() => { setSelectedItem(null); setConfirmTarget({ mode: "single", itemId: selectedItem.id }); }}>Buy now</button></div></div>
+          </section>
+        </div>
+      )}
+
       {cartOpen && (
-        <div className="fixed inset-0 z-[90] flex justify-end">
-          <button
-            className="absolute inset-0 bg-navy/70"
-            onClick={() => setCartOpen(false)}
-            aria-label="Close cart"
-          />
-          <aside className="relative flex h-full w-full max-w-md flex-col overflow-y-auto bg-[#151c29] text-white shadow-2xl">
-            <div className="flex items-center justify-between border-b border-white/10 px-5 py-4">
-              <h2 className="text-lg font-black uppercase tracking-wide">Your Cart</h2>
-              <button onClick={() => setCartOpen(false)} className="text-white/50 hover:text-white" aria-label="Close cart">
-                <X className="size-5" />
-              </button>
-            </div>
-
-            <div className="flex-1 space-y-3 p-5">
-              {cartLines.length === 0 && (
-                <p className="mt-6 text-center text-sm text-white/40">Your cart is empty.</p>
-              )}
-              {cartLines.map(({ line, item }) => (
-                <div key={item.id} className="flex items-center gap-3 rounded-lg border border-white/10 bg-[#0d121c] p-3">
-                  <ItemBadge item={item} size="size-12" />
-                  <div className="min-w-0 flex-1">
-                    <p className="truncate text-sm font-black text-white">{item.name}</p>
-                    <p className="text-xs font-bold text-yellow">{formatCoins(item.price)} C-Coins ea.</p>
-                    <div className="mt-2 flex items-center gap-2">
-                      <button
-                        type="button"
-                        onClick={() => updateQty(item.id, -1)}
-                        className="grid size-6 place-items-center rounded border border-white/15 text-white/70 hover:border-coral hover:text-white"
-                        aria-label={`Decrease quantity of ${item.name}`}
-                      >
-                        <Minus className="size-3" />
-                      </button>
-                      <span className="w-6 text-center text-xs font-black">{line.qty}</span>
-                      <button
-                        type="button"
-                        onClick={() => updateQty(item.id, 1)}
-                        className="grid size-6 place-items-center rounded border border-white/15 text-white/70 hover:border-coral hover:text-white"
-                        aria-label={`Increase quantity of ${item.name}`}
-                      >
-                        <Plus className="size-3" />
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => removeFromCart(item.id)}
-                        className="ml-auto grid size-6 place-items-center rounded text-coral/80 hover:text-coral"
-                        aria-label={`Remove ${item.name} from cart`}
-                      >
-                        <Trash2 className="size-3.5" />
-                      </button>
-                    </div>
-                  </div>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setCartOpen(false);
-                      setConfirmTarget({ mode: "single", itemId: item.id });
-                    }}
-                    className="shrink-0 self-start rounded-md bg-coral/90 px-2.5 py-1.5 text-[10px] font-black uppercase tracking-wide text-white hover:bg-coral"
-                  >
-                    Buy
-                  </button>
-                </div>
-              ))}
-            </div>
-
-            {cartLines.length > 0 && (
-              <div className="border-t border-white/10 p-5">
-                <div className="flex items-center justify-between text-sm">
-                  <span className="font-bold text-white/60">Total</span>
-                  <span className="inline-flex items-center gap-1 font-black text-yellow">
-                    <Coins className="size-4" /> {formatCoins(cartTotal)}
-                  </span>
-                </div>
-                <button
-                  type="button"
-                  onClick={() => {
-                    setCartOpen(false);
-                    setConfirmTarget({ mode: "cart" });
-                  }}
-                  className="mt-4 w-full rounded-md bg-coral px-4 py-3 text-sm font-black uppercase tracking-wide text-white transition hover:opacity-90"
-                >
-                  Purchase Cart
-                </button>
-
-                <button
-                  type="button"
-                  onClick={() => setClearCartOpen(true)}
-                  className="mt-2 inline-flex w-full items-center justify-center gap-2 rounded-md border border-white/15 px-4 py-2.5 text-xs font-black uppercase tracking-wide text-white/60 transition hover:border-coral hover:text-coral"
-                >
-                  <Trash2 className="size-3.5" /> Clear Cart
-                </button>
-              </div>
-            )}
+        <div className="shop-modal-backdrop" role="presentation" onMouseDown={() => setCartOpen(false)}>
+          <aside className="shop-cart-drawer" role="dialog" aria-modal="true" aria-labelledby="cart-title" onMouseDown={(event) => event.stopPropagation()}>
+            <header><div><p className="portal-kicker">YOUR CURRENT PICKS</p><h2 id="cart-title">Cart <span>({cartCount})</span></h2></div><button type="button" className="modal-close" onClick={() => setCartOpen(false)} aria-label="Close cart"><X /></button></header>
+            <div className="cart-lines">{cartLines.length === 0 ? <p className="shop-empty">Your cart is empty.</p> : cartLines.map(({ item }) => <div className="cart-line" key={item.id}><CosmeticArt item={item} className="cart-art" /><div><strong>{item.name}</strong><span>{item.category}</span><b><Coins /> {formatCoins(item.price)}</b></div><button type="button" onClick={() => removeFromCart(item.id)} aria-label={`Remove ${item.name} from cart`}><Trash2 /></button></div>)}</div>
+            {cartLines.length > 0 && <footer><div><span>Total</span><strong><Coins /> {formatCoins(cartTotal)}</strong></div><button type="button" className="shop-primary-button" onClick={() => { setCartOpen(false); setConfirmTarget({ mode: "cart" }); }}>Buy cart</button><button type="button" className="shop-secondary-button" onClick={() => setClearCartOpen(true)}>Clear cart</button></footer>}
           </aside>
         </div>
       )}
 
-      {/* CONFIRMATION POPUP */}
       {confirmTarget && confirmLines.length > 0 && (
-        <div className="fixed inset-0 z-[100] grid place-items-center bg-navy/70 p-5 backdrop-blur-sm">
-          <section className="w-full max-w-md rounded-2xl bg-[#151c29] p-6 text-white shadow-2xl">
-            <h2 className="text-xl font-black uppercase tracking-wide">Confirm Purchase</h2>
-
-            <div className="mt-4 max-h-56 space-y-3 overflow-y-auto pr-1">
-              {confirmLines.map(({ line, item }) => (
-                <div key={item.id} className="flex items-center gap-3 rounded-lg border border-white/10 bg-[#0d121c] p-3">
-                  <ItemBadge item={item} size="size-12" />
-                  <div className="min-w-0 flex-1">
-                    <p className="truncate text-sm font-black text-white">{item.name}</p>
-                    <p className="text-xs text-white/40">Qty: {line.qty}</p>
-                  </div>
-                  <span className="inline-flex items-center gap-1 text-sm font-black text-yellow">
-                    <Coins className="size-3.5" /> {formatCoins(line.qty * item.price)}
-                  </span>
-                </div>
-              ))}
-            </div>
-
-            <div className="mt-4 space-y-1.5 rounded-lg border border-white/10 bg-[#0d121c] p-4 text-sm">
-              <div className="flex items-center justify-between">
-                <span className="text-white/50">Total cost</span>
-                <span className="font-black text-yellow">{formatCoins(confirmTotal)} C-Coins</span>
-              </div>
-              <div className="flex items-center justify-between">
-                <span className="text-white/50">Current balance</span>
-                <span className="font-bold text-white">{formatCoins(balance)} C-Coins</span>
-              </div>
-              <div className="flex items-center justify-between">
-                <span className="text-white/50">Remaining balance</span>
-                <span className={`font-black ${canAffordConfirm ? "text-emerald-400" : "text-coral"}`}>
-                  {formatCoins(Math.max(balance - confirmTotal, 0))} C-Coins
-                </span>
-              </div>
-            </div>
-
-            {!canAffordConfirm && (
-              <p className="mt-3 rounded-md border border-coral/30 bg-coral/10 px-3 py-2 text-xs font-bold text-coral">
-                Insufficient C-Coin balance. Top up in the C-Coin Packages section below.
-              </p>
-            )}
-
-            <div className="mt-6 flex justify-end gap-2">
-              <button
-                type="button"
-                onClick={() => setConfirmTarget(null)}
-                className="rounded-md border border-white/15 px-4 py-2.5 text-sm font-bold text-white transition hover:bg-white/5"
-              >
-                Cancel
-              </button>
-              <button
-                type="button"
-                disabled={!canAffordConfirm}
-                onClick={confirmPurchase}
-                className={`rounded-md px-4 py-2.5 text-sm font-black transition ${
-                  canAffordConfirm
-                    ? "bg-coral text-white hover:opacity-90"
-                    : "cursor-not-allowed bg-white/10 text-white/40"
-                }`}
-              >
-                Confirm
-              </button>
-            </div>
+        <div className="shop-modal-backdrop">
+          <section className="purchase-modal" role="dialog" aria-modal="true" aria-labelledby="purchase-title">
+            <p className="portal-kicker">C-COIN CHECK</p><h2 id="purchase-title">Confirm purchase</h2>
+            <div className="confirm-list">{confirmLines.map(({ item }) => <div key={item.id}><CosmeticArt item={item} className="confirm-art" /><span>{item.name}</span><b><Coins /> {formatCoins(item.price)}</b></div>)}</div>
+            <div className="purchase-summary"><span>Total cost</span><strong>{formatCoins(confirmTotal)} C-Coins</strong><span>Current balance</span><strong>{formatCoins(balance)} C-Coins</strong><span>Remaining balance</span><strong className={canAffordConfirm ? "is-good" : "is-bad"}>{formatCoins(Math.max(0, balance - confirmTotal))} C-Coins</strong></div>
+            {!canAffordConfirm && <p className="shop-alert compact" role="alert">Insufficient C-Coins. No charge will be made.</p>}
+            <div className="modal-actions"><button type="button" className="shop-secondary-button" onClick={() => setConfirmTarget(null)}>Cancel</button><button type="button" className="shop-primary-button" disabled={!canAffordConfirm || purchaseBusy} onClick={() => void confirmPurchase()}>{purchaseBusy ? "Processing…" : "Confirm purchase"}</button></div>
           </section>
         </div>
       )}
 
-      {/* SUCCESS POPUP */}
       {purchaseSuccess && (
-        <div className="fixed inset-0 z-[100] grid place-items-center bg-navy/70 p-5 backdrop-blur-sm">
-          <section className="w-full max-w-sm rounded-2xl bg-[#151c29] p-6 text-center text-white shadow-2xl">
-            <div className="mx-auto grid size-14 place-items-center rounded-full bg-emerald-500 text-white">
-              <Check className="size-7" />
-            </div>
-            <p className="mt-4 text-xs font-black uppercase tracking-wider text-emerald-400">Purchase confirmed</p>
-            <h2 className="mt-1 text-xl font-black">
-              {purchaseSuccess.names.length > 1
-                ? `${purchaseSuccess.names.length} items added`
-                : purchaseSuccess.names[0]}
-            </h2>
-            <p className="mt-2 text-sm text-white/50">
-              {formatCoins(purchaseSuccess.spent)} C-Coins spent. New balance: {formatCoins(balance)} C-Coins.
-            </p>
-            <button
-              type="button"
-              onClick={() => setPurchaseSuccess(null)}
-              className="mt-5 w-full rounded-md bg-coral px-4 py-2.5 text-sm font-black uppercase tracking-wide text-white transition hover:opacity-90"
-            >
-              Done
-            </button>
-          </section>
+        <div className="shop-modal-backdrop">
+          <section className="purchase-modal success-modal" role="dialog" aria-modal="true" aria-labelledby="success-title"><div className="success-icon"><Check /></div><p className="portal-kicker">PURCHASE COMPLETE</p><h2 id="success-title">{purchaseSuccess.names.length > 1 ? `${purchaseSuccess.names.length} cosmetics added` : purchaseSuccess.names[0]}</h2><p>{formatCoins(purchaseSuccess.spent)} C-Coins spent. Your new balance is <strong>{formatCoins(purchaseSuccess.remaining)} C-Coins</strong>.</p><button type="button" className="shop-primary-button" onClick={() => setPurchaseSuccess(null)}>Done</button></section>
         </div>
       )}
 
-      {/* CLEAR CART CONFIRMATION */}
       {clearCartOpen && (
-        <div className="fixed inset-0 z-[110] grid place-items-center bg-navy/75 p-5 backdrop-blur-sm">
-          <section className="w-full max-w-sm rounded-2xl bg-[#151c29] p-6 text-white shadow-2xl">
-            <div className="grid size-12 place-items-center rounded-full bg-coral/15 text-coral">
-              <Trash2 className="size-6" />
-            </div>
-            <h2 className="mt-4 text-xl font-black uppercase">Clear cart?</h2>
-            <p className="mt-2 text-sm text-white/55">
-              This removes all {cartCount} item{cartCount === 1 ? "" : "s"} from your cart. Nothing will be
-              purchased and no C-Coins are spent.
-            </p>
-            <div className="mt-6 flex justify-end gap-3">
-              <button
-                type="button"
-                onClick={() => setClearCartOpen(false)}
-                className="rounded-md border border-white/15 px-4 py-2.5 text-sm font-black text-white/70 transition hover:text-white"
-              >
-                Cancel
-              </button>
-              <button
-                type="button"
-                onClick={() => {
-                  setCart([]);
-                  setClearCartOpen(false);
-                }}
-                className="rounded-md bg-coral px-4 py-2.5 text-sm font-black text-white transition hover:opacity-90"
-              >
-                Clear Cart
-              </button>
-            </div>
-          </section>
+        <div className="shop-modal-backdrop">
+          <section className="purchase-modal" role="dialog" aria-modal="true" aria-labelledby="clear-cart-title"><div className="success-icon warning"><Trash2 /></div><p className="portal-kicker">CART MANAGEMENT</p><h2 id="clear-cart-title">Clear cart?</h2><p>Remove all {cartCount} cosmetic{cartCount === 1 ? "" : "s"} without spending any C-Coins?</p><div className="modal-actions"><button type="button" className="shop-secondary-button" onClick={() => setClearCartOpen(false)}>Keep cart</button><button type="button" className="shop-primary-button" onClick={() => { setCart([]); setClearCartOpen(false); }}>Clear cart</button></div></section>
         </div>
       )}
     </div>

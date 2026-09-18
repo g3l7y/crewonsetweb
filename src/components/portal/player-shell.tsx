@@ -16,6 +16,9 @@ import {
 import { useEffect, useRef, useState } from "react";
 import { NotificationBell } from "@/components/portal/notification-bell";
 import { useDisplayTheme } from "@/components/theme/display-theme-switcher";
+import { getProfileArtwork } from "@/lib/demo/profile-art";
+import { isMockMode } from "@/lib/playfab/config";
+import { usePlayerProfile, usePlayerProgression } from "@/lib/playfab/hooks";
 
 const navigation = [
   { label: "Dashboard", href: "/portal", icon: LayoutDashboard },
@@ -31,19 +34,33 @@ export function PlayerShell({ children }: { children: React.ReactNode }) {
   const router = useRouter();
 
   const displayTheme = useDisplayTheme();
+  const portalModeClass = displayTheme === "dark" ? "portal-dark" : "portal-light";
+  const mockMode = isMockMode();
+  const { data: profile } = usePlayerProfile();
+  const { data: progression } = usePlayerProgression();
+  const accountName = profile?.displayName || profile?.username || "PLAYER";
+  const accountLevel = progression?.level ?? 1;
+  const accountAvatar = profile?.avatarUrl || getProfileArtwork(accountName);
   const [mobileOpen, setMobileOpen] = useState(false);
   const [confirmingSignOut, setConfirmingSignOut] = useState(false);
   const [accountOpen, setAccountOpen] = useState(false);
+  const [scrolled, setScrolled] = useState(false);
   const accountRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
+    const handleScroll = () => setScrolled(window.scrollY > 40);
+    handleScroll();
+    window.addEventListener("scroll", handleScroll, { passive: true });
     function onClickOutside(event: MouseEvent) {
       if (accountRef.current && !accountRef.current.contains(event.target as Node)) {
         setAccountOpen(false);
       }
     }
     document.addEventListener("mousedown", onClickOutside);
-    return () => document.removeEventListener("mousedown", onClickOutside);
+    return () => {
+      window.removeEventListener("scroll", handleScroll);
+      document.removeEventListener("mousedown", onClickOutside);
+    };
   }, []);
 
   async function signOut() {
@@ -57,9 +74,9 @@ export function PlayerShell({ children }: { children: React.ReactNode }) {
   }
 
   return (
-    <div className={`blueprint-sheet portal-theme ${displayTheme === "dark" ? "portal-dark" : ""} min-h-screen`}>
+    <div className={`blueprint-sheet portal-theme ${portalModeClass} min-h-screen`}>
       {/* TOP HEADER */}
-      <header className="sticky top-0 z-40 border-b border-[#d9d5c8] bg-[#f4f1e8] text-navy shadow-lg">
+      <header className={`player-header fixed inset-x-0 top-0 z-40 border-b text-navy shadow-lg ${scrolled ? "header-scrolled" : "header-at-top"}`}>
         <div className="mx-auto flex h-20 max-w-[1600px] items-center justify-between gap-6 px-6 sm:px-8 lg:px-10">
           {/* Logo */}
           <Link href="/portal" className="relative h-10 w-36 shrink-0 sm:w-40">
@@ -85,7 +102,7 @@ export function PlayerShell({ children }: { children: React.ReactNode }) {
                   href={item.href}
                   className={`flex items-center gap-2 whitespace-nowrap rounded-md px-3 py-2 text-xs font-bold uppercase tracking-wide transition ${
                       active
-                      ? "bg-coral text-[#fffdf7] shadow-sm hover:bg-coral"
+                      ? "bg-yellow text-[#0a0e19] shadow-sm hover:bg-yellow"
                       : "text-[#b8c4d6] hover:bg-white/10 hover:text-[#fffdf7]"
                   }`}
                 >
@@ -98,32 +115,32 @@ export function PlayerShell({ children }: { children: React.ReactNode }) {
 
           {/* Right side */}
           <div className="flex items-center gap-2 sm:gap-3">
-            <NotificationBell dark={false} />
+            <NotificationBell dark={displayTheme === "dark"} />
 
             {/* Account dropdown - desktop */}
             <div ref={accountRef} className="relative hidden md:block">
               <button
                 type="button"
                 onClick={() => setAccountOpen((v) => !v)}
-                className="flex items-center gap-3 rounded-lg border border-white/20 bg-white/10 py-2 pl-2 pr-3 text-[#fffdf7] shadow-sm transition hover:bg-white/15"
+                className="player-account-trigger flex items-center gap-3 rounded-lg border border-white/20 bg-white/10 py-2 pl-2 pr-3 text-[#fffdf7] shadow-sm transition hover:bg-white/15"
               >
                 <span className="relative size-8 shrink-0 overflow-hidden rounded-full border-2 border-yellow">
                   <Image
-                    src="/assets/hero-key-art.png"
-                    alt="Player avatar"
+                    src={accountAvatar}
+                    alt={accountName + " avatar"}
                     fill
                     className="object-cover object-[62%_45%]"
                   />
                 </span>
                 <span className="text-left leading-tight">
-                  <span className="block text-xs font-bold text-[#fffdf7]">CAMERA_PRO</span>
-                  <span className="block text-[10px] text-[#b8c4d6]">Level 27</span>
+                  <span className="player-account-name block text-xs font-bold text-[#fffdf7]">{accountName}</span>
+                  <span className="player-account-level block text-[10px] text-[#b8c4d6]">Level {accountLevel}</span>
                 </span>
                 <ChevronDown className="size-3.5 text-[#b8c4d6]" />
               </button>
 
               {accountOpen && (
-                <div className="absolute right-0 top-12 z-50 w-52 overflow-hidden rounded-lg border border-navy/10 bg-white py-1.5 text-navy shadow-2xl">
+                <div className="player-account-dropdown absolute right-0 top-12 z-50 mt-2 w-52 overflow-hidden rounded-lg border bg-white py-1.5 text-navy shadow-2xl">
                   <Link
                     href="/portal/profile"
                     onClick={() => setAccountOpen(false)}
@@ -174,7 +191,7 @@ export function PlayerShell({ children }: { children: React.ReactNode }) {
           aria-label="Close navigation"
         />
         <aside
-          className={`absolute inset-y-0 right-0 flex w-[min(20rem,88vw)] flex-col overflow-y-auto bg-charcoal text-white transition-transform duration-300 ${
+          className={`player-mobile-drawer absolute inset-y-0 right-0 flex w-[min(20rem,88vw)] flex-col overflow-y-auto bg-charcoal text-white transition-transform duration-300 ${
             mobileOpen ? "translate-x-0" : "translate-x-full"
           }`}
         >
@@ -199,15 +216,15 @@ export function PlayerShell({ children }: { children: React.ReactNode }) {
           <div className="flex items-center gap-3 border-b border-white/10 px-5 py-4">
             <span className="relative size-11 shrink-0 overflow-hidden rounded-full border-2 border-yellow">
               <Image
-                src="/assets/hero-key-art.png"
-                alt="Player avatar"
+                src={accountAvatar}
+                alt={accountName + " avatar"}
                 fill
                 className="object-cover object-[62%_45%]"
               />
             </span>
             <span>
-              <span className="block text-sm font-bold">CAMERA_PRO</span>
-              <span className="block text-xs text-white/40">Level 27</span>
+              <span className="player-account-name block text-sm font-bold">{accountName}</span>
+              <span className="player-account-level block text-xs text-white/40">Level {accountLevel}</span>
             </span>
           </div>
 
@@ -220,7 +237,7 @@ export function PlayerShell({ children }: { children: React.ReactNode }) {
                   href={item.href}
                   onClick={() => setMobileOpen(false)}
                   className={`flex items-center gap-3 rounded-md px-4 py-3 text-sm font-bold transition ${
-                    active ? "bg-coral text-[#fffdf7] shadow-sm" : "text-[#b8c4d6] hover:bg-white/[.07] hover:text-[#fffdf7]"
+                    active ? "bg-yellow text-[#0a0e19] shadow-sm" : "text-[#b8c4d6] hover:bg-white/[.07] hover:text-[#fffdf7]"
                   }`}
                 >
                   <item.icon className="size-5" />
@@ -236,7 +253,7 @@ export function PlayerShell({ children }: { children: React.ReactNode }) {
                 setMobileOpen(false);
                 setConfirmingSignOut(true);
               }}
-              className="flex w-full items-center justify-center gap-2 rounded-md border border-coral/40 px-4 py-3 text-xs font-black uppercase tracking-wide text-coral-light transition hover:bg-coral/10"
+              className="mobile-signout-button flex w-full items-center justify-center gap-2 rounded-md border border-coral/40 px-4 py-3 text-xs font-black uppercase tracking-wide text-coral-light transition hover:bg-coral/10"
             >
               <LogOut className="size-4" /> Sign Out
             </button>
@@ -245,7 +262,9 @@ export function PlayerShell({ children }: { children: React.ReactNode }) {
       </div>
 
       {/* Page Content */}
-      <main className="portal-theme blueprint-sheet min-h-[calc(100vh-64px)] text-navy">{children}</main>
+      <main className={`portal-theme blueprint-sheet ${portalModeClass} min-h-[calc(100vh-64px)] pt-20 text-navy`}>
+        {children}
+      </main>
 
       {/* FOOTER */}
       <footer className="bg-charcoal px-4 py-8 text-white/60 sm:px-6 lg:px-8">
@@ -259,14 +278,11 @@ export function PlayerShell({ children }: { children: React.ReactNode }) {
             />
           </span>
           <p className="text-center text-xs">
-            © {new Date().getFullYear()} Crew On Set! — Player Portal. All progress is demo data stored on this device.
+            © {new Date().getFullYear()} Crew On Set! — Player Portal. {mockMode ? "Demo progress is stored on this device." : "Progress is synced to PlayFab."}
           </p>
           <nav className="flex gap-4 text-xs font-bold uppercase tracking-wide">
-            <Link href="/portal/settings" className="hover:text-white">
-              Settings
-            </Link>
-            <Link href="/portal/shop" className="hover:text-white">
-              Shop
+            <Link href="/portal/settings?section=Support" className="hover:text-white">
+              Contact
             </Link>
           </nav>
         </div>
@@ -279,7 +295,7 @@ export function PlayerShell({ children }: { children: React.ReactNode }) {
             role="alertdialog"
             aria-modal="true"
             aria-labelledby="signout-title"
-            className="w-full max-w-sm rounded-lg bg-white p-6 shadow-2xl"
+            className="signout-dialog w-full max-w-sm rounded-lg bg-[#0f1626] p-6 text-[#fefdf8] shadow-2xl"
           >
             <div className="grid size-10 place-items-center rounded-md bg-coral/10 text-coral">
               <LogOut className="size-5" />
@@ -287,13 +303,13 @@ export function PlayerShell({ children }: { children: React.ReactNode }) {
             <h2 id="signout-title" className="mt-5 text-2xl font-black uppercase">
               Sign out?
             </h2>
-            <p className="mt-2 text-sm leading-relaxed text-navy/55">
+            <p className="mt-2 text-sm leading-relaxed text-[#fefdf8]">
               Are you sure you want to leave the player portal?
             </p>
             <div className="mt-6 flex justify-end gap-2">
               <button
                 onClick={() => setConfirmingSignOut(false)}
-                className="rounded-md border border-navy/15 px-4 py-2 text-sm font-bold transition hover:bg-navy/5"
+                className="rounded-md border border-[#9ca3af] bg-[#9ca3af] px-4 py-2 text-sm font-bold text-[#fefdf8] transition hover:bg-[#aeb4bd]"
               >
                 Cancel
               </button>

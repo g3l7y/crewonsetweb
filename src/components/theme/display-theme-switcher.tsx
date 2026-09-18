@@ -12,8 +12,8 @@ export function getDisplayTheme(scope: ThemeScope = "player"): DisplayTheme {
 }
 
 export function applyDisplayTheme(theme: DisplayTheme, scope: ThemeScope = "player") {
-  document.documentElement.dataset.displayTheme = theme;
-  document.documentElement.dataset.displayThemeScope = scope;
+  document.documentElement.dataset["displayTheme"] = theme;
+  document.documentElement.dataset["displayThemeScope"] = scope;
   window.localStorage.setItem(STORAGE_KEYS[scope], theme);
   window.dispatchEvent(new CustomEvent("cos:display-theme", { detail: theme }));
 }

@@ -25,16 +25,28 @@ import {
   Twitter,
   Youtube,
 } from "lucide-react";
-import { ChangeEvent, useEffect, useRef, useState } from "react";
+import { ChangeEvent, useEffect, useMemo, useRef, useState } from "react";
 import { EMAIL_ERROR, isValidEmail } from "@/lib/validation";
 import {
   formatCoins,
   formatTransactionDate,
   loadoutSlots,
-  loadoutStore,
   transactionsStore,
 } from "@/lib/demo/store";
+import { CosmeticArt } from "@/components/portal/cosmetic-art";
+import { cosmeticCatalog, ownedItemsStore } from "@/lib/demo/portal-shop";
+import { getProfileArtwork } from "@/lib/demo/profile-art";
+import { isMockMode } from "@/lib/playfab/config";
+import { usePlayerInventory, usePlayerLoadout, usePlayerProfile, usePlayerProgression, useTransactions, useUpdateProfile } from "@/lib/playfab/hooks";
 import { Coins, Lock } from "lucide-react";
+
+type ProfileTransaction = {
+  id: string;
+  label: string;
+  detail: string;
+  amount: number;
+  createdAt: string;
+};
 
 const DEMO_PASSWORD = "player";
 const PROFILE_ACCOUNT_KEY = "cos.profile.account";
@@ -60,15 +72,70 @@ function readProfileAccount(): ProfileAccount {
 }
 
 function CrewProfilePage() {
+  const mockMode = isMockMode();
   const [transactions] = transactionsStore.useStore();
-  const [loadout] = loadoutStore.useStore();
+  const [ownedIds] = ownedItemsStore.useStore();
+  const profileQuery = usePlayerProfile();
+  const progressionQuery = usePlayerProgression();
+  const inventoryQuery = usePlayerInventory();
+  const loadoutQuery = usePlayerLoadout();
+  const transactionsQuery = useTransactions();
+  const updateProfileMutation = useUpdateProfile();
 
-  const recentTransactions = [...transactions]
-    .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
-    .slice(0, 6);
+  const demoOwnedItems = cosmeticCatalog.filter((item) => ownedIds.includes(item.id));
+  const realOwnedItems = cosmeticCatalog.filter((item) =>
+    inventoryQuery.data?.some((inventoryItem) => inventoryItem.itemId === item.id)
+  );
+  const ownedItems = mockMode ? demoOwnedItems : realOwnedItems;
+
+  const demoEquippedBySlot = {
+    Head: undefined,
+    Hair: demoOwnedItems.find((item) => item.category === "Hair"),
+    Shirt: demoOwnedItems.find((item) => item.category === "Tops"),
+    Accessory: demoOwnedItems.find((item) => item.category === "Eyeglasses"),
+    Shoes: demoOwnedItems.find((item) => item.category === "Bottoms"),
+  };
+  const realLoadout = loadoutQuery.data ?? {};
+  const realEquippedBySlot = {
+    Head: realOwnedItems.find((item) => item.id === (realLoadout.Head ?? realLoadout.head)),
+    Hair: realOwnedItems.find((item) => item.id === (realLoadout.Hair ?? realLoadout.hair)),
+    Shirt: realOwnedItems.find((item) => item.id === (realLoadout.Shirt ?? realLoadout.shirt ?? realLoadout.costume)),
+    Accessory: realOwnedItems.find((item) => item.id === (realLoadout.Accessory ?? realLoadout.accessory ?? realLoadout.decorator)),
+    Shoes: realOwnedItems.find((item) => item.id === (realLoadout.Shoes ?? realLoadout.shoes ?? realLoadout.equipment)),
+  };
+  const equippedBySlot = mockMode ? demoEquippedBySlot : realEquippedBySlot;
+
+  const recentTransactions = useMemo<ProfileTransaction[]>(() => {
+    const entries = mockMode
+      ? transactions
+          .filter((transaction) =>
+            transaction.kind !== "purchase" ||
+            demoOwnedItems.some((item) => item.name === transaction.label)
+          )
+          .map((transaction) => ({
+            id: transaction.id,
+            label: transaction.label,
+            detail: transaction.detail,
+            amount: transaction.amount,
+            createdAt: transaction.createdAt,
+          }))
+      : (transactionsQuery.data ?? []).map((transaction) => ({
+          id: transaction.id,
+          label: transaction.description || "PlayFab transaction",
+          detail: transaction.type + " — " + transaction.currency,
+          amount: transaction.type === "purchase" || transaction.type === "spend"
+            ? -Math.abs(transaction.amount)
+            : Math.abs(transaction.amount),
+          createdAt: transaction.timestamp ?? transaction.date ?? new Date(0).toISOString(),
+        }));
+
+    return entries
+      .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
+      .slice(0, 6);
+  }, [demoOwnedItems, mockMode, transactions, transactionsQuery.data]);
 
   const [profileImage, setProfileImage] = useState(
-    "/assets/hero-key-art.png"
+    getProfileArtwork("CAMERA_PRO")
   );
 
   const [account, setAccount] = useState<ProfileAccount>(defaultProfileAccount);
@@ -104,8 +171,46 @@ function CrewProfilePage() {
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
-    setAccount(readProfileAccount());
-  }, []);
+    if (mockMode) {
+      setAccount(readProfileAccount());
+      return;
+    }
+
+    const profile = profileQuery.data;
+    if (!profile) return;
+
+    setAccount({
+      username: profile.displayName || profile.username || "Player",
+      email: profile.email || "",
+    });
+    setBio(profile.bio || "");
+    setTwitter(profile.socialLinks?.twitter || "");
+    setInstagram(profile.socialLinks?.instagram || "");
+    setYoutube(profile.socialLinks?.youtube || "");
+    setProfileImage(profile.avatarUrl || getProfileArtwork(profile.displayName || profile.username || "Player"));
+  }, [mockMode, profileQuery.data]);
+
+  const profileDisplayName = mockMode
+    ? account.username
+    : profileQuery.data?.displayName || profileQuery.data?.username || account.username;
+  const profileLevel = mockMode ? 27 : progressionQuery.data?.level ?? 1;
+  const profileCurrentXp = mockMode ? 6820 : progressionQuery.data?.currentXp ?? 0;
+  const profileXpToNextLevel = mockMode ? 10000 : progressionQuery.data?.xpToNextLevel ?? 0;
+  const profileXpPercent = profileXpToNextLevel > 0
+    ? Math.min(100, Math.max(0, (profileCurrentXp / profileXpToNextLevel) * 100))
+    : 0;
+  const profileJoined = mockMode
+    ? "March 14, 2025"
+    : profileQuery.data?.joinedAt
+      ? new Date(profileQuery.data.joinedAt).toLocaleDateString("en-US", {
+          month: "long",
+          day: "numeric",
+          year: "numeric",
+        })
+      : "—";
+  const profileCrewId = mockMode
+    ? "COS-2847-CP"
+    : profileQuery.data?.crewId || profileQuery.data?.playFabId || "—";
 
   const openEditor = () => {
     setDraftBio(bio);
@@ -133,30 +238,46 @@ function CrewProfilePage() {
     setEditMode(false);
   };
 
-  const applySave = () => {
-    setBio(draftBio);
-    setTwitter(draftTwitter);
-    setInstagram(draftInstagram);
-    setYoutube(draftYoutube);
-
+  const applySave = async () => {
     const nextAccount: ProfileAccount = {
       username: draftUsername.trim() || account.username,
       email: draftEmail.trim() || account.email,
     };
-    setAccount(nextAccount);
 
-    try {
-      window.localStorage.setItem(
-        PROFILE_ACCOUNT_KEY,
-        JSON.stringify(nextAccount)
-      );
-      if (draftPassword) {
-        window.localStorage.setItem("cos.profile.password", draftPassword);
+    if (!mockMode) {
+      try {
+        await updateProfileMutation.mutateAsync({
+          displayName: nextAccount.username,
+          bio: draftBio,
+          socialLinks: {
+            twitter: draftTwitter,
+            instagram: draftInstagram,
+            youtube: draftYoutube,
+          },
+        });
+      } catch {
+        setFieldError("PlayFab could not save your profile changes. Please try again.");
+        return;
       }
-    } catch {
-      /* demo storage unavailable */
+    } else {
+      try {
+        window.localStorage.setItem(
+          PROFILE_ACCOUNT_KEY,
+          JSON.stringify(nextAccount)
+        );
+        if (draftPassword) {
+          window.localStorage.setItem("cos.profile.password", draftPassword);
+        }
+      } catch {
+        /* demo storage unavailable */
+      }
     }
 
+    setBio(draftBio);
+    setTwitter(draftTwitter);
+    setInstagram(draftInstagram);
+    setYoutube(draftYoutube);
+    setAccount(nextAccount);
     setDraftPassword("");
     setDraftPasswordConfirm("");
     setEditMode(false);
@@ -178,8 +299,8 @@ function CrewProfilePage() {
       return;
     }
 
-if (!isValidEmail(draftEmail)) {
-    setFieldError(EMAIL_ERROR);
+    if (!isValidEmail(draftEmail)) {
+      setFieldError(EMAIL_ERROR);
       return;
     }
 
@@ -190,6 +311,16 @@ if (!isValidEmail(draftEmail)) {
 
     if (draftPassword && draftPassword !== draftPasswordConfirm) {
       setFieldError("New passwords do not match.");
+      return;
+    }
+
+    if (!mockMode && (draftEmail.trim() !== account.email || draftPassword.length > 0)) {
+      setFieldError("Email and password changes are managed by the PlayFab account service.");
+      return;
+    }
+
+    if (!mockMode) {
+      void applySave();
       return;
     }
 
@@ -205,18 +336,27 @@ if (!isValidEmail(draftEmail)) {
       return;
     }
 
-    applySave();
+    void applySave();
   };
 
   const confirmCredentialChange = () => {
+    if (!mockMode) {
+      setConfirmError("Credential changes are managed by the PlayFab account service.");
+      return;
+    }
+
     if (confirmPasswordInput !== DEMO_PASSWORD) {
       setConfirmError('Incorrect password. This is a demo — try "player".');
       return;
     }
-    applySave();
+    void applySave();
   };
 
   const handleImageUpload = (event: ChangeEvent<HTMLInputElement>) => {
+    if (!mockMode) {
+      setFieldError("Profile photo uploads are not connected to PlayFab yet.");
+      return;
+    }
     const file = event.target.files?.[0];
 
     if (!file) return;
@@ -231,26 +371,30 @@ if (!isValidEmail(draftEmail)) {
   };
 
   const removeProfileImage = () => {
-    setProfileImage("/assets/hero-key-art.png");
+    if (mockMode) {
+      setProfileImage(getProfileArtwork("CAMERA_PRO"));
+    } else {
+      setProfileImage(profileQuery.data?.avatarUrl || getProfileArtwork(profileDisplayName));
+    }
   };
 
   const hasSocials = twitter || instagram || youtube;
 
   return (
-    <div className="min-h-screen bg-[#0d121c] px-4 pb-12 text-white sm:px-6 lg:px-8">
-      <div className="mx-auto max-w-[1500px] pt-8 sm:pt-10">
+    <div className="portal-title-page min-h-screen bg-[#0d121c] px-4 pb-12 text-white sm:px-6 lg:px-8">
+      <div className="portal-title-container mx-auto max-w-[1500px] pt-8 sm:pt-10">
 
         {/* =========================================================
             PAGE HEADER
         ========================================================= */}
 
-        <header className="flex flex-col gap-5 sm:flex-row sm:items-end sm:justify-between">
+        <header className="portal-title-header flex flex-col gap-5 sm:flex-row sm:items-end sm:justify-between">
           <div>
-            <p className="text-xs font-black tracking-[.18em] text-coral">
+            <p className="portal-title-eyebrow text-xs font-black tracking-[.18em] text-coral">
               IDENTITY CARD
             </p>
 
-            <h1 className="mt-2 text-4xl font-black uppercase tracking-tight text-white sm:text-5xl">
+            <h1 className="portal-title-heading mt-2 text-4xl font-black uppercase tracking-tight text-white sm:text-5xl">
               Crew Profile
             </h1>
           </div>
@@ -297,7 +441,7 @@ if (!isValidEmail(draftEmail)) {
               <div className="relative size-36 shrink-0 overflow-hidden rounded-full border-[6px] border-yellow bg-[#0d121c] shadow-2xl shadow-black/30">
                 <Image
                   src={profileImage}
-                  alt="Player avatar"
+                  alt={profileDisplayName + " avatar"}
                   fill
                   unoptimized={profileImage.startsWith("blob:")}
                   className="object-cover object-[62%_45%]"
@@ -310,11 +454,11 @@ if (!isValidEmail(draftEmail)) {
 
                 <div className="flex flex-wrap items-center gap-3">
                   <h2 className="text-4xl font-black uppercase tracking-tight text-white">
-                    {account.username}
+                    {profileDisplayName}
                   </h2>
 
                   <span className="rounded-full border border-yellow/20 bg-yellow/10 px-3 py-1.5 text-xs font-black uppercase tracking-[0.12em] text-yellow">
-                    Level 27
+                    Level {profileLevel}
                   </span>
                 </div>
 
@@ -322,15 +466,15 @@ if (!isValidEmail(draftEmail)) {
 
                 <div className="mt-5 flex max-w-xl items-center gap-3">
                   <strong className="whitespace-nowrap text-xs font-black text-white">
-                    LEVEL 27
+                    LEVEL {profileLevel}
                   </strong>
 
                   <div className="h-2 flex-1 overflow-hidden rounded-full bg-white/10">
-                    <div className="h-full w-[68%] rounded-full bg-coral" />
+                    <div className="h-full rounded-full bg-coral" style={{ width: profileXpPercent + "%" }} />
                   </div>
 
                   <span className="whitespace-nowrap text-xs text-white/40">
-                    6,820 / 10,000 XP
+                    {profileCurrentXp.toLocaleString("en-US")} / {profileXpToNextLevel.toLocaleString("en-US")} XP
                   </span>
                 </div>
               </div>
@@ -362,7 +506,7 @@ if (!isValidEmail(draftEmail)) {
                 </span>
 
                 <strong className="mt-1.5 block text-sm text-white/80">
-                  March 14, 2025
+                  {profileJoined}
                 </strong>
               </div>
 
@@ -372,7 +516,7 @@ if (!isValidEmail(draftEmail)) {
                 </span>
 
                 <strong className="mt-1.5 block text-sm text-white/80">
-                  COS-2847-CP
+                  {profileCrewId}
                 </strong>
               </div>
             </div>
@@ -437,7 +581,7 @@ if (!isValidEmail(draftEmail)) {
               EQUIPPED LOADOUT
           ======================================================= */}
 
-          <div className="border-t border-white/[0.07] p-6 sm:p-8 lg:p-10">
+          <div className="loadout-surface border-t border-white/[0.07] p-6 sm:p-8 lg:p-10">
 
             <div className="flex items-center justify-between gap-4">
 
@@ -461,7 +605,7 @@ if (!isValidEmail(draftEmail)) {
 
             <div className="mt-5 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
               {loadoutSlots.map((slot) => {
-                const piece = loadout.find((item) => item.slot === slot);
+                const piece = equippedBySlot[slot];
 
                 return (
                   <div
@@ -473,29 +617,14 @@ if (!isValidEmail(draftEmail)) {
                     </span>
 
                     <div className="mt-3 flex flex-col items-center gap-2">
-                      {piece?.itemName ? (
+                      {piece ? (
                         <>
-                          {piece.image ? (
-                            <div className="relative size-14 overflow-hidden rounded-full border border-white/10 bg-[#0d121c]">
-                              <Image
-                                src={piece.image}
-                                alt={piece.itemName}
-                                fill
-                                className="object-cover"
-                              />
-                            </div>
-                          ) : (
-                            <div
-                              className={`grid size-14 place-items-center rounded-full bg-gradient-to-br text-sm font-black text-white ${
-                                piece.gradient ?? "from-white/20 to-white/5"
-                              }`}
-                            >
-                              {piece.initials}
-                            </div>
-                          )}
+                          <div className="size-14 overflow-hidden rounded-full border border-white/10 bg-[#0d121c]">
+                            <CosmeticArt item={piece} className="size-full" />
+                          </div>
 
                           <p className="truncate text-xs font-bold text-white">
-                            {piece.itemName}
+                            {piece.name}
                           </p>
                         </>
                       ) : (
@@ -521,7 +650,7 @@ if (!isValidEmail(draftEmail)) {
             RECENT TRANSACTIONS (PRIVATE — OWNER ONLY)
         ========================================================= */}
 
-        <section className="mt-7 overflow-hidden rounded-2xl border border-white/[0.07] bg-[#151c29] shadow-2xl shadow-black/20">
+        <section className="transactions-surface mt-7 overflow-hidden rounded-2xl border border-white/[0.07] bg-[#151c29] shadow-2xl shadow-black/20">
           <div className="p-6 sm:p-8 lg:p-10">
             <div className="flex flex-wrap items-center justify-between gap-4">
               <div>
@@ -677,7 +806,7 @@ if (!isValidEmail(draftEmail)) {
                   <div className="relative size-24 shrink-0 overflow-hidden rounded-full border-4 border-yellow bg-[#0d121c] shadow-xl">
                     <Image
                       src={profileImage}
-                      alt="Profile preview"
+                      alt={profileDisplayName + " profile preview"}
                       fill
                       unoptimized={profileImage.startsWith("blob:")}
                       className="object-cover object-[62%_45%]"

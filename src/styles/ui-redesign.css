@@ -1,0 +1,3494 @@
+/*
+ * CREW ON SET! - UI REDESIGN PASS
+ * Presentation only. This layer keeps data, auth, routes, and demo behavior
+ * in their existing components while applying the approved visual system.
+ */
+
+:root {
+  --cos-page: #fefaef;
+  --cos-card: #f0ede4;
+  --cos-ink: #0a0e19;
+  --cos-light: #fefdf8;
+  --cos-nav: #252525;
+  --cos-gold: #fbbf24;
+  --cos-coral: #f0573d;
+  --cos-green: #47870d;
+  --cos-dark-card: #0f1626;
+  --cos-shadow: 6px 6px 0 var(--cos-ink);
+  --cos-shadow-soft: 6px 6px 0 rgba(10, 14, 25, .18);
+}
+
+html,
+body {
+  background: var(--cos-page);
+  color: var(--cos-ink);
+}
+
+body { min-width: 320px; }
+
+:where(a, button, input, select, textarea):focus-visible {
+  outline: 3px solid var(--cos-gold) !important;
+  outline-offset: 3px;
+}
+
+/* PUBLIC SHELL */
+.marketing-theme,
+.marketing-theme main {
+  background: var(--cos-page) !important;
+  color: var(--cos-ink) !important;
+}
+
+.marketing-theme > header.header-at-top {
+  background: transparent !important;
+  box-shadow: none !important;
+}
+
+.marketing-theme > header.header-scrolled {
+  background: var(--cos-nav) !important;
+  border-bottom: 1px solid var(--cos-gold) !important;
+  box-shadow: 0 5px 0 rgba(10, 14, 25, .2) !important;
+}
+
+.marketing-theme > header .nav-link,
+.marketing-theme > header.header-at-top .nav-link,
+.marketing-theme > header.header-scrolled .nav-link {
+  color: var(--cos-light) !important;
+}
+
+.marketing-theme > header .nav-link:hover,
+.marketing-theme > header .nav-link[aria-current="page"] {
+  color: var(--cos-gold) !important;
+}
+
+.marketing-theme > header .nav-link::after { background: var(--cos-gold) !important; }
+
+.marketing-theme > header > div > button,
+.marketing-theme > header > nav {
+  color: var(--cos-light) !important;
+}
+
+.marketing-theme > header > nav {
+  border-color: rgba(254, 253, 248, .2) !important;
+  background: var(--cos-nav) !important;
+}
+
+.marketing-theme > footer,
+.marketing-theme > footer > div {
+  background: var(--cos-nav) !important;
+  color: var(--cos-light) !important;
+}
+
+.marketing-theme > footer [class*="border-white"] {
+  border-color: rgba(254, 253, 248, .18) !important;
+}
+
+.marketing-theme > footer a { color: rgba(254, 253, 248, .72) !important; }
+.marketing-theme > footer a:hover,
+.marketing-theme > footer a[aria-current="page"] { color: var(--cos-gold) !important; }
+.marketing-theme > footer p { color: var(--cos-light) !important; }
+
+.marketing-theme :where(.cta-primary, .story-button, .team-button, .contact-button) {
+  border: 3px solid var(--cos-ink) !important;
+  border-radius: 10px !important;
+  box-shadow: var(--cos-shadow) !important;
+  font-weight: 900 !important;
+  text-transform: uppercase;
+}
+
+.marketing-theme .cta-primary {
+  background: var(--cos-coral) !important;
+  color: var(--cos-light) !important;
+}
+
+.marketing-theme .cta-primary .cta-text { color: var(--cos-light) !important; }
+.marketing-theme .cta-primary .cta-icon { background: var(--cos-gold) !important; }
+.marketing-theme .cta-primary .cta-icon svg { stroke: var(--cos-ink) !important; }
+
+.marketing-theme :where(.cta-primary, .story-button, .team-button, .contact-button):hover {
+  background: var(--cos-gold) !important;
+  color: var(--cos-ink) !important;
+  box-shadow: 8px 8px 0 var(--cos-ink) !important;
+  transform: translate(-2px, -2px);
+}
+
+.marketing-theme .story-button,
+.marketing-theme .team-button {
+  background: var(--cos-ink) !important;
+  color: var(--cos-light) !important;
+}
+
+.marketing-theme .contact-button {
+  background: var(--cos-gold) !important;
+  color: var(--cos-ink) !important;
+}
+
+.marketing-theme .image-frame {
+  border: 3px solid var(--cos-ink) !important;
+  border-radius: 10px !important;
+  background: var(--cos-card) !important;
+  box-shadow: var(--cos-shadow-soft) !important;
+}
+
+.marketing-theme .frame-label {
+  border: 2px solid var(--cos-ink);
+  border-radius: 6px;
+  background: var(--cos-gold) !important;
+  color: var(--cos-ink) !important;
+  box-shadow: 3px 3px 0 var(--cos-ink);
+}
+
+.marketing-theme .form-label {
+  color: var(--cos-ink) !important;
+  font-size: .75rem !important;
+  font-weight: 900 !important;
+  letter-spacing: .12em;
+  text-transform: uppercase;
+}
+
+.marketing-theme .form-input {
+  min-height: 3rem;
+  border: 2px solid var(--cos-ink) !important;
+  border-radius: 9px !important;
+  background: var(--cos-card) !important;
+  color: var(--cos-ink) !important;
+  box-shadow: inset 0 0 0 1px rgba(254, 253, 248, .7);
+}
+
+.marketing-theme .form-input::placeholder { color: rgba(10, 14, 25, .5) !important; }
+.marketing-theme .form-input:focus {
+  border-color: var(--cos-coral) !important;
+  box-shadow: 0 0 0 4px rgba(240, 87, 61, .18) !important;
+}
+
+/* HOME */
+.marketing-theme .home-hero,
+.marketing-theme section.bg-navy.text-white:not(#story) {
+  background: var(--cos-ink) !important;
+  color: var(--cos-light) !important;
+}
+
+.marketing-theme .home-hero .hero-camera-image img {
+  filter: saturate(.88) contrast(1.05) brightness(.58) !important;
+}
+
+.marketing-theme .home-hero .hero-overlay {
+  background:
+    linear-gradient(90deg, rgba(10, 14, 25, .94), rgba(10, 14, 25, .62) 52%, rgba(10, 14, 25, .18)),
+    linear-gradient(0deg, rgba(10, 14, 25, .88), transparent 55%) !important;
+}
+
+.marketing-theme #story {
+  background: var(--cos-page) !important;
+  color: var(--cos-ink) !important;
+}
+
+.marketing-theme #story :where(.text-white, .section-title) { color: var(--cos-ink) !important; }
+.marketing-theme #story [class*="text-white/"] { color: rgba(10, 14, 25, .72) !important; }
+.marketing-theme #story [class*="border-white/"] { border-color: rgba(10, 14, 25, .2) !important; }
+.marketing-theme #story .image-frame { background: var(--cos-card) !important; }
+
+.marketing-theme .story-journey:has(.story-filmstrip) {
+  background: var(--cos-ink) !important;
+  color: var(--cos-light) !important;
+}
+
+.marketing-theme .story-journey:has(.story-note) {
+  background: var(--cos-page) !important;
+  color: var(--cos-ink) !important;
+}
+
+.marketing-theme .story-journey:has(.story-filmstrip) .journey-heading h2,
+.marketing-theme .story-journey:has(.story-filmstrip) .story-eyebrow {
+  color: var(--cos-light) !important;
+}
+
+.marketing-theme .story-filmstrip {
+  border-top: 18px solid var(--cos-nav) !important;
+  border-bottom: 18px solid var(--cos-nav) !important;
+  background: var(--cos-nav) !important;
+  box-shadow: 0 20px 0 rgba(10, 14, 25, .5) !important;
+}
+
+.marketing-theme .story-filmstrip .film-holes {
+  height: 12px;
+  background: repeating-linear-gradient(90deg, var(--cos-ink) 0 18px, transparent 18px 34px) !important;
+}
+
+.marketing-theme .story-chapters { gap: 18px !important; }
+
+.marketing-theme .story-chapter {
+  border: 3px solid var(--cos-gold) !important;
+  border-radius: 10px;
+  background: var(--cos-card) !important;
+  color: var(--cos-ink) !important;
+  box-shadow: 6px 6px 0 var(--cos-gold) !important;
+}
+
+.marketing-theme .chapter-image {
+  height: 205px;
+  padding: 14px 22px 0;
+  background: var(--cos-card) !important;
+}
+
+.marketing-theme .chapter-image img {
+  object-fit: contain !important;
+  object-position: center bottom !important;
+  filter: saturate(.9) contrast(1.06) brightness(.9) !important;
+}
+
+.marketing-theme .chapter-image-overlay {
+  background: linear-gradient(180deg, transparent 55%, rgba(10, 14, 25, .18)) !important;
+}
+
+.marketing-theme .chapter-content {
+  min-height: 185px;
+  border-top: 3px solid var(--cos-ink) !important;
+  background: var(--cos-card) !important;
+}
+
+.marketing-theme .chapter-content :where(h3, p, .chapter-kicker),
+.marketing-theme .chapter-number { color: var(--cos-ink) !important; }
+
+.marketing-theme .chapter-number {
+  border: 2px solid var(--cos-ink) !important;
+  background: var(--cos-gold) !important;
+}
+
+.marketing-theme .story-note {
+  border: 3px solid var(--cos-ink) !important;
+  border-radius: 10px;
+  background: var(--cos-card) !important;
+  color: var(--cos-ink) !important;
+  box-shadow: var(--cos-shadow) !important;
+}
+
+.marketing-theme .roles-section,
+.marketing-theme .team-section {
+  background: var(--cos-page) !important;
+  color: var(--cos-ink) !important;
+}
+
+.marketing-theme .roles-section .section-title,
+.marketing-theme .roles-section :where(.text-navy\/65, p),
+.marketing-theme .team-section :where(.text-navy\/70, p) { color: var(--cos-ink) !important; }
+
+.marketing-theme .roles-section .role-card {
+  min-height: 0;
+  border: 3px solid var(--cos-ink) !important;
+  border-radius: 10px !important;
+  background: var(--cos-card) !important;
+  color: var(--cos-ink) !important;
+  box-shadow: var(--cos-shadow) !important;
+}
+
+.marketing-theme .roles-section .role-image {
+  height: 245px;
+  border-bottom: 3px solid var(--cos-ink) !important;
+  background: var(--cos-card);
+}
+
+.marketing-theme .roles-section .role-image img {
+  object-fit: contain !important;
+  object-position: center bottom !important;
+}
+
+.marketing-theme .roles-section .role-card :where(h3, p) { color: var(--cos-ink) !important; }
+.marketing-theme .roles-section .story-button {
+  border-color: var(--cos-gold) !important;
+  box-shadow: 6px 6px 0 var(--cos-gold) !important;
+}
+.marketing-theme .roles-section .story-button:hover { box-shadow: 8px 8px 0 var(--cos-gold) !important; }
+
+.marketing-theme .team-section .image-frame { background: var(--cos-card) !important; }
+.marketing-theme .team-section .image-frame img {
+  object-fit: contain !important;
+  object-position: center !important;
+}
+
+.marketing-theme .contact-section {
+  background: var(--cos-ink) !important;
+  color: var(--cos-light) !important;
+}
+.marketing-theme .contact-section :where(h2, p) { color: var(--cos-light) !important; }
+
+/* FEATURES */
+.features-almanac {
+  background: var(--cos-page) !important;
+  color: var(--cos-ink) !important;
+}
+
+.features-almanac .story-hero {
+  min-height: 740px;
+  background: var(--cos-ink) !important;
+}
+
+.features-almanac .story-hero-bg img {
+  opacity: .7 !important;
+  filter: saturate(.78) contrast(1.05) brightness(.55) !important;
+}
+
+.features-almanac .story-hero-overlay {
+  background:
+    linear-gradient(90deg, rgba(10, 14, 25, .78), rgba(10, 14, 25, .28) 70%, rgba(10, 14, 25, .65)),
+    linear-gradient(0deg, rgba(10, 14, 25, .55), transparent 60%) !important;
+}
+
+.features-almanac .story-hero-content { padding-top: 76px !important; }
+
+.features-almanac .story-camera-frame {
+  min-height: 500px;
+  border-color: rgba(254, 253, 248, .44) !important;
+}
+
+.features-almanac .story-hero-copy,
+.features-almanac .story-hero-copy h1,
+.features-almanac .story-hero-description { color: var(--cos-light) !important; }
+
+.features-almanac .story-hero-copy h1 { text-shadow: 4px 4px 0 rgba(10, 14, 25, .72); }
+
+.features-almanac .story-timeline,
+.features-almanac .almanac-hero,
+.features-almanac .almanac-details-section,
+.features-almanac .almanac-reference-section {
+  background: var(--cos-page) !important;
+  color: var(--cos-ink) !important;
+}
+
+.features-almanac .almanac-hero { display: none; }
+
+.features-almanac .story-timeline :where(h2, h3, p),
+.features-almanac .almanac-reference-heading :where(h2, p),
+.features-almanac .almanac-details-heading :where(h2, p) { color: var(--cos-ink) !important; }
+
+.features-almanac .timeline-line { background: var(--cos-ink) !important; opacity: .2; }
+
+.features-almanac .timeline-number {
+  border: 3px solid var(--cos-ink) !important;
+  background: var(--cos-card) !important;
+  color: var(--cos-coral) !important;
+  box-shadow: 4px 4px 0 var(--cos-gold);
+}
+
+.features-almanac .timeline-arrow,
+.features-almanac .story-eyebrow.gold { color: var(--cos-coral) !important; }
+
+.features-almanac .almanac-selector-section {
+  border-block: 3px solid var(--cos-gold) !important;
+  background: var(--cos-ink) !important;
+  color: var(--cos-light) !important;
+}
+
+.features-almanac .almanac-role-selector {
+  max-width: 760px;
+  border: 3px solid var(--cos-light) !important;
+  border-radius: 10px;
+  background: var(--cos-dark-card) !important;
+}
+
+.features-almanac .almanac-role-button {
+  color: rgba(254, 253, 248, .72) !important;
+  border-color: rgba(254, 253, 248, .2) !important;
+}
+
+.features-almanac .almanac-role-button:hover,
+.features-almanac .almanac-role-button.active {
+  background: var(--cos-dark-card) !important;
+  color: var(--cos-gold) !important;
+}
+
+.features-almanac .almanac-role-active-line { background: var(--cos-gold) !important; }
+
+.features-almanac .almanac-details-box,
+.features-almanac .almanac-info-card,
+.features-almanac .almanac-quote-card,
+.features-almanac .almanac-reference-grid {
+  border: 3px solid var(--cos-ink) !important;
+  border-radius: 10px !important;
+  background: var(--cos-ink) !important;
+  color: var(--cos-light) !important;
+  box-shadow: var(--cos-shadow-soft) !important;
+}
+
+.features-almanac .almanac-role-image {
+  border: 3px solid var(--cos-light) !important;
+  border-radius: 8px;
+  background: var(--cos-dark-card) !important;
+}
+
+.features-almanac .almanac-role-image img {
+  object-fit: contain !important;
+  object-position: center bottom !important;
+}
+
+.features-almanac .almanac-details-box :where(h2, h3, p, span),
+.features-almanac .almanac-info-card :where(h2, h3, p, span),
+.features-almanac .almanac-reference-grid :where(h2, h3, p, span) { color: var(--cos-light) !important; }
+
+.features-almanac .almanac-details-box [class*="color-"],
+.features-almanac .almanac-info-card [class*="color-"],
+.features-almanac .almanac-reference-grid [class*="color-"] { color: var(--cos-gold) !important; }
+
+.features-almanac .almanac-quote-card {
+  background: var(--cos-gold) !important;
+  color: var(--cos-ink) !important;
+}
+
+.features-almanac .almanac-quote-card p,
+.features-almanac .almanac-quote-card p span { color: var(--cos-ink) !important; }
+
+/* DOWNLOAD + CONTACT */
+.marketing-theme .download-page,
+.marketing-theme .download-page > section {
+  background: var(--cos-ink) !important;
+  color: var(--cos-light) !important;
+}
+
+.marketing-theme .download-page .download-hero,
+.marketing-theme .contact-page .page-hero,
+.marketing-theme .page-hero { background: var(--cos-ink) !important; }
+
+.marketing-theme .download-page .download-hero > img,
+.marketing-theme .page-hero > img {
+  opacity: .26 !important;
+  filter: saturate(.8) contrast(1.05) brightness(.55) !important;
+}
+
+.marketing-theme .download-page :where(h1, h2, h3, p, td, th, li),
+.marketing-theme .contact-page .page-hero :where(h1, p) { color: var(--cos-light) !important; }
+
+.marketing-theme .download-page [class*="border-white/"] {
+  border-color: rgba(254, 253, 248, .22) !important;
+}
+
+.marketing-theme .contact-page,
+.marketing-theme .contact-page > section {
+  background: var(--cos-ink) !important;
+  color: var(--cos-light) !important;
+}
+
+.marketing-theme .contact-page > section > div > aside > :where(h2, p) { color: var(--cos-light) !important; }
+
+.marketing-theme .contact-page aside a,
+.marketing-theme .contact-page form,
+.marketing-theme .contact-page form > div,
+.marketing-theme .contact-page form > section {
+  background: var(--cos-page) !important;
+  color: var(--cos-ink) !important;
+  border-color: var(--cos-ink) !important;
+}
+
+.marketing-theme .contact-page aside a :where(p, span),
+.marketing-theme .contact-page form :where(h2, p, span) { color: var(--cos-ink) !important; }
+.marketing-theme .contact-page .form-input { background: var(--cos-card) !important; }
+
+.marketing-theme .contact-page button[type="submit"] {
+  background: var(--cos-gold) !important;
+  color: var(--cos-ink) !important;
+  border: 3px solid var(--cos-ink) !important;
+  box-shadow: var(--cos-shadow) !important;
+}
+
+/* TEAM */
+.marketing-theme .team-page { background: var(--cos-page) !important; color: var(--cos-ink) !important; }
+.marketing-theme .team-page .team-hero {
+  background: var(--cos-ink) !important;
+  color: var(--cos-light) !important;
+}
+
+.marketing-theme .team-page :where(.journey-section, .crew-section, .behind-section, .tools-section) {
+  background: var(--cos-page) !important;
+  color: var(--cos-ink) !important;
+}
+
+.marketing-theme .team-page .crew-profile,
+.marketing-theme .team-page .tools-box {
+  border: 3px solid var(--cos-ink) !important;
+  border-radius: 10px !important;
+  background: var(--cos-ink) !important;
+  color: var(--cos-light) !important;
+  box-shadow: var(--cos-shadow) !important;
+}
+
+.marketing-theme .team-page .crew-profile :where(h2, h3, p, span),
+.marketing-theme .team-page .tools-box :where(h2, h3, p, span) { color: var(--cos-light) !important; }
+
+.marketing-theme .team-page .hero-photo,
+.marketing-theme .team-page .behind-photo {
+  border-color: var(--cos-ink) !important;
+  background: var(--cos-card) !important;
+}
+
+.marketing-theme .team-page .behind-photo img,
+.marketing-theme .team-page .crew-profile-image > img {
+  object-fit: contain !important;
+  object-position: center bottom !important;
+}
+
+/* LOGIN + SIGNUP */
+.crew-access-page {
+  background: var(--cos-ink) !important;
+  color: var(--cos-light) !important;
+}
+
+.crew-access-page > img {
+  opacity: .16 !important;
+  filter: saturate(.78) brightness(.58) !important;
+}
+
+.crew-access-page > div.absolute {
+  background: linear-gradient(100deg, rgba(10, 14, 25, .96), rgba(37, 37, 37, .78)) !important;
+}
+
+.crew-access-page section {
+  border: 3px solid var(--cos-ink) !important;
+  border-radius: 10px !important;
+  background: var(--cos-page) !important;
+  color: var(--cos-ink) !important;
+  box-shadow: var(--cos-shadow) !important;
+}
+
+.crew-access-page .form-input { background: var(--cos-card) !important; }
+.crew-access-page :where(.form-label, .text-navy, [class*="text-navy/"]) { color: var(--cos-ink) !important; }
+.crew-access-page .text-coral { color: var(--cos-coral) !important; }
+
+/* PLAYER PORTAL - LIGHT DEFAULT / DARK OPTIONAL */
+.portal-theme {
+  --portal-bg: var(--cos-page);
+  --portal-card: var(--cos-card);
+  --portal-ink: var(--cos-ink);
+  --portal-muted: rgba(10, 14, 25, .68);
+  --portal-line: rgba(10, 14, 25, .32);
+  --portal-shadow: var(--cos-shadow-soft);
+  background: var(--portal-bg) !important;
+  color: var(--portal-ink) !important;
+}
+
+.portal-theme.portal-dark {
+  --portal-bg: var(--cos-ink);
+  --portal-card: var(--cos-dark-card);
+  --portal-ink: var(--cos-light);
+  --portal-muted: rgba(254, 253, 248, .72);
+  --portal-line: rgba(254, 253, 248, .46);
+  --portal-shadow: 6px 6px 0 rgba(254, 253, 248, .22);
+  background: var(--portal-bg) !important;
+  color: var(--portal-ink) !important;
+}
+
+.portal-theme > main,
+.portal-theme .portal-page,
+.portal-theme .portal-shop-page,
+.portal-theme .almanac-page {
+  background: var(--portal-bg) !important;
+  color: var(--portal-ink) !important;
+}
+
+.portal-theme :where(.portal-card, .profile-surface, .portal-panel, .shop-card, .leaderboard-card, table) {
+  border: 2px solid var(--portal-line) !important;
+  border-radius: 12px !important;
+  background: var(--portal-card) !important;
+  color: var(--portal-ink) !important;
+  box-shadow: var(--portal-shadow) !important;
+}
+
+.portal-theme :where([class*="bg-[#151c29"], [class*="bg-[#121d32"], [class*="bg-[#1b2433"], [class*="bg-[#111c30"]) {
+  border-color: var(--portal-line) !important;
+  background: var(--portal-card) !important;
+  color: var(--portal-ink) !important;
+}
+
+.portal-theme :where([class*="bg-[#0d121c"], [class*="bg-[#0b1426"], [class*="bg-[#101923"]) {
+  background: var(--portal-bg) !important;
+  color: var(--portal-ink) !important;
+}
+
+.portal-theme :where(.text-navy, [class*="text-navy/"]) { color: var(--portal-ink) !important; }
+.portal-theme :where(.text-white, [class*="text-white/"]) { color: var(--portal-ink) !important; }
+.portal-theme :where(.text-coral, [class*="text-coral"]) { color: var(--cos-coral) !important; }
+.portal-theme :where(.text-yellow, [class*="text-yellow"]) { color: var(--cos-gold) !important; }
+
+.portal-theme :where(input, select, textarea) {
+  border: 2px solid var(--portal-line) !important;
+  border-radius: 9px !important;
+  background: var(--portal-card) !important;
+  color: var(--portal-ink) !important;
+}
+
+.portal-theme :where(input, select, textarea)::placeholder { color: var(--portal-muted) !important; }
+.portal-theme :where(input, select, textarea):focus {
+  border-color: var(--cos-coral) !important;
+  box-shadow: 0 0 0 4px rgba(240, 87, 61, .18) !important;
+}
+
+/* Media-backed panels remain dark and keep light copy in both themes. */
+.portal-theme .on-dark,
+.portal-theme .on-dark :where([class*="bg-[#0"], [class*="bg-[#1"], [class*="bg-[#2"]) {
+  background-color: var(--cos-ink) !important;
+  color: var(--cos-light) !important;
+}
+
+/* PORTAL LIGHT MODE FEATURE PANELS: the shared page-level sections that use
+   the legacy panel treatment get a consistent dark-navy surface, rounded
+   edge, and offset border shadow. Inner cards keep the light card palette. */
+.portal-theme:not(.portal-dark) .portal-page > div > section {
+  border: 2px solid #0a0e19 !important;
+  border-color: #0a0e19 !important;
+  border-radius: 12px !important;
+  background-color: #0a0e19 !important;
+  color: #fefdf8 !important;
+  box-shadow: 7px 7px 0 #fbbf24 !important;
+}
+
+/* Add a small inner buffer where the shared panel has no existing padding
+   utility, keeping its contents from crowding the navy outline. Panels that
+   already declare their own padding retain that spacing. */
+.portal-theme:not(.portal-dark) .portal-page > div > section:not([class*="p-"]) {
+  padding: 8px !important;
+}
+
+/* BADGES PANEL: this light-mode card uses the requested paper surface with
+   a navy outline and offset shadow. Its copy changes to navy for contrast,
+   while the coral and gold highlights remain part of the palette. */
+.portal-theme:not(.portal-dark) .badges-panel {
+  border: 2px solid #0a0e19 !important;
+  border-color: #0a0e19 !important;
+  border-radius: 12px !important;
+  background-color: #f0ede4 !important;
+  color: #0a0e19 !important;
+  box-shadow: 5px 5px 0 #0a0e19 !important;
+}
+
+.portal-theme:not(.portal-dark) .badges-panel :where(
+  .text-white,
+  [class*="text-white/"],
+  .text-navy,
+  [class*="text-navy/"]
+) {
+  color: #0a0e19 !important;
+}
+
+.portal-theme:not(.portal-dark) .badges-panel :where(
+  .text-coral,
+  [class*="text-coral"]
+) {
+  color: #f0573d !important;
+}
+
+.portal-theme:not(.portal-dark) .badges-panel :where(
+  .text-yellow,
+  [class*="text-yellow"]
+) {
+  color: #fbbf24 !important;
+}
+
+.portal-theme:not(.portal-dark) .badges-panel :where(
+  .text-green,
+  [class*="text-green"],
+  .text-emerald-300,
+  .text-emerald-400,
+  .text-emerald-600
+) {
+  color: #47870d !important;
+}
+
+/* PROFILE CARD SPLIT: in light mode, profile information and equipped
+   loadout become two distinct cards instead of sharing one outer shell. */
+.portal-theme:not(.portal-dark) .profile-surface {
+  display: grid !important;
+  gap: 28px !important;
+  overflow: visible !important;
+  border: 0 !important;
+  border-radius: 0 !important;
+  background: transparent !important;
+  box-shadow: none !important;
+}
+
+.portal-theme:not(.portal-dark) .profile-surface > .profile-info,
+.portal-theme:not(.portal-dark) .profile-surface > .loadout-surface,
+.portal-theme:not(.portal-dark) .transactions-surface {
+  border: 2px solid #0a0e19 !important;
+  border-color: #0a0e19 !important;
+  border-radius: 12px !important;
+  background-color: #f0ede4 !important;
+  color: #0a0e19 !important;
+  box-shadow: 5px 5px 0 #0a0e19 !important;
+}
+
+.portal-theme:not(.portal-dark) .profile-surface > .loadout-surface {
+  border-top: 2px solid #0a0e19 !important;
+}
+
+.portal-theme:not(.portal-dark) :is(
+  .profile-surface > .profile-info,
+  .profile-surface > .loadout-surface,
+  .transactions-surface
+) :where(
+  .text-white,
+  [class*="text-white/"],
+  .text-navy,
+  [class*="text-navy/"]
+) {
+  color: #0a0e19 !important;
+}
+
+.portal-theme:not(.portal-dark) :is(
+  .profile-surface > .profile-info,
+  .profile-surface > .loadout-surface,
+  .transactions-surface
+) :where(
+  .text-coral,
+  [class*="text-coral"]
+) {
+  color: #f0573d !important;
+}
+
+.portal-theme:not(.portal-dark) :is(
+  .profile-surface > .profile-info,
+  .profile-surface > .loadout-surface,
+  .transactions-surface
+) :where(
+  .text-yellow,
+  [class*="text-yellow"]
+) {
+  color: #fbbf24 !important;
+}
+
+.portal-theme:not(.portal-dark) :is(
+  .profile-surface > .profile-info,
+  .profile-surface > .loadout-surface,
+  .transactions-surface
+) :where(
+  .text-green,
+  [class*="text-green"],
+  .text-emerald-300,
+  .text-emerald-400,
+  .text-emerald-600
+) {
+  color: #47870d !important;
+}
+
+.portal-theme:not(.portal-dark) .portal-page > div > section > div:first-child :where(
+  h1,
+  h2,
+  h3,
+  h4,
+  p,
+  span,
+  strong,
+  a
+) {
+  color: #fefdf8 !important;
+}
+
+.portal-theme:not(.portal-dark) .portal-page > div > section > div:first-child :where(
+  .text-coral,
+  [class*="text-coral"]
+) {
+  color: var(--cos-coral) !important;
+}
+
+.portal-theme:not(.portal-dark) .portal-page > div > section > div:first-child :where(
+  .text-yellow,
+  [class*="text-yellow"]
+) {
+  color: var(--cos-gold) !important;
+}
+
+.portal-theme .on-dark :where(.text-white, [class*="text-white/"], .text-navy, [class*="text-navy/"]) {
+  color: var(--cos-light) !important;
+}
+
+.portal-theme .profile-info {
+  border: 3px solid var(--portal-line) !important;
+  border-radius: 12px !important;
+  background: var(--portal-card) !important;
+  color: var(--portal-ink) !important;
+  box-shadow: var(--portal-shadow) !important;
+}
+
+/* Player header: transparent at the top, charcoal with a gold rule on scroll. */
+.portal-theme .player-header.header-at-top {
+  background: transparent !important;
+  border-color: transparent !important;
+  border-bottom: 3px solid var(--cos-gold) !important;
+  box-shadow: none !important;
+}
+
+.portal-theme .player-header.header-at-top nav a:not(.bg-yellow),
+.portal-theme .player-header.header-at-top button { color: var(--cos-ink) !important; }
+
+.portal-theme.portal-dark .player-header.header-at-top nav a:not(.bg-yellow),
+.portal-theme.portal-dark .player-header.header-at-top button { color: var(--cos-light) !important; }
+
+.portal-theme .player-header.header-scrolled {
+  background: var(--cos-nav) !important;
+  border-bottom: 3px solid var(--cos-gold) !important;
+  color: var(--cos-light) !important;
+  box-shadow: 0 5px 0 rgba(10, 14, 25, .2) !important;
+}
+
+.portal-theme .player-header.header-scrolled :where(nav a:not(.bg-yellow), button, .text-navy, [class*="text-navy/"]) {
+  color: var(--cos-light) !important;
+}
+
+.portal-theme .player-header nav a.bg-yellow,
+.portal-theme .player-header button.bg-yellow {
+  border: 2px solid var(--cos-ink) !important;
+  border-radius: 8px !important;
+  background: var(--cos-gold) !important;
+  color: var(--cos-ink) !important;
+  box-shadow: 3px 3px 0 var(--cos-ink);
+}
+
+.portal-theme .player-header [role="menu"] {
+  border: 2px solid var(--cos-ink) !important;
+  border-radius: 10px !important;
+  background: var(--cos-card) !important;
+  color: var(--cos-ink) !important;
+}
+
+.portal-theme.portal-dark .player-header [role="menu"] {
+  border-color: var(--cos-light) !important;
+  background: var(--cos-dark-card) !important;
+  color: var(--cos-light) !important;
+}
+
+.portal-theme .portal-button,
+.portal-theme :where(.portal-page, .portal-shop-page) :where(a.bg-coral, button.bg-coral) {
+  border: 2px solid var(--cos-ink) !important;
+  border-radius: 9px !important;
+  background: var(--cos-coral) !important;
+  color: var(--cos-light) !important;
+  box-shadow: 4px 4px 0 var(--cos-ink);
+}
+
+.portal-theme .portal-button:hover,
+.portal-theme :where(.portal-page, .portal-shop-page) :where(a.bg-coral, button.bg-coral):hover {
+  background: var(--cos-gold) !important;
+  color: var(--cos-ink) !important;
+  transform: translate(-1px, -1px);
+}
+
+.portal-theme footer {
+  background: var(--cos-nav) !important;
+  color: var(--cos-light) !important;
+}
+
+.portal-theme footer :where(p, a, span) { color: rgba(254, 253, 248, .8) !important; }
+.portal-theme footer a:hover { color: var(--cos-gold) !important; }
+
+/* SHOP */
+.portal-theme .shop-art-button,
+.portal-theme .modal-art { background: var(--cos-card) !important; }
+
+.portal-theme .shop-primary-button,
+.portal-theme .shop-secondary-button,
+.portal-theme .coin-pack-card button {
+  min-height: 2.7rem;
+  border: 2px solid var(--cos-ink) !important;
+  border-radius: 8px !important;
+  box-shadow: 3px 3px 0 var(--cos-ink);
+  font-weight: 900;
+}
+
+.portal-theme .shop-primary-button { background: var(--cos-coral) !important; color: var(--cos-light) !important; }
+
+.portal-theme .shop-secondary-button,
+.portal-theme .shop-category-list button.active,
+.portal-theme .shop-tabs button.active,
+.portal-theme .coin-pack-card button {
+  background: var(--cos-gold) !important;
+  color: var(--cos-ink) !important;
+}
+
+.portal-theme .shop-secondary-button:hover,
+.portal-theme .shop-primary-button:hover,
+.portal-theme .coin-pack-card button:hover { transform: translate(-1px, -1px); }
+
+.portal-theme .coin-pack-card {
+  display: flex;
+  flex-direction: column;
+}
+
+.portal-theme .coin-pack-card button {
+  margin-top: auto !important;
+}
+
+.portal-theme .change-password-button {
+  box-shadow: 6px 6px 0 #fbbf24 !important;
+}
+
+.portal-theme .preference-row {
+  box-shadow: 6px 6px 0 #fbbf24 !important;
+}
+
+/* Add breathing room between the shared preference cards without changing
+   their existing padding, outline, shadow, or theme colors. */
+.portal-theme .preference-row:not(:last-child) {
+  margin-bottom: .5rem !important;
+}
+
+.portal-theme .report-card {
+  box-shadow: 8px 8px 0 #fbbf24 !important;
+}
+
+.portal-theme .settings-nav-item-active {
+  border: 2px solid #0a0e19 !important;
+  border-radius: 14px !important;
+  background: #fbbf24 !important;
+  color: #0a0e19 !important;
+  box-shadow: 6px 6px 0 #f0573d !important;
+}
+
+.portal-theme .settings-nav-item-active svg {
+  color: #0a0e19 !important;
+  stroke: #0a0e19 !important;
+}
+
+.portal-theme .shop-tabs,
+.portal-theme .shop-category-list button,
+.portal-theme .shop-search input,
+.portal-theme .coin-balance,
+.portal-theme .shop-cart-button {
+  border: 2px solid var(--portal-line) !important;
+  border-radius: 9px !important;
+  background: var(--portal-card) !important;
+  color: var(--portal-ink) !important;
+}
+
+.portal-theme .cosmetic-art svg {
+  display: block;
+  filter: drop-shadow(3px 3px 0 rgba(10, 14, 25, .12));
+}
+
+.portal-theme .owned-item-art {
+  width: 100%;
+}
+
+/* ADMIN CONTROL ROOM */
+.admin-theme {
+  --admin-bg: var(--cos-ink);
+  --admin-card: var(--cos-dark-card);
+  --admin-surface: #151c29;
+  --admin-ink: var(--cos-light);
+  --admin-muted: rgba(254, 253, 248, .66);
+  --admin-line: rgba(254, 253, 248, .24);
+  background: var(--admin-bg) !important;
+  color: var(--admin-ink) !important;
+}
+
+.admin-theme.admin-light {
+  --admin-bg: var(--cos-page);
+  --admin-card: var(--cos-card);
+  --admin-surface: var(--cos-card);
+  --admin-ink: var(--cos-ink);
+  --admin-muted: rgba(10, 14, 25, .68);
+  --admin-line: rgba(10, 14, 25, .28);
+}
+
+.admin-theme > aside,
+.admin-theme > header,
+.admin-theme aside.bg-navy,
+.admin-theme header.bg-navy {
+  background: var(--cos-nav) !important;
+  color: var(--cos-light) !important;
+}
+
+.admin-theme > aside,
+.admin-theme aside.bg-navy {
+  border-right: 1px solid var(--cos-gold);
+}
+
+/* Keep the admin sidebar neutral gray in light mode, matching the dark-mode rail. */
+.admin-theme.admin-light > aside,
+.admin-theme.admin-light aside.bg-navy {
+  background: #252525 !important;
+  background-color: #252525 !important;
+  color: var(--cos-light) !important;
+}
+.admin-theme.admin-light > aside nav a:not(.admin-nav-active),
+.admin-theme.admin-light aside.bg-navy nav a:not(.admin-nav-active) {
+  color: rgba(236, 238, 241, .72) !important;
+}
+.admin-theme.admin-light aside :where(.text-white, [class*="text-white/"]) {
+  color: rgba(236, 238, 241, .72) !important;
+}
+.admin-theme.admin-light aside :where(.text-yellow, [class*="text-yellow"]) {
+  color: var(--cos-gold) !important;
+}
+
+.admin-theme main,
+.admin-theme main > div:last-child,
+.admin-theme [class*="admin-page"] {
+  background: var(--admin-bg) !important;
+  color: var(--admin-ink) !important;
+}
+
+.admin-theme :where(.admin-card, .admin-panel, .admin-stat-card, .admin-table, table) {
+  border: 2px solid var(--admin-line) !important;
+  border-radius: 12px !important;
+  background: var(--admin-card) !important;
+  color: var(--admin-ink) !important;
+  box-shadow: 6px 6px 0 rgba(0, 0, 0, .24) !important;
+}
+
+.admin-theme :where([class*="bg-[#111827"], [class*="bg-[#151c29"], [class*="bg-[#1f2126"], [class*="bg-[#1a1b1e"]) {
+  background: var(--admin-card) !important;
+  color: var(--admin-ink) !important;
+}
+
+.admin-theme :where(.text-white, [class*="text-white/"]) { color: var(--admin-ink) !important; }
+.admin-theme :where(.text-coral, [class*="text-coral"]) { color: var(--cos-coral) !important; }
+.admin-theme :where(.text-yellow, [class*="text-yellow"]) { color: var(--cos-gold) !important; }
+.admin-theme :where(input, select, textarea) {
+  border: 2px solid var(--admin-line) !important;
+  border-radius: 8px !important;
+  background: var(--admin-surface) !important;
+  color: var(--admin-ink) !important;
+}
+.admin-theme :where(input, select, textarea)::placeholder { color: var(--admin-muted) !important; }
+.admin-theme :where(th, td) { border-color: var(--admin-line) !important; }
+
+.admin-theme nav a:not(.bg-coral) { color: rgba(254, 253, 248, .74) !important; }
+.admin-theme nav a:not(.bg-coral):hover { color: var(--cos-light) !important; background: rgba(254, 253, 248, .08) !important; }
+.admin-theme nav a.admin-nav-active {
+  border: 2px solid var(--cos-ink) !important;
+  border-radius: 14px !important;
+  background: var(--cos-gold) !important;
+  color: var(--cos-ink) !important;
+  box-shadow: 4px 4px 0 var(--cos-ink) !important;
+}
+.admin-theme nav a.admin-nav-active :where(svg, span) { color: var(--cos-ink) !important; }
+.admin-theme.admin-light nav a.admin-nav-active {
+  border: 2px solid var(--cos-ink) !important;
+  border-radius: 14px !important;
+  background: var(--cos-gold) !important;
+  color: var(--cos-ink) !important;
+  box-shadow: 4px 4px 0 var(--cos-ink) !important;
+}
+.admin-theme.admin-light nav a.admin-nav-active :where(svg, span) { color: var(--cos-ink) !important; }
+.admin-theme .admin-notification-bar {
+  background: var(--cos-ink) !important;
+  border-bottom: 1px solid rgba(254, 253, 248, .06) !important;
+  color: var(--cos-light) !important;
+}
+.admin-theme.admin-light .admin-notification-bar {
+  background: var(--cos-ink) !important;
+  border-bottom: 1px solid rgba(254, 253, 248, .06) !important;
+  color: var(--cos-light) !important;
+}
+.admin-theme .admin-notification-trigger {
+  border: 1px solid var(--cos-gold) !important;
+  background: transparent !important;
+  color: var(--cos-gold) !important;
+}
+.admin-theme .admin-notification-trigger:hover {
+  border-color: var(--cos-gold) !important;
+  background: rgba(251, 191, 36, .12) !important;
+  color: var(--cos-gold) !important;
+}
+.admin-theme .admin-notification-trigger svg {
+  color: inherit !important;
+}
+.admin-theme.admin-light .admin-notification-trigger {
+  border: 1px solid var(--cos-gold) !important;
+  background: transparent !important;
+  color: var(--cos-gold) !important;
+}
+.admin-theme.admin-light .admin-notification-trigger:hover {
+  border-color: var(--cos-gold) !important;
+  background: rgba(251, 191, 36, .12) !important;
+  color: var(--cos-gold) !important;
+}
+.admin-theme.admin-light .admin-notification-trigger svg {
+  color: inherit !important;
+}
+.admin-theme .sidebar-toggle {
+  color: var(--cos-gold) !important;
+  border: 1px solid var(--cos-gold) !important;
+  background: transparent !important;
+}
+.admin-theme .sidebar-toggle:hover { background: rgba(251, 191, 36, .12) !important; color: var(--cos-gold) !important; }
+.admin-theme .sidebar-toggle svg { color: inherit !important; }
+.admin-theme.admin-light aside .sidebar-toggle,
+.admin-theme.admin-light aside .sidebar-toggle svg {
+  color: var(--cos-gold) !important;
+}
+.admin-theme .admin-profile-menu {
+  border: 2px solid var(--cos-gold) !important;
+  border-radius: 10px !important;
+  background: var(--cos-dark-card) !important;
+  color: var(--cos-light) !important;
+  box-shadow: 6px 6px 0 rgba(0, 0, 0, .34) !important;
+}
+.admin-theme .admin-profile-menu :where(a, button) { color: var(--cos-light) !important; }
+.admin-theme .admin-profile-menu :where(a, button):hover {
+  background: rgba(251, 191, 36, .14) !important;
+  color: var(--cos-gold) !important;
+}
+.admin-theme.admin-light .admin-profile-menu { background: var(--cos-dark-card) !important; color: var(--cos-light) !important; }
+.admin-theme.admin-light .admin-profile-menu,
+.admin-theme.admin-light .admin-profile-menu :where(p, span, button, a, svg),
+.admin-theme.admin-light .admin-profile-summary :where(p, span) {
+  color: #fefdf8 !important;
+}
+
+/* RESPONSIVE GUARDRAILS */
+@media (max-width: 900px) {
+  .features-almanac .story-hero-copy h1 { font-size: clamp(2.35rem, 8vw, 4.5rem); }
+  .features-almanac .story-camera-frame { min-height: 430px; }
+  .story-filmstrip { padding-inline: 1rem; }
+}
+
+@media (max-width: 640px) {
+  .marketing-theme .cta-primary,
+  .marketing-theme .cta-secondary { width: 100%; justify-content: center; }
+  .story-filmstrip .story-chapter { grid-template-columns: 1fr; }
+  .story-filmstrip .story-chapter:nth-child(even) .story-chapter-art { order: 0; }
+  .features-almanac .story-camera-frame { min-height: 390px; padding-top: 52px; }
+  .features-almanac .story-hero-copy { padding: 1.25rem; }
+  .portal-theme .player-header { padding-inline: 1rem; }
+}
+
+/* MAKE THE SHOT: near-black section with a restrained warm-white card. */
+.marketing-theme .story-journey:has(.story-note) {
+  background: #0a0e19 !important;
+  color: #fefdf8 !important;
+}
+
+.marketing-theme .story-note {
+  background: #fefdf8 !important;
+  color: #0a0e19 !important;
+}
+
+.marketing-theme .story-note .note-main { color: #0a0e19 !important; }
+.marketing-theme .story-note .note-signature { color: #f0573d !important; }
+
+/* CHAPTER CARDS: match the film-strip reference with rails and perforations. */
+.marketing-theme .story-chapter {
+  position: relative;
+  border-radius: 0 !important;
+  border-color: #fbbf24 !important;
+  box-shadow: 6px 6px 0 #fbbf24 !important;
+}
+
+.marketing-theme .story-chapter::before,
+.marketing-theme .story-chapter::after {
+  content: "";
+  position: absolute;
+  left: 3px;
+  right: 3px;
+  z-index: 5;
+  height: 31px;
+  pointer-events: none;
+  background-color: #0a0e19;
+  background-image:
+    repeating-linear-gradient(90deg, #fbbf24 0 8px, #0a0e19 8px 22px, #fbbf24 22px 32px),
+    linear-gradient(#fbbf24, #fbbf24),
+    radial-gradient(circle at 4px 50%, #fbbf24 0 3px, transparent 3.5px);
+  background-position:
+    0 0,
+    0 10px,
+    0 19px;
+  background-size:
+    100% 10px,
+    100% 3px,
+    24px 8px;
+  background-repeat: repeat-x, no-repeat, repeat-x;
+}
+
+.marketing-theme .story-chapter::before { top: 3px; }
+.marketing-theme .story-chapter::after {
+  bottom: 3px;
+  transform: rotate(180deg);
+}
+
+.marketing-theme .story-chapter .chapter-number {
+  z-index: 6;
+}
+
+/* HOME HERO CTA: make the download affordance feel like one illustrated button. */
+.marketing-theme .home-hero .cta-primary {
+  gap: 1rem;
+  padding: 0.68rem 0.78rem 0.68rem 1.35rem;
+}
+
+.marketing-theme .home-hero .cta-primary .cta-icon {
+  width: 2.55rem;
+  height: 2.55rem;
+  border: 2px solid #0a0e19 !important;
+  border-radius: 999px !important;
+  background: #fefdf8 !important;
+  box-shadow: 2px 2px 0 #0a0e19;
+  transform: rotate(-4deg);
+  transition: transform 160ms ease, background-color 160ms ease, color 160ms ease;
+}
+
+.marketing-theme .home-hero .cta-primary .cta-icon svg {
+  width: 1.2rem;
+  height: 1.2rem;
+  stroke: #0a0e19 !important;
+  stroke-width: 2.5;
+}
+
+.marketing-theme .home-hero .cta-primary:hover .cta-icon {
+  background: #0a0e19 !important;
+  box-shadow: 2px 2px 0 #fefdf8;
+  transform: rotate(0deg) scale(1.05);
+}
+
+.marketing-theme .home-hero .cta-primary:hover .cta-icon svg {
+  stroke: #fefdf8 !important;
+}
+
+/* Keep the download page CTA in the same visual system as the home CTA. */
+.marketing-theme .download-page .cta-primary {
+  gap: 1rem;
+  padding: 0.68rem 0.78rem 0.68rem 1.35rem;
+}
+
+.marketing-theme .download-page .cta-primary .cta-icon {
+  width: 2.55rem;
+  height: 2.55rem;
+  border: 2px solid #0a0e19 !important;
+  border-radius: 999px !important;
+  background: #fefdf8 !important;
+  box-shadow: 2px 2px 0 #0a0e19;
+  transform: rotate(-4deg);
+  transition: transform 160ms ease, background-color 160ms ease, color 160ms ease;
+}
+
+.marketing-theme .download-page .cta-primary .cta-icon svg {
+  width: 1.2rem;
+  height: 1.2rem;
+  stroke: #0a0e19 !important;
+  stroke-width: 2.5;
+}
+
+.marketing-theme .download-page .cta-primary:hover .cta-icon {
+  background: #0a0e19 !important;
+  box-shadow: 2px 2px 0 #fefdf8;
+  transform: rotate(0deg) scale(1.05);
+}
+
+.marketing-theme .download-page .cta-primary:hover .cta-icon svg {
+  stroke: #fefdf8 !important;
+}
+
+/* FEATURES ROLE SELECTOR: keep the selector self-contained without full-width rules. */
+.features-almanac .almanac-selector-section {
+  border-block: 0 !important;
+  background: #fefaef !important;
+}
+
+.features-almanac .almanac-role-selector {
+  border-color: var(--cos-gold) !important;
+}
+
+/* TEAM PAGE BACKDROP: apply the requested page color without changing card surfaces. */
+.marketing-theme .team-page,
+.marketing-theme .team-page :where(.journey-section, .crew-section, .behind-section, .tools-section) {
+  background-color: #fefaef !important;
+}
+
+/* FEATURES ROLE SELECTOR: remove the remaining full-width navbar rules on this page. */
+.marketing-theme:has(.features-almanac) > header.header-scrolled,
+.marketing-theme:has(.features-almanac) > header.header-at-top {
+  border-bottom: 0 !important;
+}
+
+.marketing-theme:has(.features-almanac) > header.header-scrolled,
+.marketing-theme:has(.features-almanac) > header.header-at-top {
+  box-shadow: none !important;
+}
+
+.marketing-theme:has(.features-almanac) > header > .border-b {
+  border-bottom-color: transparent !important;
+}
+
+/* CONTACT HERO: lift the copy while leaving the artwork and hero height untouched. */
+.marketing-theme .contact-page .page-hero > div:last-child {
+  transform: translateY(-4.25rem);
+}
+
+@media (max-width: 640px) {
+  .marketing-theme .contact-page .page-hero > div:last-child {
+    transform: translateY(-2.5rem);
+  }
+}
+
+/* TEAM PAGE BACKDROP: direct section rules keep every light page area uniform. */
+.marketing-theme .team-page,
+.marketing-theme .team-page > .journey-section,
+.marketing-theme .team-page > .crew-section,
+.marketing-theme .team-page > .behind-section,
+.marketing-theme .team-page > .tools-section {
+  background: #fefaef !important;
+}
+
+/* CONTACT COPY: give the studio headline more breathing room. */
+.marketing-theme .contact-page > section > div > aside > h2 {
+  margin-bottom: 2rem;
+  line-height: 1.08 !important;
+  letter-spacing: -0.015em !important;
+}
+
+/* PARTNERSHIP FORM: keep the B2B badge readable on its navy background. */
+.marketing-theme .contact-page form > div:first-child > span.bg-navy {
+  color: #fefdf8 !important;
+}
+
+/* CHAPTER FILM STRIP: keep the reference perforation pattern on the outer rail, not on card artwork. */
+.marketing-theme .story-chapter::before,
+.marketing-theme .story-chapter::after {
+  content: none !important;
+  display: none !important;
+}
+
+.marketing-theme .story-filmstrip::before,
+.marketing-theme .story-filmstrip::after {
+  content: none !important;
+  display: none !important;
+}
+
+.marketing-theme .story-filmstrip .film-holes {
+  left: 0;
+  right: 0;
+  z-index: 3;
+  height: 33px !important;
+  opacity: 1 !important;
+  background:
+    radial-gradient(circle at 4px 50%, #fbbf24 0 3px, transparent 3.5px) 0 21px / 24px 8px repeat-x,
+    linear-gradient(#fbbf24, #fbbf24) 0 10px / 100% 3px no-repeat,
+    repeating-linear-gradient(90deg, #fbbf24 0 8px, #0a0e19 8px 22px, #fbbf24 22px 32px) 0 0 / 32px 10px repeat-x,
+    #252525 !important;
+}
+
+.marketing-theme .story-filmstrip .film-holes-top { top: -15px; }
+.marketing-theme .story-filmstrip .film-holes-bottom {
+  bottom: -15px;
+  transform: rotate(180deg);
+}
+
+/* CHAPTER CARDS: reduce the yellow overload while keeping each card clearly framed. */
+.marketing-theme .story-chapter {
+  border: 2px solid #0a0e19 !important;
+  box-shadow: 4px 4px 0 #0a0e19 !important;
+}
+
+/* TEAM CTA: warm-white button face with readable navy copy and the existing dark offset. */
+.marketing-theme .team-section .team-button {
+  border-color: #fefdf8 !important;
+  background: #fefdf8 !important;
+  color: #0a0e19 !important;
+  box-shadow: 6px 6px 0 #0a0e19 !important;
+}
+
+.marketing-theme .team-section .team-button svg {
+  color: #0a0e19 !important;
+}
+
+/* BUTTON CONTRAST: define the team CTA edge and the contact CTA's warm offset. */
+.marketing-theme .team-section .team-button {
+  border-color: #0a0e19 !important;
+}
+
+.marketing-theme .contact-button {
+  box-shadow: 8px 5px 0 var(--cos-coral) !important;
+}
+
+.marketing-theme .contact-button:hover {
+  box-shadow: 10px 7px 0 var(--cos-coral) !important;
+}
+
+/* TOOLS SECTION: use the requested navy page field and warm-white card shadow. */
+.marketing-theme .team-page > .tools-section {
+  background: #0a0e19 !important;
+}
+
+.marketing-theme .team-page .tools-box {
+  box-shadow: 6px 6px 0 #fefaef !important;
+}
+
+/* ADMIN LIGHT CONTENT PALETTE: keep the sidebar and notification bar dark,
+   while every page rendered inside the admin content area uses the requested
+   warm paper, card, ink, and highlight colors. */
+.admin-theme.admin-light {
+  --admin-bg: #fefaef !important;
+  --admin-card: #f0ede4 !important;
+  --admin-surface: #f0ede4 !important;
+  --admin-ink: #0a0e19 !important;
+  --admin-muted: rgba(10, 14, 25, .68) !important;
+  --admin-line: #0a0e19 !important;
+  --control-bg: #fefaef !important;
+  --control-surface: #f0ede4 !important;
+  --control-surface-2: #f0ede4 !important;
+  --control-line: #0a0e19 !important;
+  --control-ink: #0a0e19 !important;
+  --control-muted: rgba(10, 14, 25, .68) !important;
+  --control-line-soft: rgba(10, 14, 25, .18) !important;
+  --control-tooltip-shadow: 0 12px 30px rgba(10, 14, 25, .18) !important;
+  --control-active-dot: #0a0e19 !important;
+}
+
+.admin-theme.admin-light main {
+  background-color: #fefaef !important;
+  color: #0a0e19 !important;
+}
+
+.admin-theme.admin-light main > :not(.admin-notification-bar) {
+  background-color: #fefaef !important;
+  color: #0a0e19 !important;
+}
+
+/* Legacy dark page fields become the requested warm paper. */
+.admin-theme.admin-light main > :not(.admin-notification-bar) :where(
+  [class*="bg-[#101923]"],
+  [class*="bg-[#090e12]"],
+  [class*="bg-[#0d1217]"],
+  [class*="bg-[#0d121b]"],
+  [class*="bg-[#0d141d]"]
+) {
+  background-color: #fefaef !important;
+}
+
+/* Every admin card/panel/table surface uses the requested card color and ink outline. */
+.admin-theme.admin-light main > :not(.admin-notification-bar) :where(
+  .admin-card,
+  .admin-panel,
+  .admin-stat-card,
+  .admin-dashboard-stat,
+  .admin-dashboard-card,
+  .admin-table-wrap,
+  [class*="bg-[#111827]"],
+  [class*="bg-[#182330]"],
+  [class*="bg-[#141e29]"],
+  [class*="bg-[#151c21]"],
+  [class*="bg-[#151c28]"],
+  [class*="bg-[#171f23]"],
+  [class*="bg-[#1c2636]"],
+  [class*="bg-[#1c2836]"],
+  [class*="bg-[#1d2a38]"],
+  [class*="bg-[#202a3a]"],
+  [class*="bg-[#222b31]"],
+  [class*="bg-[#243241]"],
+  [class*="bg-[#263635]"],
+  [class*="bg-[#1f2126]"],
+  [class*="bg-[#1a1b1e]"]
+) {
+  background-color: #f0ede4 !important;
+  border-color: #0a0e19 !important;
+  color: #0a0e19 !important;
+}
+
+.admin-theme.admin-light main > :not(.admin-notification-bar) :where(
+  [class*="border-white"],
+  [class*="border-navy"]
+) {
+  border-color: #0a0e19 !important;
+}
+
+.admin-theme.admin-light main > :not(.admin-notification-bar) :where(
+  input,
+  select,
+  textarea
+) {
+  background-color: #f0ede4 !important;
+  border-color: #0a0e19 !important;
+  color: #0a0e19 !important;
+}
+
+.admin-theme.admin-light main > :not(.admin-notification-bar) :where(option) {
+  background-color: #f0ede4 !important;
+  color: #0a0e19 !important;
+}
+
+.admin-theme.admin-light main > :not(.admin-notification-bar) :where(
+  [class*="text-white"],
+  [class*="text-navy"],
+  [class*="text-[#eceef1"],
+  [class*="text-[#f4f6f8"],
+  [class*="text-[#f1f2ef"],
+  [class*="text-[#ffffff"]
+) {
+  color: #0a0e19 !important;
+}
+
+.admin-theme.admin-light main > :not(.admin-notification-bar) :where(
+  [class*="text-white/"],
+  [class*="text-navy/"],
+  .admin-kicker
+) {
+  color: rgba(10, 14, 25, .68) !important;
+}
+
+/* Keep all admin highlights inside the requested coral, gold, and green palette. */
+.admin-theme.admin-light main > :not(.admin-notification-bar) :where(
+  .text-coral,
+  [class*="text-coral"],
+  [class*="text-[#ff6248"],
+  [class*="text-[#e5533b"],
+  [class*="text-[#ff9a8a"],
+  [class*="text-[#ff7663"]
+) {
+  color: #f0573d !important;
+}
+
+.admin-theme.admin-light main > :not(.admin-notification-bar) :where(
+  .text-yellow,
+  [class*="text-yellow"],
+  [class*="text-[#fbbf24"],
+  [class*="text-[#f3c747"],
+  [class*="text-[#d9a514"],
+  [class*="text-[#e6b62b"],
+  [class*="text-[#f5b82e"],
+  [class*="text-[#f5c431"]
+) {
+  color: #fbbf24 !important;
+}
+
+.admin-theme.admin-light main > :not(.admin-notification-bar) :where(
+  .text-green,
+  [class*="text-green"],
+  [class*="text-[#47870d"],
+  [class*="text-[#4bc4b4"],
+  [class*="text-[#a894ff"],
+  [class*="text-[#7fb6ff"],
+  [class*="text-[#6cd6a3"],
+  [class*="text-[#7cb0ee"]
+) {
+  color: #47870d !important;
+}
+
+.admin-theme.admin-light main > :not(.admin-notification-bar) :where(
+  button.bg-coral,
+  a.bg-coral,
+  button[class*="bg-[#ff6248"],
+  a[class*="bg-[#ff6248"]],
+  button[class*="bg-[#e5533b"],
+  a[class*="bg-[#e5533b"]]
+) {
+  background-color: #f0573d !important;
+  border-color: #0a0e19 !important;
+  color: #0a0e19 !important;
+}
+
+.admin-theme.admin-light main > :not(.admin-notification-bar) :where(
+  button.bg-yellow,
+  a.bg-yellow,
+  button[class*="bg-[#d9a514"],
+  a[class*="bg-[#d9a514"]],
+  button[class*="bg-[#e6b62b"],
+  a[class*="bg-[#e6b62b"]]
+) {
+  background-color: #fbbf24 !important;
+  border-color: #0a0e19 !important;
+  color: #0a0e19 !important;
+}
+
+.admin-theme.admin-light main > :not(.admin-notification-bar) :where(
+  [class*="bg-[#2d9d8f]"],
+  [class*="bg-[#43b581]"],
+  [class*="bg-[#39b7a5]"]
+):not([class*="/20"]):not([class*="/15"]):not([class*="/10"]) {
+  background-color: #47870d !important;
+  color: #fefaef !important;
+}
+
+/* Force the content text pass into the utilities layer so legacy !text-white
+   classes cannot wash out the requested light-mode ink color. */
+@layer utilities {
+  .admin-theme.admin-light main > :not(.admin-notification-bar),
+  .admin-theme.admin-light main > :not(.admin-notification-bar) :where(
+    h1,
+    h2,
+    h3,
+    h4,
+    h5,
+    h6,
+    p,
+    span,
+    a,
+    button,
+    label,
+    small,
+    strong,
+    em,
+    dt,
+    dd,
+    th,
+    td,
+    li,
+    [class*="text-white"],
+    [class*="text-navy"],
+    [class*="text-[#eceef1"],
+    [class*="text-[#f4f6f8"],
+    [class*="text-[#f1f2ef"],
+    [class*="text-[#ffffff"]
+  ) {
+    color: #0a0e19 !important;
+  }
+
+  .admin-theme.admin-light main > :not(.admin-notification-bar) :where(
+    input,
+    select,
+    textarea,
+    option
+  ) {
+    color: #0a0e19 !important;
+  }
+
+  .admin-theme.admin-light main > :not(.admin-notification-bar) :where(
+    [class*="border-white"],
+    [class*="border-navy"]
+  ) {
+    border-color: #0a0e19 !important;
+  }
+
+  .admin-theme.admin-light main > :not(.admin-notification-bar) :where(
+    .recharts-text,
+    .recharts-cartesian-axis-tick-value,
+    svg text
+  ) {
+    fill: #0a0e19 !important;
+    color: #0a0e19 !important;
+  }
+
+  .admin-theme.admin-light main > :not(.admin-notification-bar) :where(
+    .text-coral,
+    [class*="text-coral"],
+    [class*="text-[#ff6248"],
+    [class*="text-[#e5533b"],
+    [class*="text-[#ff9a8a"],
+    [class*="text-[#ff7663"]
+  ) {
+    color: #f0573d !important;
+  }
+
+  .admin-theme.admin-light main > :not(.admin-notification-bar) :where(
+    .text-yellow,
+    [class*="text-yellow"],
+    [class*="text-[#fbbf24"],
+    [class*="text-[#f3c747"],
+    [class*="text-[#d9a514"],
+    [class*="text-[#e6b62b"],
+    [class*="text-[#f5b82e"],
+    [class*="text-[#f5c431"]
+  ) {
+    color: #fbbf24 !important;
+  }
+
+  .admin-theme.admin-light main > :not(.admin-notification-bar) :where(
+    .text-green,
+    [class*="text-green"],
+    [class*="text-[#47870d"],
+    [class*="text-[#4bc4b4"],
+    [class*="text-[#a894ff"],
+    [class*="text-[#7fb6ff"],
+    [class*="text-[#6cd6a3"],
+    [class*="text-[#7cb0ee"]
+  ) {
+    color: #47870d !important;
+  }
+}
+
+/* ADMIN CARD FIT: keep panels and their contents inside the admin content
+   column at desktop, tablet, and mobile widths. */
+.admin-theme main > :not(.admin-notification-bar),
+.admin-theme main > :not(.admin-notification-bar) > * {
+  min-width: 0;
+  max-width: 100%;
+  box-sizing: border-box;
+}
+
+.admin-theme main > :not(.admin-notification-bar) :where(
+  .admin-card,
+  .admin-panel,
+  .admin-stat-card,
+  .admin-dashboard-stat,
+  .admin-dashboard-card,
+  article[class*="bg-"],
+  section[class*="bg-"],
+  div[class*="rounded-lg"][class*="bg-"],
+  div[class*="rounded-xl"][class*="bg-"],
+  div[class*="rounded-2xl"][class*="bg-"]
+) {
+  min-width: 0;
+  max-width: 100%;
+  box-sizing: border-box;
+}
+
+.admin-theme main > :not(.admin-notification-bar) :where(
+  .admin-card,
+  .admin-panel,
+  .admin-stat-card,
+  .admin-dashboard-stat,
+  .admin-dashboard-card,
+  article[class*="bg-"],
+  section[class*="bg-"],
+  div[class*="rounded-lg"][class*="bg-"],
+  div[class*="rounded-xl"][class*="bg-"],
+  div[class*="rounded-2xl"][class*="bg-"]
+):not(.admin-table-wrap) {
+  padding: clamp(.75rem, 1.25vw, 1.25rem) !important;
+}
+
+.admin-theme main > :not(.admin-notification-bar) :where(
+  .admin-card,
+  .admin-panel,
+  .admin-stat-card,
+  .admin-dashboard-stat,
+  .admin-dashboard-card,
+  article[class*="bg-"],
+  section[class*="bg-"],
+  div[class*="rounded-lg"][class*="bg-"],
+  div[class*="rounded-xl"][class*="bg-"],
+  div[class*="rounded-2xl"][class*="bg-"]
+) :where(
+  [class*="text-3xl"],
+  [class*="text-2xl"]
+) {
+  max-width: 100%;
+  overflow-wrap: anywhere;
+  line-height: 1.1 !important;
+}
+
+.admin-theme main > :not(.admin-notification-bar) :where(
+  .admin-card,
+  .admin-panel,
+  .admin-stat-card,
+  .admin-dashboard-stat,
+  .admin-dashboard-card,
+  article[class*="bg-"],
+  section[class*="bg-"],
+  div[class*="rounded-lg"][class*="bg-"],
+  div[class*="rounded-xl"][class*="bg-"],
+  div[class*="rounded-2xl"][class*="bg-"]
+) :where([class*="text-3xl"]) {
+  font-size: clamp(1.2rem, 1.8vw, 1.6rem) !important;
+}
+
+.admin-theme main > :not(.admin-notification-bar) :where(
+  .admin-card,
+  .admin-panel,
+  .admin-stat-card,
+  .admin-dashboard-stat,
+  .admin-dashboard-card,
+  article[class*="bg-"],
+  section[class*="bg-"],
+  div[class*="rounded-lg"][class*="bg-"],
+  div[class*="rounded-xl"][class*="bg-"],
+  div[class*="rounded-2xl"][class*="bg-"]
+) :where([class*="text-2xl"]) {
+  font-size: clamp(1.1rem, 1.55vw, 1.4rem) !important;
+}
+
+.admin-theme main > :not(.admin-notification-bar) :where(
+  .admin-card,
+  .admin-panel,
+  .admin-stat-card,
+  .admin-dashboard-stat,
+  .admin-dashboard-card,
+  article[class*="bg-"],
+  section[class*="bg-"],
+  div[class*="rounded-lg"][class*="bg-"],
+  div[class*="rounded-xl"][class*="bg-"],
+  div[class*="rounded-2xl"][class*="bg-"]
+) :where([class*="text-xl"], [class*="text-lg"]) {
+  font-size: clamp(1rem, 1.25vw, 1.15rem) !important;
+}
+
+.admin-theme main > :not(.admin-notification-bar) :where(
+  .admin-card,
+  .admin-panel,
+  .admin-stat-card,
+  .admin-dashboard-stat,
+  .admin-dashboard-card,
+  article[class*="bg-"],
+  section[class*="bg-"],
+  div[class*="rounded-lg"][class*="bg-"],
+  div[class*="rounded-xl"][class*="bg-"],
+  div[class*="rounded-2xl"][class*="bg-"]
+) :where(p, h1, h2, h3, h4, h5, h6, span, a, button, label, time) {
+  min-width: 0;
+  max-width: 100%;
+  overflow-wrap: anywhere;
+}
+
+/* TABLE FIT: preserve readable words and use horizontal scrolling for wide
+   admin tables instead of squeezing columns into character-width cells. */
+.admin-theme main > :not(.admin-notification-bar) :where(.admin-table-wrap) {
+  max-width: 100%;
+}
+
+.admin-theme main > :not(.admin-notification-bar) :where(
+  .admin-table-wrap > [class*="overflow-x-auto"],
+  [class*="overflow-x-auto"]
+) {
+  max-width: 100%;
+  max-height: min(70vh, 48rem);
+  overflow: scroll;
+  overscroll-behavior: contain;
+}
+
+.admin-theme main > :not(.admin-notification-bar) :where(
+  .admin-table th,
+  .admin-table td,
+  table th,
+  table td
+) {
+  min-width: 0;
+  max-width: none;
+  overflow-wrap: normal;
+  word-break: normal;
+  white-space: normal;
+}
+
+.admin-theme main > :not(.admin-notification-bar) :where(
+  .admin-table th,
+  table th
+) {
+  white-space: nowrap;
+}
+
+/* SHELL HEIGHT: the page viewport is the space below the notification bar,
+   so the inner page scrollbar can actually reach the final card row. */
+.admin-theme .admin-shell-content {
+  min-height: 0;
+  min-width: 0;
+  flex: 1 1 auto;
+  overflow: hidden;
+}
+
+/* TABLE COLUMNS: wide data tables keep dates, IDs, names, and amounts intact;
+   their existing overflow containers provide the needed horizontal scroll. */
+.admin-theme main > :not(.admin-notification-bar) :where(.admin-table, table) {
+  table-layout: auto !important;
+  width: max-content !important;
+  min-width: 100% !important;
+}
+
+.admin-theme main > :not(.admin-notification-bar) :where(
+  .admin-table th,
+  .admin-table td,
+  table th,
+  table td
+) {
+  white-space: nowrap;
+}
+
+.admin-theme main > :not(.admin-notification-bar) :where(
+  .admin-table td,
+  table td
+) :where(p, h1, h2, h3, h4, h5, h6, span, a) {
+  min-width: 0;
+  max-width: none;
+  overflow-wrap: normal !important;
+  word-break: normal !important;
+}
+
+.admin-theme main > :not(.admin-notification-bar) :where(
+  .admin-table td,
+  table td
+) :where(p, h1, h2, h3, h4, h5, h6, span, a).truncate {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* ADMIN LISTS: keep growing activity/notification lists inside their cards;
+   the scrollbar appears only after the list exceeds the available height. */
+.admin-theme main > :not(.admin-notification-bar) :where(
+  .admin-card > ul,
+  .admin-card > ol,
+  .admin-panel > ul,
+  .admin-panel > ol
+) {
+  max-height: min(52vh, 36rem);
+  overflow: scroll;
+  overscroll-behavior: contain;
+}
+
+/* PLAYER MANAGEMENT: align its legacy route with the shared dark console palette. */
+.admin-theme:not(.admin-light) .admin-player-management {
+  --control-bg: #0a0e19 !important;
+  --control-surface: #0f1626 !important;
+  --control-surface-2: #172235 !important;
+  --control-line: rgba(254, 253, 248, .18) !important;
+  background-color: #0a0e19 !important;
+  color: #fefdf8 !important;
+}
+
+.admin-theme:not(.admin-light) .admin-player-management :where(
+  [class*="bg-[#0d1217]"],
+  [class*="bg-[#090e12]"]
+) {
+  background-color: #0a0e19 !important;
+}
+
+.admin-theme:not(.admin-light) .admin-player-management :where(
+  [class*="bg-[#151c21]"],
+  [class*="bg-[#11171b]"]
+) {
+  background-color: #0f1626 !important;
+}
+
+.admin-theme:not(.admin-light) .admin-player-management :where([class*="border-white"]) {
+  border-color: rgba(254, 253, 248, .18) !important;
+}
+
+/* Main admin route titles share one responsive display size. */
+.admin-theme :where(.admin-page, .admin-player-management) > header h1.admin-heading {
+  font-size: clamp(1.875rem, 2.5vw, 2.25rem) !important;
+  line-height: 1 !important;
+}
+
+/* Keep the notification control comfortably inside the fixed header. */
+.admin-theme .admin-notification-trigger {
+  width: 2rem !important;
+  height: 2rem !important;
+}
+
+.admin-theme .admin-notification-trigger svg {
+  width: 1.125rem !important;
+  height: 1.125rem !important;
+}
+
+/* Keep the Almanac header proportions identical across every admin route and
+   across the desktop/mobile shell variants. */
+.admin-theme .admin-notification-header {
+  height: 4rem !important;
+  min-height: 4rem !important;
+  padding-inline: 1.5rem !important;
+  background: var(--cos-ink) !important;
+  border-bottom: 1px solid rgba(254, 253, 248, .06) !important;
+}
+
+/* SEARCH INPUTS: admin-input's shared horizontal padding must not erase the
+   left inset reserved for the absolutely positioned search icon. */
+.admin-theme :where(input[class*="pl-10"]) {
+  padding-left: 2.5rem !important;
+}
+
+.admin-theme :where(input[class*="pl-9"]) {
+  padding-left: 2.25rem !important;
+}
+
+/* PLAYER NOTIFICATIONS: use a transparent control with one consistent gold
+   outline and glyph in both header states. */
+.portal-theme .player-header.header-at-top .portal-notification-trigger,
+.portal-theme .player-header.header-scrolled .portal-notification-trigger {
+  border-color: var(--cos-gold) !important;
+  background: transparent !important;
+  color: var(--cos-gold) !important;
+}
+
+.portal-theme .player-header.header-at-top .portal-notification-trigger:hover,
+.portal-theme .player-header.header-scrolled .portal-notification-trigger:hover {
+  border-color: var(--cos-gold) !important;
+  background: rgba(251, 191, 36, .12) !important;
+  color: var(--cos-gold) !important;
+}
+
+.portal-theme .player-header .portal-notification-trigger svg {
+  color: var(--cos-gold) !important;
+}
+
+/* PLAYER ACCOUNT: remove the filled shader, then switch the username color
+   with the transparent-to-solid player header transition. */
+.portal-theme .player-header .player-account-trigger {
+  border: 2px solid #0a0e19 !important;
+  border-color: #0a0e19 !important;
+  background: transparent !important;
+  box-shadow: none !important;
+  opacity: 1 !important;
+}
+
+.portal-theme .player-header .player-account-trigger:hover {
+  background: transparent !important;
+}
+
+.portal-theme .player-header.header-at-top .player-account-name {
+  color: #0a0e19 !important;
+}
+
+.portal-theme .player-header.header-scrolled .player-account-name {
+  color: #fefdf8 !important;
+}
+
+.portal-theme .player-header .player-account-level {
+  color: var(--cos-gold) !important;
+}
+
+/* Keep the player account outline visible before scrolling, with a contrasting
+   outline in each display theme. Portal navigation and the account username
+   use the requested warm-white text in both header states. */
+.portal-theme .player-header.header-at-top .player-account-trigger {
+  border-color: #0a0e19 !important;
+}
+
+.portal-theme.portal-dark .player-header .player-account-trigger,
+.portal-theme .player-header.header-scrolled .player-account-trigger {
+  border-color: #fefdf8 !important;
+}
+
+.portal-theme .player-header nav a,
+.portal-theme .player-header .player-account-name {
+  color: #fefdf8 !important;
+}
+
+.portal-theme .player-header nav a.bg-yellow,
+.portal-theme .player-header nav a.bg-yellow svg {
+  color: #fefdf8 !important;
+  stroke: #fefdf8 !important;
+}
+
+.portal-theme .player-header nav a svg {
+  color: #fefdf8 !important;
+  stroke: #fefdf8 !important;
+}
+
+/* PLAYER ACCOUNT MENU: give the opened dropdown a clear navy outline. */
+.portal-theme .player-header .player-account-dropdown {
+  border: 2px solid #0a0e19 !important;
+}
+
+.portal-theme .player-header .player-account-dropdown a,
+.portal-theme .player-header .player-account-dropdown button {
+  color: #0a0e19 !important;
+}
+
+.portal-theme .player-header .player-account-dropdown button.text-coral {
+  color: var(--cos-coral) !important;
+}
+
+/* The scrolled header colors its own descendants, so give the white dropdown
+   menu a stronger scoped rule for its two navy links. */
+.portal-theme .player-header.header-scrolled .player-account-dropdown > a,
+.portal-theme .player-header.header-scrolled .player-account-dropdown > button {
+  color: #0a0e19 !important;
+}
+
+.portal-theme .player-header.header-scrolled .player-account-dropdown > button.text-coral {
+  color: var(--cos-coral) !important;
+}
+
+/* PLAYER NOTIFICATION MENU: keep the white dropdown readable after the
+   scrolled header applies its light text treatment to descendant controls. */
+.portal-theme .player-header.header-scrolled .player-notification-dropdown {
+  color: #0a0e19 !important;
+}
+
+.portal-theme .player-header.header-scrolled .player-notification-dropdown > div:last-child > button {
+  color: #0a0e19 !important;
+}
+
+.portal-theme .player-header.header-scrolled .player-notification-dropdown > div:first-child > button.text-coral {
+  color: var(--cos-coral) !important;
+}
+
+.portal-theme .player-header.header-scrolled .player-notification-dropdown :is(
+  p,
+  span[class*="text-navy/"]
+) {
+  color: rgba(10, 14, 25, .62) !important;
+}
+
+/* PLAYER PORTAL LIGHT PALETTE: make the requested page and card colors
+   explicit at the final cascade layer while leaving .portal-dark untouched. */
+.portal-theme:not(.portal-dark) {
+  --portal-bg: #fefaef !important;
+  --portal-card: #f0ede4 !important;
+  background-color: #fefaef !important;
+}
+
+.portal-theme:not(.portal-dark) > main,
+.portal-theme:not(.portal-dark) main,
+.portal-theme:not(.portal-dark) .portal-page,
+.portal-theme:not(.portal-dark) .portal-shop-page,
+.portal-theme:not(.portal-dark) .almanac-page {
+  background-color: #fefaef !important;
+}
+
+.portal-theme:not(.portal-dark) :where(
+  .portal-card,
+  .profile-surface,
+  .portal-panel,
+  .shop-card,
+  .leaderboard-card,
+  table,
+  [class*="bg-[#151c29"],
+  [class*="bg-[#121d32"],
+  [class*="bg-[#1b2433"],
+  [class*="bg-[#111c30"]
+) {
+  border: 2px solid #0a0e19 !important;
+  border-color: #0a0e19 !important;
+  border-radius: 12px !important;
+  background-color: #f0ede4 !important;
+}
+
+/* Give key information surfaces a restrained navy offset shadow in light
+   mode; smaller collection/list cards remain flatter for visual hierarchy. */
+.portal-theme:not(.portal-dark) :where(
+  .portal-card,
+  .profile-info,
+  .profile-surface,
+  .portal-panel,
+  .leaderboard-card,
+  .coin-balance,
+  .shop-cart-button
+) {
+  box-shadow: 5px 5px 0 rgba(10, 14, 25, .18) !important;
+}
+
+/* Preserve the intentional dark treatment of media-backed feature panels. */
+.portal-theme .on-dark,
+.portal-theme .on-dark :where([class*="bg-[#0"], [class*="bg-[#1"], [class*="bg-[#2"]) {
+  background-color: var(--cos-ink) !important;
+  color: var(--cos-light) !important;
+}
+
+/* Keep copy readable on the light-mode dark-navy panels. Highlight colors
+   remain intentional, while nested light cards restore the dark ink needed
+   for their #f0ede4 surface. */
+.portal-theme:not(.portal-dark) .portal-page > div > section :where(
+  .text-white,
+  [class*="text-white/"],
+  .text-navy,
+  [class*="text-navy/"]
+) {
+  color: #fefdf8 !important;
+}
+
+.portal-theme:not(.portal-dark) .portal-page > div > section :where(
+  .text-coral,
+  [class*="text-coral"]
+) {
+  color: #f0573d !important;
+}
+
+.portal-theme:not(.portal-dark) .portal-page > div > section :where(
+  .text-yellow,
+  [class*="text-yellow"],
+  .text-amber-300,
+  .text-amber-400
+) {
+  color: #fbbf24 !important;
+}
+
+.portal-theme:not(.portal-dark) .portal-page > div > section :where(
+  .text-green,
+  [class*="text-green"],
+  .text-emerald-300,
+  .text-emerald-400,
+  .text-emerald-600
+) {
+  color: #47870d !important;
+}
+
+.portal-theme:not(.portal-dark) .portal-page > div > section :where(
+  .portal-card,
+  .profile-surface,
+  .profile-info,
+  .portal-panel,
+  .shop-card,
+  .leaderboard-card,
+  [class*="bg-[#151c29"],
+  [class*="bg-[#121d32"],
+  [class*="bg-[#1b2433"],
+  [class*="bg-[#111c30"]
+) :where(
+  .text-white,
+  [class*="text-white/"],
+  .text-navy,
+  [class*="text-navy/"]
+) {
+  color: var(--portal-ink) !important;
+}
+
+/* Badges: explicit light-mode treatment, kept after the shared portal rules. */
+.portal-theme.portal-light .badges-panel,
+.portal-theme.portal-light .portal-page .badges-panel {
+  border: 2px solid #0a0e19 !important;
+  border-color: #0a0e19 !important;
+  border-radius: 12px !important;
+  background: #f0ede4 !important;
+  background-color: #f0ede4 !important;
+  color: #0a0e19 !important;
+  box-shadow: 5px 5px 0 #0a0e19 !important;
+}
+
+.portal-theme.portal-light .badges-panel :where(
+  .text-white,
+  [class*="text-white/"],
+  .text-navy,
+  [class*="text-navy/"]
+) {
+  color: #0a0e19 !important;
+}
+
+.portal-theme.portal-light .badges-panel :where(
+  .text-coral,
+  [class*="text-coral"]
+) {
+  color: #f0573d !important;
+}
+
+.portal-theme.portal-light .badges-panel :where(
+  .text-yellow,
+  [class*="text-yellow"],
+  .text-amber-300,
+  .text-amber-400
+) {
+  color: #fbbf24 !important;
+}
+
+.portal-theme.portal-light .badges-panel :where(
+  .text-green,
+  [class*="text-green"],
+  .text-emerald-300,
+  .text-emerald-400,
+  .text-emerald-600
+) {
+  color: #47870d !important;
+}
+
+.portal-theme.portal-light .badges-panel > div:last-child > div {
+  border-color: #0a0e19 !important;
+  background: #f0ede4 !important;
+  background-color: #f0ede4 !important;
+  color: #0a0e19 !important;
+}
+
+.portal-theme.portal-light .badges-panel .badges-copy,
+.portal-theme.portal-light .badges-panel .badge-label {
+  color: #0a0e19 !important;
+}
+
+.portal-theme.portal-dark .badges-panel .badge-label {
+  color: var(--cos-light) !important;
+}
+
+/* Keep the Badges heading and supporting copy readable on the beige card. */
+.badges-panel .badges-copy {
+  color: #0a0e19 !important;
+}
+
+html[data-display-theme="light"] .badges-panel .badges-copy {
+  color: #0a0e19 !important;
+}
+
+html .badges-panel .badges-copy {
+  color: #0a0e19 !important;
+}
+
+.portal-theme .leaderboard-sort-select,
+.portal-theme .leaderboard-sort-select option,
+.portal-theme .leaderboard-sort-arrow {
+  color: #0a0e19 !important;
+}
+
+.portal-theme.portal-light .production-logs-list tbody tr,
+.portal-theme.portal-light .production-logs-list tbody td,
+.portal-theme.portal-light .production-logs-list tbody td > *,
+.portal-theme.portal-light .production-logs-list tbody td button,
+.portal-theme.portal-light .production-logs-list tbody td button * {
+  color: #0a0e19 !important;
+}
+
+.portal-theme.portal-light .leaderboard-list-table tbody td,
+.portal-theme.portal-light .leaderboard-list-table tbody td strong,
+.portal-theme.portal-light .leaderboard-list-table tbody td .leaderboard-rank {
+  color: #0a0e19 !important;
+}
+
+.portal-theme.portal-light .production-log-dialog {
+  color: #0a0e19 !important;
+}
+
+.portal-theme.portal-light .production-log-dialog h3,
+.portal-theme.portal-light .production-log-dialog p:not(.text-coral),
+.portal-theme.portal-light .production-log-dialog button {
+  color: #0a0e19 !important;
+}
+
+.portal-theme.portal-light .production-log-dialog .text-coral {
+  color: #f0573d !important;
+}
+
+.portal-theme.portal-light .production-log-dialog .text-yellow {
+  color: #fbbf24 !important;
+}
+
+html[data-display-theme="light"] .production-log-dialog .production-log-title,
+.portal-theme.portal-light .production-log-dialog .production-log-title {
+  color: #0a0e19 !important;
+  -webkit-text-fill-color: #0a0e19 !important;
+}
+
+/* Almanac achievements: keep the filter tabs light on the navy toolbar, while
+   making light-mode card copy readable on the pale achievement cards. */
+.portal-theme.portal-light .achievements-filter,
+.portal-theme.portal-light .achievements-filter.active {
+  color: #fefdf8 !important;
+}
+
+.portal-theme.portal-light .achievement-card,
+.portal-theme.portal-light .achievement-card-heading h3,
+.portal-theme.portal-light .achievement-card .achievement-desc,
+.portal-theme.portal-light .achievement-card .achievement-level-badge,
+.portal-theme.portal-light .achievement-card .achievement-level-label,
+.portal-theme.portal-light .achievement-card .achievement-unlocks-eyebrow,
+.portal-theme.portal-light .achievement-card .achievement-unlocks p,
+.portal-theme.portal-light .achievement-card .achievement-progress-labels {
+  color: #0a0e19 !important;
+}
+
+.portal-theme.portal-light .leaderboard-profile-name {
+  color: #0a0e19 !important;
+}
+
+/* Dashboard quick links: preserve the navy outline while using their semantic accent fills. */
+.portal-theme .dashboard-action-manage-friends {
+  background-color: #fbbf24 !important;
+  border-color: #0a0e19 !important;
+  color: #0a0e19 !important;
+}
+
+.portal-theme .dashboard-action-almanac {
+  background-color: #f0573d !important;
+  border-color: #0a0e19 !important;
+  color: #0a0e19 !important;
+}
+
+.portal-theme .dashboard-action-manage-friends svg,
+.portal-theme .dashboard-action-almanac svg {
+  color: #0a0e19 !important;
+  stroke: #0a0e19 !important;
+}
+
+/* The Latest Update media panel should stand without an offset shadow. */
+.latest-update-card {
+  box-shadow: none !important;
+}
+
+.portal-theme:not(.portal-dark) .portal-page > div > section.latest-update-card,
+.portal-theme.portal-light .portal-page .latest-update-card {
+  box-shadow: none !important;
+}
+
+/* Keep the player header in its readable scrolled presentation from the
+   moment the page loads. This applies equally to light and dark portal mode. */
+.portal-theme .player-header.header-at-top {
+  background: var(--cos-nav) !important;
+  border-bottom: 3px solid var(--cos-gold) !important;
+  border-top-color: rgba(254, 253, 248, .24) !important;
+  color: var(--cos-light) !important;
+  box-shadow: 0 5px 0 rgba(10, 14, 25, .2) !important;
+}
+
+.portal-theme .player-header.header-at-top :where(
+  nav a:not(.bg-yellow),
+  button,
+  .text-navy,
+  [class*="text-navy/"]
+) {
+  color: var(--cos-light) !important;
+}
+
+.portal-theme .player-header.header-at-top nav a,
+.portal-theme .player-header.header-at-top nav a svg,
+.portal-theme .player-header.header-at-top .player-account-name {
+  color: #fefdf8 !important;
+  stroke: #fefdf8 !important;
+}
+
+.portal-theme .player-header.header-at-top .player-account-trigger {
+  border-color: #fefdf8 !important;
+}
+
+/* The solid top header also needs the notification panel's light-surface
+   contrast rules; otherwise header inheritance can wash out its copy. */
+.portal-theme .player-header.header-at-top .player-notification-dropdown {
+  color: #0a0e19 !important;
+}
+
+.portal-theme .player-header.header-at-top .player-notification-dropdown > div:last-child > button {
+  color: #0a0e19 !important;
+}
+
+.portal-theme .player-header.header-at-top .player-notification-dropdown > div:first-child > button.text-coral {
+  color: var(--cos-coral) !important;
+}
+
+.portal-theme .player-header.header-at-top .player-notification-dropdown :is(
+  p,
+  span[class*="text-navy/"]
+) {
+  color: rgba(10, 14, 25, .62) !important;
+}
+
+/* Override the legacy header-state selector so every portal tab remains
+   readable against the solid header, including inactive tabs. */
+.portal-theme .player-header.header-at-top nav a:not(.bg-yellow),
+.portal-theme .player-header.header-at-top nav a.bg-yellow,
+.portal-theme .player-header.header-scrolled nav a:not(.bg-yellow),
+.portal-theme .player-header.header-scrolled nav a.bg-yellow {
+  color: #fefdf8 !important;
+}
+
+.portal-theme .player-header.header-at-top nav a:not(.bg-yellow) svg,
+.portal-theme .player-header.header-at-top nav a.bg-yellow svg,
+.portal-theme .player-header.header-scrolled nav a:not(.bg-yellow) svg,
+.portal-theme .player-header.header-scrolled nav a.bg-yellow svg {
+  color: #fefdf8 !important;
+  stroke: #fefdf8 !important;
+}
+
+/* Display theme selector: the selected option carries the active mode's
+   accent so the Light and Dark choices are visually distinct. */
+html[data-display-theme="light"] .display-theme-switcher button[aria-pressed="true"] {
+  border-color: #fbbf24 !important;
+  background-color: #fbbf24 !important;
+  color: #0a0e19 !important;
+}
+
+html[data-display-theme="dark"] .display-theme-switcher button[aria-pressed="true"] {
+  border-color: #f0573d !important;
+}
+
+/* Shared player-portal page titles. Keep the eyebrow, display title, and
+   title spacing identical across Dashboard, Profile, Almanac, Friends, Shop,
+   and Settings while preserving readable contrast in dark mode. */
+.portal-theme .portal-title-header {
+  gap: 1.5rem;
+}
+
+.portal-theme .portal-title-eyebrow {
+  margin: 0 !important;
+  color: #f0573d !important;
+  font-size: .75rem !important;
+  font-weight: 900 !important;
+  line-height: 1.2 !important;
+  letter-spacing: .18em !important;
+  text-transform: uppercase !important;
+}
+
+.portal-theme .portal-title-heading {
+  margin-top: .5rem !important;
+  color: #0a0e19 !important;
+  font-family: var(--font-display) !important;
+  font-size: clamp(3rem, 5vw, 4rem) !important;
+  font-weight: 400 !important;
+  line-height: .95 !important;
+  letter-spacing: .035em !important;
+  text-transform: uppercase !important;
+}
+
+.portal-theme.portal-dark .portal-title-heading {
+  color: #fefdf8 !important;
+}
+
+/* Normalize the title-page frame so every portal route begins at the same
+   inset and vertical offset. The shared container also removes route-specific
+   max-width drift from Shop and Settings. */
+.portal-theme .portal-title-page {
+  padding-top: 3rem !important;
+  padding-right: clamp(1rem, 3vw, 3rem) !important;
+  padding-left: clamp(1rem, 3vw, 3rem) !important;
+}
+
+.portal-theme .portal-title-page > .portal-title-container {
+  width: 100% !important;
+  max-width: 1500px !important;
+  padding-top: 0 !important;
+}
+
+/* The Shop route has its own .shop-heading padding, so reset it to the same
+   title-header rhythm used by Dashboard, Profile, Almanac, Friends, and
+   Settings. */
+.portal-theme .portal-title-header.shop-heading {
+  padding-block: 0 !important;
+}
+
+/* Give Shop product cards a little more breathing room in both themes while
+   keeping the card dimensions and internal controls unchanged. */
+.portal-theme .shop-grid {
+  column-gap: 2.25rem !important;
+  row-gap: 2rem !important;
+}
+
+/* Separate the C-Coin pack cards more clearly without changing their internal
+   padding, controls, outlines, or shadows. */
+.portal-theme .coin-pack-grid {
+  column-gap: 1.5rem !important;
+  row-gap: 1.5rem !important;
+}
+
+/* DARK MODE MIRROR
+   Match the light-mode card language—clear edges, rounded corners, and
+   offset shadows—while reversing the copy to the warm-white dark palette. */
+.portal-theme.portal-dark :where(
+  .portal-card,
+  .portal-panel,
+  .shop-card,
+  .leaderboard-card,
+  table,
+  .report-card,
+  .preference-row,
+  .change-password-button,
+  .coin-balance,
+  .shop-cart-button,
+  .coin-pack-card,
+  .achievement-card,
+  .production-log-dialog,
+  .shop-modal,
+  .shop-cart-drawer,
+  .purchase-modal,
+  .achievement-modal
+) {
+  border: 2px solid #fefdf8 !important;
+  border-color: #fefdf8 !important;
+  border-radius: 12px !important;
+  background: #0f1626 !important;
+  background-color: #0f1626 !important;
+  color: #fefdf8 !important;
+  box-shadow: 5px 5px 0 rgba(254, 253, 248, .2) !important;
+}
+
+.portal-theme.portal-dark :where(
+  .profile-surface,
+  .profile-surface > .profile-info,
+  .profile-surface > .loadout-surface,
+  .transactions-surface
+) {
+  border: 2px solid #fefdf8 !important;
+  border-color: #fefdf8 !important;
+  border-radius: 12px !important;
+  background: #0f1626 !important;
+  background-color: #0f1626 !important;
+  color: #fefdf8 !important;
+  box-shadow: 5px 5px 0 rgba(254, 253, 248, .2) !important;
+}
+
+.portal-theme.portal-dark .profile-surface {
+  display: grid !important;
+  gap: 28px !important;
+  overflow: visible !important;
+  border: 0 !important;
+  border-radius: 0 !important;
+  background: transparent !important;
+  box-shadow: none !important;
+}
+
+.portal-theme.portal-dark :where(
+  .portal-card,
+  .portal-panel,
+  .profile-info,
+  .loadout-surface,
+  .transactions-surface,
+  .shop-card,
+  .leaderboard-card,
+  table,
+  .report-card,
+  .preference-row,
+  .change-password-button,
+  .coin-balance,
+  .shop-cart-button,
+  .coin-pack-card,
+  .achievement-card,
+  .production-log-dialog,
+  .shop-modal,
+  .shop-cart-drawer,
+  .purchase-modal,
+  .achievement-modal
+) :where(
+  .text-white,
+  [class*="text-white/"],
+  .text-navy,
+  [class*="text-navy/"]
+) {
+  color: #fefdf8 !important;
+}
+
+.portal-theme.portal-dark .portal-page > div > section {
+  border: 2px solid #fefdf8 !important;
+  border-color: #fefdf8 !important;
+  border-radius: 12px !important;
+  background-color: #0f1626 !important;
+  color: #fefdf8 !important;
+  box-shadow: 7px 7px 0 #fbbf24 !important;
+}
+
+.portal-theme.portal-dark .portal-page > div > section:not([class*="p-"]) {
+  padding: 8px !important;
+}
+
+.portal-theme.portal-dark .portal-page > div > section > div:first-child :where(
+  h1,
+  h2,
+  h3,
+  h4,
+  p,
+  span,
+  strong,
+  a
+) {
+  color: #fefdf8 !important;
+}
+
+.portal-theme.portal-dark .portal-page > div > section > div:first-child :where(
+  .text-coral,
+  [class*="text-coral"]
+) {
+  color: #f0573d !important;
+}
+
+.portal-theme.portal-dark .portal-page > div > section > div:first-child :where(
+  .text-yellow,
+  [class*="text-yellow"]
+) {
+  color: #fbbf24 !important;
+}
+
+.portal-theme.portal-dark .badges-panel {
+  border: 2px solid #fefdf8 !important;
+  border-color: #fefdf8 !important;
+  border-radius: 12px !important;
+  background: #0f1626 !important;
+  background-color: #0f1626 !important;
+  color: #fefdf8 !important;
+  box-shadow: 5px 5px 0 #fefdf8 !important;
+}
+
+.portal-theme.portal-dark .badges-panel > div:last-child > div {
+  border-color: rgba(254, 253, 248, .46) !important;
+  background: #0f1626 !important;
+  color: #fefdf8 !important;
+}
+
+.portal-theme.portal-dark .badges-panel :where(
+  .badges-copy,
+  .badge-label,
+  .text-white,
+  [class*="text-white/"],
+  .text-navy,
+  [class*="text-navy/"]
+) {
+  color: #fefdf8 !important;
+}
+
+.portal-theme.portal-dark .badges-panel :where(
+  .text-coral,
+  [class*="text-coral"]
+) {
+  color: #f0573d !important;
+}
+
+.portal-theme.portal-dark .badges-panel :where(
+  .text-yellow,
+  [class*="text-yellow"]
+) {
+  color: #fbbf24 !important;
+}
+
+.portal-theme.portal-dark .badges-panel :where(
+  .text-green,
+  [class*="text-green"],
+  .text-emerald-300,
+  .text-emerald-400,
+  .text-emerald-600
+) {
+  color: #72b42b !important;
+}
+
+/* Dark-mode button mirror: preserve each light-mode accent, but use a warm
+   white edge/shadow and warm-white copy where the light version used navy. */
+.portal-theme.portal-dark :where(
+  .portal-button,
+  .portal-page a.bg-coral,
+  .portal-page button.bg-coral,
+  .dashboard-action-manage-friends,
+  .dashboard-action-almanac,
+  .shop-primary-button,
+  .shop-secondary-button,
+  .coin-pack-card button
+) {
+  border-color: #fefdf8 !important;
+  box-shadow: 4px 4px 0 #fefdf8 !important;
+}
+
+.portal-theme.portal-dark .dashboard-action-manage-friends,
+.portal-theme.portal-dark .dashboard-action-almanac,
+.portal-theme.portal-dark .shop-secondary-button,
+.portal-theme.portal-dark .coin-pack-card button,
+.portal-theme.portal-dark .settings-nav-item-active {
+  color: #fefdf8 !important;
+}
+
+.portal-theme.portal-dark .dashboard-action-manage-friends svg,
+.portal-theme.portal-dark .dashboard-action-almanac svg,
+.portal-theme.portal-dark .shop-secondary-button svg,
+.portal-theme.portal-dark .settings-nav-item-active svg {
+  color: #fefdf8 !important;
+  stroke: #fefdf8 !important;
+}
+
+.portal-theme.portal-dark .shop-primary-button,
+.portal-theme.portal-dark .portal-page a.bg-coral,
+.portal-theme.portal-dark .portal-page button.bg-coral {
+  color: #fefdf8 !important;
+  box-shadow: 4px 4px 0 #fefdf8 !important;
+}
+
+.portal-theme.portal-dark .shop-primary-button,
+.portal-theme.portal-dark .shop-secondary-button,
+.portal-theme.portal-dark .coin-pack-card button {
+  border-radius: 8px !important;
+}
+
+.portal-theme.portal-dark .settings-nav-item-active {
+  border-color: #fefdf8 !important;
+  background: #fbbf24 !important;
+  color: #fefdf8 !important;
+  box-shadow: 6px 6px 0 #f0573d !important;
+}
+
+.portal-theme.portal-dark .settings-nav-item-active svg {
+  color: #fefdf8 !important;
+  stroke: #fefdf8 !important;
+}
+
+/* Shop controls and artwork frames use the same outlined control language in
+   both themes. */
+.portal-theme.portal-dark :where(
+  .shop-tabs,
+  .shop-category-list button,
+  .shop-search input,
+  .coin-balance,
+  .shop-cart-button
+) {
+  border-color: #fefdf8 !important;
+  background: #0f1626 !important;
+  background-color: #0f1626 !important;
+  color: #fefdf8 !important;
+}
+
+.portal-theme.portal-dark .shop-tabs button.active,
+.portal-theme.portal-dark .shop-category-list button.active {
+  background: #fbbf24 !important;
+  color: #fefdf8 !important;
+}
+
+.portal-theme.portal-dark :where(.shop-art-button, .modal-art) {
+  background: #0f1626 !important;
+}
+
+.portal-theme.portal-dark .shop-card-copy :where(
+  h2,
+  p,
+  span,
+  strong,
+  .shop-description,
+  .shop-status,
+  .shop-owned-label
+) {
+  color: #fefdf8 !important;
+}
+
+.portal-theme.portal-dark .shop-card-copy :where(.shop-category, .shop-price, .modal-price) {
+  color: #fbbf24 !important;
+}
+
+.portal-theme.portal-dark .shop-card:hover {
+  border-color: #f0573d !important;
+}
+
+/* Almanac achievements and the production/leaderboard lists use the same
+   dark card edge treatment and reversed list text. */
+.portal-theme.portal-dark .achievement-card {
+  border-color: #fefdf8 !important;
+  background: #0f1626 !important;
+  background-color: #0f1626 !important;
+  color: #fefdf8 !important;
+  box-shadow: 5px 5px 0 rgba(254, 253, 248, .2) !important;
+}
+
+.portal-theme.portal-dark .achievement-card :where(
+  .achievement-card-heading h3,
+  .achievement-desc,
+  .achievement-level-badge,
+  .achievement-level-label,
+  .achievement-unlocks-eyebrow,
+  .achievement-unlocks p,
+  .achievement-progress-labels
+) {
+  color: #fefdf8 !important;
+}
+
+.portal-theme.portal-dark .achievement-card .achievement-unlocks {
+  border-color: rgba(254, 253, 248, .46) !important;
+  background: rgba(254, 253, 248, .06) !important;
+}
+
+.portal-theme.portal-dark .achievement-card .achievement-icon.locked {
+  background: rgba(254, 253, 248, .08) !important;
+  color: rgba(254, 253, 248, .52) !important;
+}
+
+.portal-theme.portal-dark :where(
+  .production-logs-list tbody tr,
+  .production-logs-list tbody td,
+  .production-logs-list tbody td > *,
+  .production-logs-list tbody td button,
+  .production-logs-list tbody td button *,
+  .leaderboard-list-table tbody td,
+  .leaderboard-list-table tbody td strong,
+  .leaderboard-list-table tbody td .leaderboard-rank,
+  .leaderboard-profile-name,
+  .production-log-dialog,
+  .production-log-dialog h3,
+  .production-log-dialog p:not(.text-coral),
+  .production-log-dialog button,
+  .production-log-dialog .production-log-title
+) {
+  color: #fefdf8 !important;
+}
+
+.portal-theme.portal-dark .production-log-dialog .text-coral {
+  color: #f0573d !important;
+}
+
+.portal-theme.portal-dark .production-log-dialog .text-yellow {
+  color: #fbbf24 !important;
+}
+
+.portal-theme.portal-dark .leaderboard-sort-select,
+.portal-theme.portal-dark .leaderboard-sort-select option,
+.portal-theme.portal-dark .leaderboard-sort-arrow {
+  border-color: #fefdf8 !important;
+  background: #0f1626 !important;
+  color: #fefdf8 !important;
+}
+
+/* Settings cards keep the light-mode gold edge shadow and readable reversed
+   copy, including the preference switches and support cards. */
+.portal-theme.portal-dark .change-password-button,
+.portal-theme.portal-dark .preference-row,
+.portal-theme.portal-dark .report-card {
+  border-color: #fefdf8 !important;
+  background: #0f1626 !important;
+  background-color: #0f1626 !important;
+  color: #fefdf8 !important;
+  box-shadow: 6px 6px 0 #fbbf24 !important;
+}
+
+.portal-theme.portal-dark .report-card {
+  box-shadow: 8px 8px 0 #fbbf24 !important;
+}
+
+.portal-theme.portal-dark :where(
+  .change-password-button,
+  .preference-row,
+  .report-card
+) :where(
+  .text-white,
+  [class*="text-white/"],
+  .text-navy,
+  [class*="text-navy/"]
+) {
+  color: #fefdf8 !important;
+}
+
+/* SITE-WIDE CORNER TREATMENT
+   Keep the existing palettes, borders, and shadows, but give every card-like
+   surface and actionable button a consistent soft curve. Pills remain pills. */
+:where(
+  .card,
+  [class*="-card"],
+  [class*="card-"],
+  [class~="card"],
+  .panel,
+  [class*="-panel"],
+  [class~="panel"],
+  .surface,
+  [class*="-surface"],
+  [class~="surface"],
+  .admin-table,
+  .leaderboard-list-table,
+  .production-logs-list,
+  table
+) {
+  border-radius: 14px !important;
+}
+
+:where(
+  button,
+  [role="button"],
+  a[class*="button"],
+  a[class*="-button"]
+):not(.rounded-full):not(.shop-category-list button) {
+  border-radius: 12px !important;
+}
+
+/* Keep the leaderboard quick actions identical in both display themes. */
+.portal-theme.portal-dark .dashboard-action-manage-friends,
+.portal-theme.portal-dark .dashboard-action-almanac {
+  border: 2px solid #0a0e19 !important;
+  border-color: #0a0e19 !important;
+  border-radius: 12px !important;
+  color: #0a0e19 !important;
+  box-shadow: 4px 4px 0 #0a0e19 !important;
+}
+
+.portal-theme.portal-dark .dashboard-action-manage-friends {
+  background-color: #fbbf24 !important;
+}
+
+.portal-theme.portal-dark .dashboard-action-almanac {
+  background-color: #f0573d !important;
+}
+
+.portal-theme.portal-dark .dashboard-action-manage-friends svg,
+.portal-theme.portal-dark .dashboard-action-almanac svg {
+  color: #0a0e19 !important;
+  stroke: #0a0e19 !important;
+}
+
+/* The Latest Update media card stays flat; do not apply the shared gold
+   offset shadow to this specific feature panel. */
+.portal-theme .latest-update-card {
+  box-shadow: none !important;
+}
+
+.portal-theme .career-overview-panel {
+  box-shadow: none !important;
+}
+
+.portal-theme.portal-dark .badges-panel .badges-copy {
+  color: #fefdf8 !important;
+  -webkit-text-fill-color: #fefdf8 !important;
+}
+
+/* These two Dashboard feature cards intentionally use custom shadow rules,
+   so the generic dark page-section shadow cannot override them. */
+.portal-theme.portal-dark .portal-page > div > section.latest-update-card {
+  box-shadow: none !important;
+}
+
+.portal-theme.portal-dark .portal-page > div > section.badges-panel {
+  box-shadow: 7px 7px 0 #d1d5db !important;
+}
+
+/* Keep the Dashboard activity and collection cards visibly rounded in both
+   themes, even when the broader section treatment is applied. */
+.portal-theme .dashboard-recent-activity-card,
+.portal-theme .dashboard-owned-items-card {
+  border-radius: 14px !important;
+  overflow: hidden !important;
+}
+
+/* Leaderboard controls: make both views feel like deliberate, accessible
+   buttons instead of relying on a nearly invisible underline. */
+.portal-theme .leaderboard-tab {
+  min-width: 92px !important;
+  min-height: 40px !important;
+  padding: 9px 15px !important;
+  border: 2px solid #0a0e19 !important;
+  border-radius: 10px !important;
+  background: #f0ede4 !important;
+  color: #0a0e19 !important;
+  box-shadow: 3px 3px 0 #0a0e19 !important;
+  outline: none !important;
+}
+
+.portal-theme .leaderboard-tab:hover,
+.portal-theme .leaderboard-tab:focus-visible {
+  border-color: #f0573d !important;
+  outline: 3px solid rgba(240, 87, 61, .28) !important;
+  outline-offset: 2px !important;
+}
+
+.portal-theme .leaderboard-tab.is-active {
+  border-color: #0a0e19 !important;
+  background: #f0573d !important;
+  color: #fefdf8 !important;
+  box-shadow: 3px 3px 0 #0a0e19 !important;
+}
+
+.portal-theme.portal-dark .leaderboard-tab {
+  border-color: #fefdf8 !important;
+  background: #0f1626 !important;
+  color: #fefdf8 !important;
+  box-shadow: 3px 3px 0 #fefdf8 !important;
+}
+
+.portal-theme.portal-dark .leaderboard-tab:hover,
+.portal-theme.portal-dark .leaderboard-tab:focus-visible {
+  border-color: #f0573d !important;
+  outline-color: rgba(240, 87, 61, .4) !important;
+}
+
+.portal-theme.portal-dark .leaderboard-tab.is-active {
+  border-color: #fefdf8 !important;
+  background: #fbbf24 !important;
+  color: #0a0e19 !important;
+  box-shadow: 3px 3px 0 #fefdf8 !important;
+}
+
+/* The sort control keeps the dark-mode label readable even when the source
+   select utility classes request the light-mode ink color. */
+.portal-theme.portal-dark .leaderboard-sort-select,
+.portal-theme.portal-dark .leaderboard-sort-select option {
+  color: #fefdf8 !important;
+  -webkit-text-fill-color: #fefdf8 !important;
+}
+
+/* Dark-mode card family: use the same substantial light-gray offset edge on
+   the dashboard cards and other portal surfaces that share this treatment. */
+.portal-theme.portal-dark :where(
+  .dashboard-recent-activity-card,
+  .dashboard-owned-items-card,
+  .portal-card,
+  .portal-panel,
+  .shop-card,
+  .leaderboard-card,
+  .report-card,
+  .preference-row,
+  .change-password-button,
+  .coin-balance,
+  .shop-cart-button,
+  .coin-pack-card,
+  .achievement-card,
+  .profile-surface > .profile-info,
+  .profile-surface > .loadout-surface,
+  .transactions-surface,
+  .production-log-dialog,
+  .shop-modal,
+  .shop-cart-drawer,
+  .purchase-modal,
+  .achievement-modal
+) {
+  box-shadow: 7px 7px 0 #d1d5db !important;
+}
+
+/* Matching dark-mode dashboard text buttons use navy ink, navy outlines, and
+   the same thick light-gray offset shadow. Their individual accent fills stay
+   intact. */
+.portal-theme.portal-dark :where(
+  .dashboard-collection-button,
+  .dashboard-action-manage-friends,
+  .dashboard-action-almanac
+) {
+  border: 2px solid #0a0e19 !important;
+  border-color: #0a0e19 !important;
+  color: #0a0e19 !important;
+  -webkit-text-fill-color: #0a0e19 !important;
+  box-shadow: 7px 7px 0 #d1d5db !important;
+}
+
+.portal-theme.portal-dark :where(
+  .dashboard-collection-button,
+  .dashboard-action-manage-friends,
+  .dashboard-action-almanac
+) svg {
+  color: #0a0e19 !important;
+  stroke: #0a0e19 !important;
+}
+
+/* The Profile Equipped Loadout surface keeps the requested golden-yellow
+   offset shadow in both display themes. */
+.portal-theme:not(.portal-dark) .profile-surface > .loadout-surface,
+.portal-theme.portal-dark .profile-surface > .loadout-surface {
+  box-shadow: 7px 7px 0 #fbbf24 !important;
+}
+
+/* Dark-mode shop button family: switch only the text and outline to navy;
+   existing shadows remain untouched. */
+.portal-theme.portal-dark :where(
+  .shop-primary-button,
+  .shop-secondary-button,
+  .coin-pack-card button
+) {
+  border-color: #0a0e19 !important;
+  color: #0a0e19 !important;
+  -webkit-text-fill-color: #0a0e19 !important;
+}
+
+.portal-theme.portal-dark :where(
+  .shop-primary-button,
+  .shop-secondary-button,
+  .coin-pack-card button
+) svg {
+  color: #0a0e19 !important;
+  stroke: #0a0e19 !important;
+}
+
+/* Almanac section tabs: inactive tabs use balanced medium-gray ink, while the
+   selected tab keeps the warm-white portal text for clear contrast. */
+.portal-theme.portal-dark .almanac-tabs .almanac-tab {
+  color: #9ca3af !important;
+  -webkit-text-fill-color: #9ca3af !important;
+}
+
+.portal-theme.portal-dark .almanac-tabs .almanac-tab.active {
+  color: #fefdf8 !important;
+  -webkit-text-fill-color: #fefdf8 !important;
+}
+
+/* Achievement filter tabs follow the same dark-mode contrast treatment:
+   medium gray while inactive and warm white when selected. */
+.portal-theme.portal-dark .achievements-filter {
+  color: #9ca3af !important;
+  -webkit-text-fill-color: #9ca3af !important;
+}
+
+.portal-theme.portal-dark .achievements-filter.active {
+  color: #fefdf8 !important;
+  -webkit-text-fill-color: #fefdf8 !important;
+}
+
+/* Friends tabs: lift the active accent away from the shared divider so its
+   offset shadow reads as a separate indicator instead of an overlap. */
+.portal-theme .friends-tab.active {
+  margin-bottom: 6px !important;
+  border-bottom-color: transparent !important;
+  box-shadow: 0 4px 0 #f0573d !important;
+}
+
+/* Dark-mode Settings navigation: change only the selected tab's ink and
+   outline; preserve its existing coral shadow. */
+.portal-theme.portal-dark .settings-nav-item-active {
+  border-color: #0a0e19 !important;
+  color: #0a0e19 !important;
+  -webkit-text-fill-color: #0a0e19 !important;
+}
+
+.portal-theme.portal-dark .settings-nav-item-active svg {
+  color: #0a0e19 !important;
+  stroke: #0a0e19 !important;
+}
+
+/* Dark-mode Change Password button: navy ink and outline only; preserve the
+   existing yellow offset shadow. */
+.portal-theme.portal-dark .change-password-button {
+  border-color: #0a0e19 !important;
+  color: #0a0e19 !important;
+  -webkit-text-fill-color: #0a0e19 !important;
+}
+
+.portal-theme.portal-dark .change-password-button svg {
+  color: #0a0e19 !important;
+  stroke: #0a0e19 !important;
+}
+
+/* Dark-mode Settings navigation card: keep the tab buttons' own treatment,
+   while giving their surrounding card the requested curve and shadow. */
+.portal-theme.portal-dark .settings-nav-card {
+  border-radius: 16px !important;
+  box-shadow: 7px 7px 0 #d1d5db !important;
+}
+
+/* Dark-mode Change Password button: restore warm-white copy and icon while
+   leaving its navy outline and yellow shadow unchanged. */
+.portal-theme.portal-dark .change-password-button {
+  color: #fefdf8 !important;
+  -webkit-text-fill-color: #fefdf8 !important;
+}
+
+.portal-theme.portal-dark .change-password-button svg {
+  color: #fefdf8 !important;
+  stroke: #fefdf8 !important;
+}
+
+/* Dark-mode Latest Update CTA: use navy ink while preserving its coral fill,
+   existing outline, and existing shadow treatment. */
+.portal-theme.portal-dark .latest-update-play-button {
+  color: #0a0e19 !important;
+  -webkit-text-fill-color: #0a0e19 !important;
+}
+
+.portal-theme.portal-dark .latest-update-play-button svg {
+  color: #0a0e19 !important;
+  stroke: #0a0e19 !important;
+}
+
+/* Dark-mode Dashboard profile CTA: use navy ink while preserving its coral
+   fill, outline, and shadow treatment. */
+.portal-theme.portal-dark .dashboard-view-profile-button {
+  color: #0a0e19 !important;
+  -webkit-text-fill-color: #0a0e19 !important;
+}
+
+.portal-theme.portal-dark .dashboard-view-profile-button svg {
+  color: #0a0e19 !important;
+  stroke: #0a0e19 !important;
+}
+
+/* Dark-mode portal surface palette: keep page wrappers on the deeper navy
+   canvas and normalize card surfaces to the requested lighter navy. Header,
+   footer, outlines, shadows, buttons, and text keep their existing rules. */
+.portal-theme.portal-dark {
+  --portal-bg: #0a0e19 !important;
+  --portal-card: #0f1626 !important;
+  background: #0a0e19 !important;
+  background-color: #0a0e19 !important;
+}
+
+.portal-theme.portal-dark > main,
+.portal-theme.portal-dark main,
+.portal-theme.portal-dark .portal-page,
+.portal-theme.portal-dark .portal-shop-page,
+.portal-theme.portal-dark .almanac-page,
+.portal-theme.portal-dark .portal-title-page {
+  background: #0a0e19 !important;
+  background-color: #0a0e19 !important;
+}
+
+.portal-theme.portal-dark :where(
+  .portal-card,
+  .portal-panel,
+  .latest-update-card,
+  .badges-panel,
+  .dashboard-recent-activity-card,
+  .dashboard-owned-items-card,
+  .profile-surface > .profile-info,
+  .profile-surface > .loadout-surface,
+  .transactions-surface,
+  .shop-card,
+  .leaderboard-card,
+  .achievement-card,
+  .report-card,
+  .preference-row,
+  .settings-nav-card,
+  .coin-balance,
+  .shop-cart-button,
+  .coin-pack-card,
+  .production-log-dialog,
+  .shop-modal,
+  .shop-cart-drawer,
+  .purchase-modal,
+  .achievement-modal,
+  table,
+  .portal-page > div > section,
+  [class*="bg-[#151c29"],
+  [class*="bg-[#121d32"],
+  [class*="bg-[#1b2433"],
+  [class*="bg-[#111c30"]
+) {
+  background: #0f1626 !important;
+  background-color: #0f1626 !important;
+}
+/* Dark-mode player overlay cards: use the requested navy surface and warm-white
+   copy while preserving the existing coral notification and logout accents. */
+.portal-theme .player-account-dropdown,
+.portal-theme .player-notification-dropdown {
+  background: #0a0e19 !important;
+  background-color: #0a0e19 !important;
+  color: #fefdf8 !important;
+}
+
+.portal-theme .player-account-dropdown :where(a, button) {
+  color: #fefdf8 !important;
+}
+
+.portal-theme .player-account-dropdown button.text-coral,
+.portal-theme .player-notification-dropdown :where(button.text-coral, .text-coral) {
+  color: var(--cos-coral) !important;
+}
+
+.portal-theme .player-notification-dropdown :where(p, button, [class*="text-navy/"]) {
+  color: #fefdf8 !important;
+}
+
+.portal-theme .player-notification-dropdown > div {
+  border-color: rgba(254, 253, 248, .16) !important;
+}
+
+.portal-theme .player-notification-dropdown > div:last-child > button:hover,
+.portal-theme .player-account-dropdown :where(a, button):hover {
+  background-color: rgba(254, 253, 248, .08) !important;
+}
+
+/* Prevent the parent space-y margins from collapsing so each matching card
+   gets a visibly larger, consistent gap in both themes. */
+.portal-theme .preference-row + .preference-row {
+  margin-top: 1.75rem !important;
+}
+/* Dark-mode mobile navigation card: use the requested navy surface and
+   warm-white copy/icons while preserving the coral Logout treatment. */
+.portal-theme.portal-dark .player-mobile-drawer {
+  background: #0f1626 !important;
+  background-color: #0f1626 !important;
+  color: #fefdf8 !important;
+}
+
+.portal-theme.portal-dark .player-mobile-drawer :where(
+  .player-account-name,
+  .player-account-level,
+  nav a,
+  button:not(.mobile-signout-button)
+) {
+  color: #fefdf8 !important;
+}
+
+.portal-theme.portal-dark .player-mobile-drawer :where(
+  nav a svg,
+  button:not(.mobile-signout-button) svg
+) {
+  color: #fefdf8 !important;
+  stroke: #fefdf8 !important;
+}
+/* Dark-mode notification card: keep the navy surface and neutral copy readable
+   above the earlier header-state rules while retaining coral accents. */
+.portal-theme.portal-dark .player-header .player-notification-dropdown {
+  background: #0f1626 !important;
+  background-color: #0f1626 !important;
+  color: #fefdf8 !important;
+}
+
+.portal-theme.portal-dark .player-header .player-notification-dropdown > div:first-child > p,
+.portal-theme.portal-dark .player-header .player-notification-dropdown > div:last-child > button,
+.portal-theme.portal-dark .player-header .player-notification-dropdown > div:last-child > button :is(
+  p,
+  span[class*="text-navy/"]
+) {
+  color: #fefdf8 !important;
+}
+
+.portal-theme.portal-dark .player-header .player-notification-dropdown > div:first-child > button.text-coral,
+.portal-theme.portal-dark .player-header .player-notification-dropdown > div:last-child > button span.text-coral {
+  color: var(--cos-coral) !important;
+}
+/* Light-mode overlay cards: restore the requested warm paper surface without
+   changing the dark-mode palette or existing text and accent colors. */
+.portal-theme:not(.portal-dark) .player-mobile-drawer,
+.portal-theme:not(.portal-dark) .player-notification-dropdown {
+  background: #f0ede4 !important;
+  background-color: #f0ede4 !important;
+}
+/* Light-mode sign-out modal: use the warm paper surface and navy copy while
+   leaving the coral logout icon/accent intact. */
+.portal-theme:not(.portal-dark) .signout-dialog {
+  background: #f0ede4 !important;
+  background-color: #f0ede4 !important;
+  color: #0a0e19 !important;
+}
+
+.portal-theme:not(.portal-dark) .signout-dialog :where(h2, p, button) {
+  color: #0a0e19 !important;
+}
+/* Dark-mode account dropdown: use the lighter portal card surface while
+   keeping the neutral entries warm-white and Logout coral. */
+.portal-theme.portal-dark .player-header .player-account-dropdown {
+  background: #0f1626 !important;
+  background-color: #0f1626 !important;
+  color: #fefdf8 !important;
+}
+
+.portal-theme.portal-dark .player-header .player-account-dropdown > a,
+.portal-theme.portal-dark .player-header .player-account-dropdown > button:not(.text-coral) {
+  color: #fefdf8 !important;
+}
+
+.portal-theme.portal-dark .player-header .player-account-dropdown > a svg,
+.portal-theme.portal-dark .player-header .player-account-dropdown > button:not(.text-coral) svg {
+  color: #fefdf8 !important;
+  stroke: #fefdf8 !important;
+}
+
+.portal-theme.portal-dark .player-header .player-account-dropdown > button.text-coral,
+.portal-theme.portal-dark .player-header .player-account-dropdown > button.text-coral svg {
+  color: var(--cos-coral) !important;
+  stroke: var(--cos-coral) !important;
+}
+/* Light-mode account dropdown: use the requested warm paper surface while
+   leaving the dark-mode account card untouched. */
+.portal-theme:not(.portal-dark) .player-header .player-account-dropdown {
+  background: #f0ede4 !important;
+  background-color: #f0ede4 !important;
+}
+
+/* PUBLIC HERO TYPOGRAPHY: keep custom page heroes consistent with the shared display headings. */
+.marketing-theme .features-almanac .story-hero-copy h1,
+.marketing-theme .team-page .team-hero-copy h1 {
+  font-family: var(--font-display) !important;
+  font-weight: 400 !important;
+  letter-spacing: .045em !important;
+}
+
+/* LIGHT-MODE PRODUCTION LOG DETAIL: use the requested warm card surface. */
+.portal-theme.portal-light .production-log-dialog {
+  background: #f0ede4 !important;
+  background-color: #f0ede4 !important;
+}
+/* PLAYER ACCOUNT LISTS: keep the vertical scrollbar visible before lists overflow. */
+.portal-theme .player-account-scroll-list {
+  max-height: min(68vh, 44rem);
+  overflow-y: scroll !important;
+  scrollbar-gutter: stable;
+  scrollbar-width: auto;
+  scrollbar-color: #9ca3af #f0ede4;
+}
+
+.portal-theme.portal-dark .player-account-scroll-list {
+  scrollbar-color: #9ca3af #0f1626;
+}
+
+.portal-theme .player-account-scroll-list::-webkit-scrollbar {
+  width: 12px;
+  height: 12px;
+}
+
+.portal-theme.portal-light .player-account-scroll-list::-webkit-scrollbar-track {
+  background: #f0ede4;
+}
+
+.portal-theme.portal-dark .player-account-scroll-list::-webkit-scrollbar-track {
+  background: #0f1626;
+}
+
+.portal-theme .player-account-scroll-list::-webkit-scrollbar-thumb {
+  border: 3px solid #f0ede4;
+  border-radius: 999px;
+  background: #9ca3af;
+}
+
+.portal-theme.portal-dark .player-account-scroll-list::-webkit-scrollbar-thumb {
+  border-color: #0f1626;
+}
+/* LEADERBOARDS: keep Global and Friends cards the same size; rows scroll inside the card. */
+.portal-theme .leaderboard-scroll-list {
+  height: clamp(22rem, 68vh, 37rem);
+  max-height: none;
+}
+/* FRIENDS LISTS: use the Friends tab card as the shared viewport for every list tab. */
+.portal-theme .friends-list-scroll {
+  height: clamp(20rem, 60vh, 34rem);
+  max-height: none;
+}
+/* BLOCKED EMPTY STATE: center the icon and copy inside the shared Friends card. */
+.portal-theme .blocked-empty-state {
+  display: flex;
+  min-height: 100%;
+  height: 100%;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+}
+
+/* DOWNLOAD CARDS: cream surfaces use dark readable ink while preserving gold accents. */
+.marketing-theme .download-page .download-card,
+.marketing-theme .download-page .download-card :where(h3, p, td, th) {
+  color: #0a0e19 !important;
+}
+
+.marketing-theme .download-page .download-card :where(.text-yellow, .text-yellow *) {
+  color: #fbbf24 !important;
+}
+/* DOWNLOAD CARD SURFACES: keep the requested cream fill above legacy dark-card rules. */
+.marketing-theme .download-page .download-card {
+  background: #fefaef !important;
+  background-color: #fefaef !important;
+  border-color: #fefaef !important;
+}

@@ -5,6 +5,10 @@
 @import "./styles/theme-blueprint.css";
 @import "./styles/admin-theme.css";
 @import "./styles/marketing-theme.css";
+@import "./styles/redesign.css";
+@import "./styles/crew-correction.css";
+@import "./styles/final-overrides.css";
+@import "./styles/ui-redesign.css";
 
 @custom-variant dark (&:is(.dark *));
 
@@ -18,15 +22,15 @@
   --font-sans: "Inter", ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
   --font-display: "Bebas Neue", "Oswald", "Inter", ui-sans-serif, sans-serif;
 
-  --color-cream: #f4f1e6;
-  --color-paper: #faf8f1;
-  --color-charcoal: #23262b;
-  --color-charcoal-deep: #1a1c20;
-  --color-navy: #131b34;
-  --color-coral: #f05a3c;
+  --color-cream: #fefdf8;
+  --color-paper: #fefaef;
+  --color-charcoal: #252525;
+  --color-charcoal-deep: #0f1626;
+  --color-navy: #0a0e19;
+  --color-coral: #f0573d;
   --color-coral-dark: #d9472b;
-  --color-coral-light: #ff8168;
-  --color-yellow: #f7c936;
+  --color-coral-light: #f0573d;
+  --color-yellow: #fbbf24;
 
   --color-background: hsl(var(--background));
   --color-foreground: hsl(var(--foreground));

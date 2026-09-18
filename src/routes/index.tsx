@@ -28,7 +28,6 @@ import {
   MessageCircle,
   Scissors,
   Timer,
-  Trophy,
   Facebook,
 } from "lucide-react";
 
@@ -44,49 +43,42 @@ const chapters = [
     title: "PRE-PRODUCTION",
     text: "Your crew lands its first commercial. Different roles, different responsibilities.",
     icon: Building2,
-    image: "/assets/story-studio.png",
+    image: "/assets/role-av-technician.png",
   },
   {
     number: "02",
     title: "PRODUCTION",
     text: "Your crew finally gets a shot at a production. Everything is on the line",
     icon: Clapperboard,
-    image: "/assets/hero-key-art.png",
+    image: "/assets/role-cameraman.png",
   },
   {
     number: "03",
     title: "POST-PRODUCTION",
     text: "Refining the footage and preparing the final product.",
     icon: Timer,
-    image: "/assets/story-studio.png",
-  },
-  {
-    number: "04",
-    title: "FINAL TOUCHES",
-    text: "Finalization of the shoot work. Well done!",
-    icon: Trophy,
-    image: "/assets/hero-key-art.png",
+    image: "/assets/role-editor.png",
   },
 ];
 
 const roles = [
   {
-    image: "/assets/director.png",
+    image: "/assets/role-director.png",
     title: "Director",
     text: "Call the shots, direct the crew, and keep the entire production moving toward the final take.",
   },
   {
-    image: "/assets/cameraman.png",
+    image: "/assets/role-cameraman.png",
     title: "Cameraman",
     text: "Frame the shots and capture every important moment before time runs out.",
   },
   {
-    image: "/assets/av-technician.png",
+    image: "/assets/role-av-technician.png",
     title: "AV Technician",
     text: "Control lighting, sound, and studio equipment so every scene looks and sounds ready for the take.",
   },
   {
-    image: "/assets/editor.png",
+    image: "/assets/role-editor.png",
     title: "Editor",
     text: "Choose the strongest takes, fix production mistakes, and assemble the commercial to its perfection.",
   },
@@ -102,7 +94,7 @@ function HomePage() {
       >
         <div className="hero-camera-image absolute inset-0">
           <Image
-            src="/assets/hero-key-art.png"
+            src="/assets/crew-on-set-hero.jpg"
             alt="A chaotic commercial shoot in Crew On Set"
             fill
             priority
@@ -336,7 +328,7 @@ function HomePage() {
         <div className="mx-auto grid max-w-7xl items-center gap-12 px-5 lg:grid-cols-[1.05fr_.95fr] lg:px-8">
           <div className="image-frame rotate-1 border-white/10 bg-black">
             <Image
-              src="/assets/gameplay-shot.png"
+              src="/assets/crew-set-illustration.png"
               alt="Crew coordinating a live shoot"
               width={1200}
               height={800}
@@ -385,7 +377,7 @@ function HomePage() {
           <div className="order-2 lg:order-1">
             <div className="image-frame -rotate-1 border-navy bg-navy">
               <Image
-                src="/assets/team-portrait.png"
+                src="/assets/crew-team-illustration.png"
                 alt="The team behind Crew On Set"
                 width={1200}
                 height={800}

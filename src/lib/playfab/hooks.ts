@@ -330,6 +330,7 @@ export function usePurchaseItem() {
       queryClient.invalidateQueries({ queryKey: QUERY_KEYS.wallet });
       queryClient.invalidateQueries({ queryKey: QUERY_KEYS.inventory });
       queryClient.invalidateQueries({ queryKey: QUERY_KEYS.catalog });
+      queryClient.invalidateQueries({ queryKey: QUERY_KEYS.transactions });
     },
   });
 }
@@ -350,6 +351,7 @@ export function useUpdateLoadout() {
     mutationFn: (loadout: Loadout) => getPlayFabService().player.updateLoadout(loadout),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: QUERY_KEYS.loadout });
+      queryClient.invalidateQueries({ queryKey: QUERY_KEYS.inventory });
     },
   });
 }

@@ -14,6 +14,7 @@ export const Route = createFileRoute("/admin/partnerships")({
 });
 
 import { useMemo, useState } from "react";
+import Link from "@/components/next-compat/link";
 import {
   Banknote,
   CalendarClock,
@@ -23,6 +24,7 @@ import {
   Link2,
   Mail,
   MailCheck,
+  Megaphone,
   Trash2,
   X,
 } from "lucide-react";
@@ -51,6 +53,12 @@ const statusStyles: Record<PartnershipStatus, string> = {
   Declined: "bg-coral/15 text-[#ff7663]",
 };
 
+const adStatusStyles: Record<ActiveAd["status"], string> = {
+  "On-going": "bg-[#3a7bd5]/15 text-[#7cb0ee]",
+  Expiring: "bg-[#d9a514]/15 text-[#e1b42b]",
+  Expired: "bg-coral/15 text-coral",
+  Done: "bg-white/[.08] text-white/50",
+};
 function formatDate(iso: string) {
   return new Date(iso).toLocaleDateString("en-US", {
     year: "numeric",
@@ -58,6 +66,8 @@ function formatDate(iso: string) {
     day: "numeric",
   });
 }
+
+const showLegacyAds = false;
 
 function PartnershipsPage() {
   const [applications, setApplications] = applicationsStore.useStore();
@@ -71,10 +81,23 @@ function PartnershipsPage() {
 
   const [ads, setAds] = adsStore.useStore();
   const [revenue, setRevenue] = revenueStore.useStore();
-  const filteredAds: ActiveAd[] = [];
-  const adSummaries: never[] = [];
-  const adStatusOptions: ActiveAd["status"][] = [];
+
   const [adStatusFilter, setAdStatusFilter] = useState<ActiveAd["status"]>("On-going");
+  const adStatusOptions: ActiveAd["status"][] = ["On-going", "Expiring", "Expired", "Done"];
+  const filteredAds = ads.filter((ad) => ad.status === adStatusFilter);
+  const adSummaries = [
+    { label: "Live placements", value: String(ads.filter((ad) => ad.status === "On-going").length), color: "bg-[#3a7bd5]", icon: Megaphone },
+    { label: "Tracked revenue", value: formatMoney(revenue.reduce((sum, ad) => sum + ad.revenue, 0)), color: "bg-[#2d9d8f]", icon: Banknote },
+    { label: "Impressions", value: ads.reduce((sum, ad) => sum + ad.impressions, 0).toLocaleString(), color: "bg-[#d9a514]", icon: Eye },
+  ];
+
+  async function archiveSelected() {
+    if (!selectedAdIds.length) return;
+    if (!(await deleteSharedRecords("cos.ads", selectedAdIds))) return;
+    const ids = new Set(selectedAdIds);
+    setAds((current) => current.filter((ad) => !ids.has(ad.id)));
+    setSelectedAdIds([]);
+  }
 
   const filtered = useMemo(
     () =>
@@ -332,7 +355,7 @@ function PartnershipsPage() {
         </div>
       </section>
 
-      {false && (
+      {showLegacyAds && (
         <section id="active-advertisements" className="hidden">
         <div className="mb-6 flex flex-col justify-between gap-4 sm:flex-row sm:items-end">
           <div>

@@ -10,6 +10,8 @@ import { getInventory } from './inventory';
 import { getAchievements } from './achievements';
 import { getKnowledge } from './almanac';
 import { getProductionLogs } from './productions';
+import { getTransactions } from './transactions';
+import { getNotifications } from './notifications';
 import { getGlobalLeaderboard, getLeaderboardAroundPlayer } from './leaderboard';
 import { getFriendsList } from './friends';
 import { cosmeticCatalog } from '@/lib/demo/portal-shop';
@@ -115,6 +117,17 @@ function createRealService(): PlayFabService {
           };
         }
         const profile = await getPlayerProfile(ticket);
+        if (profile) {
+          const metadataRaw = (await getUserData(ticket, [PLAYFAB_DATA_KEYS.profile_metadata]))[PLAYFAB_DATA_KEYS.profile_metadata];
+          if (metadataRaw) {
+            try {
+              const metadata = JSON.parse(metadataRaw) as Pick<PlayerProfile, 'bio' | 'socialLinks'>;
+              return { ...profile, ...metadata };
+            } catch {
+              // Ignore malformed optional profile metadata and keep the PlayFab profile.
+            }
+          }
+        }
         return profile ?? {
           id: '',
           playFabId: '',
@@ -197,8 +210,9 @@ function createRealService(): PlayFabService {
       },
 
       getTransactions: async () => {
-        // Return transaction ledger or empty if none
-        return [];
+        const ticket = await resolveSessionTicket();
+        if (!ticket) return [];
+        return getTransactions(ticket);
       },
 
       getFriends: async () => {
@@ -208,7 +222,9 @@ function createRealService(): PlayFabService {
       },
 
       getNotifications: async () => {
-        return [];
+        const ticket = await resolveSessionTicket();
+        if (!ticket) return [];
+        return getNotifications(ticket);
       },
 
       updateProfile: async (updates) => {
@@ -216,6 +232,19 @@ function createRealService(): PlayFabService {
         if (!ticket) return;
         if (updates.displayName) {
           await updateDisplayName(ticket, updates.displayName);
+        }
+        if ('bio' in updates || 'socialLinks' in updates) {
+          const currentRaw = (await getUserData(ticket, [PLAYFAB_DATA_KEYS.profile_metadata]))[PLAYFAB_DATA_KEYS.profile_metadata];
+          let current: Pick<PlayerProfile, 'bio' | 'socialLinks'> = {};
+          if (currentRaw) {
+            try { current = JSON.parse(currentRaw); } catch { /* replace malformed metadata */ }
+          }
+          await updateUserData(ticket, {
+            [PLAYFAB_DATA_KEYS.profile_metadata]: JSON.stringify({
+              bio: 'bio' in updates ? updates.bio ?? '' : current.bio ?? '',
+              socialLinks: 'socialLinks' in updates ? updates.socialLinks ?? {} : current.socialLinks ?? {},
+            }),
+          });
         }
       },
 

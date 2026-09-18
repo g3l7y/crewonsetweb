@@ -25,7 +25,7 @@ export const seedAlmanac: AlmanacEntry[] = [
     category: "Cameras",
     tier: "Low-End",
     role: "Cameraman",
-    image: "/assets/gameplay-shot.png",
+    image: "/assets/crew-set-illustration.png",
     description:
       "A compact cinema camera built for productions where mobility matters more than precision. The FX3 gives the Cameraman everything needed to capture a usable shot, but its limited stabilization and manual focusing make every frame a test of skill. Its drifting reticle forces operators to constantly correct camera sway, while the lack of focus feedback means sharpness must be judged entirely by eye.",
     features: [
@@ -50,7 +50,7 @@ export const seedAlmanac: AlmanacEntry[] = [
     category: "Cameras",
     tier: "Mid-End",
     role: "Cameraman",
-    image: "/assets/story-studio.png",
+    image: "/assets/crew-set-illustration.png",
     description:
       "A professional workhorse designed to give Cameramen greater control without removing the need for hands-on operation. The FS7M2 introduces Focus Peaking, allowing operators to immediately identify subjects that are properly focused. Its improved stabilization also reduces camera sway, making composition considerably easier while still requiring the player to manually track moving actors.",
     features: [
@@ -75,7 +75,7 @@ export const seedAlmanac: AlmanacEntry[] = [
     category: "Cameras",
     tier: "High-End",
     role: "Cameraman",
-    image: "/assets/hero-key-art.png",
+    image: "/assets/crew-set-illustration.png",
     description:
       "A broadcast-grade camera equipped with intelligent tracking capabilities that dramatically reduce the workload of the Cameraman. Its AI Face Tracking identifies an actor and automatically maintains both focus and framing as they move through the scene. Combined with Tripod Lock, the Z280 eliminates camera sway entirely.",
     features: [
@@ -100,7 +100,7 @@ export const seedAlmanac: AlmanacEntry[] = [
     category: "Lighting",
     tier: "Low-End",
     role: "Lighting",
-    image: "/assets/story-studio.png",
+    image: "/assets/crew-set-illustration.png",
     description:
       "A straightforward lighting solution for crews working with limited equipment. The 160 LED Panel provides reliable illumination, but its fixed color temperature and hard light characteristics make it difficult to integrate with more demanding environments. Sharp shadows appear on the Heat Map, warning the player that the lighting may produce an Academic Error.",
     features: [
@@ -125,7 +125,7 @@ export const seedAlmanac: AlmanacEntry[] = [
     category: "Lighting",
     tier: "Mid-End",
     role: "Lighting",
-    image: "/assets/gameplay-shot.png",
+    image: "/assets/crew-set-illustration.png",
     description:
       "A versatile lighting combination that gives the Lighting Artist greater control over both intensity and shadow quality. The COB light provides stronger illumination while the Softbox introduces diffusion, transforming harsh shadows into softer, more acceptable lighting. The operator must still manually adjust Kelvin to match the surrounding environment.",
     features: [
@@ -150,7 +150,7 @@ export const seedAlmanac: AlmanacEntry[] = [
     category: "Lighting",
     tier: "High-End",
     role: "Lighting",
-    image: "/assets/hero-key-art.png",
+    image: "/assets/crew-set-illustration.png",
     description:
       "A professional lighting system designed for productions where precision is paramount. The SkyPanel combines powerful illumination with advanced RGB color control, allowing Lighting Artists to reproduce virtually any required color temperature or hue. Its Auto-Match system can sample the environment and automatically configure the light to blend seamlessly with the scene.",
     features: [
@@ -175,7 +175,7 @@ export const seedAlmanac: AlmanacEntry[] = [
     category: "Audio",
     tier: "Low-End",
     role: "Audio",
-    image: "/assets/gameplay-shot.png",
+    image: "/assets/crew-set-illustration.png",
     description:
       "The entry-level solution for capturing production dialogue. While capable of recording usable speech, its broad pickup pattern makes it vulnerable to unwanted crew noise and ambient room tone. A visible Noise Floor shows the player exactly how much background sound is competing with the actor's voice.",
     features: [
@@ -200,7 +200,7 @@ export const seedAlmanac: AlmanacEntry[] = [
     category: "Audio",
     tier: "Mid-End",
     role: "Audio",
-    image: "/assets/story-studio.png",
+    image: "/assets/crew-set-illustration.png",
     description:
       "A dedicated production audio setup that provides considerably greater control over dialogue capture. The narrower pickup pattern reduces unwanted sounds from the sides, while the Low-Cut Filter removes much of the low-frequency room noise visible on the Noise Floor.",
     features: [
@@ -225,7 +225,7 @@ export const seedAlmanac: AlmanacEntry[] = [
     category: "Audio",
     tier: "High-End",
     role: "Audio",
-    image: "/assets/hero-key-art.png",
+    image: "/assets/crew-set-illustration.png",
     description:
       "A professional multi-channel audio system built around redundancy and automatic level management. Wireless lavalier microphones allow actors to move freely while the Digital Mixer continuously monitors their signals. Safe-Track Recording provides a backup channel when one microphone clips, while Auto-Mix maintains balanced dialogue levels automatically.",
     features: [
@@ -250,7 +250,7 @@ export const seedAlmanac: AlmanacEntry[] = [
     category: "Editing",
     tier: "Low-End",
     role: "Editor",
-    image: "/assets/gameplay-shot.png",
+    image: "/assets/crew-set-illustration.png",
     description:
       "A basic editing workstation capable of completing a production, but not without considerable patience. Limited processing power introduces Ingestion Lag after filming, while the unstable Sync interface makes precise audio-to-video alignment more difficult.",
     features: [
@@ -275,7 +275,7 @@ export const seedAlmanac: AlmanacEntry[] = [
     category: "Editing",
     tier: "Mid-End",
     role: "Editor",
-    image: "/assets/story-studio.png",
+    image: "/assets/crew-set-illustration.png",
     description:
       "A dedicated editing workstation that gives the Editor considerably more information during post-production. Dual monitors allow the timeline to remain visible alongside professional scopes such as the Vectorscope and Waveform, making technical problems easier to identify.",
     features: [
@@ -300,7 +300,7 @@ export const seedAlmanac: AlmanacEntry[] = [
     category: "Editing",
     tier: "High-End",
     role: "Editor",
-    image: "/assets/hero-key-art.png",
+    image: "/assets/crew-set-illustration.png",
     description:
       "A complete professional post-production environment designed to catch problems before they reach the client. Auto-Sync eliminates the tedious process of manually aligning audio and video, while Error Highlighting identifies technical issues originating from other departments.",
     features: [

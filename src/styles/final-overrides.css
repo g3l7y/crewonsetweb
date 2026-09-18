@@ -1,0 +1,494 @@
+/* Final visual pass: the palette and hierarchy from the supplied design brief. */
+:root {
+  --crew-light: #fefdf8;
+  --crew-card: #fefaef;
+  --crew-ink: #0a0e19;
+  --crew-nav: #252525;
+  --crew-coral: #f0573d;
+  --crew-yellow: #fbbf24;
+  --crew-green: #47870d;
+  --crew-dark: #0a0e19;
+  --crew-dark-card: #0f1626;
+  --crew-process-card: #fcf8ed;
+}
+
+html,
+body {
+  background: var(--crew-light);
+  color: var(--crew-ink);
+}
+
+body {
+  overflow-x: hidden;
+}
+
+/* Marketing shell */
+.marketing-theme {
+  background: var(--crew-light) !important;
+  color: var(--crew-ink) !important;
+}
+
+.marketing-theme main {
+  background: var(--crew-light);
+}
+
+.marketing-theme > header.header-at-top {
+  background: transparent !important;
+  box-shadow: none !important;
+}
+
+.marketing-theme > header.header-scrolled {
+  background: var(--crew-nav) !important;
+  box-shadow: 0 5px 0 rgba(10, 14, 25, 0.18) !important;
+}
+
+.marketing-theme > header.header-at-top .nav-link {
+  color: var(--crew-ink) !important;
+}
+
+.marketing-theme > header.header-scrolled .nav-link {
+  color: var(--crew-light) !important;
+}
+
+.marketing-theme > header .nav-link[aria-current="page"],
+.marketing-theme > header .nav-link:hover {
+  color: var(--crew-yellow) !important;
+}
+
+.marketing-theme > header .nav-link[aria-current="page"]::after {
+  background: var(--crew-yellow) !important;
+}
+
+.marketing-theme > header .mobile-menu {
+  background: var(--crew-nav) !important;
+  color: var(--crew-light) !important;
+}
+
+.marketing-theme > footer {
+  background: var(--crew-nav) !important;
+  color: var(--crew-light) !important;
+}
+
+.marketing-theme .cta-primary,
+.marketing-theme .story-button,
+.marketing-theme .team-button {
+  border: 3px solid var(--crew-ink) !important;
+  box-shadow: 6px 6px 0 var(--crew-ink) !important;
+  font-weight: 900;
+}
+
+.marketing-theme .cta-primary {
+  background: var(--crew-coral) !important;
+  color: var(--crew-light) !important;
+}
+
+.marketing-theme .cta-primary:hover,
+.marketing-theme .story-button:hover,
+.marketing-theme .team-button:hover {
+  transform: translate(-2px, -2px);
+  box-shadow: 8px 8px 0 var(--crew-ink) !important;
+}
+
+.marketing-theme .story-button,
+.marketing-theme .team-button {
+  background: var(--crew-light) !important;
+  color: var(--crew-ink) !important;
+}
+
+.marketing-theme .eyebrow {
+  border: 2px solid currentColor;
+}
+
+.marketing-theme #story {
+  background: var(--crew-light) !important;
+  color: var(--crew-ink) !important;
+}
+
+.marketing-theme #story .text-white,
+.marketing-theme #story .section-title {
+  color: var(--crew-ink) !important;
+}
+
+.marketing-theme #story .text-white\/70,
+.marketing-theme #story .text-white\/50 {
+  color: rgba(10, 14, 25, 0.7) !important;
+}
+
+.marketing-theme #story .border-white\/15 {
+  border-color: rgba(10, 14, 25, 0.2) !important;
+}
+
+.marketing-theme #story .image-frame {
+  border: 3px solid var(--crew-ink) !important;
+  background: var(--crew-card) !important;
+  box-shadow: 8px 8px 0 var(--crew-ink);
+}
+
+.marketing-theme .story-journey {
+  background: var(--crew-dark) !important;
+  color: var(--crew-light) !important;
+}
+
+.marketing-theme .story-journey .story-chapters {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.marketing-theme .story-journey .story-chapter {
+  background: var(--crew-process-card) !important;
+  color: var(--crew-ink) !important;
+  border: 3px solid var(--crew-yellow) !important;
+  box-shadow: 7px 7px 0 var(--crew-yellow);
+}
+
+.marketing-theme .story-journey .chapter-content h3,
+.marketing-theme .story-journey .chapter-content p,
+.marketing-theme .story-journey .chapter-kicker {
+  color: var(--crew-ink) !important;
+}
+
+.marketing-theme .roles-section {
+  background: var(--crew-light) !important;
+  color: var(--crew-ink) !important;
+}
+
+.marketing-theme .roles-section .section-title,
+.marketing-theme .roles-section .text-navy\/65 {
+  color: var(--crew-ink) !important;
+}
+
+.marketing-theme .roles-section .stars-container {
+  color: var(--crew-ink) !important;
+  opacity: 0.8;
+  filter: invert(1);
+}
+
+.marketing-theme .roles-section .role-card {
+  background: var(--crew-card) !important;
+  color: var(--crew-ink) !important;
+  border: 3px solid var(--crew-ink) !important;
+  box-shadow: 7px 7px 0 var(--crew-ink);
+}
+
+.marketing-theme .roles-section .role-card .text-navy\/60 {
+  color: rgba(10, 14, 25, 0.7) !important;
+}
+
+.marketing-theme .roles-section .story-button {
+  border-color: var(--crew-coral) !important;
+  box-shadow: 6px 6px 0 var(--crew-coral) !important;
+}
+
+.marketing-theme .roles-section .story-button:hover {
+  box-shadow: 8px 8px 0 var(--crew-coral) !important;
+}
+
+.marketing-theme .marketing-mechanics,
+.marketing-theme .team-section {
+  background: var(--crew-light) !important;
+  color: var(--crew-ink) !important;
+}
+
+.marketing-theme .team-section .text-navy\/70 {
+  color: rgba(10, 14, 25, 0.7) !important;
+}
+
+.marketing-theme .team-section .image-frame {
+  border: 3px solid var(--crew-ink) !important;
+  box-shadow: 8px 8px 0 var(--crew-ink);
+}
+
+.marketing-theme .contact-section {
+  background: var(--crew-dark) !important;
+}
+
+.marketing-theme .page-hero {
+  min-height: 560px;
+  display: flex;
+  align-items: flex-end;
+}
+
+/* Features */
+.features-almanac {
+  background: var(--crew-light) !important;
+  color: var(--crew-ink) !important;
+}
+
+.features-almanac .story-hero {
+  min-height: 760px;
+  background: var(--crew-light) !important;
+}
+
+.features-almanac .story-timeline,
+.features-almanac .almanac-hero,
+.features-almanac .almanac-selector-section,
+.features-almanac .almanac-details-section,
+.features-almanac .almanac-reference-section {
+  background: var(--crew-light) !important;
+  color: var(--crew-ink) !important;
+}
+
+.features-almanac .story-timeline h2,
+.features-almanac .story-timeline h3,
+.features-almanac .story-timeline p,
+.features-almanac .almanac-selector-section,
+.features-almanac .almanac-reference-section {
+  color: var(--crew-ink) !important;
+}
+
+.features-almanac .almanac-role-selector {
+  background: var(--crew-dark) !important;
+  border-color: var(--crew-ink) !important;
+}
+
+.features-almanac .almanac-role-button {
+  color: rgba(254, 253, 248, 0.55) !important;
+}
+
+.features-almanac .almanac-role-button.active,
+.features-almanac .almanac-role-button:hover {
+  background: var(--crew-dark-card) !important;
+  color: var(--crew-light) !important;
+}
+
+.features-almanac .almanac-role-button.active .almanac-role-active-line {
+  background: var(--crew-yellow) !important;
+}
+
+.features-almanac .almanac-quote-card {
+  background: var(--crew-dark) !important;
+  color: var(--crew-light) !important;
+  border-color: var(--crew-ink) !important;
+}
+
+.features-almanac .story-hero-bg {
+  opacity: 1;
+}
+
+.features-almanac .story-hero-overlay {
+  background: linear-gradient(90deg, rgba(254, 253, 248, 0.97), rgba(254, 253, 248, 0.78), rgba(254, 253, 248, 0.14)) !important;
+}
+
+.features-almanac .story-hero-content,
+.features-almanac .story-hero-copy,
+.features-almanac .story-hero-copy h1,
+.features-almanac .story-hero-description {
+  color: var(--crew-ink) !important;
+}
+
+.features-almanac .almanac-details-box,
+.features-almanac .almanac-info-card,
+.features-almanac .almanac-reference-grid,
+.features-almanac .role-detail-card {
+  background: var(--crew-dark) !important;
+  color: var(--crew-light) !important;
+  border-color: var(--crew-ink) !important;
+}
+
+.features-almanac .almanac-details-box p,
+.features-almanac .almanac-info-card p,
+.features-almanac .role-detail-card p {
+  color: rgba(254, 253, 248, 0.72) !important;
+}
+
+/* Download */
+.download-page,
+.download-page > section {
+  background: var(--crew-dark) !important;
+  color: var(--crew-light) !important;
+}
+
+.download-page .download-hero {
+  min-height: 680px;
+}
+
+.download-page .download-card,
+.download-page .rounded-lg.border-white\/10 {
+  border-color: rgba(254, 253, 248, 0.22) !important;
+  background: var(--crew-dark-card) !important;
+}
+
+.download-page .cta-primary {
+  background: var(--crew-coral) !important;
+}
+
+/* Contact */
+.contact-page,
+.contact-page > section {
+  background: var(--crew-dark) !important;
+  color: var(--crew-light) !important;
+}
+
+.contact-page .page-hero {
+  min-height: 700px;
+}
+
+.contact-page .contact-card,
+.contact-page form,
+.contact-page aside a {
+  background: var(--crew-card) !important;
+  color: var(--crew-ink) !important;
+  border-color: var(--crew-ink) !important;
+}
+
+.contact-page .partnership-submit,
+.contact-page button[type="submit"] {
+  background: var(--crew-yellow) !important;
+  color: var(--crew-ink) !important;
+  border: 3px solid var(--crew-ink) !important;
+  box-shadow: 6px 6px 0 var(--crew-ink) !important;
+}
+
+/* Team */
+.team-page,
+.team-page .team-hero,
+.team-page .journey-section,
+.team-page .crew-section,
+.team-page .behind-section,
+.team-page .tools-section {
+  background: var(--crew-light) !important;
+  color: var(--crew-ink) !important;
+}
+
+.team-page .crew-profile,
+.team-page .tools-box {
+  background: var(--crew-dark) !important;
+  color: var(--crew-light) !important;
+  border-color: var(--crew-ink) !important;
+  box-shadow: 8px 8px 0 var(--crew-coral);
+}
+
+/* Player portal */
+.portal-theme {
+  --portal-background: var(--crew-light);
+  --portal-surface: var(--crew-card);
+  --portal-ink: var(--crew-ink);
+  background: var(--crew-light) !important;
+  color: var(--crew-ink) !important;
+}
+
+.portal-theme.portal-dark {
+  --portal-background: var(--crew-dark);
+  --portal-surface: var(--crew-dark-card);
+  --portal-ink: var(--crew-light);
+  background: var(--crew-dark) !important;
+  color: var(--crew-light) !important;
+}
+
+.portal-theme .portal-card,
+.portal-theme .portal-panel,
+.portal-theme .shop-card,
+.portal-theme table,
+.portal-theme .leaderboard-card {
+  border: 3px solid currentColor;
+  box-shadow: 6px 6px 0 rgba(10, 14, 25, 0.8);
+}
+
+.portal-theme.portal-dark .portal-card,
+.portal-theme.portal-dark .portal-panel,
+.portal-theme.portal-dark .shop-card,
+.portal-theme.portal-dark table,
+.portal-theme.portal-dark .leaderboard-card {
+  box-shadow: 6px 6px 0 rgba(254, 253, 248, 0.18);
+}
+
+.portal-theme .shop-secondary-button,
+.portal-theme .shop-category-list button.active,
+.portal-theme .shop-tabs button.active {
+  background: var(--crew-yellow) !important;
+  color: var(--crew-ink) !important;
+  border-color: var(--crew-ink) !important;
+}
+
+.portal-theme .shop-primary-button {
+  background: var(--crew-coral) !important;
+  color: var(--crew-light) !important;
+  border-color: var(--crew-ink) !important;
+}
+
+.portal-theme .player-header.header-at-top {
+  background: transparent !important;
+  border-color: transparent !important;
+  box-shadow: none !important;
+}
+
+.portal-theme .player-header.header-scrolled {
+  background: var(--crew-nav) !important;
+  color: var(--crew-light) !important;
+  border-color: rgba(254, 253, 248, 0.18) !important;
+}
+
+.portal-theme .player-header.header-at-top a:not(.bg-yellow),
+.portal-theme .player-header.header-at-top button {
+  color: var(--crew-ink) !important;
+}
+
+.portal-theme .player-header.header-scrolled a:not(.bg-yellow),
+.portal-theme .player-header.header-scrolled button {
+  color: var(--crew-light) !important;
+}
+
+.portal-theme .player-header a.bg-yellow,
+.portal-theme .player-header button.bg-yellow {
+  color: var(--crew-ink) !important;
+}
+
+.portal-theme .player-header .notification-panel,
+.portal-theme .player-header .account-panel {
+  background: var(--crew-card) !important;
+  color: var(--crew-ink) !important;
+  border: 3px solid var(--crew-ink) !important;
+}
+
+/* Admin */
+.admin-theme {
+  --admin-bg: var(--crew-dark);
+  --admin-surface: var(--crew-dark-card);
+  --admin-ink: var(--crew-light);
+  background: var(--crew-dark) !important;
+  color: var(--crew-light) !important;
+}
+
+.admin-theme.admin-light {
+  --admin-bg: var(--crew-light);
+  --admin-surface: var(--crew-card);
+  --admin-ink: var(--crew-ink);
+  background: var(--crew-light) !important;
+  color: var(--crew-ink) !important;
+}
+
+.admin-theme aside,
+.admin-theme > header {
+  background: var(--crew-nav) !important;
+  color: var(--crew-light) !important;
+}
+
+.admin-theme aside nav a {
+  min-height: 42px;
+  overflow: visible !important;
+}
+
+.admin-theme aside nav {
+  overflow-x: visible !important;
+  overflow-y: auto !important;
+}
+
+.admin-theme aside nav a.bg-coral {
+  background: var(--crew-yellow) !important;
+  color: var(--crew-ink) !important;
+}
+
+.admin-theme aside nav a.bg-coral svg {
+  color: var(--crew-ink) !important;
+}
+
+@media (max-width: 900px) {
+  .marketing-theme .story-journey .story-chapters {
+    grid-template-columns: 1fr;
+  }
+
+  .features-almanac .story-hero,
+  .marketing-theme .page-hero,
+  .contact-page .page-hero {
+    min-height: 560px;
+  }
+}

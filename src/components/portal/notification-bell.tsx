@@ -13,8 +13,10 @@ import {
   notificationsStore,
   type PlayerNotification,
 } from "@/lib/demo/store";
+import { isMockMode } from "@/lib/playfab/config";
+import { useNotifications } from "@/lib/playfab/hooks";
 
-const iconByKind: Record<PlayerNotification["kind"], typeof Bell> = {
+const iconByKind: Record<string, typeof Bell> = {
   announcement: Megaphone,
   achievement: Trophy,
   friend: Users,
@@ -48,8 +50,17 @@ function relativeTime(iso: string) {
 }
 
 export function NotificationBell({ dark = true }: { dark?: boolean }) {
-  const [notifications, setNotifications] = notificationsStore.useStore();
+  const mockMode = isMockMode();
+  const [demoNotifications, setDemoNotifications] = notificationsStore.useStore();
+  const realNotificationsQuery = useNotifications();
+  const [realNotifications, setRealNotifications] = useState<PlayerNotification[]>([]);
   const [open, setOpen] = useState(false);
+
+  useEffect(() => {
+    if (!mockMode) setRealNotifications(realNotificationsQuery.data ?? []);
+  }, [mockMode, realNotificationsQuery.data]);
+
+  const notifications = mockMode ? demoNotifications : realNotifications;
   const ref = useRef<HTMLDivElement>(null);
   const router = useRouter();
 
@@ -69,13 +80,15 @@ export function NotificationBell({ dark = true }: { dark?: boolean }) {
   const unreadCount = notifications.filter((n) => !n.read).length;
 
   function markRead(id: string) {
-    setNotifications(
-      notifications.map((n) => (n.id === id ? { ...n, read: true } : n)),
-    );
+    const next = notifications.map((n) => (n.id === id ? { ...n, read: true } : n));
+    if (mockMode) setDemoNotifications(next);
+    else setRealNotifications(next);
   }
 
   function markAllRead() {
-    setNotifications(notifications.map((n) => ({ ...n, read: true })));
+    const next = notifications.map((n) => ({ ...n, read: true }));
+    if (mockMode) setDemoNotifications(next);
+    else setRealNotifications(next);
   }
 
   return (
@@ -85,7 +98,7 @@ export function NotificationBell({ dark = true }: { dark?: boolean }) {
         aria-label="Open notifications"
         aria-expanded={open}
         onClick={() => setOpen((v) => !v)}
-        className={`relative grid size-10 place-items-center rounded-md border transition ${
+        className={`portal-notification-trigger relative grid size-10 place-items-center rounded-md border transition ${
           dark
             ? "border-white/15 bg-white/5 text-white/70 hover:bg-white/10 hover:text-white"
             : "border-navy/15 bg-white text-navy/70 hover:bg-navy/5"
@@ -100,7 +113,7 @@ export function NotificationBell({ dark = true }: { dark?: boolean }) {
       </button>
 
       {open && (
-        <div className="absolute right-0 top-12 z-[90] w-[min(360px,88vw)] overflow-hidden rounded-xl border border-navy/10 bg-white text-navy shadow-2xl">
+        <div className="player-notification-dropdown absolute right-0 top-12 z-[90] w-[min(360px,88vw)] overflow-hidden rounded-xl border border-navy/10 bg-white text-navy shadow-2xl">
           <div className="flex items-center justify-between border-b border-navy/10 px-4 py-3">
             <div>
               <h3 className="text-sm font-black uppercase tracking-wide">
@@ -127,7 +140,7 @@ export function NotificationBell({ dark = true }: { dark?: boolean }) {
               </p>
             )}
             {sorted.map((notification) => {
-              const Icon = iconByKind[notification.kind];
+              const Icon = iconByKind[notification.kind ?? "system"] ?? Settings2;
               return (
                 <button
                   type="button"
