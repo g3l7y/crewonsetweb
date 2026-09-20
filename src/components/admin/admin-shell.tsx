@@ -3,6 +3,7 @@ import { usePathname, useRouter } from "@/components/next-compat/navigation";
 import { Toaster } from "@/components/ui/sonner";
 import {
   adminAccountStore,
+  adminActivityStore,
   adsStore,
   alertReadStore,
   applicationsStore,
@@ -10,11 +11,13 @@ import {
   playerReportsStore,
 } from "@/lib/demo/store";
 import { buildAlerts } from "@/components/admin/admin-alerts";
+import { isMockMode } from "@/lib/playfab/config";
+import { useSession } from "@/lib/playfab/hooks";
 import { useDisplayTheme } from "@/components/theme/display-theme-switcher";
 import {
   Banknote,
+  BarChart3,
   Bell,
-  BookOpen,
   Bug,
   ChevronsLeft,
   ChevronsRight,
@@ -39,7 +42,7 @@ function useUnreadAlertsCount() {
   const [bugs] = bugReportsStore.useStore();
   const [playerReports] = playerReportsStore.useStore();
   const alerts = useMemo(
-    () => buildAlerts(applications, ads, bugs, playerReports),
+    () => buildAlerts(applications, ads, bugs, playerReports, [], isMockMode()),
     [applications, ads, bugs, playerReports],
   );
   const [readIds] = alertReadStore.useStore();
@@ -54,12 +57,13 @@ const navigation = [
   { label: "Dashboard", href: "/admin", icon: LayoutDashboard },
   { label: "Players", href: "/admin/players", icon: Users },
   { label: "Game & Updates", href: "/admin/game", icon: Gamepad2 },
-  { label: "Almanac", href: "/admin/almanac", icon: BookOpen },
+  { label: "Notifications", href: "/admin/notifications", icon: Bell },
   { label: "Bug Reports", href: "/admin/bugs", icon: Bug },
   { label: "Player Reports", href: "/admin/player-reports", icon: Bug },
   { label: "Transactions", href: "/admin/transactions", icon: Banknote },
   { label: "Partnerships & Ads", href: "/admin/partnerships", icon: HandCoins },
   { label: "Ad Revenue", href: "/admin/ad-revenue", icon: LineChart },
+  { label: "Analytics", href: "/admin/analytics", icon: BarChart3 },
   { label: "Settings", href: "/admin/settings", icon: Settings },
 ];
 
@@ -67,6 +71,8 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const router = useRouter();
   const displayTheme = useDisplayTheme("admin");
+  const mockMode = isMockMode();
+  const sessionQuery = useSession();
   const [mobileOpen, setMobileOpen] = useState(false);
   const [collapsed, setCollapsed] = useState(false);
   const [identityOpen, setIdentityOpen] = useState(false);
@@ -78,9 +84,10 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
   const [ads] = adsStore.useStore();
   const [bugs] = bugReportsStore.useStore();
   const [playerReports] = playerReportsStore.useStore();
+  const [activity] = adminActivityStore.useStore();
   const alerts = useMemo(
-    () => buildAlerts(applications, ads, bugs, playerReports),
-    [applications, ads, bugs, playerReports],
+    () => buildAlerts(applications, ads, bugs, playerReports, mockMode ? activity : [], mockMode),
+    [applications, ads, bugs, playerReports, activity, mockMode],
   );
   const [readIds, setReadIds] = alertReadStore.useStore();
   const unread = alerts.filter((alert) => !readIds.includes(alert.id)).length;
@@ -131,6 +138,13 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
               </button>
             ))}
           </div>
+          <Link
+            href="/admin/notifications"
+            onClick={() => setNotificationsOpen(false)}
+            className="mt-1 flex items-center justify-center border-t border-white/10 px-3 py-2.5 text-[10px] font-black uppercase tracking-[.14em] text-coral transition hover:text-white"
+          >
+            View More
+          </Link>
         </div>
       )}
     </div>
@@ -142,7 +156,11 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
     router.refresh();
   }
 
-  const admin = account[0];
+  const admin = mockMode ? account[0] : {
+    name: sessionQuery.data?.displayName || sessionQuery.data?.username || "Administrator",
+    email: sessionQuery.data?.email || "",
+    password: "",
+  };
 
   const sidebar = (
     <div className="flex h-full min-h-0 flex-col">
@@ -263,20 +281,24 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
                 <span className="font-black uppercase tracking-wide text-white/30">Email: </span>
                 {admin?.email ?? "—"}
               </p>
-              <div className="mt-1.5 flex items-center gap-2 text-[11px] text-white/50">
-                <span className="font-black uppercase tracking-wide text-white/30">Password:</span>
-                <span className="min-w-0 flex-1 truncate">
-                  {showPassword ? (admin?.password ?? "—") : "••••••••"}
-                </span>
-                <button
-                  type="button"
-                  onClick={() => setShowPassword((current) => !current)}
-                  aria-label={showPassword ? "Hide password" : "Show password"}
-                  className="shrink-0 text-white/40 transition hover:text-yellow"
-                >
-                  {showPassword ? <EyeOff className="size-3.5" /> : <Eye className="size-3.5" />}
-                </button>
-              </div>
+              {mockMode ? (
+                <div className="mt-1.5 flex items-center gap-2 text-[11px] text-white/50">
+                  <span className="font-black uppercase tracking-wide text-white/30">Password:</span>
+                  <span className="min-w-0 flex-1 truncate">
+                    {showPassword ? (admin?.password ?? "—") : "••••••••"}
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => setShowPassword((current) => !current)}
+                    aria-label={showPassword ? "Hide password" : "Show password"}
+                    className="shrink-0 text-white/40 transition hover:text-yellow"
+                  >
+                    {showPassword ? <Eye className="size-3.5" /> : <EyeOff className="size-3.5" />}
+                  </button>
+                </div>
+              ) : (
+                <p className="mt-1.5 text-[11px] text-white/50">Password managed by PlayFab.</p>
+              )}
               <div className="mt-3 space-y-1 border-t border-white/10 pt-2">
                 <Link
                   href="/"

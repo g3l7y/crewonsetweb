@@ -3,7 +3,7 @@ import Link from "@/components/next-compat/link";
 import { FormEvent, useState } from "react";
 import { useRouter } from "@/components/next-compat/navigation";
 import { ArrowLeft, Eye, EyeOff, KeyRound, LoaderCircle, Send, UserPlus, X } from "lucide-react";
-import { EMAIL_ERROR, PASSWORD_ERROR, USERNAME_ERROR, isValidEmail, isValidPassword, isValidUsername } from "@/lib/validation";
+import { EMAIL_ERROR, PASSWORD_ERROR, PASSWORD_INPUT_PATTERN, USERNAME_ERROR, isValidEmail, isValidPassword, isValidUsername } from "@/lib/validation";
 import { isMockMode } from "@/lib/playfab/config";
 
 type CrewAccessPageProps = {
@@ -21,9 +21,47 @@ async function loginWithCredentials(
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ email: identifier, password, scope }),
   });
-  const result = (await response.json()) as { error?: string; destination?: string; success?: boolean };
+  const result = (await response.json()) as {
+    error?: string;
+    destination?: string;
+    success?: boolean;
+    session?: { displayName?: string; email?: string };
+  };
   if (!response.ok || result.success === false) throw new Error(result.error ?? "Unable to sign in.");
+  if (scope === "player") rememberMockProfile(result.session);
   return result.destination ?? (scope === "admin" ? "/admin" : "/portal");
+}
+
+async function registerWithCredentials(username: string, email: string, password: string) {
+  const response = await fetch("/api/auth/register", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ username, email, password }),
+  });
+  const result = (await response.json()) as {
+    error?: string;
+    destination?: string;
+    success?: boolean;
+    session?: { displayName?: string; email?: string };
+  };
+  if (!response.ok || result.success === false) {
+    throw new Error(result.error ?? "Unable to create your account.");
+  }
+  rememberMockProfile(result.session);
+  return result.destination ?? "/portal";
+}
+
+function rememberMockProfile(session?: { displayName?: string; email?: string }) {
+  if (!isMockMode() || typeof window === "undefined" || !session?.displayName) return;
+  window.localStorage.setItem("cos.profile.account", JSON.stringify({
+    username: session.displayName,
+    email: session.email ?? "",
+  }));
+  window.localStorage.setItem("player-account", JSON.stringify({
+    username: session.displayName,
+    email: session.email ?? "",
+    displayName: session.displayName,
+  }));
 }
 
 export function CrewAccessPage({ mode, scope = "player" }: CrewAccessPageProps) {
@@ -42,9 +80,13 @@ export function CrewAccessPage({ mode, scope = "player" }: CrewAccessPageProps) 
     const data = new FormData(event.currentTarget);
 
     if (!isLogin) {
-      const name = String(data.get("name") ?? "");
+      const username = String(data.get("username") ?? "").trim();
       const email = String(data.get("email") ?? "");
       const password = String(data.get("password") ?? "");
+      if (!isValidUsername(username)) {
+        setError(USERNAME_ERROR);
+        return;
+      }
       if (!isValidEmail(email)) {
         setError(EMAIL_ERROR);
         return;
@@ -59,8 +101,15 @@ export function CrewAccessPage({ mode, scope = "player" }: CrewAccessPageProps) 
         return;
       }
       setError("");
-      const body = `Name: ${name}\nEmail: ${email}\n\nI'd like to join the Crew On Set community.`;
-      window.location.href = `mailto:hello@crew-on-set.game?subject=${encodeURIComponent("Crew On Set community sign up")}&body=${encodeURIComponent(body)}`;
+      setLoading(true);
+      try {
+        const destination = await registerWithCredentials(username, email.trim(), password);
+        router.push(destination);
+        router.refresh();
+      } catch (err) {
+        setError(err instanceof Error ? err.message : "Unable to create your account.");
+        setLoading(false);
+      }
       return;
     }
 
@@ -70,8 +119,8 @@ export function CrewAccessPage({ mode, scope = "player" }: CrewAccessPageProps) 
         setError("Please enter a valid email address or username.");
         return;
       }
-    } else if (!isValidEmail(identifier)) {
-      setError(EMAIL_ERROR);
+    } else if (!isValidEmail(identifier) && !isValidUsername(identifier)) {
+      setError("Please enter a valid email address or username.");
       return;
     }
     setError("");
@@ -127,13 +176,13 @@ export function CrewAccessPage({ mode, scope = "player" }: CrewAccessPageProps) 
           <form onSubmit={handleSubmit} className="mt-7">
             {isLogin ? (
               <>
-                <label className="form-label">{isAdmin ? "EMAIL OR USERNAME" : "EMAIL"}<input className="form-input" name="username" autoComplete="username" required placeholder={isMockMode() ? (isAdmin ? "admin@crewonset.com" : "player@crewonset.com") : (isAdmin ? "admin@crewonset.com" : "player@example.com")} /></label>
+                <label className="form-label">EMAIL OR USERNAME<input className="form-input" name="username" autoComplete="username" required placeholder={isMockMode() ? (isAdmin ? "admin@crewonset.com" : "player@crewonset.com") : (isAdmin ? "admin@crewonset.com" : "player@example.com")} /></label>
                 <label className="form-label mt-4">PASSWORD
 
                   <span className="relative block">
                     <input className="form-input pr-12" name="password" type={passwordVisible ? "text" : "password"} autoComplete="current-password" required placeholder="••••••••" />
                     <button type="button" onClick={() => setPasswordVisible((visible) => !visible)} className="absolute right-1 top-[calc(50%+4px)] grid size-10 -translate-y-1/2 place-items-center rounded text-navy/40 transition hover:bg-navy/5 hover:text-navy" aria-label={passwordVisible ? "Hide password" : "Show password"}>
-                      {passwordVisible ? <EyeOff className="size-4" /> : <Eye className="size-4" />}
+                      {passwordVisible ? <Eye className="size-4" /> : <EyeOff className="size-4" />}
                     </button>
                   </span>
                 </label>
@@ -145,21 +194,40 @@ export function CrewAccessPage({ mode, scope = "player" }: CrewAccessPageProps) 
               </>
             ) : (
               <>
-                <label className="form-label">YOUR NAME<input className="form-input" name="name" required placeholder="Jane Director" /></label>
+                <label className="form-label">USERNAME
+                  <input
+                    className="form-input"
+                    name="username"
+                    autoComplete="username"
+                    autoCapitalize="none"
+                    minLength={3}
+                    maxLength={20}
+                    pattern="[A-Za-z][A-Za-z0-9_]{2,19}"
+                    title="3–20 characters; start with a letter; use only letters, numbers, or underscores."
+                    required
+                    placeholder="jane_director"
+                    onInput={(event) => {
+                      event.currentTarget.value = event.currentTarget.value
+                        .replace(/[^A-Za-z0-9_]/g, "")
+                        .replace(/^[^A-Za-z]+/, "")
+                        .slice(0, 20);
+                    }}
+                  />
+                </label>
                 <label className="form-label mt-4">YOUR EMAIL<input className="form-input" name="email" type="email" required placeholder="jane@example.com" /></label>
                 <label className="form-label mt-4">PASSWORD
                   <span className="relative block">
-                    <input className="form-input pr-12" name="password" type={passwordVisible ? "text" : "password"} autoComplete="new-password" minLength={6} required placeholder="Minimum 6 characters" />
+                    <input className="form-input pr-12" name="password" type={passwordVisible ? "text" : "password"} autoComplete="new-password" minLength={8} maxLength={64} pattern={PASSWORD_INPUT_PATTERN} title={PASSWORD_ERROR} required placeholder="8+ characters with upper/lowercase, number, and symbol" />
                     <button type="button" onClick={() => setPasswordVisible((visible) => !visible)} className="absolute right-1 top-[calc(50%+4px)] grid size-10 -translate-y-1/2 place-items-center rounded text-navy/40 transition hover:bg-navy/5 hover:text-navy" aria-label={passwordVisible ? "Hide password" : "Show password"}>
-                      {passwordVisible ? <EyeOff className="size-4" /> : <Eye className="size-4" />}
+                      {passwordVisible ? <Eye className="size-4" /> : <EyeOff className="size-4" />}
                     </button>
                   </span>
                 </label>
                 <label className="form-label mt-4">CONFIRM PASSWORD
                   <span className="relative block">
-                    <input className="form-input pr-12" name="passwordConfirmation" type={confirmationVisible ? "text" : "password"} autoComplete="new-password" minLength={6} required placeholder="Repeat password" />
+                    <input className="form-input pr-12" name="passwordConfirmation" type={confirmationVisible ? "text" : "password"} autoComplete="new-password" minLength={8} maxLength={64} pattern={PASSWORD_INPUT_PATTERN} title={PASSWORD_ERROR} required placeholder="Repeat password" />
                     <button type="button" onClick={() => setConfirmationVisible((visible) => !visible)} className="absolute right-1 top-[calc(50%+4px)] grid size-10 -translate-y-1/2 place-items-center rounded text-navy/40 transition hover:bg-navy/5 hover:text-navy" aria-label={confirmationVisible ? "Hide password confirmation" : "Show password confirmation"}>
-                      {confirmationVisible ? <EyeOff className="size-4" /> : <Eye className="size-4" />}
+                      {confirmationVisible ? <Eye className="size-4" /> : <EyeOff className="size-4" />}
                     </button>
                   </span>
                 </label>
@@ -167,7 +235,7 @@ export function CrewAccessPage({ mode, scope = "player" }: CrewAccessPageProps) 
             )}
             {error && <p role="alert" className="mt-4 text-sm font-bold text-coral">{error}</p>}
             <button disabled={loading} type="submit" className="mt-5 inline-flex w-full items-center justify-center gap-2 rounded-md bg-navy px-5 py-3.5 text-sm font-black tracking-wider text-white transition hover:bg-coral disabled:cursor-wait disabled:opacity-70">
-              {loading ? <><LoaderCircle className="size-4 animate-spin" /> SIGNING IN</> : <>{isAdmin ? "ENTER CONSOLE" : isLogin ? "ENTER PORTAL" : "JOIN THE CREW"} <Send className="size-4" /></>}
+              {loading ? <><LoaderCircle className="size-4 animate-spin" /> {isLogin ? "SIGNING IN" : "CREATING ACCOUNT"}</> : <>{isAdmin ? "ENTER CONSOLE" : isLogin ? "ENTER PORTAL" : "JOIN THE CREW"} <Send className="size-4" /></>}
             </button>
 
             {!isAdmin && isMockMode() && (
@@ -312,17 +380,17 @@ function ForgotPasswordModal({ onClose }: { onClose: () => void }) {
             <p className="text-sm leading-relaxed text-navy/60">Code verified. Choose a new password.</p>
             <label className="form-label mt-4">NEW PASSWORD
               <span className="relative block">
-                <input className="form-input pr-12" name="newPassword" type={newPasswordVisible ? "text" : "password"} minLength={6} required placeholder="Minimum 6 characters" />
+                <input className="form-input pr-12" name="newPassword" type={newPasswordVisible ? "text" : "password"} minLength={8} maxLength={64} pattern={PASSWORD_INPUT_PATTERN} title={PASSWORD_ERROR} required placeholder="8+ characters with upper/lowercase, number, and symbol" />
                 <button type="button" onClick={() => setNewPasswordVisible((visible) => !visible)} className="absolute right-1 top-[calc(50%+4px)] grid size-10 -translate-y-1/2 place-items-center rounded text-navy/40 transition hover:bg-navy/5 hover:text-navy" aria-label={newPasswordVisible ? "Hide new password" : "Show new password"}>
-                  {newPasswordVisible ? <EyeOff className="size-4" /> : <Eye className="size-4" />}
+                  {newPasswordVisible ? <Eye className="size-4" /> : <EyeOff className="size-4" />}
                 </button>
               </span>
             </label>
             <label className="form-label mt-4">CONFIRM PASSWORD
               <span className="relative block">
-                <input className="form-input pr-12" name="confirmPassword" type={confirmPasswordVisible ? "text" : "password"} minLength={6} required placeholder="Repeat password" />
+                <input className="form-input pr-12" name="confirmPassword" type={confirmPasswordVisible ? "text" : "password"} minLength={8} maxLength={64} pattern={PASSWORD_INPUT_PATTERN} title={PASSWORD_ERROR} required placeholder="Repeat password" />
                 <button type="button" onClick={() => setConfirmPasswordVisible((visible) => !visible)} className="absolute right-1 top-[calc(50%+4px)] grid size-10 -translate-y-1/2 place-items-center rounded text-navy/40 transition hover:bg-navy/5 hover:text-navy" aria-label={confirmPasswordVisible ? "Hide confirm password" : "Show confirm password"}>
-                  {confirmPasswordVisible ? <EyeOff className="size-4" /> : <Eye className="size-4" />}
+                  {confirmPasswordVisible ? <Eye className="size-4" /> : <EyeOff className="size-4" />}
                 </button>
               </span>
             </label>

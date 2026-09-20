@@ -11,10 +11,31 @@ import {
 } from "lucide-react";
 import {
   notificationsStore,
-  type PlayerNotification,
+
 } from "@/lib/demo/store";
+import {
+  isActivityNotification,
+  matchesPlayerRecipient,
+  notificationHref as inboxNotificationHref,
+  relativeTime as inboxRelativeTime,
+} from "@/lib/demo/inbox";
+import type { PlayerNotification as PlayFabNotification } from "@/lib/playfab/types";
 import { isMockMode } from "@/lib/playfab/config";
-import { useNotifications } from "@/lib/playfab/hooks";
+import { useNotifications, usePlayerProfile } from "@/lib/playfab/hooks";
+
+type BellNotification = {
+  id: string;
+  title: string;
+  body?: string | undefined;
+  kind?: string | undefined;
+  channel?: "notification" | "mail" | undefined;
+  read: boolean;
+  createdAt: string;
+  href?: string | undefined;
+  recipientUsername?: string | undefined;
+  recipientEmail?: string | undefined;
+  target?: { kind: "all" | "players"; playerIds?: string[] | undefined } | undefined;
+};
 
 const iconByKind: Record<string, typeof Bell> = {
   announcement: Megaphone,
@@ -24,43 +45,56 @@ const iconByKind: Record<string, typeof Bell> = {
   system: Settings2,
 };
 
-/** Fallback in-app destination per notification kind when no explicit href is set. */
-const hrefByKind: Record<PlayerNotification["kind"], string> = {
-  announcement: "/portal",
-  achievement: "/portal/achievements",
-  friend: "/portal/friends",
-  shop: "/portal/shop",
-  system: "/portal",
-};
-
-function notificationHref(notification: PlayerNotification) {
-  return notification.href ?? hrefByKind[notification.kind];
-}
-
-function relativeTime(iso: string) {
-  const diffMs = Date.now() - new Date(iso).getTime();
-  const minutes = Math.round(diffMs / 60000);
-  if (minutes < 1) return "Just now";
-  if (minutes < 60) return `${minutes}m ago`;
-  const hours = Math.round(minutes / 60);
-  if (hours < 24) return `${hours}h ago`;
-  const days = Math.round(hours / 24);
-  if (days < 7) return `${days}d ago`;
-  return new Date(iso).toLocaleDateString();
-}
-
 export function NotificationBell({ dark = true }: { dark?: boolean }) {
   const mockMode = isMockMode();
   const [demoNotifications, setDemoNotifications] = notificationsStore.useStore();
   const realNotificationsQuery = useNotifications();
-  const [realNotifications, setRealNotifications] = useState<PlayerNotification[]>([]);
+  const profileQuery = usePlayerProfile();
+  const [realNotifications, setRealNotifications] = useState<PlayFabNotification[]>([]);
   const [open, setOpen] = useState(false);
 
   useEffect(() => {
     if (!mockMode) setRealNotifications(realNotificationsQuery.data ?? []);
   }, [mockMode, realNotificationsQuery.data]);
 
-  const notifications = mockMode ? demoNotifications : realNotifications;
+  const mockPlayerUsername = profileQuery.data?.username ?? profileQuery.data?.displayName ?? "CAMERA_PRO";
+  const mockPlayerEmail = profileQuery.data?.email ?? "player@crewonset.com";
+  const mockPlayerId = profileQuery.data?.playFabId ?? "MOCK-PLAYER-001";
+  const notifications: BellNotification[] = mockMode
+    ? demoNotifications
+        .map((notification) => ({
+          id: notification.id,
+          title: notification.title,
+          body: notification.body,
+          kind: notification.kind,
+          channel: notification.channel,
+          read: notification.read,
+          createdAt: notification.createdAt,
+          href: notification.href,
+          recipientUsername: notification.recipientUsername,
+          recipientEmail: notification.recipientEmail,
+          target: notification.target ? { kind: notification.target.kind, playerIds: notification.target.playerIds } : undefined,
+        }))
+        .filter(
+          (notification) =>
+            isActivityNotification(notification) &&
+            matchesPlayerRecipient(notification, mockPlayerUsername, mockPlayerEmail, mockPlayerId),
+        )
+    : realNotifications
+        .map((notification) => ({
+          id: notification.id,
+          title: notification.title,
+          body: notification.body,
+          kind: notification.kind,
+          channel: notification.channel,
+          read: notification.read,
+          createdAt: notification.createdAt,
+          href: notification.href,
+          recipientUsername: notification.recipientUsername,
+          recipientEmail: undefined,
+          target: notification.target,
+        }))
+        .filter(isActivityNotification);
   const ref = useRef<HTMLDivElement>(null);
   const router = useRouter();
 
@@ -81,14 +115,43 @@ export function NotificationBell({ dark = true }: { dark?: boolean }) {
 
   function markRead(id: string) {
     const next = notifications.map((n) => (n.id === id ? { ...n, read: true } : n));
-    if (mockMode) setDemoNotifications(next);
-    else setRealNotifications(next);
+    if (mockMode) {
+      setDemoNotifications((current) =>
+        current.map((item) => item.id === id ? { ...item, read: true } : item),
+      );
+    }
+    else {
+      setRealNotifications((current) => current.map((item) => item.id === id ? { ...item, read: true } : item));
+      void fetch("/api/notifications", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({ ids: [id] }),
+      });
+    }
   }
 
   function markAllRead() {
     const next = notifications.map((n) => ({ ...n, read: true }));
-    if (mockMode) setDemoNotifications(next);
-    else setRealNotifications(next);
+    if (mockMode) {
+      setDemoNotifications((current) =>
+        current.map((item) =>
+          isActivityNotification(item) &&
+          matchesPlayerRecipient(item, mockPlayerUsername, mockPlayerEmail, mockPlayerId)
+            ? { ...item, read: true }
+            : item,
+        ),
+      );
+    }
+    else {
+      setRealNotifications((current) => current.map((item) => ({ ...item, read: true })));
+      void fetch("/api/notifications", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({ ids: notifications.map((item) => item.id) }),
+      });
+    }
   }
 
   return (
@@ -113,7 +176,7 @@ export function NotificationBell({ dark = true }: { dark?: boolean }) {
       </button>
 
       {open && (
-        <div className="player-notification-dropdown absolute right-0 top-12 z-[90] w-[min(360px,88vw)] overflow-hidden rounded-xl border border-navy/10 bg-white text-navy shadow-2xl">
+        <div className={dark ? "player-notification-dropdown absolute right-0 top-12 z-[90] w-[min(360px,88vw)] overflow-hidden rounded-xl border border-white/15 bg-[#0f1626] text-white shadow-2xl" : "player-notification-dropdown absolute right-0 top-12 z-[90] w-[min(360px,88vw)] overflow-hidden rounded-xl border border-navy/10 bg-white text-navy shadow-2xl"}>
           <div className="flex items-center justify-between border-b border-navy/10 px-4 py-3">
             <div>
               <h3 className="text-sm font-black uppercase tracking-wide">
@@ -148,7 +211,7 @@ export function NotificationBell({ dark = true }: { dark?: boolean }) {
                   onClick={() => {
                     markRead(notification.id);
                     setOpen(false);
-                    router.push(notificationHref(notification));
+                    router.push(inboxNotificationHref(notification));
                   }}
                   className={`flex w-full gap-3 border-b border-navy/5 px-4 py-3 text-left transition hover:bg-navy/[.03] ${
                     notification.read ? "opacity-70" : ""
@@ -170,13 +233,23 @@ export function NotificationBell({ dark = true }: { dark?: boolean }) {
                       {notification.body}
                     </span>
                     <span className="mt-1 block text-[10px] font-bold uppercase tracking-wide text-navy/30">
-                      {relativeTime(notification.createdAt)}
+                      {inboxRelativeTime(notification.createdAt)}
                     </span>
                   </span>
                 </button>
               );
             })}
           </div>
+          <button
+            type="button"
+            onClick={() => {
+              setOpen(false);
+              router.push("/portal/inbox?tab=notifications");
+            }}
+            className="flex w-full items-center justify-between border-t border-navy/10 px-4 py-3 text-[11px] font-black uppercase tracking-wide text-coral transition hover:bg-navy/[.04]"
+          >
+            See more <span aria-hidden="true">→</span>
+          </button>
         </div>
       )}
     </div>

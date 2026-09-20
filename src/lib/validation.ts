@@ -11,9 +11,10 @@ export function isValidEmail(value: string) {
 
 export const USERNAME_ERROR = "Username must be 3–20 characters, start with a letter, and contain only letters, numbers, or underscores.";
 export const PASSWORD_ERROR = "Password must be 8–64 characters with uppercase, lowercase, a number, a special character, and no spaces.";
+export const PASSWORD_INPUT_PATTERN = "(?=.*[a-z])(?=.*[A-Z])(?=.*\\d)(?=.*[^A-Za-z0-9])\\S{8,64}";
 
 const usernamePattern = /^[A-Za-z][A-Za-z0-9_]{2,19}$/;
-const passwordPattern = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[^A-Za-z0-9])\S{8,64}$/;
+const passwordPattern = new RegExp(`^${PASSWORD_INPUT_PATTERN}$`);
 
 export function isValidUsername(value: string) {
   return usernamePattern.test(value);

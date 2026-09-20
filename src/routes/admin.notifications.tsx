@@ -1,5 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 
+import { isMockMode } from "@/lib/playfab/config";
+
 export const Route = createFileRoute("/admin/notifications")({
   head: () => ({
     meta: [
@@ -13,10 +15,11 @@ export const Route = createFileRoute("/admin/notifications")({
 });
 
 import { useMemo } from "react";
-import { CheckCheck, ChevronRight, FileText, Megaphone, ServerCog } from "lucide-react";
+import { Activity, Bell, CheckCheck, ChevronRight, FileText, Megaphone, ServerCog } from "lucide-react";
 import { useRouter } from "@/components/next-compat/navigation";
 import {
   adsStore,
+  adminActivityStore,
   alertReadStore,
   applicationsStore,
   bugReportsStore,
@@ -28,19 +31,21 @@ const iconByKind: Record<AdminAlert["kind"], typeof FileText> = {
   application: FileText,
   ad: Megaphone,
   system: ServerCog,
+  activity: Activity,
 };
 
 function NotificationsPage() {
   const [applications] = applicationsStore.useStore();
   const [ads] = adsStore.useStore();
+  const [activity] = adminActivityStore.useStore();
   const [bugs] = bugReportsStore.useStore();
   const [playerReports] = playerReportsStore.useStore();
   const [readIds, setReadIds] = alertReadStore.useStore();
   const router = useRouter();
 
   const alerts = useMemo(
-    () => buildAlerts(applications, ads, bugs, playerReports),
-    [applications, ads, bugs, playerReports],
+    () => buildAlerts(applications, ads, bugs, playerReports, activity, isMockMode()),
+    [applications, ads, bugs, playerReports, activity],
   );
   const unreadCount = alerts.filter((alert) => !readIds.includes(alert.id)).length;
 
@@ -58,7 +63,7 @@ function NotificationsPage() {
           <p className="text-xs font-black tracking-[.18em] !text-coral">STUDIO</p>
           <h1 className="admin-heading mt-2 !text-white">Notifications</h1>
           <p className="admin-kicker !text-white/45">
-            Pending applications, advertisement status changes, and system alerts.
+            Every admin alert and recent dashboard activity in one place.
           </p>
         </div>
 
@@ -79,7 +84,14 @@ function NotificationsPage() {
         </button>
       </header>
 
-      <div className="space-y-3">
+      <section aria-labelledby="notification-list-title">
+        <div className="mb-3 flex items-center gap-2">
+          <Bell className="size-4 !text-coral" />
+          <h2 id="notification-list-title" className="text-sm font-black uppercase tracking-wider !text-white/60">
+            All Notifications
+          </h2>
+        </div>
+        <div className="space-y-3">
         {alerts.length === 0 && (
           <p className="rounded-lg border border-white/[0.06] bg-[#182330] p-6 text-center text-sm !text-white/35">
             No alerts right now.
@@ -137,7 +149,8 @@ function NotificationsPage() {
             </article>
           );
         })}
-      </div>
+        </div>
+      </section>
     </div>
   );
 }

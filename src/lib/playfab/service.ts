@@ -121,7 +121,7 @@ function createRealService(): PlayFabService {
           const metadataRaw = (await getUserData(ticket, [PLAYFAB_DATA_KEYS.profile_metadata]))[PLAYFAB_DATA_KEYS.profile_metadata];
           if (metadataRaw) {
             try {
-              const metadata = JSON.parse(metadataRaw) as Pick<PlayerProfile, 'bio' | 'socialLinks'>;
+              const metadata = JSON.parse(metadataRaw) as Pick<PlayerProfile, 'bio' | 'socialLinks' | 'showStatus'>;
               return { ...profile, ...metadata };
             } catch {
               // Ignore malformed optional profile metadata and keep the PlayFab profile.
@@ -230,12 +230,14 @@ function createRealService(): PlayFabService {
       updateProfile: async (updates) => {
         const ticket = await resolveSessionTicket();
         if (!ticket) return;
-        if (updates.displayName) {
+        if (updates.username) {
+          await updateDisplayName(ticket, updates.username);
+        } else if (updates.displayName) {
           await updateDisplayName(ticket, updates.displayName);
         }
-        if ('bio' in updates || 'socialLinks' in updates) {
+        if ('bio' in updates || 'socialLinks' in updates || 'showStatus' in updates) {
           const currentRaw = (await getUserData(ticket, [PLAYFAB_DATA_KEYS.profile_metadata]))[PLAYFAB_DATA_KEYS.profile_metadata];
-          let current: Pick<PlayerProfile, 'bio' | 'socialLinks'> = {};
+          let current: Pick<PlayerProfile, 'bio' | 'socialLinks' | 'showStatus'> = {};
           if (currentRaw) {
             try { current = JSON.parse(currentRaw); } catch { /* replace malformed metadata */ }
           }
@@ -243,6 +245,7 @@ function createRealService(): PlayFabService {
             [PLAYFAB_DATA_KEYS.profile_metadata]: JSON.stringify({
               bio: 'bio' in updates ? updates.bio ?? '' : current.bio ?? '',
               socialLinks: 'socialLinks' in updates ? updates.socialLinks ?? {} : current.socialLinks ?? {},
+              showStatus: 'showStatus' in updates ? updates.showStatus ?? true : current.showStatus ?? true,
             }),
           });
         }

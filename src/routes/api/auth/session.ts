@@ -15,6 +15,7 @@ export const Route = createFileRoute('/api/auth/session')({
           session: {
             playFabId: session.playFabId,
             role: session.role,
+            username: session.username || session.displayName,
             displayName: session.displayName,
             email: session.email,
           },

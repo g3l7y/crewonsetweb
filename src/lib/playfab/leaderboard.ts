@@ -21,6 +21,7 @@ export async function getGlobalLeaderboard(
 
     return (data.Leaderboard || []).map((entry: any) => ({
       playFabId: entry.PlayFabId,
+      username: entry.DisplayName || entry.Username || 'Unknown',
       displayName: entry.DisplayName || 'Unknown',
       statValue: entry.StatValue,
       position: entry.Position,
@@ -48,6 +49,7 @@ export async function getLeaderboardAroundPlayer(
 
     return (data.Leaderboard || []).map((entry: any) => ({
       playFabId: entry.PlayFabId,
+      username: entry.DisplayName || entry.Username || 'Unknown',
       displayName: entry.DisplayName || 'Unknown',
       statValue: entry.StatValue,
       position: entry.Position,

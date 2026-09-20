@@ -12,12 +12,14 @@ export const Route = createFileRoute("/admin/settings")({
   component: SettingsPage,
 });
 
-import { FormEvent, useState } from "react";
+import { FormEvent, useEffect, useState } from "react";
 import { Eye, EyeOff, KeyRound, Link2, Mail, Pencil, Plus, Settings as SettingsIcon, Trash2, X } from "lucide-react";
 import { toast } from "sonner";
 import { adminAccountStore, socialLinksStore, uid, type AdminAccount, type SocialLink } from "@/lib/demo/store";
-import { EMAIL_ERROR, isValidEmail } from "@/lib/validation";
+import { EMAIL_ERROR, PASSWORD_ERROR, PASSWORD_INPUT_PATTERN, isValidEmail, isValidPassword } from "@/lib/validation";
 import { DisplayThemeSwitcher } from "@/components/theme/display-theme-switcher";
+import { isMockMode } from "@/lib/playfab/config";
+import { useSession } from "@/lib/playfab/hooks";
 
 function PasswordField({
   label,
@@ -25,12 +27,14 @@ function PasswordField({
   onChange,
   autoComplete,
   error,
+  passwordRules = false,
 }: {
   label: string;
   value: string;
   onChange: (value: string) => void;
   autoComplete?: string | undefined;
   error?: string | undefined;
+  passwordRules?: boolean;
 }) {
   const [visible, setVisible] = useState(false);
 
@@ -43,6 +47,10 @@ function PasswordField({
           value={value}
           onChange={(e) => onChange(e.target.value)}
           autoComplete={autoComplete}
+          minLength={passwordRules ? 8 : undefined}
+          maxLength={passwordRules ? 64 : undefined}
+          pattern={passwordRules ? PASSWORD_INPUT_PATTERN : undefined}
+          title={passwordRules ? PASSWORD_ERROR : undefined}
           className={`w-full rounded-md border bg-[#101923] px-3 py-2.5 pr-11 text-sm font-bold !text-white outline-none transition placeholder:!text-white/25 ${
             error ? "border-coral" : "border-white/10 focus:border-coral"
           }`}
@@ -53,7 +61,7 @@ function PasswordField({
           className="absolute right-1 top-1/2 grid size-8 -translate-y-1/2 place-items-center rounded text-white/40 transition hover:bg-white/5 hover:text-white"
           aria-label={visible ? `Hide ${label.toLowerCase()}` : `Show ${label.toLowerCase()}`}
         >
-          {visible ? <EyeOff className="size-4" /> : <Eye className="size-4" />}
+          {visible ? <Eye className="size-4" /> : <EyeOff className="size-4" />}
         </button>
       </span>
       {error && <span className="mt-1.5 block text-[11px] font-bold normal-case tracking-normal text-coral">{error}</span>}
@@ -324,35 +332,65 @@ function SocialLinksSection() {
 }
 
 function SettingsPage() {
+  const mockMode = isMockMode();
+  const sessionQuery = useSession();
   const [account, setAccount] = adminAccountStore.useStore();
-  const admin: AdminAccount = account[0] ?? {
-    name: "Administrator",
-    email: "admin@crew-on-set.game",
-    password: "admin",
-  };
+  const admin: AdminAccount = mockMode
+    ? account[0] ?? {
+        name: "Administrator",
+        email: "admin@crew-on-set.game",
+        password: "admin",
+      }
+    : {
+        name: sessionQuery.data?.displayName || sessionQuery.data?.username || "Administrator",
+        email: sessionQuery.data?.email || "",
+        password: "",
+      };
 
-  const [email, setEmail] = useState(account[0]?.email ?? "");
+  const [email, setEmail] = useState(mockMode ? account[0]?.email ?? "" : sessionQuery.data?.email ?? "");
   const [emailError, setEmailError] = useState("");
-
   const [currentPassword, setCurrentPassword] = useState("");
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [passwordErrors, setPasswordErrors] = useState<{ current?: string; next?: string; confirm?: string }>({});
 
-  function saveEmail(event: FormEvent<HTMLFormElement>) {
+  useEffect(() => {
+    if (!mockMode && sessionQuery.data?.email) setEmail(sessionQuery.data.email);
+  }, [mockMode, sessionQuery.data?.email]);
+
+  async function saveEmail(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setEmailError("");
+    const normalizedEmail = email.trim();
 
-    if (!isValidEmail(email)) {
+    if (!isValidEmail(normalizedEmail)) {
       setEmailError(EMAIL_ERROR);
       return;
     }
 
-    setAccount([{ ...admin, email: email.trim() }]);
+    if (!mockMode) {
+      const response = await fetch("/api/admin/account", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email: normalizedEmail }),
+      });
+      if (!response.ok) {
+        const body = (await response.json().catch(() => ({}))) as { error?: string };
+        setEmailError(body.error || "The real account email could not be updated.");
+        return;
+      }
+    } else {
+      setAccount([{ ...admin, email: normalizedEmail }]);
+    }
+
+    setEmail(normalizedEmail);
     toast.success("Email updated.");
   }
-
   function savePassword(event: FormEvent<HTMLFormElement>) {
+    if (!mockMode) {
+      setPasswordErrors({ next: "Real PlayFab passwords are changed through the account-recovery flow; this page never stores a local password." });
+      return;
+    }
     event.preventDefault();
 
     const errors: { current?: string; next?: string; confirm?: string } = {};
@@ -360,8 +398,8 @@ function SettingsPage() {
     if (currentPassword !== admin.password) {
       errors.current = "Current password is incorrect.";
     }
-    if (newPassword.length < 6) {
-      errors.next = "New password must be at least 6 characters.";
+    if (!isValidPassword(newPassword)) {
+      errors.next = PASSWORD_ERROR;
     }
     if (newPassword !== confirmPassword) {
       errors.confirm = "Passwords do not match.";
@@ -450,6 +488,7 @@ function SettingsPage() {
               onChange={setNewPassword}
               autoComplete="new-password"
               error={passwordErrors.next}
+              passwordRules
             />
             <PasswordField
               label="CONFIRM NEW PASSWORD"
@@ -457,6 +496,7 @@ function SettingsPage() {
               onChange={setConfirmPassword}
               autoComplete="new-password"
               error={passwordErrors.confirm}
+              passwordRules
             />
 
             <button

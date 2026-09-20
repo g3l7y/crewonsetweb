@@ -84,6 +84,8 @@ export interface PlayerProfile {
   crewId?: string | undefined;
   /** Portal profile links persisted in PlayFab player data. */
   socialLinks?: { twitter?: string; instagram?: string; youtube?: string } | undefined;
+  /** Whether confirmed friends may see this player's live online status. */
+  showStatus?: boolean | undefined;
   /** ISO timestamp when the account was registered */
   joinedAt: string;
   /** ISO timestamp of most recent login */
@@ -347,6 +349,8 @@ export interface RoleStatistics {
 export interface LeaderboardEntry {
   /** Player PlayFab ID */
   playFabId: string;
+  /** Canonical username when supplied by the platform */
+  username?: string | undefined;
   /** Public display name */
   displayName: string;
   /** Leaderboard rank position (1-indexed or 0-indexed) */
@@ -363,6 +367,8 @@ export interface LeaderboardEntry {
 export interface FriendInfo {
   /** Friend's PlayFab ID */
   playFabId: string;
+  /** Canonical username when supplied by the platform */
+  username?: string | undefined;
   /** Friend's display name */
   displayName: string;
   /** Relationship status */
@@ -373,6 +379,10 @@ export interface FriendInfo {
   level?: number | undefined;
   /** Avatar image URL */
   avatarUrl?: string | undefined;
+  /** Current live presence when the connected service provides it. */
+  online?: boolean | undefined;
+  /** Whether confirmed friends may see this player's live online status. */
+  showStatus?: boolean | undefined;
 
   /** Legacy alias for playFabId */
   friendPlayFabId?: string | undefined;
@@ -415,12 +425,21 @@ export interface PlayerNotification {
   body?: string | undefined;
   /** Notification category (e.g. "announcement", "achievement", "friend", "shop", "system") */
   kind?: string | undefined;
+  /** Inbox channel; direct messages belong in Mail instead of Notifications. */
+  channel?: "notification" | "mail" | undefined;
   /** Read/unread state */
   read: boolean;
   /** ISO timestamp */
   createdAt: string;
   /** In-app navigation link destination */
   href?: string | undefined;
+
+  /** Optional player targeting metadata for server-backed messages. */
+  target?: { kind: "all" | "players"; playerIds?: string[] } | undefined;
+  /** Sender username for player-to-player mail. */
+  senderUsername?: string | undefined;
+  /** Conversation recipient username. */
+  recipientUsername?: string | undefined;
 
   /** Legacy / mock compatibility aliases */
   message?: string | undefined;
@@ -741,6 +760,8 @@ export interface SessionData {
   sessionTicket?: string | undefined;
   /** Authorized role tier */
   role: 'admin' | 'player' | 'developer';
+  /** Canonical username identifier */
+  username?: string | undefined;
   /** User's display name */
   displayName?: string | undefined;
   /** User's email */
@@ -761,7 +782,7 @@ export interface LoginRequest {
 export interface RegisterRequest {
   email: string;
   password: string;
-  displayName: string;
+  username: string;
 }
 
 /**

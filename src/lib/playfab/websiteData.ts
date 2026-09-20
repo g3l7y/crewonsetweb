@@ -27,6 +27,7 @@ export const WEBSITE_DATA_KEYS = {
   partnerships: 'website_partnerships',
   notifications: 'website_admin_notifications',
   settings: 'website_settings',
+  paymongoOrders: 'website_paymongo_orders',
 } as const;
 
 export type WebsiteDataKey = (typeof WEBSITE_DATA_KEYS)[keyof typeof WEBSITE_DATA_KEYS];
@@ -81,6 +82,33 @@ async function setTitleInternalData(
   await callPlayFabServer('/Server/SetTitleInternalData', { Key: key, Value: value }, secretKey);
 }
 
+// ============================================================================
+// Generic value helpers
+// ============================================================================
+
+/** Read one JSON value from Title Internal Data (server-only). */
+export async function getWebsiteValue<T>(key: string, secretKey: string): Promise<T | null> {
+  try {
+    const data = await getTitleInternalData([key], secretKey);
+    const raw = data[key];
+    if (!raw) return null;
+    return JSON.parse(raw) as T;
+  } catch (error) {
+    console.error(`[WebsiteData] Error reading ${key}:`, error);
+    return null;
+  }
+}
+
+/** Write one JSON value to Title Internal Data (server-only). */
+export async function setWebsiteValue<T>(key: string, value: T, secretKey: string): Promise<boolean> {
+  try {
+    await setTitleInternalData(key, JSON.stringify(value), secretKey);
+    return true;
+  } catch (error) {
+    console.error(`[WebsiteData] Error writing ${key}:`, error);
+    return false;
+  }
+}
 // ============================================================================
 // Collection CRUD helpers
 // ============================================================================

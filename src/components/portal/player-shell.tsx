@@ -4,6 +4,7 @@ import { usePathname, useRouter } from "@/components/next-compat/navigation";
 import {
   BookOpen,
   ChevronDown,
+  Inbox,
   LayoutDashboard,
   LogOut,
   Menu,
@@ -24,6 +25,7 @@ const navigation = [
   { label: "Dashboard", href: "/portal", icon: LayoutDashboard },
   { label: "Profile", href: "/portal/profile", icon: UserCircle },
   { label: "Almanac", href: "/portal/almanac", icon: BookOpen },
+  { label: "Inbox", href: "/portal/inbox", icon: Inbox },
   { label: "Friends", href: "/portal/friends", icon: Users },
   { label: "Shop", href: "/portal/shop", icon: ShoppingBag },
   { label: "Settings", href: "/portal/settings", icon: Settings },
@@ -38,7 +40,7 @@ export function PlayerShell({ children }: { children: React.ReactNode }) {
   const mockMode = isMockMode();
   const { data: profile } = usePlayerProfile();
   const { data: progression } = usePlayerProgression();
-  const accountName = profile?.displayName || profile?.username || "PLAYER";
+  const accountName = profile?.username || profile?.displayName || "PLAYER";
   const accountLevel = progression?.level ?? 1;
   const accountAvatar = profile?.avatarUrl || getProfileArtwork(accountName);
   const [mobileOpen, setMobileOpen] = useState(false);
@@ -92,7 +94,7 @@ export function PlayerShell({ children }: { children: React.ReactNode }) {
           {/* Desktop Nav */}
           <nav
             aria-label="Player portal navigation"
-            className="hidden flex-1 items-center justify-center gap-1 md:flex"
+            className="hidden flex-1 items-center justify-center gap-1 md:flex md:-translate-x-2 lg:-translate-x-4"
           >
             {navigation.map((item) => {
               const active = isActive(item.href);

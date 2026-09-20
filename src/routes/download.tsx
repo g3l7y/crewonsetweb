@@ -28,6 +28,8 @@ function DownloadPage() {
   const currentBuild = gameBuilds[0];
   const [steps] = installStepsStore.useStore();
   const downloadHref = currentBuild?.downloadUrl?.trim() ? currentBuild.downloadUrl : DOWNLOAD_URL;
+  const displayedVersion = currentBuild ? `Version ${currentBuild.version}` : buildInfo?.version;
+  const displayedWindowsRequirement = currentBuild?.minWindows || buildInfo?.platform;
 
   return (
     <MarketingShell>
@@ -67,11 +69,11 @@ function DownloadPage() {
 
           {buildInfo && (
             <div className="mt-8 flex flex-wrap items-center gap-x-6 gap-y-2 text-xs font-bold uppercase tracking-wider text-white/50">
-              <span>{buildInfo.version}</span>
+              <span>{displayedVersion}</span>
               <span className="hidden sm:inline">·</span>
               <span>{buildInfo.builtOn}</span>
               <span className="hidden sm:inline">·</span>
-              <span>{buildInfo.platform}</span>
+              <span>{displayedWindowsRequirement}</span>
               {currentBuild && (
                 <>
                   <span className="hidden sm:inline">·</span>

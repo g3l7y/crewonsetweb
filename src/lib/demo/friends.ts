@@ -18,6 +18,7 @@ export type FriendProfile = {
   level: number;
   role: string;
   online: boolean;
+  showStatus?: boolean;
   crewId: string;
   profileImage?: string;
   bio: string;
@@ -25,6 +26,25 @@ export type FriendProfile = {
   socials: FriendSocials;
   career: FriendCareer;
 };
+
+export type VisiblePlayerStatus = "Online" | "Offline" | null;
+
+/**
+ * Status is only visible to confirmed friends. A friend who hides their
+ * status is intentionally shown as Offline, even while their live status is
+ * online.
+ */
+export function getVisiblePlayerStatus(
+  online: boolean,
+  showStatus: boolean | undefined,
+  viewerIsFriend: boolean,
+): VisiblePlayerStatus {
+  if (!viewerIsFriend) {
+    return null;
+  }
+
+  return showStatus === false || !online ? "Offline" : "Online";
+}
 
 const seedFriends: FriendProfile[] = [
   {

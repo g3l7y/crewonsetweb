@@ -293,9 +293,9 @@ export function ProductionLogs() {
   );
 
   return (
-    <section className="mt-14">
+    <section className="mt-7 almanac-content-panel p-4 sm:p-6">
       {/* Production logs */}
-      <div>
+      <div className="almanac-content-body">
         <h2 className="section-title text-3xl text-navy sm:text-4xl">
           Production Logs
         </h2>
@@ -303,7 +303,7 @@ export function ProductionLogs() {
           Every production you wrapped, scored and ranked.
         </p>
 
-        <div className="player-account-scroll-list production-logs-list admin-table-wrap mt-5 border-navy/10">
+        <div className="player-account-scroll-list almanac-content-scroll production-logs-list admin-table-wrap mt-5 border-navy/10">
           <table className="admin-table">
             <thead>
               <tr>

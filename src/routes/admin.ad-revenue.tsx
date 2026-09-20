@@ -21,6 +21,7 @@ import {
   MegaphoneOff,
   MonitorPlay,
   MousePointerClick,
+  Search,
   Users,
   Wallet2,
   Trash2,
@@ -30,9 +31,13 @@ import {
   applicationsStore,
   revenueStore,
   formatMoney,
+  partnershipProductTypes,
   type ActiveAd,
   type PartnershipApplication,
+  type PartnershipStatus,
 } from "@/lib/demo/store";
+
+const revenueStatusOptions: PartnershipStatus[] = ["Approved", "On-going", "Done"];
 
 function formatDate(iso: string) {
   return new Date(iso).toLocaleDateString("en-US", {
@@ -54,6 +59,9 @@ function AdRevenuePage() {
   const [revenue, setRevenue] = revenueStore.useStore();
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const [deleteIds, setDeleteIds] = useState<string[] | null>(null);
+  const [query, setQuery] = useState("");
+  const [productTypeFilter, setProductTypeFilter] = useState("All Product Types");
+  const [statusFilter, setStatusFilter] = useState("All Statuses");
   const router = useRouter();
 
   // "Approved" advertisement applications also includes those already running
@@ -68,11 +76,27 @@ function AdRevenuePage() {
 
   const rows = useMemo(
     () => revenue.filter((record) => !record.archived).map((record) => ({
-      app: applications.find((item) => item.id === record.applicationId) ?? ({ id: record.applicationId, brand: record.brand, exactModel: record.exactModel, status: "Done" } as PartnershipApplication),
+      app: applications.find((item) => item.id === record.applicationId) ?? ({ id: record.applicationId, brand: record.brand, exactModel: record.exactModel, productType: record.productType, status: "Done" } as PartnershipApplication),
       ad: record,
     })),
     [revenue, applications],
   );
+
+  const filteredRows = useMemo(() => {
+    const search = query.trim().toLowerCase();
+    return rows.filter(({ app, ad }) => {
+      const productType = app.productType ?? ad.productType;
+      const searchableText = [app.id, app.brand, productType, app.exactModel, app.description]
+        .filter(Boolean)
+        .join(" ")
+        .toLowerCase();
+      return (
+        (!search || searchableText.includes(search)) &&
+        (productTypeFilter === "All Product Types" || productType === productTypeFilter) &&
+        (statusFilter === "All Statuses" || app.status === statusFilter)
+      );
+    });
+  }, [rows, query, productTypeFilter, statusFilter]);
 
   function confirmDelete(ids: string[]) { setDeleteIds(ids); }
   function deleteRevenue() {
@@ -141,28 +165,63 @@ function AdRevenuePage() {
             Approved Advertisement Applications
           </h2>
           <span className="rounded-full bg-white/[0.06] px-2 py-0.5 text-[10px] font-black !text-white/50">
-            {rows.length}
+            {filteredRows.length}
           </span>
         </div>
 
-        {rows.length === 0 ? (
+        <section className="admin-card mb-4 flex flex-col gap-3 rounded-lg border border-white/[0.06] bg-[#182330] p-4 shadow-xl sm:flex-row sm:items-center">
+          <label className="relative block flex-1">
+            <Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 !text-white/30" />
+            <input
+              value={query}
+              onChange={(event) => setQuery(event.target.value)}
+              placeholder="Search brands, products, or applications"
+              className="admin-input h-11 w-full rounded-md border border-white/10 bg-[#101923] pl-10 pr-3 text-sm font-bold !text-white outline-none transition placeholder:!text-white/25 focus:border-coral"
+            />
+          </label>
+          <select
+            value={productTypeFilter}
+            onChange={(event) => setProductTypeFilter(event.target.value)}
+            className="admin-input h-11 rounded-md border border-white/10 bg-[#101923] px-3 text-sm font-bold !text-white outline-none focus:border-coral"
+          >
+            <option>All Product Types</option>
+            {partnershipProductTypes.map((productType) => (
+              <option key={productType}>{productType}</option>
+            ))}
+          </select>
+          <select
+            value={statusFilter}
+            onChange={(event) => setStatusFilter(event.target.value)}
+            className="admin-input h-11 rounded-md border border-white/10 bg-[#101923] px-3 text-sm font-bold !text-white outline-none focus:border-coral"
+          >
+            <option>All Statuses</option>
+            {revenueStatusOptions.map((status) => (
+              <option key={status}>{status}</option>
+            ))}
+          </select>
+        </section>
+
+        {filteredRows.length === 0 ? (
           <div className="rounded-lg border border-white/[0.06] bg-[#182330] p-10 text-center shadow-xl">
             <MegaphoneOff className="mx-auto mb-3 size-8 !text-white/15" />
             <p className="text-sm !text-white/40">
-              No approved advertisement applications yet. Approve a proposal in Partnerships &amp; Ads to see it here.
+              {rows.length === 0
+                ? "No approved advertisement applications yet. Approve a proposal in Partnerships & Ads to see it here."
+                : "No advertisement applications match the current filters."}
             </p>
           </div>
         ) : (
           <>
             <div className="mb-4 flex items-center justify-between rounded-lg border border-white/[0.06] bg-[#182330] px-4 py-3">
               <label className="flex items-center gap-3 text-xs font-bold uppercase !text-white/60">
-                <input type="checkbox" checked={rows.length > 0 && selectedIds.length === rows.length} onChange={(event) => setSelectedIds(event.target.checked ? rows.map(({ ad }) => ad.id) : [])} />
+                <input type="checkbox" checked={filteredRows.length > 0 && filteredRows.every(({ ad }) => selectedIds.includes(ad.id))} onChange={(event) => setSelectedIds(event.target.checked ? filteredRows.map(({ ad }) => ad.id) : [])} />
                 Select all <span className="!text-coral">{selectedIds.length} selected</span>
               </label>
               <button disabled={!selectedIds.length} onClick={() => confirmDelete(selectedIds)} className="inline-flex items-center gap-2 rounded-md bg-coral px-3 py-2 text-[10px] font-black uppercase text-white disabled:cursor-not-allowed disabled:opacity-30"><Trash2 className="size-3.5" /> Delete selected</button>
-            </div>
-          <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
-            {rows.map((row) => {
+          </div>
+          <div className="admin-filter-results-card admin-filter-results-card--revenue overflow-hidden rounded-lg border border-white/[0.06] bg-[#182330] p-4 shadow-xl">
+          <div className="admin-filter-results-scroll grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+            {filteredRows.map((row) => {
               const { app, ad } = row;
               const clickable = Boolean(ad);
               return (
@@ -253,6 +312,7 @@ function AdRevenuePage() {
                 </article>
               );
             })}
+          </div>
           </div>
           </>
         )}

@@ -106,7 +106,7 @@ export function mapPlayFabProfileToPlayerProfile(profile: any): PlayerProfile {
     id: playFabId,
     playFabId,
     displayName,
-    username: displayName.toLowerCase().replace(/\s+/g, '_'),
+    username: displayName,
     email: profile.Email || '',
     avatarUrl: profile.AvatarUrl || '/assets/crew-team-illustration.png',
     role: (profile.Role || 'cameraman') as any,

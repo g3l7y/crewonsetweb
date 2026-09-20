@@ -14,12 +14,15 @@ export const Route = createFileRoute("/admin/bugs")({
 
 import { useMemo, useState } from "react";
 import { Bug, Eye, Search, Trash2, X } from "lucide-react";
+import { ReportStatusDropdown } from "@/components/admin/report-status-dropdown";
+import { isMockMode } from "@/lib/playfab/config";
 import {
   bugCategories,
+  addReportFeedback,
   bugReportsStore,
+  canAdvanceReportStatus,
   deleteSharedRecords,
   deleteSharedRecord,
-  reportStatusColors,
   updateSharedRecord,
   logAdminActivity,
   type BugReport,
@@ -27,12 +30,7 @@ import {
 } from "@/lib/demo/store";
 
 const statusOptions: BugStatus[] = ["New", "Investigating", "Resolved"];
-
-const statusStyles: Record<BugStatus, string> = {
-  New: "bg-[#d9a514]/15 text-[#f3c747]",
-  Investigating: "bg-[#c96a2d]/15 text-[#f39a5a]",
-  Resolved: "bg-[#2d9d8f]/15 text-[#4bc4b4]",
-};
+const mockMode = isMockMode();
 
 function formatDate(iso: string) {
   const date = new Date(iso);
@@ -62,7 +60,7 @@ function BugReportsPage() {
     return bugs.filter((bug) => {
       const matchesSearch =
         !search ||
-        `${bug.playerName} ${bug.playerId} ${bug.description} ${bug.id}`
+        `${bug.playerName} ${bug.description} ${bug.id}`
           .toLowerCase()
           .includes(search);
       const matchesCategory = category === "All Categories" || bug.category === category;
@@ -72,9 +70,18 @@ function BugReportsPage() {
   }, [bugs, query, category, status]);
 
   async function updateStatus(bug: BugReport, next: BugStatus) {
+    if (!canAdvanceReportStatus(bug.status, next)) return;
     const updated = { ...bug, status: next };
     if (!(await updateSharedRecord("cos.bugReports", updated))) return;
     setBugs((current) => current.map((b) => (b.id === bug.id ? updated : b)));
+    if (bug.status !== next) {
+      addReportFeedback({
+        recipientUsername: bug.playerName,
+        reportId: bug.id,
+        status: next,
+        body: "Your bug report was reviewed and is now marked " + next + ".",
+      });
+    }
     logAdminActivity({
       kind: "bug",
       label: "Bug report status updated",
@@ -137,7 +144,7 @@ function BugReportsPage() {
           <input
             value={query}
             onChange={(event) => setQuery(event.target.value)}
-            placeholder="Search by player, ID, or description"
+            placeholder="Search by username or description"
             className="admin-input h-11 w-full rounded-md border border-white/10 bg-[#101923] pl-10 pr-3 text-sm font-bold !text-white outline-none transition placeholder:!text-white/25 focus:border-coral"
           />
         </label>
@@ -168,8 +175,8 @@ function BugReportsPage() {
       <div className="mb-3 flex items-center justify-between rounded-lg border border-white/[0.06] bg-[#182330] px-4 py-3"><label className="flex items-center gap-3 text-xs font-bold uppercase text-white/60"><input type="checkbox" checked={filtered.length > 0 && selectedIds.length === filtered.length} onChange={(event) => setSelectedIds(event.target.checked ? filtered.map((bug) => bug.id) : [])} /> Select all <span className="text-coral">{selectedIds.length} selected</span></label><button type="button" disabled={!selectedIds.length} onClick={deleteSelected} className="inline-flex items-center gap-2 rounded-md bg-coral px-3 py-2 text-[10px] font-black uppercase text-white disabled:opacity-30"><Trash2 className="size-3.5" /> Delete selected</button></div>
 
       {/* TABLE */}
-      <section className="admin-table-wrap overflow-hidden rounded-lg border border-white/[0.06] bg-[#182330] shadow-xl">
-        <div className="overflow-x-auto">
+      <section className="admin-filter-results-card admin-filter-results-card--reports admin-table-wrap overflow-hidden rounded-lg border border-white/[0.06] bg-[#182330] shadow-xl">
+        <div className="admin-filter-results-scroll overflow-x-auto">
           <table className="admin-table min-w-[880px] w-full border-collapse text-left">
             <thead>
               <tr className="border-b border-white/[0.08] bg-[#141e29]">
@@ -200,8 +207,7 @@ function BugReportsPage() {
                   className="border-b border-white/[0.05] transition hover:bg-white/[0.025] last:border-0"
                 >
                   <td className="px-5 py-4"><div className="flex items-center gap-3"><input type="checkbox" checked={selectedIds.includes(bug.id)} onChange={(event) => setSelectedIds((current) => event.target.checked ? [...current, bug.id] : current.filter((id) => id !== bug.id))} aria-label={`Select ${bug.id}`} />
-                    <div><p className="font-bold !text-white">{bug.playerName}</p>
-                    <p className="mt-0.5 text-[10px] !text-white/30">{bug.playerId}</p></div></div>
+                    <div><p className="font-bold !text-white">{bug.playerName}</p></div></div>
                   </td>
                   <td className="px-5 py-4 text-sm !text-white/60">{bug.category}</td>
                   <td className="px-5 py-4 text-sm !text-white/50">
@@ -211,17 +217,11 @@ function BugReportsPage() {
                     {formatDate(bug.submittedAt)}
                   </td>
                   <td className="px-5 py-4">
-                    <select
+                    <ReportStatusDropdown
                       value={bug.status}
-                      onChange={(event) => updateStatus(bug, event.target.value as BugStatus)}
-                      className={`rounded px-2.5 py-1.5 text-[10px] font-black uppercase outline-none ${statusStyles[bug.status]}`} style={{ color: reportStatusColors[bug.status] }}
-                    >
-                      {statusOptions.map((s) => (
-                        <option key={s} value={s} className="bg-[#101923] text-white">
-                          {s}
-                        </option>
-                      ))}
-                    </select>
+                      enforceForwardOnly
+                      onChange={(next) => updateStatus(bug, next as BugStatus)}
+                    />
                   </td>
                   <td className="px-5 py-4">
                     <div className="flex items-center gap-2">
@@ -277,7 +277,7 @@ function BugReportsPage() {
             </div>
             <p className="mt-3 text-xs font-black uppercase tracking-wide !text-white/35">Player</p>
             <p className="text-sm !text-white/80">
-              {viewBug.playerName} ({viewBug.playerId})
+              {viewBug.playerName}
             </p>
             <p className="mt-3 text-xs font-black uppercase tracking-wide !text-white/35">
               Category

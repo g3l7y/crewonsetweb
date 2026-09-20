@@ -1,6 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { FormEvent, useEffect, useMemo, useRef, useState } from "react";
 import {
   Check,
   ChevronDown,
@@ -22,7 +22,9 @@ import {
   getPlayerActivity,
   getPlayerProductionStats,
   getPlayerTransactions,
+  topUpsStore,
 } from "@/lib/admin-demo-data";
+import { notificationsStore, uid } from "@/lib/demo/store";
 
 export const Route = createFileRoute("/admin/players")({
   head: () => ({
@@ -69,21 +71,21 @@ const roleOptions = [
   "All-Rounder",
 ];
 
-const filterOptions = ["Role", "Joined Date", "Level", "Production Score", "Playtime"];
+const filterOptions = ["Joined Date", "Level", "Production Score", "Playtime"];
 
 /* =========================================================
    STATUS STYLES
    ========================================================= */
 
 const statusStyles: Record<PlayerStatus, string> = {
-  Active: "text-[#54c9b8]",
-  Inactive: "text-white/40",
-  Banned: "text-[#ff6248]",
+  Active: "admin-player-status-active text-[#54c9b8]",
+  Inactive: "admin-player-status-inactive text-white/40",
+  Banned: "admin-player-status-banned text-[#ff6248]",
 };
 
 const statusDotStyles: Record<PlayerStatus, string> = {
   Active: "bg-[#39b7a5]",
-  Inactive: "bg-white/25",
+  Inactive: "admin-player-status-dot-inactive bg-white/25",
   Banned: "bg-[#ff6248]",
 };
 
@@ -301,6 +303,17 @@ function PlayersPage() {
   const [selectedPlayers, setSelectedPlayers] = useState<number[]>([]);
 
   const [selectedPlayer, setSelectedPlayer] = useState<Player | null>(null);
+  const [topUps] = topUpsStore.useStore();
+  const selectedPlayerTransactions = useMemo(
+    () => (selectedPlayer ? getPlayerTransactions(selectedPlayer.username) : []),
+    [selectedPlayer, topUps],
+  );
+
+  const [contactPlayer, setContactPlayer] = useState<Player | null>(null);
+
+  const [contactSubject, setContactSubject] = useState("");
+
+  const [contactMessage, setContactMessage] = useState("");
 
   /* =======================================================
      SORTING
@@ -750,6 +763,40 @@ function PlayersPage() {
     );
   }
 
+  function submitContactPlayer(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+
+    if (!contactPlayer || !contactSubject.trim() || !contactMessage.trim()) {
+      return;
+    }
+
+    const player = contactPlayer;
+
+    notificationsStore.set([
+      {
+        id: uid("ntf"),
+        title: contactSubject.trim(),
+        body: contactMessage.trim(),
+        createdAt: new Date().toISOString(),
+        kind: "system",
+        channel: "mail",
+        read: false,
+        href: "/portal/inbox?tab=mail",
+        recipientUsername: player.username,
+        recipientEmail: player.email,
+        target: {
+          kind: "players",
+          playerIds: [String(player.id)],
+        },
+      },
+      ...notificationsStore.get(),
+    ]);
+
+    setContactPlayer(null);
+    setContactSubject("");
+    setContactMessage("");
+  }
+
   /* =========================================================
      BULK STATUS
      ========================================================= */
@@ -841,7 +888,7 @@ function PlayersPage() {
                     applyFilters();
                   }
                 }}
-                placeholder="Search username, email, player ID, or joined date"
+                placeholder="Search username, email, or joined date"
                 className="h-10 w-full rounded-md border border-white/10 bg-[#090e12] pl-9 pr-3 text-xs text-white outline-none placeholder:text-white/25 focus:border-white/20"
               />
             </label>
@@ -893,7 +940,7 @@ function PlayersPage() {
                   ================================================= */}
 
               {showFilterMenu && (
-                <div className="absolute right-0 top-12 z-50 w-[290px] rounded-lg border border-white/10 bg-[#151c21] p-3 shadow-2xl">
+                <div className="admin-player-filter-menu absolute right-0 top-12 z-50 box-border h-[22rem] min-h-[22rem] w-[15rem] min-w-[15rem] max-w-none overflow-hidden rounded-lg border border-white/10 bg-[#151c21] p-3 shadow-2xl">
                   <div className="mb-3 border-b border-white/[.06] pb-3">
                     <p className="text-[9px] font-black uppercase tracking-[.16em] text-white/30">
                       Filters
@@ -916,7 +963,7 @@ function PlayersPage() {
                     }`}
                   >
                     <span
-                      className={`grid size-4 place-items-center rounded border ${
+                      className={`grid size-4 shrink-0 place-items-center rounded border ${
                         activeFilters.includes("Status")
                           ? "border-[#39b7a5] bg-[#39b7a5] text-[#08100f]"
                           : "border-white/15"
@@ -927,7 +974,9 @@ function PlayersPage() {
                       )}
                     </span>
 
-                    <span className="text-[11px] font-bold text-white/55">All Statuses</span>
+                    <span className="whitespace-nowrap text-[11px] font-bold text-white/55">
+                      All Statuses
+                    </span>
                   </button>
 
                   {/* =================================================
@@ -947,7 +996,7 @@ function PlayersPage() {
                         }`}
                       >
                         <span
-                          className={`grid size-4 place-items-center rounded border ${
+                          className={`grid size-4 shrink-0 place-items-center rounded border ${
                             active
                               ? "border-[#39b7a5] bg-[#39b7a5] text-[#08100f]"
                               : "border-white/15"
@@ -957,7 +1006,7 @@ function PlayersPage() {
                         </span>
 
                         <span
-                          className={`text-[11px] font-bold ${
+                          className={`whitespace-nowrap text-[11px] font-bold ${
                             active ? "text-white/75" : "text-white/45"
                           }`}
                         >
@@ -967,15 +1016,21 @@ function PlayersPage() {
                     );
                   })}
 
-                  {activeFilters.length > 0 && (
-                    <button
-                      type="button"
-                      onClick={clearAllFilters}
-                      className="mt-3 w-full border-t border-white/[.06] pt-3 text-[9px] font-black uppercase tracking-wide text-[#ff6248] hover:text-[#ff806b]"
-                    >
-                      Clear All Filters
-                    </button>
-                  )}
+                  <div className="mt-3 box-border h-8 border-t border-white/[.06] pt-3">
+                    {activeFilters.length > 0 ? (
+                      <button
+                        type="button"
+                        onClick={clearAllFilters}
+                        className="w-full text-[9px] font-black uppercase tracking-wide text-[#ff6248] hover:text-[#ff806b]"
+                      >
+                        Clear All Filters
+                      </button>
+                    ) : (
+                      <span className="invisible block w-full text-[9px] font-black uppercase tracking-wide">
+                        Clear All Filters
+                      </span>
+                    )}
+                  </div>
                 </div>
               )}
             </div>
@@ -1159,7 +1214,7 @@ function PlayersPage() {
 
       <section className="min-h-0 flex-1 overflow-hidden px-4 pb-4">
         <div className="h-full overflow-hidden rounded-lg border border-white/[.07] bg-[#11171b]">
-          <div className="h-full overflow-auto">
+          <div className="admin-player-table-scroll h-full overflow-auto">
             <table className="min-w-[1450px] w-full border-collapse">
               <thead className="sticky top-0 z-20">
                 <tr className="border-b border-white/[.06] bg-[#151c21]">
@@ -1183,10 +1238,6 @@ function PlayersPage() {
 
                   <th className="px-4 py-3 text-left text-[9px] font-black uppercase tracking-[.08em] text-white/30">
                     Email
-                  </th>
-
-                  <th className="px-4 py-3 text-left text-[9px] font-black uppercase tracking-[.08em] text-white/30">
-                    Crew ID
                   </th>
 
                   <th className="px-4 py-3 text-left text-[9px] font-black uppercase tracking-[.08em] text-white/30">
@@ -1277,15 +1328,6 @@ function PlayersPage() {
                         <span className="text-[11px] text-white/40">{player.email}</span>
                       </td>
 
-                      {/* CREW ID */}
-
-                      <td className="px-4 py-3">
-                        <span className="font-mono text-[10px] text-white/35">
-                          COS-
-                          {String(player.id).padStart(4, "0")}
-                        </span>
-                      </td>
-
                       {/* ROLE */}
 
                       <td className="px-4 py-3">
@@ -1354,7 +1396,7 @@ function PlayersPage() {
 
                             setSelectedPlayer(player);
                           }}
-                          className="ml-auto flex items-center gap-2 rounded-md border border-[#39b7a5]/20 bg-[#39b7a5]/10 px-3 py-2 text-[9px] font-black uppercase tracking-wide text-[#54c9b8] opacity-0 transition group-hover:opacity-100"
+                          className="ml-auto flex items-center gap-2 rounded-md border border-[#39b7a5]/20 bg-[#39b7a5]/10 px-3 py-2 text-[9px] font-black uppercase tracking-wide text-[#54c9b8] opacity-100 transition hover:border-[#39b7a5]/40 hover:bg-[#39b7a5]/20"
                         >
                           <Eye className="size-3.5" />
                           View Profile
@@ -1506,7 +1548,7 @@ function PlayersPage() {
                     ids: [...selectedPlayers],
                   })
                 }
-                className="flex items-center gap-2 rounded-md border border-[#ff6248]/30 bg-[#ff6248]/10 px-3 py-2 text-[10px] font-black uppercase text-[#ff6248] hover:bg-[#ff6248] hover:text-white"
+                className="admin-player-delete-action flex items-center gap-2 rounded-md border border-[#ff6248]/30 bg-[#ff6248]/10 px-3 py-2 text-[10px] font-black uppercase text-[#ff6248] hover:bg-[#ff6248] hover:text-white"
               >
                 <Trash2 className="size-3.5" />
                 Delete
@@ -1574,10 +1616,6 @@ function PlayersPage() {
 
                     <span>•</span>
 
-                    <span>
-                      COS-
-                      {String(selectedPlayer.id).padStart(4, "0")}
-                    </span>
                   </div>
                 </div>
               </div>
@@ -1657,7 +1695,9 @@ function PlayersPage() {
                       <button
                         type="button"
                         onClick={() => {
-                          window.location.href = `mailto:${selectedPlayer.email}`;
+                          setContactPlayer(selectedPlayer);
+                          setContactSubject("");
+                          setContactMessage("");
                         }}
                         className="flex items-center gap-2 rounded-lg border border-white/[.08] bg-white/[.03] px-4 py-3 text-[10px] font-black uppercase text-white/50 hover:text-white"
                       >
@@ -1687,7 +1727,7 @@ function PlayersPage() {
                             id: selectedPlayer.id,
                           })
                         }
-                        className="flex items-center gap-2 rounded-lg border border-[#ff6248]/20 bg-[#ff6248]/5 px-4 py-3 text-[10px] font-black uppercase text-[#ff6248] hover:bg-[#ff6248] hover:text-white"
+                        className="admin-player-delete-action flex items-center gap-2 rounded-lg border border-[#ff6248]/20 bg-[#ff6248]/5 px-4 py-3 text-[10px] font-black uppercase text-[#ff6248] hover:bg-[#ff6248] hover:text-white"
                       >
                         <Trash2 className="size-3.5" />
                         Delete Player
@@ -1738,7 +1778,7 @@ function PlayersPage() {
                     </h3>
 
                     <div className="mt-5 space-y-3">
-                      {getPlayerTransactions(selectedPlayer.username).map((tx) => (
+                      {selectedPlayerTransactions.map((tx) => (
                         <div
                           key={tx.id}
                           className="rounded-xl border border-white/[.07] bg-[#1c2636] p-4"
@@ -1771,7 +1811,7 @@ function PlayersPage() {
                 <aside>
                   {/* PLAYER INFORMATION */}
 
-                  <div className="flex items-center gap-3">
+                  <div className="admin-player-profile-section-heading flex items-center gap-3">
                     <span className="h-6 w-1 rounded-full bg-[#ff6248]" />
 
                     <h3 className="text-[9px] font-black uppercase tracking-[.18em] text-[#ff6248]">
@@ -1779,11 +1819,10 @@ function PlayersPage() {
                     </h3>
                   </div>
 
-                  <div className="mt-6 overflow-hidden rounded-xl border border-white/[.07]">
+                  <div className="admin-player-profile-info-card mt-6 overflow-hidden rounded-xl border border-white/[.07]">
                     {[
                       ["Name", selectedPlayer.username],
                       ["Email", selectedPlayer.email],
-                      ["Crew ID", `COS-${String(selectedPlayer.id).padStart(4, "0")}`],
                       ["Joined", selectedPlayer.joined],
                       ["Current Role", selectedPlayer.role || "Player"],
                       ["Level", `Level ${getLevel(selectedPlayer.score)}`],
@@ -1819,7 +1858,7 @@ function PlayersPage() {
 
                   {/* ACCOUNT INFORMATION */}
 
-                  <div className="mt-8 flex items-center gap-3">
+                  <div className="admin-player-profile-section-heading mt-8 flex items-center gap-3">
                     <span className="h-6 w-1 rounded-full bg-[#ff6248]" />
 
                     <h3 className="text-[9px] font-black uppercase tracking-[.18em] text-[#ff6248]">
@@ -1827,7 +1866,7 @@ function PlayersPage() {
                     </h3>
                   </div>
 
-                  <div className="mt-6 overflow-hidden rounded-xl border border-white/[.07]">
+                  <div className="admin-player-profile-info-card mt-6 overflow-hidden rounded-xl border border-white/[.07]">
                     {(() => {
                       const account = getPlayerAccountInfo(selectedPlayer.id);
 
@@ -1856,7 +1895,7 @@ function PlayersPage() {
 
                   {/* PRODUCTION STATISTICS */}
 
-                  <div className="mt-8 flex items-center gap-3">
+                  <div className="admin-player-profile-section-heading mt-8 flex items-center gap-3">
                     <span className="h-6 w-1 rounded-full bg-[#ff6248]" />
 
                     <h3 className="text-[9px] font-black uppercase tracking-[.18em] text-[#ff6248]">
@@ -1864,7 +1903,7 @@ function PlayersPage() {
                     </h3>
                   </div>
 
-                  <div className="mt-6 overflow-hidden rounded-xl border border-white/[.07]">
+                  <div className="admin-player-profile-info-card mt-6 overflow-hidden rounded-xl border border-white/[.07]">
                     {(() => {
                       const stats = getPlayerProductionStats(selectedPlayer.score);
 
@@ -1894,6 +1933,107 @@ function PlayersPage() {
               </div>
             </div>
           </div>
+        </div>
+      )}
+
+      {/* =====================================================
+          CONTACT PLAYER MODAL
+          ===================================================== */}
+
+      {contactPlayer && (
+        <div
+          className="admin-player-contact-overlay fixed inset-0 z-[120] flex items-center justify-center bg-black/70 p-4 backdrop-blur-sm"
+          onClick={(event) => {
+            event.stopPropagation();
+
+            if (event.target === event.currentTarget) {
+              setContactPlayer(null);
+            }
+          }}
+        >
+          <form
+            onSubmit={submitContactPlayer}
+            className="admin-player-contact-modal w-full max-w-xl rounded-xl border border-white/10 bg-[#151c28] p-6 shadow-2xl"
+            onClick={(event) => event.stopPropagation()}
+          >
+            <div className="flex items-start justify-between gap-4">
+              <div>
+                <p className="admin-player-contact-accent text-[10px] font-black uppercase tracking-[.18em] text-[#ff6248]">
+                  Contact Player
+                </p>
+
+                <h3 className="mt-2 text-xl font-black uppercase text-white">
+                  Send a message
+                </h3>
+
+                <p className="mt-2 text-sm text-white/50">
+                  Send a direct Mail message to {contactPlayer.username}.
+                </p>
+              </div>
+
+              <button
+                type="button"
+                onClick={() => setContactPlayer(null)}
+                className="admin-player-contact-close grid size-9 shrink-0 place-items-center rounded-full border border-white/10 text-white/40 hover:bg-white/10 hover:text-white"
+                aria-label="Close contact player window"
+              >
+                <X className="size-4" />
+              </button>
+            </div>
+
+            <div className="mt-6 grid gap-4">
+              <p className="text-xs font-bold text-white/50">
+                To: <span className="font-black text-white">{contactPlayer.username}</span>
+                <span className="text-white/35"> · {contactPlayer.email}</span>
+              </p>
+
+              <label className="block text-[10px] font-black uppercase tracking-wider text-white/50">
+                Subject
+
+                <input
+                  name="subject"
+                  value={contactSubject}
+                  onChange={(event) => setContactSubject(event.target.value)}
+                  required
+                  autoFocus
+                  placeholder="Message subject"
+                  className="admin-input mt-2 w-full rounded-md border border-white/10 bg-[#101923] px-3 py-2.5 text-sm font-bold text-white outline-none transition placeholder:text-white/25 focus:border-[#ff6248]"
+                />
+              </label>
+
+              <label className="block text-[10px] font-black uppercase tracking-wider text-white/50">
+                Message
+
+                <textarea
+                  name="message"
+                  value={contactMessage}
+                  onChange={(event) => setContactMessage(event.target.value)}
+                  required
+                  rows={8}
+                  placeholder="Write your message to this player..."
+                  className="admin-input mt-2 min-h-[180px] w-full resize-y rounded-md border border-white/10 bg-[#101923] px-3 py-3 text-sm font-bold text-white outline-none transition placeholder:text-white/25 focus:border-[#ff6248]"
+                />
+              </label>
+            </div>
+
+            <div className="mt-6 flex flex-wrap justify-end gap-2">
+              <button
+                type="button"
+                onClick={() => setContactPlayer(null)}
+                className="admin-player-contact-cancel rounded-md border border-white/10 px-4 py-2.5 text-xs font-black uppercase text-white/60 hover:text-white"
+              >
+                Cancel
+              </button>
+
+              <button
+                type="submit"
+                className="admin-player-contact-submit inline-flex items-center gap-2 rounded-md bg-[#ff6248] px-4 py-2.5 text-xs font-black uppercase text-white hover:bg-[#ff806b]"
+              >
+                <Mail className="size-3.5" />
+                Send Message
+              </button>
+            </div>
+          </form>
         </div>
       )}
 

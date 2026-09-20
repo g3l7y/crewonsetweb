@@ -88,7 +88,7 @@ export const Route = createFileRoute('/api/admin/partnerships')({
             // Include applicant PlayFab info if logged in
             ...(session
               ? {
-                  name: session.displayName,
+                  name: session.username || session.displayName || 'Player',
                 }
               : {}),
           };

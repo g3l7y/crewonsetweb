@@ -6,6 +6,7 @@ import { validateSessionFromRequest } from "./playfab/session";
 export interface CrewSession {
   playFabId: string;
   sessionTicket?: string;
+  username: string;
   displayName: string;
   email: string;
   role: "admin" | "player";
@@ -28,6 +29,7 @@ export const getCrewSession = createServerFn({ method: "GET" }).handler(
 
       return {
         playFabId: session.playFabId,
+        username: session.username || session.displayName || "Player",
         displayName: session.displayName || "Player",
         email: session.email || "",
         role: session.role === "admin" ? "admin" : "player",

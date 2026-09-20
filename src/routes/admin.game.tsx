@@ -3,27 +3,30 @@ import { createFileRoute } from "@tanstack/react-router";
 export const Route = createFileRoute("/admin/game")({
   head: () => ({
     meta: [
-      { title: "Game Config — Crew On Set! Admin" },
-      { name: "description", content: "Tune game content, economy, and live settings." },
-      { property: "og:title", content: "Game Config — Crew On Set! Admin" },
-      { property: "og:description", content: "Tune game content, economy, and live settings." },
+      { title: "Game & Updates — Crew On Set! Admin" },
+      { name: "description", content: "Manage game releases and player communications." },
+      { property: "og:title", content: "Game & Updates — Crew On Set! Admin" },
+      { property: "og:description", content: "Manage game releases and player communications." },
     ],
   }),
   component: GamePage,
 });
 
-import { FormEvent, useState } from "react";
+import { FormEvent, useEffect, useState } from "react";
 import {
   Check,
   ChevronDown,
   Download,
   FileUp,
   ListChecks,
-  Search,
+  Mail,
   UploadCloud,
   X,
 } from "lucide-react";
 import { players } from "@/lib/admin-demo-data";
+import { useAdminPlayers } from "@/lib/playfab/hooks";
+import { isMockMode } from "@/lib/playfab/config";
+import { isValidEmail } from "@/lib/validation";
 import {
   buildHistoryStore,
   buildInfoStore,
@@ -38,77 +41,76 @@ import {
   uid,
   type GameBuild,
   type InstallStep,
-  type NotificationTargetKind,
   type SystemRequirementRow,
 } from "@/lib/demo/store";
-import { Megaphone, Plus as PlusIcon, RotateCcw, Trash2 } from "lucide-react";
+import { Plus as PlusIcon, RotateCcw, Trash2 } from "lucide-react";
 
-export function playerCode(id: number) {
-  return `COS-${String(id).padStart(4, "0")}`;
-}
+const emptyBuildInfo = {
+  version: "",
+  builtOn: "",
+  platform: "",
+  installSize: "",
+};
+
+const mockMailRecipients = [
+  { id: "MOCK-PLAYER-001", username: "CAMERA_PRO", email: "player@crewonset.com" },
+  ...players.map((player) => ({
+    id: String(player.id),
+    username: player.username,
+    email: player.email,
+  })),
+];
 
 function GamePage() {
-  const [notifications, setNotifications] = notificationsStore.useStore();
-  const [target, setTarget] = useState<NotificationTargetKind>("all");
-  const [selectedPlayers, setSelectedPlayers] = useState<number[]>([]);
-  const [title, setTitle] = useState("");
-  const [body, setBody] = useState("");
-  const [playerQuery, setPlayerQuery] = useState("");
-  const [discardOpen, setDiscardOpen] = useState(false);
+  const [notifications] = notificationsStore.useStore();
+  const realPlayersQuery = useAdminPlayers();
+  const mailRecipients = isMockMode()
+    ? mockMailRecipients
+    : (realPlayersQuery.data ?? []).map((player) => ({
+        id: String(player.playFabId || player.id),
+        username: player.username || player.displayName,
+        email: player.email,
+      }));
+  const [composerTab, setComposerTab] = useState<"game" | "mail">("game");
+  const [mailTo, setMailTo] = useState("");
+  const [mailSubject, setMailSubject] = useState("");
+  const [mailBody, setMailBody] = useState("");
   const [openAnnouncement, setOpenAnnouncement] = useState<string | null>(null);
 
   const announcements = notifications.filter((n) => n.kind === "announcement");
   const detail = announcements.find((a) => a.id === openAnnouncement) ?? null;
-
-  const playerMatches = players.filter((player) => {
-    const query = playerQuery.trim().toLowerCase();
-    if (!query) return false;
-    return (
-      player.username.toLowerCase().includes(query) ||
-      playerCode(player.id).toLowerCase().includes(query)
-    );
-  });
-
-  const hasDraft = Boolean(title.trim() || body.trim() || selectedPlayers.length > 0);
-
-  function resetComposer() {
-    setTitle("");
-    setBody("");
-    setSelectedPlayers([]);
-    setPlayerQuery("");
-    setTarget("all");
-    setDiscardOpen(false);
-  }
-
-  function publishAnnouncement(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-    if (!title.trim() || !body.trim()) return;
-
-    notificationsStore.set([
-      {
-        id: uid("ntf"),
-        title,
-        body,
-        createdAt: new Date().toISOString(),
-        kind: "announcement",
-        read: false,
-        target:
-          target === "players"
-            ? { kind: "players", playerIds: selectedPlayers.map((id) => String(id)) }
-            : { kind: "all" },
-      },
-      ...notifications,
-    ]);
-
-    resetComposer();
-  }
+  const mailSuggestions = mailRecipients
+    .filter((player) => {
+      const query = mailTo.trim().toLowerCase();
+      return query && !isValidEmail(query) && player.username.toLowerCase().includes(query);
+    })
+    .slice(0, 6);
 
   const [requirementsOpen, setRequirementsOpen] = useState(false);
+  const [remoteRequirements] = systemRequirementsStore.useStore();
+  const [remoteBuildInfoRows] = buildInfoStore.useStore();
+  const [remoteInstallSteps] = installStepsStore.useStore();
   const [requirements, setRequirements] = useState<SystemRequirementRow[]>(() =>
-    systemRequirementsStore.get()
+    systemRequirementsStore.get(),
   );
-  const [buildInfo, setBuildInfo] = useState(() => buildInfoStore.get()[0] ?? seedBuildInfo);
+  const [buildInfo, setBuildInfo] = useState(() =>
+    buildInfoStore.get()[0] ?? (isMockMode() ? seedBuildInfo : emptyBuildInfo),
+  );
   const [savedMessage, setSavedMessage] = useState("");
+  const [composerMessage, setComposerMessage] = useState("");
+
+  useEffect(() => {
+    if (requirements.length === 0 && remoteRequirements.length > 0) {
+      setRequirements(remoteRequirements.map((row) => ({ ...row })));
+    }
+  }, [remoteRequirements, requirements.length]);
+
+  useEffect(() => {
+    if (!buildInfo.version && remoteBuildInfoRows[0]) {
+      setBuildInfo({ ...remoteBuildInfoRows[0] });
+    }
+  }, [remoteBuildInfoRows, buildInfo.version]);
+
 
   function updateRequirement(id: string, field: "label" | "minimum" | "recommended", value: string) {
     setRequirements((current) => current.map((row) => (row.id === id ? { ...row, [field]: value } : row)));
@@ -133,10 +135,10 @@ function GamePage() {
   }
 
   function resetRequirements() {
-    setRequirements(seedSystemRequirements.map((row) => ({ ...row })));
-    setBuildInfo({ ...seedBuildInfo });
-    systemRequirementsStore.set(seedSystemRequirements);
-    buildInfoStore.set([seedBuildInfo]);
+    setRequirements(isMockMode() ? seedSystemRequirements.map((row) => ({ ...row })) : []);
+    setBuildInfo(isMockMode() ? { ...seedBuildInfo } : { ...emptyBuildInfo });
+    systemRequirementsStore.set(isMockMode() ? seedSystemRequirements : []);
+    buildInfoStore.set([isMockMode() ? seedBuildInfo : emptyBuildInfo]);
     setSavedMessage("Reset to defaults.");
     window.setTimeout(() => setSavedMessage(""), 3000);
   }
@@ -147,7 +149,6 @@ function GamePage() {
   const [historyRows] = buildHistoryStore.useStore();
   const currentBuild = buildRows[0];
 
-  const [uploadOpen, setUploadOpen] = useState(false);
   const [buildDraft, setBuildDraft] = useState<GameBuild>(
     () => gameBuildStore.get()[0] ?? {
       version: "",
@@ -160,11 +161,6 @@ function GamePage() {
     },
   );
 
-  function openUpload() {
-    setBuildDraft({ ...(gameBuildStore.get()[0] as GameBuild) });
-    setUploadOpen(true);
-  }
-
   function submitUpload(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     if (!buildDraft.version.trim() || !buildDraft.buildNumber.trim()) return;
@@ -175,15 +171,93 @@ function GamePage() {
     const next: GameBuild = { ...buildDraft, releasedAt: new Date().toISOString() };
     gameBuildStore.set([next]);
 
+    // Keep the legacy download metadata version aligned with the published
+    // build so every mock-mode admin/public surface reads the same release.
+    const nextBuildInfo = {
+      ...buildInfo,
+      version: `Version ${next.version} (Playtest Build)`,
+    };
+    buildInfoStore.set([nextBuildInfo]);
+    setBuildInfo(nextBuildInfo);
+
     logAdminActivity({
       kind: "game",
       label: "Game build uploaded",
       detail: `Version ${next.version} (build ${next.buildNumber}) is now the current build.`,
     });
 
-    setUploadOpen(false);
-    setSavedMessage(`Version ${next.version} is now live.`);
-    window.setTimeout(() => setSavedMessage(""), 3000);
+    notificationsStore.set([
+      {
+        id: uid("ntf"),
+        title: `New game update: v${next.version}`,
+        body: `Build ${next.buildNumber} is now available. Open your dashboard to play the latest update.`,
+        createdAt: new Date().toISOString(),
+        kind: "announcement",
+        read: false,
+        href: "/portal",
+        target: { kind: "all" },
+      },
+      ...notificationsStore.get(),
+    ]);
+
+    setBuildDraft(next);
+    setComposerMessage(`Version ${next.version} is now live.`);
+    window.setTimeout(() => setComposerMessage(""), 3000);
+  }
+
+  function resetBuildDraft() {
+    const current = gameBuildStore.get()[0];
+    if (current) setBuildDraft({ ...current });
+  }
+
+  function resetMailForm() {
+    setMailTo("");
+    setMailSubject("");
+    setMailBody("");
+  }
+
+  function submitMail(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (!mailTo.trim() || !mailBody.trim()) return;
+
+    const recipientValue = mailTo.trim();
+    const matchedPlayer = mailRecipients.find(
+      (player) =>
+        player.username.toLowerCase() === recipientValue.toLowerCase() ||
+        player.email.toLowerCase() === recipientValue.toLowerCase(),
+    );
+
+    if (matchedPlayer) {
+      notificationsStore.set([
+        {
+          id: uid("ntf"),
+          title: mailSubject.trim(),
+          body: mailBody.trim(),
+          createdAt: new Date().toISOString(),
+          kind: "system",
+          channel: "mail",
+          read: false,
+          href: "/portal/inbox?tab=mail",
+          recipientUsername: matchedPlayer.username,
+          recipientEmail: matchedPlayer.email,
+          target: { kind: "players", playerIds: [String(matchedPlayer.id)] },
+        },
+        ...notificationsStore.get(),
+      ]);
+      setComposerMessage(`In-app message sent to ${matchedPlayer.username}.`);
+      resetMailForm();
+      window.setTimeout(() => setComposerMessage(""), 3000);
+      return;
+    }
+
+    if (isValidEmail(recipientValue)) {
+      setComposerMessage(
+        "Email delivery is not configured yet. Add a server-side mail provider before sending external email.",
+      );
+      return;
+    }
+
+    setComposerMessage("Select an existing player username or enter a valid email address.");
   }
 
   /* -------------------------------------- installation instructions */
@@ -192,6 +266,12 @@ function GamePage() {
   const [installDraft, setInstallDraft] = useState<InstallStep[]>(() =>
     installStepsStore.get().slice(0, MAX_INSTALL_STEPS),
   );
+
+  useEffect(() => {
+    if (installDraft.length === 0 && remoteInstallSteps.length > 0) {
+      setInstallDraft(remoteInstallSteps.slice(0, MAX_INSTALL_STEPS).map((step) => ({ ...step })));
+    }
+  }, [installDraft.length, remoteInstallSteps]);
 
   function openInstall() {
     setInstallDraft(installStepsStore.get().slice(0, MAX_INSTALL_STEPS).map((step) => ({ ...step })));
@@ -241,11 +321,11 @@ function GamePage() {
           </p>
 
           <h1 className="admin-heading mt-2 !text-white">
-            GAME RELEASES
+            GAME &amp; UPDATES
           </h1>
 
           <p className="admin-kicker !text-white/45">
-            Manage builds, requirements, and release history.
+            Manage builds, releases, and player communications.
           </p>
         </div>
 
@@ -258,13 +338,6 @@ function GamePage() {
             Edit Installation Instructions
           </button>
 
-          <button
-            onClick={openUpload}
-            className="inline-flex items-center gap-2 rounded-md bg-[#d9a514] px-4 py-2.5 text-sm font-black text-[#101923] transition hover:bg-[#e6b62b]"
-          >
-            <UploadCloud className="size-4" />
-            Upload Update
-          </button>
         </div>
       </header>
 
@@ -296,7 +369,7 @@ function GamePage() {
           </div>
 
           <p className="mt-6 text-3xl font-black !text-white">
-            68,320
+            {isMockMode() ? "68,320" : "—"}
           </p>
 
           <p className="mt-1 text-xs font-bold uppercase tracking-wider !text-white/35">
@@ -315,12 +388,6 @@ function GamePage() {
             </p>
           </div>
 
-          <button
-            onClick={openUpload}
-            className="shrink-0 rounded-md border border-white/10 bg-[#1d2a38] px-4 py-2 text-xs font-black uppercase tracking-wide text-white transition hover:border-coral"
-          >
-            Manage
-          </button>
         </div>
 
         {currentBuild ? (
@@ -570,170 +637,208 @@ function GamePage() {
         </div>
       </section>
 
-      {/* ANNOUNCEMENT COMPOSER */}
+      {/* GAME UPDATES AND MAIL */}
       <section className="mt-6 rounded-lg border border-white/[0.06] bg-[#182330] p-5 shadow-xl">
-        <div className="mb-5 flex items-center gap-3">
-          <div className="grid size-9 place-items-center rounded-md bg-coral text-white">
-            <Megaphone className="size-4.5" />
+        <div className="mb-5 flex items-start gap-3">
+          <div className="grid size-9 shrink-0 place-items-center rounded-md bg-coral text-white">
+            {composerTab === "game" ? <UploadCloud className="size-4.5" /> : <Mail className="size-4.5" />}
           </div>
-          <div>
-            <h2 className="font-black uppercase !text-white">New Announcement</h2>
-            <p className="text-xs !text-white/35">Publishes to the player portal notification bell.</p>
+          <div className="min-w-0">
+            <h2 className="font-black uppercase !text-white">
+              {composerTab === "game" ? "New Game Release" : "Mail"}
+            </h2>
+            <p className="text-xs !text-white/35">
+              {composerTab === "game"
+                ? "Publish a new build and update the release details shown to players."
+                : "Send status feedback to players who submitted reports or brands with applications."}
+            </p>
           </div>
         </div>
 
-        <form onSubmit={publishAnnouncement} className="grid gap-4">
-          <label className="form-label !text-white/60">
-            TITLE
-            <input
-              value={title}
-              onChange={(e) => setTitle(e.target.value)}
-              required
-              className="mt-2 w-full rounded-md border border-white/10 bg-[#101923] px-3 py-2.5 text-sm font-bold !text-white outline-none focus:border-coral"
-              placeholder="Season 4 wraps this Friday"
-            />
-          </label>
+        <div
+          className="mb-5 flex flex-wrap gap-2 border-b border-white/[0.08] pb-3"
+          role="tablist"
+          aria-label="Game and updates forms"
+        >
+          {([
+            ["game", "Game Updates"],
+            ["mail", "Mail"],
+          ] as const).map(([tab, label]) => {
+            const active = composerTab === tab;
+            return (
+              <button
+                key={tab}
+                type="button"
+                role="tab"
+                aria-selected={active}
+                onClick={() => setComposerTab(tab)}
+                className={`rounded-md border px-4 py-2.5 text-xs font-black uppercase tracking-wide transition ${
+                  active
+                    ? "border-coral bg-coral text-white"
+                    : "border-white/10 !text-white/50 hover:border-coral/50 hover:!text-white"
+                }`}
+              >
+                {label}
+              </button>
+            );
+          })}
+        </div>
 
-          <label className="form-label !text-white/60">
-            MESSAGE
-            <textarea
-              value={body}
-              onChange={(e) => setBody(e.target.value)}
-              required
-              rows={3}
-              className="mt-2 w-full rounded-md border border-white/10 bg-[#101923] px-3 py-2.5 text-sm font-bold !text-white outline-none focus:border-coral"
-              placeholder="Details for the crew..."
-            />
-          </label>
-
-          <div>
-            <p className="form-label !text-white/60">TARGET</p>
-            <div className="mt-2 flex flex-wrap gap-2">
-              {(["all", "players"] as NotificationTargetKind[]).map((option) => (
-                <button
-                  type="button"
-                  key={option}
-                  onClick={() => setTarget(option)}
-                  className={`rounded-md border px-3 py-2 text-xs font-bold uppercase transition ${
-                    target === option
-                      ? "border-coral bg-coral text-white"
-                      : "border-white/10 !text-white/50 hover:border-white/25"
-                  }`}
-                >
-                  {option === "all" ? "All Players" : "Specific Player(s)"}
-                </button>
+        {composerTab === "game" ? (
+          <form onSubmit={submitUpload} className="grid gap-4">
+            <div className="grid gap-4 sm:grid-cols-2">
+              {([
+                ["version", "Version", "0.9.5"],
+                ["buildNumber", "Build Number", "950"],
+                ["minWindows", "Minimum Windows Version", "Windows 10 64-bit"],
+                ["installerFileName", "Windows Installer File Name", "CrewOnSet-0.9.5.exe"],
+              ] as const).map(([field, label, placeholder]) => (
+                <label key={field} className="block text-[10px] font-black uppercase tracking-wider !text-white/45">
+                  {label}
+                  <input
+                    value={buildDraft[field]}
+                    onChange={(event) =>
+                      setBuildDraft((current) => ({ ...current, [field]: event.target.value }))
+                    }
+                    placeholder={placeholder}
+                    required={field === "version" || field === "buildNumber"}
+                    className="admin-input mt-2 w-full rounded-md border border-white/10 bg-[#101923] px-3 py-2.5 text-sm font-bold !text-white outline-none transition placeholder:!text-white/25 focus:border-coral"
+                  />
+                </label>
               ))}
             </div>
-          </div>
 
-          {target === "players" && (
-            <div className="rounded-md border border-white/10 bg-[#101923] p-3">
-              <label className="form-label !text-white/50">
-                SEARCH PLAYERS
-                <div className="relative mt-2">
-                  <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-white/25" />
-                  <input
-                    value={playerQuery}
-                    onChange={(e) => setPlayerQuery(e.target.value)}
-                    placeholder="Player name or ID (e.g. COS-0001)"
-                    className="w-full rounded-md border border-white/10 bg-[#0d141d] pl-9 pr-3 py-2.5 text-sm font-bold !text-white outline-none placeholder:text-white/20 focus:border-coral"
-                  />
-                </div>
-              </label>
+            <label className="block text-[10px] font-black uppercase tracking-wider !text-white/45">
+              Download URL
+              <input
+                value={buildDraft.downloadUrl}
+                onChange={(event) =>
+                  setBuildDraft((current) => ({ ...current, downloadUrl: event.target.value }))
+                }
+                placeholder="https://..."
+                className="admin-input mt-2 w-full rounded-md border border-white/10 bg-[#101923] px-3 py-2.5 text-sm font-bold !text-white outline-none transition placeholder:!text-white/25 focus:border-coral"
+              />
+            </label>
 
-              {playerQuery.trim() && (
-                <div className="mt-2 max-h-44 overflow-y-auto rounded-md border border-white/10 bg-[#0d141d]">
-                  {playerMatches.length === 0 && (
-                    <p className="p-3 text-xs !text-white/35">No players match that search.</p>
-                  )}
-                  {playerMatches.map((player) => {
-                    const selected = selectedPlayers.includes(player.id);
-                    return (
+            <label className="block text-[10px] font-black uppercase tracking-wider !text-white/45">
+              Release Notes
+              <textarea
+                value={buildDraft.releaseNotes}
+                onChange={(event) =>
+                  setBuildDraft((current) => ({ ...current, releaseNotes: event.target.value }))
+                }
+                rows={10}
+                placeholder="What changed in this build?"
+                className="admin-input mt-2 min-h-[220px] w-full resize-y rounded-md border border-white/10 bg-[#101923] px-3 py-2.5 text-sm font-bold !text-white outline-none transition placeholder:!text-white/25 focus:border-coral"
+              />
+            </label>
+
+            <div className="flex flex-wrap items-center gap-2">
+              <button
+                type="submit"
+                className="inline-flex items-center gap-2 rounded-md bg-[#d9a514] px-5 py-2.5 text-xs font-black uppercase text-[#101923] transition hover:bg-[#e6b62b]"
+              >
+                <UploadCloud className="size-4" />
+                Publish Game Update
+              </button>
+              <button
+                type="button"
+                onClick={resetBuildDraft}
+                className="rounded-md border border-white/10 px-4 py-2.5 text-xs font-black uppercase !text-white/60 transition hover:!text-white"
+              >
+                Reset
+              </button>
+              {composerMessage && <span className="text-xs font-bold !text-[#4bc4b4]">{composerMessage}</span>}
+            </div>
+          </form>
+        ) : (
+          <form onSubmit={submitMail} className="grid gap-4">
+            <label className="block text-[10px] font-black uppercase tracking-wider !text-white/45">
+              TO:
+              <div className="relative mt-2">
+                <input
+                  value={mailTo}
+                  onChange={(event) => setMailTo(event.target.value)}
+                  required
+                  type="text"
+                  role="combobox"
+                  aria-autocomplete="list"
+                  aria-expanded={mailSuggestions.length > 0}
+                  autoComplete="off"
+                  placeholder="Player username or email address"
+                  className="admin-input w-full rounded-md border border-white/10 bg-[#101923] px-3 py-2.5 text-sm font-bold !text-white outline-none transition placeholder:!text-white/25 focus:border-coral"
+                />
+
+                {mailSuggestions.length > 0 && (
+                  <div
+                    role="listbox"
+                    className="absolute inset-x-0 top-full z-20 mt-1 overflow-hidden rounded-md border border-white/10 bg-[#182330] shadow-2xl"
+                  >
+                    {mailSuggestions.map((player) => (
                       <button
-                        type="button"
                         key={player.id}
-                        onClick={() =>
-                          setSelectedPlayers((current) =>
-                            current.includes(player.id)
-                              ? current.filter((id) => id !== player.id)
-                              : [...current, player.id]
-                          )
-                        }
-                        className="flex w-full items-center gap-3 border-b border-white/[0.05] px-3 py-2.5 text-left transition last:border-0 hover:bg-white/[0.04]"
+                        type="button"
+                        role="option"
+                        aria-selected={mailTo.toLowerCase() === player.username.toLowerCase()}
+                        onClick={() => setMailTo(player.username)}
+                        className="flex w-full items-center justify-between gap-3 border-b border-white/[0.06] px-3 py-2.5 text-left transition last:border-0 hover:bg-white/[0.05]"
                       >
-                        <span
-                          className={`grid size-4 shrink-0 place-items-center rounded border ${
-                            selected ? "border-coral bg-coral text-white" : "border-white/20"
-                          }`}
-                        >
-                          {selected && <Check className="size-3" />}
+                        <span className="min-w-0 truncate text-xs font-black !text-white">
+                          {player.username}
                         </span>
-                        <span className="min-w-0 flex-1">
-                          <span className="block truncate text-xs font-bold !text-white">{player.username}</span>
-                          <span className="block truncate text-[10px] !text-white/35">{playerCode(player.id)}</span>
-                        </span>
+                        <span className="shrink-0 text-[10px] !text-white/35">{player.email}</span>
                       </button>
-                    );
-                  })}
-                </div>
-              )}
-
-              <div className="mt-3">
-                <p className="text-[10px] font-black uppercase tracking-wide !text-white/35">
-                  Selected recipients ({selectedPlayers.length})
-                </p>
-                {selectedPlayers.length === 0 ? (
-                  <p className="mt-1.5 text-xs !text-white/30">
-                    Search above and select the players who should receive this announcement.
-                  </p>
-                ) : (
-                  <div className="mt-2 flex flex-wrap gap-2">
-                    {selectedPlayers.map((id) => {
-                      const player = players.find((p) => p.id === id);
-                      return (
-                        <span
-                          key={id}
-                          className="inline-flex max-w-full items-center gap-2 rounded-full border border-coral/30 bg-coral/10 px-3 py-1.5 text-[11px] font-bold !text-white"
-                        >
-                          <span className="truncate">
-                            {player?.username ?? "Player"} · {playerCode(id)}
-                          </span>
-                          <button
-                            type="button"
-                            aria-label={`Remove ${player?.username ?? "player"}`}
-                            onClick={() =>
-                              setSelectedPlayers((current) => current.filter((value) => value !== id))
-                            }
-                            className="shrink-0 !text-white/50 transition hover:!text-coral-light"
-                          >
-                            <X className="size-3.5" />
-                          </button>
-                        </span>
-                      );
-                    })}
+                    ))}
                   </div>
                 )}
               </div>
+              <span className="mt-1.5 block text-[10px] font-normal normal-case tracking-normal !text-white/30">
+                Enter a player username, player email, or brand contact email.
+              </span>
+            </label>
+
+            <label className="block text-[10px] font-black uppercase tracking-wider !text-white/45">
+              SUBJECT
+              <input
+                value={mailSubject}
+                onChange={(event) => setMailSubject(event.target.value)}
+                required
+                placeholder="Update on your submission"
+                className="admin-input mt-2 w-full rounded-md border border-white/10 bg-[#101923] px-3 py-2.5 text-sm font-bold !text-white outline-none transition placeholder:!text-white/25 focus:border-coral"
+              />
+            </label>
+
+            <label className="block text-[10px] font-black uppercase tracking-wider !text-white/45">
+              MESSAGE
+              <textarea
+                value={mailBody}
+                onChange={(event) => setMailBody(event.target.value)}
+                required
+                rows={10}
+                placeholder="Write feedback about a report or application status..."
+                className="admin-input mt-2 min-h-[220px] w-full resize-y rounded-md border border-white/10 bg-[#101923] px-3 py-3 text-sm font-bold !text-white outline-none transition placeholder:!text-white/25 focus:border-coral sm:min-h-[260px]"
+              />
+            </label>
+
+            <div className="flex flex-wrap items-center gap-2">
+              <button
+                type="submit"
+                className="inline-flex items-center gap-2 rounded-md bg-coral px-5 py-2.5 text-xs font-black uppercase text-white transition hover:bg-coral-dark"
+              >
+                <Mail className="size-4" />
+                Send Message
+              </button>
+              <button
+                type="button"
+                onClick={resetMailForm}
+                className="rounded-md border border-white/10 px-4 py-2.5 text-xs font-black uppercase !text-white/60 transition hover:!text-white"
+              >
+                Reset
+              </button>
+              {composerMessage && <span className="text-xs font-bold !text-[#4bc4b4]">{composerMessage}</span>}
             </div>
-          )}
-
-          <div className="flex flex-wrap gap-2">
-            <button
-              type="submit"
-              className="rounded-md bg-coral px-5 py-2.5 text-sm font-black uppercase text-white transition hover:bg-coral-dark"
-            >
-              Publish Announcement
-            </button>
-
-            <button
-              type="button"
-              onClick={() => (hasDraft ? setDiscardOpen(true) : resetComposer())}
-              className="rounded-md border border-white/12 px-5 py-2.5 text-sm font-black uppercase !text-white/55 transition hover:border-white/30 hover:!text-white"
-            >
-              Cancel
-            </button>
-          </div>
-        </form>
+          </form>
+        )}
       </section>
 
       {/* PREVIOUS ANNOUNCEMENTS */}
@@ -766,42 +871,6 @@ function GamePage() {
           ))}
         </div>
       </section>
-
-      {/* DISCARD DRAFT CONFIRMATION */}
-      {discardOpen && (
-        <div
-          className="fixed inset-0 z-[70] grid place-items-center bg-black/70 p-5 backdrop-blur-sm"
-          onClick={() => setDiscardOpen(false)}
-        >
-          <section
-            role="alertdialog"
-            aria-modal="true"
-            className="w-full max-w-sm rounded-xl border border-white/10 bg-[#182330] p-6 shadow-2xl"
-            onClick={(event) => event.stopPropagation()}
-          >
-            <h2 className="text-xl font-black uppercase !text-white">Discard this announcement?</h2>
-            <p className="mt-2 text-sm !text-white/45">
-              Nothing has been published yet. Discarding clears the title, message, and selected recipients.
-            </p>
-            <div className="mt-6 flex justify-end gap-2">
-              <button
-                type="button"
-                onClick={() => setDiscardOpen(false)}
-                className="rounded-md border border-white/10 px-4 py-2.5 text-xs font-black uppercase !text-white/50 transition hover:!text-white"
-              >
-                Cancel
-              </button>
-              <button
-                type="button"
-                onClick={resetComposer}
-                className="rounded-md bg-coral px-4 py-2.5 text-xs font-black uppercase text-white transition hover:bg-coral-dark"
-              >
-                Discard
-              </button>
-            </div>
-          </section>
-        </div>
-      )}
 
       {/* SENT ANNOUNCEMENT DETAILS */}
       {detail && (
@@ -871,7 +940,6 @@ function GamePage() {
                         <span className="min-w-0 truncate font-bold !text-white">
                           {player?.username ?? "Unknown player"}
                         </span>
-                        <span className="shrink-0 !text-white/40">{playerCode(Number(playerId))}</span>
                       </li>
                     );
                   })}
@@ -886,100 +954,6 @@ function GamePage() {
               )}
             </div>
           </section>
-        </div>
-      )}
-
-      {/* UPLOAD UPDATE MODAL */}
-      {uploadOpen && (
-        <div
-          className="fixed inset-0 z-[120] flex items-start justify-center overflow-y-auto bg-black/70 p-4 backdrop-blur-sm sm:items-center"
-          onClick={() => setUploadOpen(false)}
-        >
-          <form
-            onSubmit={submitUpload}
-            onClick={(event) => event.stopPropagation()}
-            className="my-auto w-full max-w-2xl rounded-xl border border-white/10 bg-[#151c28] shadow-2xl"
-          >
-            <div className="flex items-center justify-between gap-4 border-b border-white/[0.07] px-5 py-4">
-              <h3 className="min-w-0 text-base font-black uppercase !text-white">Upload Update</h3>
-
-              <button
-                type="button"
-                onClick={() => setUploadOpen(false)}
-                className="grid size-8 shrink-0 place-items-center rounded-md border border-white/10 !text-white/50 transition hover:!text-white"
-                aria-label="Close"
-              >
-                <X className="size-4" />
-              </button>
-            </div>
-
-            <div className="max-h-[70vh] overflow-y-auto p-5">
-              <div className="grid gap-4 sm:grid-cols-2">
-                {([
-                  ["version", "Version", "0.9.5"],
-                  ["buildNumber", "Build Number", "950"],
-                  ["minWindows", "Minimum Windows Version", "Windows 10 64-bit"],
-                  ["installerFileName", "Windows Installer File Name", "CrewOnSet-0.9.5.exe"],
-                ] as const).map(([field, label, placeholder]) => (
-                  <label key={field} className="block text-[10px] font-black uppercase tracking-wider !text-white/45">
-                    {label}
-                    <input
-                      value={buildDraft[field]}
-                      onChange={(event) =>
-                        setBuildDraft((current) => ({ ...current, [field]: event.target.value }))
-                      }
-                      placeholder={placeholder}
-                      required={field === "version" || field === "buildNumber"}
-                      className="admin-input mt-2 w-full rounded-md border border-white/10 bg-[#101923] px-3 py-2.5 text-sm font-bold !text-white outline-none transition placeholder:!text-white/25 focus:border-coral"
-                    />
-                  </label>
-                ))}
-              </div>
-
-              <label className="mt-4 block text-[10px] font-black uppercase tracking-wider !text-white/45">
-                Download URL
-                <input
-                  value={buildDraft.downloadUrl}
-                  onChange={(event) =>
-                    setBuildDraft((current) => ({ ...current, downloadUrl: event.target.value }))
-                  }
-                  placeholder="https://..."
-                  className="admin-input mt-2 w-full rounded-md border border-white/10 bg-[#101923] px-3 py-2.5 text-sm font-bold !text-white outline-none transition placeholder:!text-white/25 focus:border-coral"
-                />
-              </label>
-
-              <label className="mt-4 block text-[10px] font-black uppercase tracking-wider !text-white/45">
-                Release Notes
-                <textarea
-                  value={buildDraft.releaseNotes}
-                  onChange={(event) =>
-                    setBuildDraft((current) => ({ ...current, releaseNotes: event.target.value }))
-                  }
-                  rows={5}
-                  placeholder="What changed in this build?"
-                  className="admin-input mt-2 w-full resize-y rounded-md border border-white/10 bg-[#101923] px-3 py-2.5 text-sm font-bold !text-white outline-none transition placeholder:!text-white/25 focus:border-coral"
-                />
-              </label>
-            </div>
-
-            <div className="flex flex-wrap justify-end gap-2 border-t border-white/[0.07] px-5 py-4">
-              <button
-                type="button"
-                onClick={() => setUploadOpen(false)}
-                className="rounded-md border border-white/10 px-4 py-2.5 text-xs font-black uppercase !text-white/60 transition hover:!text-white"
-              >
-                Cancel
-              </button>
-
-              <button
-                type="submit"
-                className="inline-flex items-center gap-2 rounded-md bg-[#d9a514] px-5 py-2.5 text-xs font-black uppercase text-[#101923] transition hover:bg-[#e6b62b]"
-              >
-                <UploadCloud className="size-4" />
-                Submit Update
-              </button>
-            </div>
-          </form>
         </div>
       )}
 
