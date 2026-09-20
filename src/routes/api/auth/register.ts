@@ -1,6 +1,8 @@
 import { createFileRoute } from '@tanstack/react-router';
 import { isMockMode, PLAYFAB_TITLE_ID } from '@/lib/playfab/config';
 import { createSessionCookies } from '@/lib/playfab/session';
+import { isValidPassword, isValidUsername, PASSWORD_ERROR, USERNAME_ERROR } from '@/lib/validation';
+import { registerMockAccount } from '@/lib/playfab/mock-accounts';
 import type { SessionData, AuthResponse } from '@/lib/playfab/types';
 
 export const Route = createFileRoute('/api/auth/register')({
@@ -8,22 +10,32 @@ export const Route = createFileRoute('/api/auth/register')({
     handlers: {
       POST: async ({ request }) => {
         try {
-          const { email, password, displayName } = (await request.json()) as {
+          const { email, password, username } = (await request.json()) as {
             email?: string;
             password?: string;
-            displayName?: string;
+            username?: string;
           };
 
-          if (!email || !password || !displayName) {
+          const normalizedEmail = email?.trim() ?? '';
+          const normalizedUsername = username?.trim() ?? '';
+
+          if (!normalizedEmail || !password || !normalizedUsername) {
             return Response.json(
-              { success: false, error: 'Email, password, and display name are required.' } satisfies AuthResponse,
+              { success: false, error: 'Email, password, and username are required.' } satisfies AuthResponse,
               { status: 400 },
             );
           }
 
-          if (password.length < 6) {
+          if (!isValidUsername(normalizedUsername)) {
             return Response.json(
-              { success: false, error: 'Password must be at least 6 characters.' } satisfies AuthResponse,
+              { success: false, error: USERNAME_ERROR } satisfies AuthResponse,
+              { status: 400 },
+            );
+          }
+
+          if (!isValidPassword(password)) {
+            return Response.json(
+              { success: false, error: PASSWORD_ERROR } satisfies AuthResponse,
               { status: 400 },
             );
           }
@@ -31,13 +43,14 @@ export const Route = createFileRoute('/api/auth/register')({
           let session: SessionData;
 
           if (isMockMode()) {
-            session = {
-              playFabId: 'MOCK-PLAYER-' + Date.now().toString().slice(-4),
-              sessionTicket: 'mock-player-ticket',
-              role: 'player',
-              displayName,
-              email,
-            };
+            const account = registerMockAccount(normalizedEmail, password, normalizedUsername);
+            if (!account) {
+              return Response.json(
+                { success: false, error: 'That username is already in use. Please choose another.' } satisfies AuthResponse,
+                { status: 409 },
+              );
+            }
+            session = account;
           } else {
             const playfabResponse = await fetch(
               `https://${PLAYFAB_TITLE_ID}.playfabapi.com/Client/RegisterPlayFabUser`,
@@ -46,10 +59,11 @@ export const Route = createFileRoute('/api/auth/register')({
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
                   TitleId: PLAYFAB_TITLE_ID,
-                  Email: email,
+                  Email: normalizedEmail,
                   Password: password,
-                  DisplayName: displayName,
-                  RequireBothUsernameAndEmail: false,
+                  Username: normalizedUsername,
+                  DisplayName: normalizedUsername,
+                  RequireBothUsernameAndEmail: true,
                 }),
               },
             );
@@ -71,8 +85,8 @@ export const Route = createFileRoute('/api/auth/register')({
               playFabId: pfData.PlayFabId,
               sessionTicket: pfData.SessionTicket,
               role: 'player',
-              displayName,
-              email,
+              displayName: normalizedUsername,
+              email: normalizedEmail,
             };
           }
 
@@ -86,6 +100,7 @@ export const Route = createFileRoute('/api/auth/register')({
             session: {
               playFabId: session.playFabId,
               role: session.role,
+              username: session.username || session.displayName,
               displayName: session.displayName,
               email: session.email,
             },

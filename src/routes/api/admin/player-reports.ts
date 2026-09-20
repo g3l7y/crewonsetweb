@@ -65,7 +65,7 @@ export const Route = createFileRoute('/api/admin/player-reports')({
           const report: PlayerReport = {
             id: uid('PR'),
             reporterId: session.playFabId,
-            reporterName: session.displayName,
+            reporterName: session.username || session.displayName || 'Player',
             reportedUsername: reportedUsername || 'Unknown',
             reportedPlayerId: reportedPlayerId || undefined,
             reportType: reportType || 'Other',

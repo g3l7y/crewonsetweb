@@ -16,6 +16,20 @@ const sharedEndpoints: Record<string, string> = {
   "cos.playerReports": "/api/admin/player-reports",
   "cos.bugReports": "/api/admin/bug-reports",
   "cos.applications": "/api/admin/partnerships",
+  "cos.topUps": "/api/admin/paymongo-orders",
+  "cos.ads": "/api/admin/data?key=ads",
+  "cos.revenue": "/api/admin/data?key=revenue",
+  "cos.gameBuild": "/api/admin/data?key=gameBuild",
+  "cos.buildHistory": "/api/admin/data?key=buildHistory",
+  "cos.systemRequirements": "/api/admin/data?key=systemRequirements",
+  "cos.buildInfo": "/api/admin/data?key=buildInfo",
+  "cos.installSteps": "/api/admin/data?key=installSteps",
+  "cos.socialLinks": "/api/admin/data?key=socialLinks",
+  "cos.admin.activity": "/api/admin/data?key=activity",
+  "cos.admin.messages": "/api/admin/data?key=messages",
+  "cos.admin.contentStats": "/api/admin/data?key=contentStats",
+  "cos.admin.alerts.read": "/api/admin/data?key=alertRead",
+  "cos.notifications": "/api/admin/data?key=notifications",
 };
 
 export const reportStatusColors = {
@@ -25,12 +39,14 @@ export const reportStatusColors = {
 } as const;
 
 export const partnershipStatusColors = {
-  Pending: "#F3C747",
-  Approved: "#4BC4B4",
-  "On-going": "#37C8C0",
-  Done: "#4E8FE7",
+  Pending: "#F39A5A",
+  Approved: "#F3C747",
+  "On-going": "#7CB0EE",
+  Done: "#4BC4B4",
   Declined: "#FF6248",
 } as const;
+
+export const partnershipProductTypes = ["Camera", "Lens", "Lights", "Audio", "Software", "Other"] as const;
 
 async function responseError(response: Response): Promise<string> {
   try {
@@ -146,6 +162,25 @@ async function loadSharedTable<T>(key: string) {
 }
 
 const isBrowser = () => typeof window !== "undefined";
+async function persistServerTable<T>(key: string, items: T[]) {
+  const endpoint = sharedEndpoints[key];
+  if (!endpoint || isMockMode()) return;
+  try {
+    const response = await fetch(endpoint, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ data: items }),
+    });
+    if (!response.ok) {
+      console.error("[Crew On Set] Failed to persist shared records.", {
+        endpoint,
+        message: await responseError(response),
+      });
+    }
+  } catch (error) {
+    console.error("[Crew On Set] Failed to persist shared records.", { endpoint, error });
+  }
+}
 
 function read<T>(key: string, fallback: T): T {
   if (!isBrowser()) return fallback;
@@ -178,7 +213,7 @@ function reconcileExpired<T>(key: string, items: T[], now = Date.now()) {
     }
     return item;
   });
-  if (changed) write(key, next);
+  if (changed && isMockMode()) write(key, next);
   return next;
 }
 
@@ -202,6 +237,7 @@ export function createStore<T>(key: string, seed: T[]) {
     const resolved = typeof next === "function" ? next(current) : next;
     if (usesServerApi) {
       serverItems = resolved;
+      void persistServerTable(key, resolved);
       if (isBrowser()) window.dispatchEvent(new CustomEvent(event));
       return;
     }
@@ -260,10 +296,15 @@ export type PlayerNotification = {
   title: string;
   body: string;
   createdAt: string;
-  kind: "announcement" | "achievement" | "friend" | "shop" | "system";
+  kind: "announcement" | "achievement" | "friend" | "shop" | "system" | "report" | "transaction";
+  /** Notifications stay in the activity feed; mail-only messages stay in Inbox Mail. */
+  channel?: "notification" | "mail";
   read: boolean;
   /** In-app destination this notification links to when clicked. */
   href?: string;
+  /** Optional mock recipient identity for player-specific in-app messages. */
+  recipientUsername?: string | undefined;
+  recipientEmail?: string | undefined;
   /** Targeting metadata, used by the admin announcement composer. */
   target?: {
     kind: NotificationTargetKind;
@@ -280,6 +321,7 @@ const seedNotifications: PlayerNotification[] = [
     createdAt: "2026-08-27T09:12:00.000Z",
     kind: "announcement",
     read: false,
+    channel: "notification",
     href: "/portal/shop",
     target: { kind: "all" },
   },
@@ -290,6 +332,7 @@ const seedNotifications: PlayerNotification[] = [
     createdAt: "2026-08-26T18:40:00.000Z",
     kind: "achievement",
     read: false,
+    channel: "notification",
     href: "/portal/achievements",
   },
   {
@@ -299,6 +342,7 @@ const seedNotifications: PlayerNotification[] = [
     createdAt: "2026-08-25T14:05:00.000Z",
     kind: "friend",
     read: true,
+    channel: "notification",
     href: "/portal/friends",
   },
   {
@@ -308,6 +352,7 @@ const seedNotifications: PlayerNotification[] = [
     createdAt: "2026-08-23T07:30:00.000Z",
     kind: "shop",
     read: true,
+    channel: "notification",
     href: "/portal/shop",
   },
   {
@@ -317,8 +362,21 @@ const seedNotifications: PlayerNotification[] = [
     createdAt: "2026-08-21T11:00:00.000Z",
     kind: "system",
     read: true,
+    channel: "notification",
     href: "/portal",
     target: { kind: "all" },
+  },
+  {
+    id: "ntf-1006",
+    title: "Report feedback is ready",
+    body: "Your player report has been reviewed. Open Mail to read the admin feedback.",
+    createdAt: "2026-08-20T15:30:00.000Z",
+    kind: "report",
+    read: true,
+    channel: "notification",
+    href: "/portal/inbox?tab=mail",
+    recipientUsername: "CAMERA_PRO",
+    target: { kind: "players", playerIds: ["COS-2847-CP"] },
   },
 ];
 
@@ -327,9 +385,128 @@ export const notificationsStore = createStore<PlayerNotification>(
   seedNotifications,
 );
 
+/* --------------------------------------------------------------------- mail */
+
+export type PlayerMail = {
+  id: string;
+  threadId: string;
+  subject: string;
+  body: string;
+  senderUsername: string;
+  recipientUsername: string;
+  createdAt: string;
+  read: boolean;
+  kind: "admin" | "friend";
+};
+
+const seedPlayerMail: PlayerMail[] = [
+  {
+    id: "mail-1001",
+    threadId: "thread-boombuddy",
+    subject: "Sound check for Studio B",
+    body: "I can bring the backup boom kit for the next session. Let me know what time call is.",
+    senderUsername: "BOOMBUDDY",
+    recipientUsername: "CAMERA_PRO",
+    createdAt: "2026-08-26T13:20:00.000Z",
+    read: false,
+    kind: "friend",
+  },
+  {
+    id: "mail-1002",
+    threadId: "thread-report-1006",
+    subject: "Report feedback",
+    body: "Thanks for helping keep the crew space safe. Your report has been reviewed by the admin team.",
+    senderUsername: "ADMINISTRATOR",
+    recipientUsername: "CAMERA_PRO",
+    createdAt: "2026-08-20T15:30:00.000Z",
+    read: true,
+    kind: "admin",
+  },
+];
+
+export const playerMailStore = createStore<PlayerMail>("cos.playerMail", seedPlayerMail);
+
+export function addReportFeedback(args: {
+  recipientUsername: string;
+  recipientPlayerId?: string;
+  reportId: string;
+  status: string;
+  body?: string;
+}) {
+  const createdAt = new Date().toISOString();
+  const threadId = "thread-" + args.reportId;
+  const body = args.body ?? "Your report " + args.reportId + " is now marked " + args.status + ".";
+  const target = {
+    kind: "players" as const,
+    playerIds: args.recipientPlayerId ? [args.recipientPlayerId] : [],
+  };
+  const feedbackNotification: PlayerNotification = {
+    id: uid("ntf"),
+    title: "Report feedback: " + args.reportId,
+    body: "Your report was updated. Open Mail to read the admin feedback.",
+    createdAt,
+    kind: "report",
+    channel: "notification",
+    read: false,
+    href: "/portal/inbox?tab=mail",
+    recipientUsername: args.recipientUsername,
+    target,
+  };
+
+  if (isMockMode()) {
+    notificationsStore.set([feedbackNotification, ...notificationsStore.get()]);
+    playerMailStore.set([
+      {
+        id: uid("mail"),
+        threadId,
+        subject: "Report feedback: " + args.reportId,
+        body,
+        senderUsername: "ADMINISTRATOR",
+        recipientUsername: args.recipientUsername,
+        createdAt,
+        read: false,
+        kind: "admin",
+      },
+      ...playerMailStore.get(),
+    ]);
+    return;
+  }
+
+  notificationsStore.set([
+    feedbackNotification,
+    {
+      id: uid("mail"),
+      title: "Report feedback: " + args.reportId,
+      body,
+      createdAt,
+      kind: "report",
+      channel: "mail",
+      read: false,
+      href: "/portal/inbox?tab=mail",
+      recipientUsername: args.recipientUsername,
+      target,
+    },
+    ...notificationsStore.get(),
+  ]);
+}
 /* --------------------------------------------------- partnership applications */
 
 export type PartnershipStatus = "Pending" | "Approved" | "On-going" | "Done" | "Declined";
+
+const partnershipStatusTransitions: Record<PartnershipStatus, PartnershipStatus[]> = {
+  Pending: ["Pending", "Approved", "On-going", "Done", "Declined"],
+  Approved: ["Approved", "On-going", "Done"],
+  "On-going": ["On-going", "Done"],
+  Done: ["Done"],
+  Declined: ["Declined"],
+};
+
+export function canAdvancePartnershipStatus(
+  current: PartnershipStatus,
+  next: PartnershipStatus,
+): boolean {
+  return partnershipStatusTransitions[current].includes(next);
+}
 
 export type PartnershipApplication = {
   id: string;
@@ -842,6 +1019,21 @@ export const bugReportsStore = createStore<BugReport>("cos.bugReports", [
 /* ---------------------------------------------------------- player reports */
 
 export type PlayerReportStatus = "New" | "Investigating" | "Resolved";
+
+export type ReportWorkflowStatus = BugStatus | PlayerReportStatus;
+
+const reportStatusOrder: Record<ReportWorkflowStatus, number> = {
+  New: 0,
+  Investigating: 1,
+  Resolved: 2,
+};
+
+export function canAdvanceReportStatus(
+  current: ReportWorkflowStatus,
+  next: ReportWorkflowStatus,
+): boolean {
+  return reportStatusOrder[next] >= reportStatusOrder[current];
+}
 
 export type PlayerReport = {
   id: string;

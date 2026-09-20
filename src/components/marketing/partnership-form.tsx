@@ -6,6 +6,7 @@ import {
   applicationsStore,
   insertSharedRecord,
   readAttachmentAsDataUrl,
+  partnershipProductTypes,
   uid,
   type PartnershipApplication,
 } from "@/lib/demo/store";
@@ -167,12 +168,9 @@ export function PartnershipForm() {
             <option value="" disabled>
               Select a product type
             </option>
-            <option>Camera</option>
-            <option>Lens</option>
-            <option>Lights</option>
-            <option>Audio</option>
-            <option>Software</option>
-            <option>Other</option>
+            {partnershipProductTypes.map((productType) => (
+              <option key={productType}>{productType}</option>
+            ))}
           </select>
         </label>
 

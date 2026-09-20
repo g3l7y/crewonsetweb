@@ -1,6 +1,8 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { isMockMode, PLAYFAB_TITLE_ID } from "@/lib/playfab/config";
 import { createSessionCookies } from "@/lib/playfab/session";
+import { findMockAccount } from "@/lib/playfab/mock-accounts";
+import { isValidEmail, isValidUsername } from "@/lib/validation";
 import type { SessionData, AuthResponse } from "@/lib/playfab/types";
 
 export const Route = createFileRoute("/api/auth/login")({
@@ -15,13 +17,20 @@ export const Route = createFileRoute("/api/auth/login")({
             scope?: "player" | "admin";
           };
 
-          const email = (body.email || body.username || "").trim();
+          const identifier = (body.email || body.username || "").trim();
           const password = body.password || "";
           const scope = body.scope;
 
-          if (!email || !password) {
+          if (!identifier || !password) {
             return Response.json(
               { success: false, error: "Email and password are required." } satisfies AuthResponse,
+              { status: 400 },
+            );
+          }
+
+          if (!isValidEmail(identifier) && !isValidUsername(identifier) && identifier !== "admin" && identifier !== "player") {
+            return Response.json(
+              { success: false, error: "Please enter a valid email address or username." } satisfies AuthResponse,
               { status: 400 },
             );
           }
@@ -29,23 +38,25 @@ export const Route = createFileRoute("/api/auth/login")({
           let session: SessionData;
 
           if (isMockMode()) {
-            // Mock mode: accept demo credentials
-            const isAdmin =
-              (email === "admin@crewonset.com" || email === "admin") && password === "admin";
-            const isPlayer =
-              (email === "player@crewonset.com" ||
-                email === "player@gmail.com" ||
-                email === "player") &&
-              password === "player";
-
-            if (!isAdmin && !isPlayer) {
+            const account = findMockAccount(identifier);
+            if (!account || account.password !== password) {
               return Response.json(
                 { success: false, error: "Invalid email or password." } satisfies AuthResponse,
                 { status: 401 },
               );
             }
 
-            if (scope === "admin" && !isAdmin) {
+            if (scope === "player" && account.role === "admin") {
+              return Response.json(
+                {
+                  success: false,
+                  error: "Admin accounts must use the admin login portal.",
+                } satisfies AuthResponse,
+                { status: 403 },
+              );
+            }
+
+            if (scope === "admin" && account.role !== "admin") {
               return Response.json(
                 {
                   success: false,
@@ -55,25 +66,19 @@ export const Route = createFileRoute("/api/auth/login")({
               );
             }
 
-            const role = isAdmin ? "admin" : "player";
-            session = {
-              playFabId: isAdmin ? "MOCK-ADMIN-001" : "MOCK-PLAYER-001",
-              sessionTicket: isAdmin ? "mock-admin-ticket" : "mock-player-ticket",
-              role,
-              displayName: isAdmin ? "ADMIN" : "CAMERA_PRO",
-              email: isAdmin ? "admin@crewonset.com" : "player@crewonset.com",
-            };
+            session = account;
           } else {
             // Real mode: call PlayFab LoginWithEmailAddress
             const titleId = PLAYFAB_TITLE_ID || "D4EA4";
+            const loginWithUsername = !isValidEmail(identifier);
             const playfabResponse = await fetch(
-              `https://${titleId}.playfabapi.com/Client/LoginWithEmailAddress`,
+              `https://${titleId}.playfabapi.com/Client/${loginWithUsername ? "LoginWithPlayFab" : "LoginWithEmailAddress"}`,
               {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({
                   TitleId: titleId,
-                  Email: email,
+                  ...(loginWithUsername ? { Username: identifier } : { Email: identifier }),
                   Password: password,
                   InfoRequestParameters: {
                     GetPlayerProfile: true,
@@ -101,7 +106,10 @@ export const Route = createFileRoute("/api/auth/login")({
             const displayName =
               pfData.InfoResultPayload?.PlayerProfile?.DisplayName ??
               pfData.InfoResultPayload?.AccountInfo?.TitleInfo?.DisplayName ??
-              email.split("@")[0];
+              identifier.split("@")[0];
+            const accountEmail =
+              pfData.InfoResultPayload?.AccountInfo?.PrivateInfo?.Email ??
+              (isValidEmail(identifier) ? identifier : "");
 
             // Determine admin role server-side via PlayFab admin tags
             let role: "admin" | "player" = "player";
@@ -154,12 +162,25 @@ export const Route = createFileRoute("/api/auth/login")({
               );
             }
 
+            if (scope === "player" && role === "admin") {
+              return Response.json(
+                {
+                  success: false,
+                  error: "Admin accounts must use the admin login portal.",
+                } satisfies AuthResponse,
+                { status: 403 },
+              );
+            }
+
             session = {
               playFabId,
               sessionTicket,
               role,
+              username: pfData.InfoResultPayload?.PlayerProfile?.DisplayName ??
+                pfData.InfoResultPayload?.AccountInfo?.Username ??
+                displayName,
               displayName,
-              email,
+              email: accountEmail,
             };
           }
 
@@ -174,6 +195,7 @@ export const Route = createFileRoute("/api/auth/login")({
             session: {
               playFabId: session.playFabId,
               role: session.role,
+              username: session.username || session.displayName,
               displayName: session.displayName,
               email: session.email,
             },

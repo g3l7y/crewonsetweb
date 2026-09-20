@@ -64,7 +64,7 @@ export const Route = createFileRoute('/api/admin/bug-reports')({
           const report: BugReport = {
             id: uid('BUG'),
             playerId: session?.playFabId ?? 'anonymous',
-            playerName: session?.displayName ?? 'Anonymous',
+            playerName: session?.username || session?.displayName || 'Anonymous',
             category,
             description,
             email: email || session?.email || '',

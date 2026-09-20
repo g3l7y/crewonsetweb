@@ -33,7 +33,7 @@ export async function loginWithEmail(email: string, password: string) {
 /**
  * Register a new user with email, password, and display name.
  */
-export async function registerUser(email: string, password: string, displayName: string) {
+export async function registerUser(email: string, password: string, username: string) {
   try {
     const data = await playfabClientApi<{
       SessionTicket: string;
@@ -41,8 +41,8 @@ export async function registerUser(email: string, password: string, displayName:
     }>('/Client/RegisterPlayFabUser', {
       Email: email,
       Password: password,
-      DisplayName: displayName,
-      Username: displayName.toUpperCase(),
+      DisplayName: username,
+      Username: username,
       TitleId: PLAYFAB_TITLE_ID,
       RequireBothUsernameAndEmail: true,
     });

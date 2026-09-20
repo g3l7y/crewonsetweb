@@ -31,8 +31,11 @@ import {
   Users,
 } from "lucide-react";
 import { useMemo } from "react";
-import { adminActivityStore, contentStatsStore, gameBuildStore, messagesStore } from "@/lib/demo/store";
+import { topUpsStore } from "@/lib/admin-demo-data";
+import { adminActivityStore, applicationsStore, contentStatsStore, formatMoney, gameBuildStore, messagesStore } from "@/lib/demo/store";
 import { sortNewestFirst } from "@/lib/validation";
+import { isMockMode } from "@/lib/playfab/config";
+import { useAdminPlayers } from "@/lib/playfab/hooks";
 
 const stats = [
   {
@@ -65,6 +68,9 @@ const stats = [
   },
 ];
 
+const dashboardBaseRevenue = 184260;
+const seededCompletedTopUpRevenue = 164.92;
+
 const activityKindStyles: Record<string, string> = {
   player: "bg-coral/15 text-[#ff7663]",
   news: "bg-[#2d9d8f]/15 text-[#4bc4b4]",
@@ -88,10 +94,14 @@ function formatDate(iso: string) {
 }
 
 function AdminDashboardPage() {
+  const mockMode = isMockMode();
+  const adminPlayersQuery = useAdminPlayers();
+  const [applications] = applicationsStore.useStore();
   const [activity] = adminActivityStore.useStore();
   const [contentStats] = contentStatsStore.useStore();
   const [messages] = messagesStore.useStore();
   const [gameBuilds] = gameBuildStore.useStore();
+  const [topUps] = topUpsStore.useStore();
 
   const gameBuild = gameBuilds[0];
   const contentTotals = contentStats[0];
@@ -109,6 +119,41 @@ function AdminDashboardPage() {
     return { unread, inProgress, resolved, total: messages.length };
   }, [messages]);
 
+  const dashboardStats = useMemo(() => {
+    const completedTopUpRevenue = topUps
+      .filter((topUp) => topUp.status === "Completed")
+      .reduce((total, topUp) => total + topUp.amount, 0);
+    const recognizedBrandBudgets = applications
+      .filter((application) => ["Approved", "On-going", "Done"].includes(application.status))
+      .reduce((total, application) => total + application.budget, 0);
+
+    if (!mockMode) {
+      const playerCount = adminPlayersQuery.isLoading
+        ? "…"
+        : String(adminPlayersQuery.data?.length ?? 0);
+      return stats.map((stat) => {
+        if (stat.label === "Total Users" || stat.label === "Active Players") {
+          return { ...stat, value: playerCount, change: "—" };
+        }
+        if (stat.label === "Total Downloads") {
+          return { ...stat, value: "—", change: "—" };
+        }
+        return {
+          ...stat,
+          value: formatMoney(completedTopUpRevenue + recognizedBrandBudgets),
+          change: "—",
+        };
+      });
+    }
+
+    const syncedTopUpRevenue = Math.max(0, completedTopUpRevenue - seededCompletedTopUpRevenue);
+    return stats.map((stat) =>
+      stat.label === "Total Revenue"
+        ? { ...stat, value: formatMoney(dashboardBaseRevenue + syncedTopUpRevenue) }
+        : stat,
+    );
+  }, [adminPlayersQuery.data, adminPlayersQuery.isLoading, applications, mockMode, topUps]);
+
   return (
     <div className="admin-page h-full overflow-y-auto bg-[#101923] text-white">
       {/* PAGE HEADER */}
@@ -124,7 +169,7 @@ function AdminDashboardPage() {
 
       {/* STAT CARDS */}
       <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-5">
-        {stats.map((stat) => (
+        {dashboardStats.map((stat) => (
           <article
             key={stat.label}
             className="admin-dashboard-stat min-w-0 rounded-lg border border-white/[0.06] bg-[#182330] p-4 shadow-xl sm:p-5"
@@ -165,23 +210,27 @@ function AdminDashboardPage() {
           </div>
 
           <p className="admin-stat-value mt-5 max-w-full whitespace-nowrap text-[clamp(1.1rem,1.45vw,1.3rem)] font-black leading-none tracking-tight !text-white">
-            Operational
+            {mockMode ? "Operational" : "Unknown"}
           </p>
 
           <p className="mt-2 flex min-w-0 items-start gap-1.5 text-[11px] font-bold uppercase leading-snug tracking-wider !text-white/35">
             <Activity className="size-3 shrink-0" />
-            <span>Server Status · 99.98% uptime</span>
+            <span>{mockMode ? "Server Status · 99.98% uptime" : "Server status monitoring unavailable"}</span>
           </p>
         </article>
       </section>
 
       {/* DASHBOARD CHARTS */}
       <div className="mt-6">
-        <DashboardCharts />
+          <DashboardCharts showViewMore unified={false} />
       </div>
 
       {/* MANAGEMENT SUMMARY CARDS */}
-      <section className="mt-8 grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+      <section
+        className={`mt-8 grid gap-4 sm:grid-cols-2 ${
+          mockMode ? "xl:mx-auto xl:max-w-6xl xl:grid-cols-3" : "xl:grid-cols-4"
+        }`}
+      >
         <article className="admin-dashboard-card min-w-0 rounded-lg border border-white/[0.06] bg-[#182330] p-4 shadow-xl sm:p-5">
           <div className="flex items-center justify-between">
             <div className="grid size-10 place-items-center rounded-md bg-coral text-white">
@@ -228,23 +277,25 @@ function AdminDashboardPage() {
           </p>
         </article>
 
-        <article className="admin-dashboard-card min-w-0 rounded-lg border border-white/[0.06] bg-[#182330] p-4 shadow-xl sm:p-5">
-          <div className="flex items-center justify-between">
-            <div className="grid size-10 place-items-center rounded-md bg-[#4b9bff] text-white">
-              <MessageSquare className="size-5" />
+        {!mockMode && (
+          <article className="admin-dashboard-card min-w-0 rounded-lg border border-white/[0.06] bg-[#182330] p-4 shadow-xl sm:p-5">
+            <div className="flex items-center justify-between">
+              <div className="grid size-10 place-items-center rounded-md bg-[#4b9bff] text-white">
+                <MessageSquare className="size-5" />
+              </div>
+              <Link
+                href="/admin"
+                className="text-[11px] font-black uppercase tracking-wide !text-coral hover:!text-white"
+              >
+                View Inbox →
+              </Link>
             </div>
-            <Link
-              href="/admin"
-              className="text-[11px] font-black uppercase tracking-wide !text-coral hover:!text-white"
-            >
-              View Inbox →
-            </Link>
-          </div>
-          <p className="mt-5 max-w-full whitespace-nowrap text-[clamp(1.2rem,1.55vw,1.4rem)] font-black leading-none tracking-tight !text-white">
-            {messageCounts.total}
-          </p>
-          <p className="mt-1 text-xs font-bold uppercase tracking-wider !text-white/35">Messages</p>
-        </article>
+            <p className="mt-5 max-w-full whitespace-nowrap text-[clamp(1.2rem,1.55vw,1.4rem)] font-black leading-none tracking-tight !text-white">
+              {messageCounts.total}
+            </p>
+            <p className="mt-1 text-xs font-bold uppercase tracking-wider !text-white/35">Messages</p>
+          </article>
+        )}
 
         <article className="admin-dashboard-card min-w-0 rounded-lg border border-white/[0.06] bg-[#182330] p-4 shadow-xl sm:p-5">
           <div className="flex items-center justify-between">
@@ -388,6 +439,16 @@ function AdminDashboardPage() {
               </li>
             ))}
           </ul>
+          {mockMode && (
+            <div className="mt-3 flex justify-end border-t border-white/[0.06] pt-3">
+              <Link
+                href="/admin/notifications"
+                className="text-[11px] font-black uppercase tracking-[.14em] !text-coral transition hover:!text-white"
+              >
+                View More
+              </Link>
+            </div>
+          )}
         </div>
       </section>
 

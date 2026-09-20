@@ -15,6 +15,7 @@ export const Route = createFileRoute("/admin/partnerships")({
 
 import { useMemo, useState } from "react";
 import Link from "@/components/next-compat/link";
+import { PartnershipStatusDropdown } from "@/components/admin/partnership-status-dropdown";
 import {
   Banknote,
   CalendarClock,
@@ -25,18 +26,20 @@ import {
   Mail,
   MailCheck,
   Megaphone,
+  Search,
   Trash2,
   X,
 } from "lucide-react";
 import {
   adsStore,
   applicationsStore,
+  canAdvancePartnershipStatus,
   deleteSharedRecord,
   deleteSharedRecords,
   updateSharedRecord,
-  partnershipStatusColors,
   revenueStore,
   formatMoney,
+  partnershipProductTypes,
   uid,
   type ActiveAd,
   type PartnershipApplication,
@@ -45,13 +48,15 @@ import {
 
 const statuses: PartnershipStatus[] = ["Pending", "Approved", "On-going", "Done", "Declined"];
 
-const statusStyles: Record<PartnershipStatus, string> = {
-  Pending: "bg-[#d9a514]/15 text-[#e1b42b]",
-  Approved: "bg-[#2d9d8f]/15 text-[#4bc4b4]",
+const mockStatusStyles: Record<PartnershipStatus, string> = {
+  Pending: "bg-[#c96a2d]/15 text-[#f39a5a]",
+  Approved: "bg-[#d9a514]/15 text-[#f3c747]",
   "On-going": "bg-[#3a7bd5]/15 text-[#7cb0ee]",
-  Done: "bg-white/[.08] text-white/50",
+  Done: "bg-[#2d9d8f]/15 text-[#4bc4b4]",
   Declined: "bg-coral/15 text-[#ff7663]",
 };
+
+const statusStyles = mockStatusStyles;
 
 const adStatusStyles: Record<ActiveAd["status"], string> = {
   "On-going": "bg-[#3a7bd5]/15 text-[#7cb0ee]",
@@ -73,6 +78,8 @@ function PartnershipsPage() {
   const [applications, setApplications] = applicationsStore.useStore();
   const [selected, setSelected] = useState<PartnershipApplication | null>(null);
   const [statusFilter, setStatusFilter] = useState<"All" | PartnershipStatus>("All");
+  const [applicationQuery, setApplicationQuery] = useState("");
+  const [productTypeFilter, setProductTypeFilter] = useState<"All" | (typeof partnershipProductTypes)[number]>("All");
   const [emailConfirmation, setEmailConfirmation] = useState<string | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<PartnershipApplication | null>(null);
   const [bulkDeleteTarget, setBulkDeleteTarget] = useState<PartnershipApplication[] | null>(null);
@@ -99,11 +106,21 @@ function PartnershipsPage() {
     setSelectedAdIds([]);
   }
 
-  const filtered = useMemo(
-    () =>
-      (statusFilter === "All" ? applications : applications.filter((a) => a.status === statusFilter)).filter((a) => !a.archived),
-    [applications, statusFilter],
-  );
+  const filtered = useMemo(() => {
+    const search = applicationQuery.trim().toLowerCase();
+    return applications.filter((app) => {
+      const searchableText = [app.id, app.brand, app.productType, app.exactModel, app.description]
+        .filter(Boolean)
+        .join(" ")
+        .toLowerCase();
+      return (
+        !app.archived &&
+        (!search || searchableText.includes(search)) &&
+        (productTypeFilter === "All" || app.productType === productTypeFilter) &&
+        (statusFilter === "All" || app.status === statusFilter)
+      );
+    });
+  }, [applications, applicationQuery, productTypeFilter, statusFilter]);
 
   async function deleteApplication(app: PartnershipApplication) {
     if (!(await deleteSharedRecord("cos.applications", app.id))) return;
@@ -131,6 +148,7 @@ function PartnershipsPage() {
 
   async function updateStatus(id: string, status: PartnershipStatus) {
     const app = applications.find((a) => a.id === id);
+    if (app && !canAdvancePartnershipStatus(app.status, status)) return;
     const previousStatus = app?.status;
     const statusChangedToOngoing = status === "On-going" && previousStatus !== "On-going";
     const transitionStartedAt = new Date().toISOString();
@@ -203,7 +221,7 @@ function PartnershipsPage() {
 
     if (app) {
       setEmailConfirmation(
-        `Automated status email sent to ${app.email} — status set to "${status}".`,
+        `Status saved for ${app.brand} — status set to "${status}". External email delivery is not configured.`,
       );
       window.setTimeout(() => setEmailConfirmation(null), 4500);
     }
@@ -228,38 +246,12 @@ function PartnershipsPage() {
       </header>
 
       <section id="partnership-applications" className="scroll-mt-6">
-        <div className="mb-6 flex flex-col justify-between gap-4 sm:flex-row sm:items-end">
+        <div className="mb-6">
           <div>
             <h2 className="text-lg font-black uppercase !text-white">Partnership Applications</h2>
             <p className="mt-1 text-xs !text-white/45">
               Review brand proposals and manage their approval status.
             </p>
-          </div>
-
-          <div className="flex flex-wrap gap-2">
-            <button
-              onClick={() => setStatusFilter("All")}
-              className={`rounded-md border px-3 py-2 text-[10px] font-black uppercase transition ${
-                statusFilter === "All"
-                  ? "border-coral bg-coral text-white"
-                  : "border-white/10 text-white/50 hover:border-white/25"
-              }`}
-            >
-              All
-            </button>
-            {statuses.map((s) => (
-              <button
-                key={s}
-                onClick={() => setStatusFilter(s)}
-                className={`rounded-md border px-3 py-2 text-[10px] font-black uppercase transition ${
-                  statusFilter === s
-                    ? "border-coral bg-coral text-white"
-                    : "border-white/10 text-white/50 hover:border-white/25"
-                }`}
-              >
-                {s}
-              </button>
-            ))}
           </div>
         </div>
 
@@ -270,12 +262,44 @@ function PartnershipsPage() {
           </div>
         )}
 
+        <section className="admin-card mb-4 flex flex-col gap-3 rounded-lg border border-white/[0.06] bg-[#182330] p-4 shadow-xl sm:flex-row sm:items-center">
+          <label className="relative block flex-1">
+            <Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 !text-white/30" />
+            <input
+              value={applicationQuery}
+              onChange={(event) => setApplicationQuery(event.target.value)}
+              placeholder="Search brands, products, or applications"
+              className="admin-input h-11 w-full rounded-md border border-white/10 bg-[#101923] pl-10 pr-3 text-sm font-bold !text-white outline-none transition placeholder:!text-white/25 focus:border-coral"
+            />
+          </label>
+          <select
+            value={productTypeFilter}
+            onChange={(event) => setProductTypeFilter(event.target.value as typeof productTypeFilter)}
+            className="admin-input h-11 rounded-md border border-white/10 bg-[#101923] px-3 text-sm font-bold !text-white outline-none focus:border-coral"
+          >
+            <option value="All">All Product Types</option>
+            {partnershipProductTypes.map((productType) => (
+              <option key={productType}>{productType}</option>
+            ))}
+          </select>
+          <select
+            value={statusFilter}
+            onChange={(event) => setStatusFilter(event.target.value as typeof statusFilter)}
+            className="admin-input h-11 rounded-md border border-white/10 bg-[#101923] px-3 text-sm font-bold !text-white outline-none focus:border-coral"
+          >
+            <option value="All">All Statuses</option>
+            {statuses.map((status) => (
+              <option key={status}>{status}</option>
+            ))}
+          </select>
+        </section>
+
         <div className="mb-3 flex items-center justify-between rounded-lg border border-white/[0.06] bg-[#182330] px-4 py-3">
           <label className="flex items-center gap-3 text-xs font-bold uppercase !text-white/60"><input type="checkbox" checked={filtered.length > 0 && selectedApplicationIds.length === filtered.length} onChange={(event) => setSelectedApplicationIds(event.target.checked ? filtered.map((item) => item.id) : [])} /> Select all <span className="!text-coral">{selectedApplicationIds.length} selected</span></label>
           <button disabled={!selectedApplicationIds.length} onClick={requestDeleteSelected} className="inline-flex items-center gap-2 rounded-md bg-coral px-3 py-2 text-[10px] font-black uppercase text-white disabled:opacity-30"><Trash2 className="size-3.5" /> Delete selected</button>
         </div>
-        <div className="admin-table-wrap overflow-hidden rounded-lg border border-white/[0.06] bg-[#182330] shadow-xl">
-          <div className="admin-table-wrap overflow-x-auto">
+        <div className="admin-filter-results-card admin-filter-results-card--partnerships admin-table-wrap overflow-hidden rounded-lg border border-white/[0.06] bg-[#182330] shadow-xl">
+          <div className="admin-filter-results-scroll admin-table-wrap overflow-x-auto">
             <table className="admin-table w-full min-w-[820px] text-left">
               <thead>
                 <tr className="border-b border-white/[0.08] bg-[#141e29]">
@@ -317,9 +341,12 @@ function PartnershipsPage() {
                       {formatDate(app.submittedAt)}
                     </td>
                     <td className="px-5 py-4">
-                      <select value={app.status} onChange={(event) => updateStatus(app.id, event.target.value as PartnershipStatus)} className={`rounded px-2.5 py-1.5 text-[10px] font-black uppercase outline-none ${statusStyles[app.status]}`} style={{ color: partnershipStatusColors[app.status] }} aria-label={`Status for ${app.brand}`}>
-                        {statuses.map((item) => <option key={item} value={item} className="bg-[#101923] text-white">{item}</option>)}
-                      </select>
+                      <PartnershipStatusDropdown
+                        value={app.status}
+                        onChange={(next) => updateStatus(app.id, next)}
+                        enforceForwardOnly
+                        ariaLabel={`Status for ${app.brand}`}
+                      />
                     </td>
                     <td className="px-5 py-4 text-right">
                       <button
@@ -648,22 +675,15 @@ function PartnershipsPage() {
                 <p className="text-[9px] font-black uppercase tracking-wide !text-white/30">
                   Update Status
                 </p>
-                <select
+                                <PartnershipStatusDropdown
                   value={selected.status}
-                  onChange={(e) => updateStatus(selected.id, e.target.value as PartnershipStatus)}
-                  className="admin-input mt-2 w-full rounded-md border px-3 py-2.5 text-sm font-bold outline-none focus:border-coral"
-                >
-                  {statuses.map((s) => (
-                    <option key={s} value={s}>
-                      {s}
-                    </option>
-                  ))}
-                </select>
-
-                <p className="mt-3 text-[11px] leading-relaxed !text-white/40">
-                  Changing this status automatically triggers a status-update email to the brand
-                  contact (simulated in this demo environment) so they stay informed without manual
-                  follow-up.
+                  onChange={(next) => updateStatus(selected.id, next)}
+                  enforceForwardOnly
+                  className="mt-2 w-full"
+                  ariaLabel="Update partnership status"
+                />
+<p className="mt-3 text-[11px] leading-relaxed !text-white/40">
+                  Status changes are persisted to the real partnership record. Configure an email provider to notify the brand contact automatically.
                 </p>
               </div>
             </div>

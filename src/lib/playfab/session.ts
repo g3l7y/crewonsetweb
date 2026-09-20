@@ -1,6 +1,7 @@
 import { PLAYFAB_SESSION_COOKIE, PLAYFAB_ROLE_COOKIE } from '@/lib/session.constants';
 import type { SessionData } from './types';
 import { isMockMode, PLAYFAB_API_BASE, PLAYFAB_TITLE_ID } from './config';
+import { getMockAccountBySessionTicket } from './mock-accounts';
 
 /**
  * Cookie builder helper.
@@ -71,6 +72,7 @@ export function parseSessionFromRequest(request: Request): SessionData | null {
       playFabId: session.playFabId ?? '',
       sessionTicket: session.sessionTicket,
       role: 'player',
+      username: session.username,
       displayName: session.displayName,
       email: session.email,
     };
@@ -90,25 +92,9 @@ export async function validateSessionFromRequest(
   if (!parsed?.sessionTicket) return null;
 
   if (isMockMode()) {
-    if (parsed.sessionTicket === 'mock-admin-ticket') {
-      return {
-        playFabId: 'MOCK-ADMIN-001',
-        sessionTicket: parsed.sessionTicket,
-        role: 'admin',
-        displayName: 'ADMIN',
-        email: 'admin@crewonset.com',
-      };
-    }
-    if (parsed.sessionTicket === 'mock-player-ticket' && !options.requireAdmin) {
-      return {
-        playFabId: parsed.playFabId || 'MOCK-PLAYER-001',
-        sessionTicket: parsed.sessionTicket,
-        role: 'player',
-        displayName: parsed.displayName || 'CAMERA_PRO',
-        email: parsed.email || 'player@crewonset.com',
-      };
-    }
-    return null;
+    const account = getMockAccountBySessionTicket(parsed.sessionTicket);
+    if (!account || (options.requireAdmin && account.role !== 'admin')) return null;
+    return account;
   }
 
   try {
@@ -152,6 +138,7 @@ export async function validateSessionFromRequest(
       playFabId,
       sessionTicket: parsed.sessionTicket,
       role,
+      username: account?.TitleInfo?.DisplayName || account?.Username || 'Player',
       displayName: account?.TitleInfo?.DisplayName || account?.Username || 'Player',
       email: account?.PrivateInfo?.Email || '',
     };

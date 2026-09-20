@@ -1,3 +1,5 @@
+import { createStore } from "@/lib/demo/store";
+
 export const players = [
   { id: 1, username: "FramePerfect", email: "frame@example.com", status: "Active", joined: "Aug 02, 2026", score: 9840 },
   { id: 2, username: "BoomBuddy", email: "boom@example.com", status: "Active", joined: "Jul 28, 2026", score: 9310 },
@@ -65,6 +67,11 @@ export const topUps = [
   { id: "TOP-88018", playerName: "BoomBuddy", playerId: "COS-0002", date: "2026-07-27", time: "15:47", bank: "BPI •••• 2290", amount: 9.99, status: "Completed" },
   { id: "TOP-88017", playerName: "LightLeak", playerId: "COS-0003", date: "2026-07-22", time: "18:03", bank: "GCash •••• 8814", amount: 4.99, status: "Completed" },
 ] as const;
+
+export type TopUpRecord = (typeof topUps)[number];
+
+/** Shared demo ledger used by player checkout and admin sales views. */
+export const topUpsStore = createStore<TopUpRecord>("cos.topUps", [...topUps]);
 
 /* -------------------------------------------------- player detail mock data */
 
@@ -154,7 +161,7 @@ export function getPlayerProductionStats(score: number): PlayerProductionStats {
 export function getPlayerTransactions(username: string) {
   return [
     ...transactions.filter((t) => t.player === username),
-    ...topUps
+    ...topUpsStore.get()
       .filter((t) => t.playerName === username)
       .map((t) => ({
         id: t.id,

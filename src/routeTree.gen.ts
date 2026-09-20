@@ -22,7 +22,7 @@ import { Route as StoryRouteImport } from './routes/story'
 import { Route as TeamRouteImport } from './routes/team'
 import { Route as AdminIndexRouteImport } from './routes/admin.index'
 import { Route as AdminAdRevenueRouteImport } from './routes/admin.ad-revenue'
-import { Route as AdminAlmanacRouteImport } from './routes/admin.almanac'
+import { Route as AdminAnalyticsRouteImport } from './routes/admin.analytics'
 import { Route as AdminBugsRouteImport } from './routes/admin.bugs'
 import { Route as AdminGameRouteImport } from './routes/admin.game'
 import { Route as AdminNotificationsRouteImport } from './routes/admin.notifications'
@@ -32,22 +32,31 @@ import { Route as AdminPlayersRouteImport } from './routes/admin.players'
 import { Route as AdminSettingsRouteImport } from './routes/admin.settings'
 import { Route as AdminTransactionsRouteImport } from './routes/admin.transactions'
 import { Route as AdminLoginRouteImport } from './routes/admin_.login'
+import { Route as ApiMailRouteImport } from './routes/api/mail'
+import { Route as ApiNotificationsRouteImport } from './routes/api/notifications'
 import { Route as PortalIndexRouteImport } from './routes/portal.index'
 import { Route as PortalAchievementsRouteImport } from './routes/portal.achievements'
 import { Route as PortalAlmanacRouteImport } from './routes/portal.almanac'
 import { Route as PortalFriendsRouteImport } from './routes/portal.friends'
+import { Route as PortalInboxRouteImport } from './routes/portal.inbox'
 import { Route as PortalProfileRouteImport } from './routes/portal.profile'
 import { Route as PortalSettingsRouteImport } from './routes/portal.settings'
 import { Route as PortalShopRouteImport } from './routes/portal.shop'
 import { Route as AdminAdsIdRouteImport } from './routes/admin.ads.$id'
+import { Route as ApiAdminAccountRouteImport } from './routes/api/admin/account'
 import { Route as ApiAdminBugReportsRouteImport } from './routes/api/admin/bug-reports'
+import { Route as ApiAdminDataRouteImport } from './routes/api/admin/data'
 import { Route as ApiAdminPartnershipsRouteImport } from './routes/api/admin/partnerships'
+import { Route as ApiAdminPaymongoOrdersRouteImport } from './routes/api/admin/paymongo-orders'
 import { Route as ApiAdminPlayerReportsRouteImport } from './routes/api/admin/player-reports'
 import { Route as ApiAdminPlayersRouteImport } from './routes/api/admin/players'
+import { Route as ApiAuthCheckUsernameRouteImport } from './routes/api/auth/check-username'
 import { Route as ApiAuthLoginRouteImport } from './routes/api/auth/login'
 import { Route as ApiAuthLogoutRouteImport } from './routes/api/auth/logout'
 import { Route as ApiAuthRegisterRouteImport } from './routes/api/auth/register'
 import { Route as ApiAuthSessionRouteImport } from './routes/api/auth/session'
+import { Route as ApiPaymongoCheckoutRouteImport } from './routes/api/paymongo/checkout'
+import { Route as ApiPaymongoWebhookRouteImport } from './routes/api/paymongo/webhook'
 import { Route as ApiPlayfabClientRouteImport } from './routes/api/playfab/client'
 
 const IndexRoute = IndexRouteImport.update({
@@ -115,9 +124,9 @@ const AdminAdRevenueRoute = AdminAdRevenueRouteImport.update({
   path: '/ad-revenue',
   getParentRoute: () => AdminRoute,
 } as any)
-const AdminAlmanacRoute = AdminAlmanacRouteImport.update({
-  id: '/almanac',
-  path: '/almanac',
+const AdminAnalyticsRoute = AdminAnalyticsRouteImport.update({
+  id: '/analytics',
+  path: '/analytics',
   getParentRoute: () => AdminRoute,
 } as any)
 const AdminBugsRoute = AdminBugsRouteImport.update({
@@ -165,6 +174,16 @@ const AdminLoginRoute = AdminLoginRouteImport.update({
   path: '/admin/login',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiMailRoute = ApiMailRouteImport.update({
+  id: '/api/mail',
+  path: '/api/mail',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiNotificationsRoute = ApiNotificationsRouteImport.update({
+  id: '/api/notifications',
+  path: '/api/notifications',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const PortalIndexRoute = PortalIndexRouteImport.update({
   id: '/',
   path: '/',
@@ -183,6 +202,11 @@ const PortalAlmanacRoute = PortalAlmanacRouteImport.update({
 const PortalFriendsRoute = PortalFriendsRouteImport.update({
   id: '/friends',
   path: '/friends',
+  getParentRoute: () => PortalRoute,
+} as any)
+const PortalInboxRoute = PortalInboxRouteImport.update({
+  id: '/inbox',
+  path: '/inbox',
   getParentRoute: () => PortalRoute,
 } as any)
 const PortalProfileRoute = PortalProfileRouteImport.update({
@@ -205,14 +229,29 @@ const AdminAdsIdRoute = AdminAdsIdRouteImport.update({
   path: '/ads/$id',
   getParentRoute: () => AdminRoute,
 } as any)
+const ApiAdminAccountRoute = ApiAdminAccountRouteImport.update({
+  id: '/api/admin/account',
+  path: '/api/admin/account',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiAdminBugReportsRoute = ApiAdminBugReportsRouteImport.update({
   id: '/api/admin/bug-reports',
   path: '/api/admin/bug-reports',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiAdminDataRoute = ApiAdminDataRouteImport.update({
+  id: '/api/admin/data',
+  path: '/api/admin/data',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiAdminPartnershipsRoute = ApiAdminPartnershipsRouteImport.update({
   id: '/api/admin/partnerships',
   path: '/api/admin/partnerships',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiAdminPaymongoOrdersRoute = ApiAdminPaymongoOrdersRouteImport.update({
+  id: '/api/admin/paymongo-orders',
+  path: '/api/admin/paymongo-orders',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ApiAdminPlayerReportsRoute = ApiAdminPlayerReportsRouteImport.update({
@@ -223,6 +262,11 @@ const ApiAdminPlayerReportsRoute = ApiAdminPlayerReportsRouteImport.update({
 const ApiAdminPlayersRoute = ApiAdminPlayersRouteImport.update({
   id: '/api/admin/players',
   path: '/api/admin/players',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiAuthCheckUsernameRoute = ApiAuthCheckUsernameRouteImport.update({
+  id: '/api/auth/check-username',
+  path: '/api/auth/check-username',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ApiAuthLoginRoute = ApiAuthLoginRouteImport.update({
@@ -245,6 +289,16 @@ const ApiAuthSessionRoute = ApiAuthSessionRouteImport.update({
   path: '/api/auth/session',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiPaymongoCheckoutRoute = ApiPaymongoCheckoutRouteImport.update({
+  id: '/api/paymongo/checkout',
+  path: '/api/paymongo/checkout',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiPaymongoWebhookRoute = ApiPaymongoWebhookRouteImport.update({
+  id: '/api/paymongo/webhook',
+  path: '/api/paymongo/webhook',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiPlayfabClientRoute = ApiPlayfabClientRouteImport.update({
   id: '/api/playfab/client',
   path: '/api/playfab/client',
@@ -264,7 +318,7 @@ export interface FileRoutesByFullPath {
   '/story': typeof StoryRoute
   '/team': typeof TeamRoute
   '/admin/ad-revenue': typeof AdminAdRevenueRoute
-  '/admin/almanac': typeof AdminAlmanacRoute
+  '/admin/analytics': typeof AdminAnalyticsRoute
   '/admin/bugs': typeof AdminBugsRoute
   '/admin/game': typeof AdminGameRoute
   '/admin/notifications': typeof AdminNotificationsRoute
@@ -274,23 +328,32 @@ export interface FileRoutesByFullPath {
   '/admin/settings': typeof AdminSettingsRoute
   '/admin/transactions': typeof AdminTransactionsRoute
   '/admin/login': typeof AdminLoginRoute
+  '/api/mail': typeof ApiMailRoute
+  '/api/notifications': typeof ApiNotificationsRoute
   '/portal/achievements': typeof PortalAchievementsRoute
   '/portal/almanac': typeof PortalAlmanacRoute
   '/portal/friends': typeof PortalFriendsRoute
+  '/portal/inbox': typeof PortalInboxRoute
   '/portal/profile': typeof PortalProfileRoute
   '/portal/settings': typeof PortalSettingsRoute
   '/portal/shop': typeof PortalShopRoute
   '/admin/': typeof AdminIndexRoute
   '/portal/': typeof PortalIndexRoute
   '/admin/ads/$id': typeof AdminAdsIdRoute
+  '/api/admin/account': typeof ApiAdminAccountRoute
   '/api/admin/bug-reports': typeof ApiAdminBugReportsRoute
+  '/api/admin/data': typeof ApiAdminDataRoute
   '/api/admin/partnerships': typeof ApiAdminPartnershipsRoute
+  '/api/admin/paymongo-orders': typeof ApiAdminPaymongoOrdersRoute
   '/api/admin/player-reports': typeof ApiAdminPlayerReportsRoute
   '/api/admin/players': typeof ApiAdminPlayersRoute
+  '/api/auth/check-username': typeof ApiAuthCheckUsernameRoute
   '/api/auth/login': typeof ApiAuthLoginRoute
   '/api/auth/logout': typeof ApiAuthLogoutRoute
   '/api/auth/register': typeof ApiAuthRegisterRoute
   '/api/auth/session': typeof ApiAuthSessionRoute
+  '/api/paymongo/checkout': typeof ApiPaymongoCheckoutRoute
+  '/api/paymongo/webhook': typeof ApiPaymongoWebhookRoute
   '/api/playfab/client': typeof ApiPlayfabClientRoute
 }
 export interface FileRoutesByTo {
@@ -304,7 +367,7 @@ export interface FileRoutesByTo {
   '/story': typeof StoryRoute
   '/team': typeof TeamRoute
   '/admin/ad-revenue': typeof AdminAdRevenueRoute
-  '/admin/almanac': typeof AdminAlmanacRoute
+  '/admin/analytics': typeof AdminAnalyticsRoute
   '/admin/bugs': typeof AdminBugsRoute
   '/admin/game': typeof AdminGameRoute
   '/admin/notifications': typeof AdminNotificationsRoute
@@ -314,23 +377,32 @@ export interface FileRoutesByTo {
   '/admin/settings': typeof AdminSettingsRoute
   '/admin/transactions': typeof AdminTransactionsRoute
   '/admin/login': typeof AdminLoginRoute
+  '/api/mail': typeof ApiMailRoute
+  '/api/notifications': typeof ApiNotificationsRoute
   '/portal/achievements': typeof PortalAchievementsRoute
   '/portal/almanac': typeof PortalAlmanacRoute
   '/portal/friends': typeof PortalFriendsRoute
+  '/portal/inbox': typeof PortalInboxRoute
   '/portal/profile': typeof PortalProfileRoute
   '/portal/settings': typeof PortalSettingsRoute
   '/portal/shop': typeof PortalShopRoute
   '/admin': typeof AdminIndexRoute
   '/portal': typeof PortalIndexRoute
   '/admin/ads/$id': typeof AdminAdsIdRoute
+  '/api/admin/account': typeof ApiAdminAccountRoute
   '/api/admin/bug-reports': typeof ApiAdminBugReportsRoute
+  '/api/admin/data': typeof ApiAdminDataRoute
   '/api/admin/partnerships': typeof ApiAdminPartnershipsRoute
+  '/api/admin/paymongo-orders': typeof ApiAdminPaymongoOrdersRoute
   '/api/admin/player-reports': typeof ApiAdminPlayerReportsRoute
   '/api/admin/players': typeof ApiAdminPlayersRoute
+  '/api/auth/check-username': typeof ApiAuthCheckUsernameRoute
   '/api/auth/login': typeof ApiAuthLoginRoute
   '/api/auth/logout': typeof ApiAuthLogoutRoute
   '/api/auth/register': typeof ApiAuthRegisterRoute
   '/api/auth/session': typeof ApiAuthSessionRoute
+  '/api/paymongo/checkout': typeof ApiPaymongoCheckoutRoute
+  '/api/paymongo/webhook': typeof ApiPaymongoWebhookRoute
   '/api/playfab/client': typeof ApiPlayfabClientRoute
 }
 export interface FileRoutesById {
@@ -347,7 +419,7 @@ export interface FileRoutesById {
   '/story': typeof StoryRoute
   '/team': typeof TeamRoute
   '/admin/ad-revenue': typeof AdminAdRevenueRoute
-  '/admin/almanac': typeof AdminAlmanacRoute
+  '/admin/analytics': typeof AdminAnalyticsRoute
   '/admin/bugs': typeof AdminBugsRoute
   '/admin/game': typeof AdminGameRoute
   '/admin/notifications': typeof AdminNotificationsRoute
@@ -357,23 +429,32 @@ export interface FileRoutesById {
   '/admin/settings': typeof AdminSettingsRoute
   '/admin/transactions': typeof AdminTransactionsRoute
   '/admin_/login': typeof AdminLoginRoute
+  '/api/mail': typeof ApiMailRoute
+  '/api/notifications': typeof ApiNotificationsRoute
   '/portal/achievements': typeof PortalAchievementsRoute
   '/portal/almanac': typeof PortalAlmanacRoute
   '/portal/friends': typeof PortalFriendsRoute
+  '/portal/inbox': typeof PortalInboxRoute
   '/portal/profile': typeof PortalProfileRoute
   '/portal/settings': typeof PortalSettingsRoute
   '/portal/shop': typeof PortalShopRoute
   '/admin/': typeof AdminIndexRoute
   '/portal/': typeof PortalIndexRoute
   '/admin/ads/$id': typeof AdminAdsIdRoute
+  '/api/admin/account': typeof ApiAdminAccountRoute
   '/api/admin/bug-reports': typeof ApiAdminBugReportsRoute
+  '/api/admin/data': typeof ApiAdminDataRoute
   '/api/admin/partnerships': typeof ApiAdminPartnershipsRoute
+  '/api/admin/paymongo-orders': typeof ApiAdminPaymongoOrdersRoute
   '/api/admin/player-reports': typeof ApiAdminPlayerReportsRoute
   '/api/admin/players': typeof ApiAdminPlayersRoute
+  '/api/auth/check-username': typeof ApiAuthCheckUsernameRoute
   '/api/auth/login': typeof ApiAuthLoginRoute
   '/api/auth/logout': typeof ApiAuthLogoutRoute
   '/api/auth/register': typeof ApiAuthRegisterRoute
   '/api/auth/session': typeof ApiAuthSessionRoute
+  '/api/paymongo/checkout': typeof ApiPaymongoCheckoutRoute
+  '/api/paymongo/webhook': typeof ApiPaymongoWebhookRoute
   '/api/playfab/client': typeof ApiPlayfabClientRoute
 }
 export interface FileRouteTypes {
@@ -391,7 +472,7 @@ export interface FileRouteTypes {
     | '/story'
     | '/team'
     | '/admin/ad-revenue'
-    | '/admin/almanac'
+    | '/admin/analytics'
     | '/admin/bugs'
     | '/admin/game'
     | '/admin/notifications'
@@ -401,23 +482,32 @@ export interface FileRouteTypes {
     | '/admin/settings'
     | '/admin/transactions'
     | '/admin/login'
+    | '/api/mail'
+    | '/api/notifications'
     | '/portal/achievements'
     | '/portal/almanac'
     | '/portal/friends'
+    | '/portal/inbox'
     | '/portal/profile'
     | '/portal/settings'
     | '/portal/shop'
     | '/admin/'
     | '/portal/'
     | '/admin/ads/$id'
+    | '/api/admin/account'
     | '/api/admin/bug-reports'
+    | '/api/admin/data'
     | '/api/admin/partnerships'
+    | '/api/admin/paymongo-orders'
     | '/api/admin/player-reports'
     | '/api/admin/players'
+    | '/api/auth/check-username'
     | '/api/auth/login'
     | '/api/auth/logout'
     | '/api/auth/register'
     | '/api/auth/session'
+    | '/api/paymongo/checkout'
+    | '/api/paymongo/webhook'
     | '/api/playfab/client'
   fileRoutesByTo: FileRoutesByTo
   to:
@@ -431,7 +521,7 @@ export interface FileRouteTypes {
     | '/story'
     | '/team'
     | '/admin/ad-revenue'
-    | '/admin/almanac'
+    | '/admin/analytics'
     | '/admin/bugs'
     | '/admin/game'
     | '/admin/notifications'
@@ -441,23 +531,32 @@ export interface FileRouteTypes {
     | '/admin/settings'
     | '/admin/transactions'
     | '/admin/login'
+    | '/api/mail'
+    | '/api/notifications'
     | '/portal/achievements'
     | '/portal/almanac'
     | '/portal/friends'
+    | '/portal/inbox'
     | '/portal/profile'
     | '/portal/settings'
     | '/portal/shop'
     | '/admin'
     | '/portal'
     | '/admin/ads/$id'
+    | '/api/admin/account'
     | '/api/admin/bug-reports'
+    | '/api/admin/data'
     | '/api/admin/partnerships'
+    | '/api/admin/paymongo-orders'
     | '/api/admin/player-reports'
     | '/api/admin/players'
+    | '/api/auth/check-username'
     | '/api/auth/login'
     | '/api/auth/logout'
     | '/api/auth/register'
     | '/api/auth/session'
+    | '/api/paymongo/checkout'
+    | '/api/paymongo/webhook'
     | '/api/playfab/client'
   id:
     | '__root__'
@@ -473,7 +572,7 @@ export interface FileRouteTypes {
     | '/story'
     | '/team'
     | '/admin/ad-revenue'
-    | '/admin/almanac'
+    | '/admin/analytics'
     | '/admin/bugs'
     | '/admin/game'
     | '/admin/notifications'
@@ -483,23 +582,32 @@ export interface FileRouteTypes {
     | '/admin/settings'
     | '/admin/transactions'
     | '/admin_/login'
+    | '/api/mail'
+    | '/api/notifications'
     | '/portal/achievements'
     | '/portal/almanac'
     | '/portal/friends'
+    | '/portal/inbox'
     | '/portal/profile'
     | '/portal/settings'
     | '/portal/shop'
     | '/admin/'
     | '/portal/'
     | '/admin/ads/$id'
+    | '/api/admin/account'
     | '/api/admin/bug-reports'
+    | '/api/admin/data'
     | '/api/admin/partnerships'
+    | '/api/admin/paymongo-orders'
     | '/api/admin/player-reports'
     | '/api/admin/players'
+    | '/api/auth/check-username'
     | '/api/auth/login'
     | '/api/auth/logout'
     | '/api/auth/register'
     | '/api/auth/session'
+    | '/api/paymongo/checkout'
+    | '/api/paymongo/webhook'
     | '/api/playfab/client'
   fileRoutesById: FileRoutesById
 }
@@ -516,14 +624,22 @@ export interface RootRouteChildren {
   StoryRoute: typeof StoryRoute
   TeamRoute: typeof TeamRoute
   AdminLoginRoute: typeof AdminLoginRoute
+  ApiMailRoute: typeof ApiMailRoute
+  ApiNotificationsRoute: typeof ApiNotificationsRoute
+  ApiAdminAccountRoute: typeof ApiAdminAccountRoute
   ApiAdminBugReportsRoute: typeof ApiAdminBugReportsRoute
+  ApiAdminDataRoute: typeof ApiAdminDataRoute
   ApiAdminPartnershipsRoute: typeof ApiAdminPartnershipsRoute
+  ApiAdminPaymongoOrdersRoute: typeof ApiAdminPaymongoOrdersRoute
   ApiAdminPlayerReportsRoute: typeof ApiAdminPlayerReportsRoute
   ApiAdminPlayersRoute: typeof ApiAdminPlayersRoute
+  ApiAuthCheckUsernameRoute: typeof ApiAuthCheckUsernameRoute
   ApiAuthLoginRoute: typeof ApiAuthLoginRoute
   ApiAuthLogoutRoute: typeof ApiAuthLogoutRoute
   ApiAuthRegisterRoute: typeof ApiAuthRegisterRoute
   ApiAuthSessionRoute: typeof ApiAuthSessionRoute
+  ApiPaymongoCheckoutRoute: typeof ApiPaymongoCheckoutRoute
+  ApiPaymongoWebhookRoute: typeof ApiPaymongoWebhookRoute
   ApiPlayfabClientRoute: typeof ApiPlayfabClientRoute
 }
 
@@ -620,11 +736,11 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AdminAdRevenueRouteImport
       parentRoute: typeof AdminRoute
     }
-    '/admin/almanac': {
-      id: '/admin/almanac'
-      path: '/almanac'
-      fullPath: '/admin/almanac'
-      preLoaderRoute: typeof AdminAlmanacRouteImport
+    '/admin/analytics': {
+      id: '/admin/analytics'
+      path: '/analytics'
+      fullPath: '/admin/analytics'
+      preLoaderRoute: typeof AdminAnalyticsRouteImport
       parentRoute: typeof AdminRoute
     }
     '/admin/bugs': {
@@ -690,6 +806,20 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AdminLoginRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/mail': {
+      id: '/api/mail'
+      path: '/api/mail'
+      fullPath: '/api/mail'
+      preLoaderRoute: typeof ApiMailRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/notifications': {
+      id: '/api/notifications'
+      path: '/api/notifications'
+      fullPath: '/api/notifications'
+      preLoaderRoute: typeof ApiNotificationsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/portal/': {
       id: '/portal/'
       path: '/'
@@ -716,6 +846,13 @@ declare module '@tanstack/react-router' {
       path: '/friends'
       fullPath: '/portal/friends'
       preLoaderRoute: typeof PortalFriendsRouteImport
+      parentRoute: typeof PortalRoute
+    }
+    '/portal/inbox': {
+      id: '/portal/inbox'
+      path: '/inbox'
+      fullPath: '/portal/inbox'
+      preLoaderRoute: typeof PortalInboxRouteImport
       parentRoute: typeof PortalRoute
     }
     '/portal/profile': {
@@ -746,6 +883,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AdminAdsIdRouteImport
       parentRoute: typeof AdminRoute
     }
+    '/api/admin/account': {
+      id: '/api/admin/account'
+      path: '/api/admin/account'
+      fullPath: '/api/admin/account'
+      preLoaderRoute: typeof ApiAdminAccountRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/admin/bug-reports': {
       id: '/api/admin/bug-reports'
       path: '/api/admin/bug-reports'
@@ -753,11 +897,25 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiAdminBugReportsRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/admin/data': {
+      id: '/api/admin/data'
+      path: '/api/admin/data'
+      fullPath: '/api/admin/data'
+      preLoaderRoute: typeof ApiAdminDataRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/admin/partnerships': {
       id: '/api/admin/partnerships'
       path: '/api/admin/partnerships'
       fullPath: '/api/admin/partnerships'
       preLoaderRoute: typeof ApiAdminPartnershipsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/admin/paymongo-orders': {
+      id: '/api/admin/paymongo-orders'
+      path: '/api/admin/paymongo-orders'
+      fullPath: '/api/admin/paymongo-orders'
+      preLoaderRoute: typeof ApiAdminPaymongoOrdersRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/api/admin/player-reports': {
@@ -772,6 +930,13 @@ declare module '@tanstack/react-router' {
       path: '/api/admin/players'
       fullPath: '/api/admin/players'
       preLoaderRoute: typeof ApiAdminPlayersRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/auth/check-username': {
+      id: '/api/auth/check-username'
+      path: '/api/auth/check-username'
+      fullPath: '/api/auth/check-username'
+      preLoaderRoute: typeof ApiAuthCheckUsernameRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/api/auth/login': {
@@ -802,6 +967,20 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiAuthSessionRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/paymongo/checkout': {
+      id: '/api/paymongo/checkout'
+      path: '/api/paymongo/checkout'
+      fullPath: '/api/paymongo/checkout'
+      preLoaderRoute: typeof ApiPaymongoCheckoutRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/paymongo/webhook': {
+      id: '/api/paymongo/webhook'
+      path: '/api/paymongo/webhook'
+      fullPath: '/api/paymongo/webhook'
+      preLoaderRoute: typeof ApiPaymongoWebhookRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/playfab/client': {
       id: '/api/playfab/client'
       path: '/api/playfab/client'
@@ -814,7 +993,7 @@ declare module '@tanstack/react-router' {
 
 interface AdminRouteChildren {
   AdminAdRevenueRoute: typeof AdminAdRevenueRoute
-  AdminAlmanacRoute: typeof AdminAlmanacRoute
+  AdminAnalyticsRoute: typeof AdminAnalyticsRoute
   AdminBugsRoute: typeof AdminBugsRoute
   AdminGameRoute: typeof AdminGameRoute
   AdminNotificationsRoute: typeof AdminNotificationsRoute
@@ -829,7 +1008,7 @@ interface AdminRouteChildren {
 
 const AdminRouteChildren: AdminRouteChildren = {
   AdminAdRevenueRoute: AdminAdRevenueRoute,
-  AdminAlmanacRoute: AdminAlmanacRoute,
+  AdminAnalyticsRoute: AdminAnalyticsRoute,
   AdminBugsRoute: AdminBugsRoute,
   AdminGameRoute: AdminGameRoute,
   AdminNotificationsRoute: AdminNotificationsRoute,
@@ -848,6 +1027,7 @@ interface PortalRouteChildren {
   PortalAchievementsRoute: typeof PortalAchievementsRoute
   PortalAlmanacRoute: typeof PortalAlmanacRoute
   PortalFriendsRoute: typeof PortalFriendsRoute
+  PortalInboxRoute: typeof PortalInboxRoute
   PortalProfileRoute: typeof PortalProfileRoute
   PortalSettingsRoute: typeof PortalSettingsRoute
   PortalShopRoute: typeof PortalShopRoute
@@ -858,6 +1038,7 @@ const PortalRouteChildren: PortalRouteChildren = {
   PortalAchievementsRoute: PortalAchievementsRoute,
   PortalAlmanacRoute: PortalAlmanacRoute,
   PortalFriendsRoute: PortalFriendsRoute,
+  PortalInboxRoute: PortalInboxRoute,
   PortalProfileRoute: PortalProfileRoute,
   PortalSettingsRoute: PortalSettingsRoute,
   PortalShopRoute: PortalShopRoute,
@@ -880,14 +1061,22 @@ const rootRouteChildren: RootRouteChildren = {
   StoryRoute: StoryRoute,
   TeamRoute: TeamRoute,
   AdminLoginRoute: AdminLoginRoute,
+  ApiMailRoute: ApiMailRoute,
+  ApiNotificationsRoute: ApiNotificationsRoute,
+  ApiAdminAccountRoute: ApiAdminAccountRoute,
   ApiAdminBugReportsRoute: ApiAdminBugReportsRoute,
+  ApiAdminDataRoute: ApiAdminDataRoute,
   ApiAdminPartnershipsRoute: ApiAdminPartnershipsRoute,
+  ApiAdminPaymongoOrdersRoute: ApiAdminPaymongoOrdersRoute,
   ApiAdminPlayerReportsRoute: ApiAdminPlayerReportsRoute,
   ApiAdminPlayersRoute: ApiAdminPlayersRoute,
+  ApiAuthCheckUsernameRoute: ApiAuthCheckUsernameRoute,
   ApiAuthLoginRoute: ApiAuthLoginRoute,
   ApiAuthLogoutRoute: ApiAuthLogoutRoute,
   ApiAuthRegisterRoute: ApiAuthRegisterRoute,
   ApiAuthSessionRoute: ApiAuthSessionRoute,
+  ApiPaymongoCheckoutRoute: ApiPaymongoCheckoutRoute,
+  ApiPaymongoWebhookRoute: ApiPaymongoWebhookRoute,
   ApiPlayfabClientRoute: ApiPlayfabClientRoute,
 }
 export const routeTree = rootRouteImport

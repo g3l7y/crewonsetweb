@@ -1502,6 +1502,173 @@ body { min-width: 320px; }
   color: #0a0e19 !important;
 }
 
+/* Report status options keep their semantic colors in both admin themes. */
+.admin-theme .admin-status-select option[data-status="New"],
+.admin-theme.admin-light .admin-status-select option[data-status="New"] {
+  color: #f3c747 !important;
+  -webkit-text-fill-color: #f3c747 !important;
+}
+
+.admin-theme .admin-status-select option[data-status="Investigating"],
+.admin-theme.admin-light .admin-status-select option[data-status="Investigating"] {
+  color: #f39a5a !important;
+  -webkit-text-fill-color: #f39a5a !important;
+}
+
+.admin-theme .admin-status-select option[data-status="Resolved"],
+.admin-theme.admin-light .admin-status-select option[data-status="Resolved"] {
+  color: #4bc4b4 !important;
+  -webkit-text-fill-color: #4bc4b4 !important;
+}
+
+.admin-theme .admin-status-select[data-status="New"],
+.admin-theme.admin-light .admin-status-select[data-status="New"] {
+  color: #f3c747 !important;
+  -webkit-text-fill-color: #f3c747 !important;
+}
+
+.admin-theme .admin-status-select[data-status="Investigating"],
+.admin-theme.admin-light .admin-status-select[data-status="Investigating"] {
+  color: #f39a5a !important;
+  -webkit-text-fill-color: #f39a5a !important;
+}
+
+.admin-theme .admin-status-select[data-status="Resolved"],
+.admin-theme.admin-light .admin-status-select[data-status="Resolved"] {
+  color: #4bc4b4 !important;
+  -webkit-text-fill-color: #4bc4b4 !important;
+}
+
+.admin-theme.admin-light .admin-partnership-status-menu {
+  background: #f0ede4 !important;
+  border-color: rgba(10, 14, 25, 0.28) !important;
+}
+
+.admin-theme .admin-partnership-status-option[data-status="Pending"],
+.admin-theme.admin-light .admin-partnership-status-option[data-status="Pending"] {
+  color: #f39a5a !important;
+  -webkit-text-fill-color: #f39a5a !important;
+}
+
+.admin-theme .admin-partnership-status-option[data-status="Approved"],
+.admin-theme.admin-light .admin-partnership-status-option[data-status="Approved"] {
+  color: #f3c747 !important;
+  -webkit-text-fill-color: #f3c747 !important;
+}
+
+.admin-theme .admin-partnership-status-option[data-status="On-going"],
+.admin-theme.admin-light .admin-partnership-status-option[data-status="On-going"] {
+  color: #7cb0ee !important;
+  -webkit-text-fill-color: #7cb0ee !important;
+}
+
+.admin-theme .admin-partnership-status-option[data-status="Done"],
+.admin-theme.admin-light .admin-partnership-status-option[data-status="Done"] {
+  color: #4bc4b4 !important;
+  -webkit-text-fill-color: #4bc4b4 !important;
+}
+
+.admin-theme .admin-partnership-status-option[data-status="Declined"],
+.admin-theme.admin-light .admin-partnership-status-option[data-status="Declined"] {
+  color: #ff6248 !important;
+  -webkit-text-fill-color: #ff6248 !important;
+}
+
+.admin-theme .admin-partnership-status-select[data-status="Pending"],
+.admin-theme.admin-light .admin-partnership-status-select[data-status="Pending"] {
+  color: #f39a5a !important;
+  -webkit-text-fill-color: #f39a5a !important;
+}
+
+.admin-theme .admin-partnership-status-select[data-status="Approved"],
+.admin-theme.admin-light .admin-partnership-status-select[data-status="Approved"] {
+  color: #f3c747 !important;
+  -webkit-text-fill-color: #f3c747 !important;
+}
+
+.admin-theme .admin-partnership-status-select[data-status="On-going"],
+.admin-theme.admin-light .admin-partnership-status-select[data-status="On-going"] {
+  color: #7cb0ee !important;
+  -webkit-text-fill-color: #7cb0ee !important;
+}
+
+.admin-theme .admin-partnership-status-select[data-status="Done"],
+.admin-theme.admin-light .admin-partnership-status-select[data-status="Done"] {
+  color: #4bc4b4 !important;
+  -webkit-text-fill-color: #4bc4b4 !important;
+}
+
+.admin-theme .admin-partnership-status-select[data-status="Declined"],
+.admin-theme.admin-light .admin-partnership-status-select[data-status="Declined"] {
+  color: #ff6248 !important;
+  -webkit-text-fill-color: #ff6248 !important;
+}
+
+/* Light mode needs a darker gold for APPROVED so the selected value stays readable. */
+.admin-theme.admin-light .admin-partnership-status-select[data-status="Approved"],
+.admin-theme.admin-light .admin-partnership-status-option[data-status="Approved"] {
+  color: #a66d00 !important;
+  -webkit-text-fill-color: #a66d00 !important;
+}
+
+.admin-theme.admin-light .admin-partnership-status-select[data-status="Approved"] {
+  background-color: rgba(217, 165, 20, 0.18) !important;
+}
+
+.admin-theme .admin-partnership-status-select .admin-partnership-status-chevron {
+  display: block !important;
+  width: 0.5rem !important;
+  height: 0.5rem !important;
+  flex: 0 0 auto !important;
+  border-right: 2px solid #fefdf8 !important;
+  border-bottom: 2px solid #fefdf8 !important;
+  transform: translateY(-0.125rem) rotate(45deg) !important;
+  transition: transform 160ms ease !important;
+}
+
+.admin-theme.admin-light .admin-partnership-status-select .admin-partnership-status-chevron {
+  border-right-color: #0a0e19 !important;
+  border-bottom-color: #0a0e19 !important;
+}
+
+.admin-theme .admin-partnership-status-select .admin-partnership-status-chevron.is-open {
+  transform: translateY(0.125rem) rotate(225deg) !important;
+}
+
+.admin-theme.admin-light .admin-status-menu {
+  background: #f0ede4 !important;
+  border-color: rgba(10, 14, 25, 0.28) !important;
+}
+
+.admin-theme .admin-status-option[data-status="New"],
+.admin-theme.admin-light .admin-status-option[data-status="New"] {
+  color: #f3c747 !important;
+  -webkit-text-fill-color: #f3c747 !important;
+}
+
+.admin-theme .admin-status-option[data-status="Investigating"],
+.admin-theme.admin-light .admin-status-option[data-status="Investigating"] {
+  color: #f39a5a !important;
+  -webkit-text-fill-color: #f39a5a !important;
+}
+
+.admin-theme .admin-status-option[data-status="Resolved"],
+.admin-theme.admin-light .admin-status-option[data-status="Resolved"] {
+  color: #4bc4b4 !important;
+  -webkit-text-fill-color: #4bc4b4 !important;
+}
+
+/* Light mode needs a darker gold for NEW so the selected value stays readable. */
+.admin-theme.admin-light .admin-status-select[data-status="New"],
+.admin-theme.admin-light .admin-status-option[data-status="New"] {
+  color: #a66d00 !important;
+  -webkit-text-fill-color: #a66d00 !important;
+}
+
+.admin-theme.admin-light .admin-status-select[data-status="New"] {
+  background-color: rgba(217, 165, 20, 0.18) !important;
+}
+
 .admin-theme.admin-light main > :not(.admin-notification-bar) :where(
   [class*="text-white"],
   [class*="text-navy"],
@@ -1850,6 +2017,105 @@ body { min-width: 320px; }
   white-space: nowrap;
 }
 
+/* TABLE HEADERS: keep column labels pinned while the card's table body scrolls. */
+.admin-theme main > :not(.admin-notification-bar) :where(
+  .admin-table-wrap > [class*="overflow-x-auto"],
+  [class*="overflow-x-auto"]
+) {
+  position: relative;
+  isolation: isolate;
+  background-color: #101923 !important;
+  box-shadow: inset 0 1px 0 rgba(254, 253, 248, 0.16) !important;
+}
+
+.admin-theme main > :not(.admin-notification-bar) :where(
+  .admin-table-wrap > [class*="overflow-x-auto"] thead,
+  [class*="overflow-x-auto"] thead
+) {
+  position: sticky;
+  top: 0;
+  z-index: 30;
+  background-color: #141e29 !important;
+  box-shadow: 0 -1rem 0 #141e29, inset 0 -1px 0 rgba(254, 253, 248, 0.12) !important;
+}
+
+.admin-theme main > :not(.admin-notification-bar) :where(
+  .admin-table-wrap > [class*="overflow-x-auto"] thead th,
+  [class*="overflow-x-auto"] thead th
+) {
+  position: sticky;
+  top: 0;
+  z-index: 20;
+  background-color: #141e29 !important;
+  box-shadow: inset 0 -1px 0 rgba(254, 253, 248, 0.12) !important;
+}
+
+.admin-theme.admin-light main > :not(.admin-notification-bar) :where(
+  .admin-table-wrap > [class*="overflow-x-auto"],
+  [class*="overflow-x-auto"]
+) {
+  background-color: #f0ede4 !important;
+  box-shadow: inset 0 1px 0 rgba(10, 14, 25, 0.28) !important;
+}
+
+.admin-theme.admin-light main > :not(.admin-notification-bar) :where(
+  .admin-table-wrap > [class*="overflow-x-auto"] thead,
+  [class*="overflow-x-auto"] thead
+) {
+  background-color: #f0ede4 !important;
+  box-shadow: 0 -1rem 0 #f0ede4, inset 0 -1px 0 rgba(10, 14, 25, 0.28) !important;
+}
+
+.admin-theme.admin-light main > :not(.admin-notification-bar) :where(
+  .admin-table-wrap > [class*="overflow-x-auto"] thead th,
+  [class*="overflow-x-auto"] thead th
+) {
+  background-color: #f0ede4 !important;
+  color: #0a0e19 !important;
+  box-shadow: inset 0 -1px 0 rgba(10, 14, 25, 0.28) !important;
+}
+
+/* PLAYERS TABLE: use the same opaque sticky boundary for its dedicated
+   overflow-auto viewport. */
+.admin-theme main > :not(.admin-notification-bar) :where(.admin-player-table-scroll) {
+  position: relative;
+  isolation: isolate;
+  background-color: #101923 !important;
+  box-shadow: inset 0 1px 0 rgba(254, 253, 248, 0.16) !important;
+}
+
+.admin-theme main > :not(.admin-notification-bar) :where(.admin-player-table-scroll thead) {
+  position: sticky;
+  top: 0;
+  z-index: 30;
+  background-color: #151c21 !important;
+  box-shadow: 0 -1rem 0 #151c21, inset 0 -1px 0 rgba(254, 253, 248, 0.12) !important;
+}
+
+.admin-theme main > :not(.admin-notification-bar) :where(.admin-player-table-scroll thead th) {
+  position: sticky;
+  top: 0;
+  z-index: 31;
+  background-color: #151c21 !important;
+  box-shadow: inset 0 -1px 0 rgba(254, 253, 248, 0.12) !important;
+}
+
+.admin-theme.admin-light main > :not(.admin-notification-bar) :where(.admin-player-table-scroll) {
+  background-color: #f0ede4 !important;
+  box-shadow: inset 0 1px 0 rgba(10, 14, 25, 0.28) !important;
+}
+
+.admin-theme.admin-light main > :not(.admin-notification-bar) :where(.admin-player-table-scroll thead) {
+  background-color: #f0ede4 !important;
+  box-shadow: 0 -1rem 0 #f0ede4, inset 0 -1px 0 rgba(10, 14, 25, 0.28) !important;
+}
+
+.admin-theme.admin-light main > :not(.admin-notification-bar) :where(.admin-player-table-scroll thead th) {
+  background-color: #f0ede4 !important;
+  color: #0a0e19 !important;
+  box-shadow: inset 0 -1px 0 rgba(10, 14, 25, 0.28) !important;
+}
+
 /* SHELL HEIGHT: the page viewport is the space below the notification bar,
    so the inner page scrollbar can actually reach the final card row. */
 .admin-theme .admin-shell-content {
@@ -1934,6 +2200,223 @@ body { min-width: 320px; }
 
 .admin-theme:not(.admin-light) .admin-player-management :where([class*="border-white"]) {
   border-color: rgba(254, 253, 248, .18) !important;
+}
+
+/* PLAYER PROFILE DETAILS: use the dark console surface for the information,
+   account, and production-statistics cards while preserving status colors. */
+.admin-theme:not(.admin-light) .admin-player-profile-info-card {
+  background-color: #0f1626 !important;
+  border-color: #0f1626 !important;
+}
+
+.admin-theme:not(.admin-light) .admin-player-profile-info-card :where(p) {
+  color: #fefdf8 !important;
+  -webkit-text-fill-color: #fefdf8 !important;
+}
+
+.admin-theme:not(.admin-light) .admin-player-profile-info-card :where([class*="border-white"]) {
+  border-color: #0f1626 !important;
+}
+
+.admin-theme:not(.admin-light) .admin-player-profile-section-heading {
+  background-color: #0f1626 !important;
+  border-color: #0f1626 !important;
+}
+
+.admin-theme.admin-light .admin-player-profile-info-card {
+  background-color: #f0ede4 !important;
+  border-color: #f0ede4 !important;
+}
+
+.admin-theme.admin-light .admin-player-profile-info-card :where(p) {
+  color: #0f1626 !important;
+  -webkit-text-fill-color: #0f1626 !important;
+}
+
+.admin-theme.admin-light .admin-player-profile-info-card :where([class*="border-white"]) {
+  border-color: #f0ede4 !important;
+}
+
+.admin-theme.admin-light .admin-player-profile-section-heading {
+  background-color: #f0ede4 !important;
+  border-color: #f0ede4 !important;
+  color: #0a0e19 !important;
+}
+
+.admin-theme.admin-light .admin-player-profile-section-heading h3 {
+  color: #0a0e19 !important;
+  -webkit-text-fill-color: #0a0e19 !important;
+}
+
+.admin-theme.admin-light .admin-player-profile-info-card .admin-player-status-active {
+  color: #47870d !important;
+  -webkit-text-fill-color: #47870d !important;
+}
+
+.admin-theme.admin-light .admin-player-profile-info-card .admin-player-status-inactive {
+  color: #667085 !important;
+  -webkit-text-fill-color: #667085 !important;
+}
+
+.admin-theme.admin-light .admin-player-profile-info-card .admin-player-status-banned {
+  color: #f0573d !important;
+  -webkit-text-fill-color: #f0573d !important;
+}
+
+/* CONTACT PLAYER MODAL: use the same console surfaces and readable controls
+   in both themes while keeping the message flow inside the admin portal. */
+.admin-theme:not(.admin-light) .admin-player-contact-modal {
+  background-color: #151c28 !important;
+  border-color: rgba(254, 253, 248, .18) !important;
+  color: #fefdf8 !important;
+}
+
+.admin-theme:not(.admin-light) .admin-player-contact-modal :where(input, textarea) {
+  background-color: #101923 !important;
+  border-color: rgba(254, 253, 248, .18) !important;
+  color: #fefdf8 !important;
+  -webkit-text-fill-color: #fefdf8 !important;
+}
+
+.admin-theme:not(.admin-light) .admin-player-contact-modal :where(input, textarea)::placeholder {
+  color: rgba(254, 253, 248, .35) !important;
+  -webkit-text-fill-color: rgba(254, 253, 248, .35) !important;
+  opacity: 1 !important;
+}
+
+.admin-theme.admin-light .admin-player-contact-modal {
+  background-color: #f0ede4 !important;
+  border-color: #0f1626 !important;
+  color: #0f1626 !important;
+}
+
+.admin-theme.admin-light .admin-player-contact-modal :where(h3, p, label, span, button) {
+  color: #0f1626 !important;
+  -webkit-text-fill-color: #0f1626 !important;
+}
+
+.admin-theme.admin-light .admin-player-contact-modal :where(input, textarea) {
+  background-color: #f0ede4 !important;
+  border-color: #0f1626 !important;
+  color: #0f1626 !important;
+  -webkit-text-fill-color: #0f1626 !important;
+}
+
+.admin-theme.admin-light .admin-player-contact-modal :where(input, textarea)::placeholder {
+  color: rgba(15, 22, 38, .58) !important;
+  -webkit-text-fill-color: rgba(15, 22, 38, .58) !important;
+  opacity: 1 !important;
+}
+
+.admin-theme.admin-light .admin-player-contact-modal .admin-player-contact-accent,
+.admin-theme.admin-light .admin-player-contact-modal .admin-player-contact-submit {
+  background-color: #f0573d !important;
+  border-color: #0f1626 !important;
+  color: #f0ede4 !important;
+  -webkit-text-fill-color: #f0ede4 !important;
+}
+
+.admin-theme.admin-light .admin-player-contact-modal .admin-player-contact-accent {
+  background-color: transparent !important;
+  border-color: transparent !important;
+  color: #f0573d !important;
+  -webkit-text-fill-color: #f0573d !important;
+}
+
+.admin-theme.admin-light .admin-player-contact-modal .admin-player-contact-submit svg {
+  color: #f0ede4 !important;
+  stroke: #f0ede4 !important;
+}
+
+.admin-theme.admin-light .admin-player-contact-modal .admin-player-contact-close,
+.admin-theme.admin-light .admin-player-contact-modal .admin-player-contact-cancel {
+  border-color: #0f1626 !important;
+  color: #0f1626 !important;
+  -webkit-text-fill-color: #0f1626 !important;
+}
+
+/* PLAYER FILTER MENU: give the popover one stable, wide, non-scrolling
+   footprint so every option stays on one line in both filter states. */
+.admin-player-filter-menu {
+  width: 15rem !important;
+  min-width: 15rem !important;
+  max-width: none !important;
+  height: 22rem !important;
+  min-height: 22rem !important;
+  max-height: 22rem !important;
+  overflow: hidden !important;
+}
+
+.admin-theme:not(.admin-light) .admin-player-filter-menu {
+  background-color: #151c21 !important;
+  border-color: rgba(254, 253, 248, .18) !important;
+}
+
+.admin-theme.admin-light .admin-player-filter-menu {
+  background-color: #f0ede4 !important;
+  border-color: rgba(10, 14, 25, .28) !important;
+}
+
+/* FILTERED RESULT CARDS: keep the all-results footprint stable while the
+   inner list/table scrolls when a filter returns fewer or additional records. */
+.admin-filter-results-card {
+  overflow: hidden !important;
+}
+
+.admin-filter-results-scroll {
+  height: 100% !important;
+  max-height: none !important;
+  overflow: scroll !important;
+  overscroll-behavior: contain;
+}
+
+.admin-filter-results-card--partnerships {
+  height: 38rem !important;
+  min-height: 38rem !important;
+  max-height: 38rem !important;
+}
+
+.admin-filter-results-card--reports {
+  height: 27rem !important;
+  min-height: 27rem !important;
+  max-height: 27rem !important;
+}
+
+.admin-filter-results-card--revenue {
+  height: 30rem !important;
+  min-height: 30rem !important;
+  max-height: 30rem !important;
+}
+
+/* LIGHT ADMIN INPUTS: keep instructional placeholder text readable across
+   the shared search and form bars without changing entered values or dark mode. */
+.admin-theme.admin-light main :where(input, textarea)::placeholder {
+  color: rgba(10, 14, 25, .58) !important;
+  -webkit-text-fill-color: rgba(10, 14, 25, .58) !important;
+  opacity: 1 !important;
+}
+
+/* PLAYER MANAGEMENT: the shared light-mode ink pass otherwise makes the
+   selected-player delete action unreadable and washes out the Inactive state.
+   Keep these corrections scoped to this route and light mode only. */
+.admin-theme.admin-light .admin-player-management .admin-player-delete-action {
+  color: #fefaef !important;
+  -webkit-text-fill-color: #fefaef !important;
+}
+
+.admin-theme.admin-light .admin-player-management .admin-player-delete-action :where(svg, span) {
+  color: #fefaef !important;
+  stroke: #fefaef !important;
+}
+
+.admin-theme.admin-light .admin-player-management .admin-player-status-inactive {
+  color: #667085 !important;
+  -webkit-text-fill-color: #667085 !important;
+}
+
+.admin-theme.admin-light .admin-player-management .admin-player-status-dot-inactive {
+  background-color: #667085 !important;
+  border-color: #667085 !important;
 }
 
 /* Main admin route titles share one responsive display size. */
@@ -3444,6 +3927,30 @@ html[data-display-theme="dark"] .display-theme-switcher button[aria-pressed="tru
   background: #f0ede4;
 }
 
+/* Inbox panels and the bell footer keep the same paper/navy surfaces as the
+   rest of the player portal in both display themes. */
+.portal-theme.portal-light :where(.portal-inbox-panel, .player-notification-dropdown) {
+  border-color: #0a0e19 !important;
+  background: #f0ede4 !important;
+  color: #0a0e19 !important;
+}
+
+.portal-theme.portal-dark :where(.portal-inbox-panel, .player-notification-dropdown) {
+  border-color: rgba(254, 253, 248, .28) !important;
+  background: #0f1626 !important;
+  color: #fefdf8 !important;
+}
+
+.portal-theme.portal-light .player-notification-dropdown > button {
+  border-color: rgba(10, 14, 25, .16) !important;
+  color: #f0573d !important;
+}
+
+.portal-theme.portal-dark .player-notification-dropdown > button {
+  border-color: rgba(254, 253, 248, .16) !important;
+  color: #f0573d !important;
+}
+
 .portal-theme.portal-dark .player-account-scroll-list::-webkit-scrollbar-track {
   background: #0f1626;
 }
@@ -3491,4 +3998,148 @@ html[data-display-theme="dark"] .display-theme-switcher button[aria-pressed="tru
   background: #fefaef !important;
   background-color: #fefaef !important;
   border-color: #fefaef !important;
+}
+
+/* NOTIFICATION DROPDOWN CONTRAST: keep notification content readable in
+   both themes, including after the header changes its scroll state. */
+.portal-theme.portal-light .player-notification-dropdown :where(
+  h3,
+  p,
+  span[class*="text-navy/"],
+  button:not(.text-coral)
+) {
+  color: #0a0e19 !important;
+}
+
+.portal-theme.portal-dark .player-notification-dropdown :where(
+  h3,
+  p,
+  span[class*="text-navy/"],
+  button:not(.text-coral)
+) {
+  color: #fefdf8 !important;
+}
+
+.portal-theme.portal-light .player-notification-dropdown :where(
+  button.text-coral,
+  .text-coral
+),
+.portal-theme.portal-dark .player-notification-dropdown :where(
+  button.text-coral,
+  .text-coral
+) {
+  color: var(--cos-coral) !important;
+}
+
+/* MAIL COMPOSER SEND BUTTON: use the shared golden-yellow offset shadow in
+   both portal themes. */
+.portal-theme .mail-send-button,
+.portal-theme .mail-send-button:hover {
+  box-shadow: 4px 4px 0 #fbbf24 !important;
+}
+
+/* Header scroll-state selectors above this file use higher specificity, so
+   repeat the surface ink here for both header positions. */
+.portal-theme.portal-light .player-header.header-at-top .player-notification-dropdown,
+.portal-theme.portal-light .player-header.header-scrolled .player-notification-dropdown {
+  color: #0a0e19 !important;
+}
+
+.portal-theme.portal-dark .player-header.header-at-top .player-notification-dropdown,
+.portal-theme.portal-dark .player-header.header-scrolled .player-notification-dropdown {
+  color: #fefdf8 !important;
+}
+
+.portal-theme.portal-light .player-header.header-at-top .player-notification-dropdown :is(
+  p,
+  span[class*="text-navy/"]
+),
+.portal-theme.portal-light .player-header.header-scrolled .player-notification-dropdown :is(
+  p,
+  span[class*="text-navy/"]
+) {
+  color: rgba(10, 14, 25, .62) !important;
+}
+
+.portal-theme.portal-dark .player-header.header-at-top .player-notification-dropdown :is(
+  p,
+  span[class*="text-navy/"]
+),
+.portal-theme.portal-dark .player-header.header-scrolled .player-notification-dropdown :is(
+  p,
+  span[class*="text-navy/"]
+) {
+  color: rgba(254, 253, 248, .72) !important;
+}
+
+/* The scrolled header colors descendant buttons with a stronger selector.
+   Keep notification rows on the dropdown's own readable theme ink. */
+.portal-theme.portal-light .player-header.header-at-top .player-notification-dropdown button:not(.text-coral),
+.portal-theme.portal-light .player-header.header-scrolled .player-notification-dropdown button:not(.text-coral) {
+  color: #0a0e19 !important;
+}
+
+.portal-theme.portal-dark .player-header.header-at-top .player-notification-dropdown button:not(.text-coral),
+.portal-theme.portal-dark .player-header.header-scrolled .player-notification-dropdown button:not(.text-coral) {
+  color: #fefdf8 !important;
+}
+
+/* INBOX CARD: keep the main notifications/mail container on the shared
+   golden-yellow offset shadow in both portal themes. */
+.portal-theme.portal-light .portal-page > div > section.portal-inbox-panel,
+.portal-theme.portal-dark .portal-page > div > section.portal-inbox-panel {
+  box-shadow: 7px 7px 0 #fbbf24 !important;
+}
+
+/* FRIENDS SEARCH: keep the Find a player field on the shared golden-yellow
+   offset shadow in both portal themes. */
+.portal-theme.portal-light .friends-player-search,
+.portal-theme.portal-dark .friends-player-search {
+  box-shadow: 6px 6px 0 #fbbf24 !important;
+}
+
+/* The shared dark coral-button rule is more specific than the generic mail
+   selector, so pin the composer shadow to the requested golden-yellow token. */
+.portal-theme.portal-light .portal-page button.mail-send-button,
+.portal-theme.portal-light .portal-page button.mail-send-button:hover,
+.portal-theme.portal-dark .portal-page button.mail-send-button,
+.portal-theme.portal-dark .portal-page button.mail-send-button:hover {
+  box-shadow: 4px 4px 0 #fbbf24 !important;
+}
+
+/* ALMANAC LIGHT MODE: use the warm card surface for both content panels and
+   keep the requested production-log and achievement-filter copy on navy ink.
+   The dark Almanac panel treatment remains unchanged. */
+.portal-theme.portal-light .almanac-page .almanac-content-panel {
+  background: #f0ede4 !important;
+  background-color: #f0ede4 !important;
+  color: #0a0e19 !important;
+}
+
+.portal-theme.portal-light .almanac-page .almanac-content-panel
+  :where(
+    .section-title,
+    .almanac-content-body > p,
+    .achievements-filter-all,
+    .achievements-filter-unlocked
+  ) {
+  color: #0a0e19 !important;
+  -webkit-text-fill-color: #0a0e19 !important;
+}
+
+.portal-theme.portal-light .almanac-page .almanac-content-panel
+  :where(
+    .achievements-filter-all,
+    .achievements-filter-all:hover,
+    .achievements-filter-all:active,
+    .achievements-filter-all:focus,
+    .achievements-filter-all.active,
+    .achievements-filter-unlocked,
+    .achievements-filter-unlocked:hover,
+    .achievements-filter-unlocked:active,
+    .achievements-filter-unlocked:focus,
+    .achievements-filter-unlocked.active
+  ) {
+  color: #0a0e19 !important;
+  -webkit-text-fill-color: #0a0e19 !important;
 }

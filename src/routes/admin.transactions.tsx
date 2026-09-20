@@ -13,7 +13,7 @@ export const Route = createFileRoute("/admin/transactions")({
 import { useMemo, useState } from "react";
 import { Coins, ReceiptText, Search, Wallet2 } from "lucide-react";
 import { formatMoney } from "@/lib/demo/store";
-import { topUps } from "@/lib/admin-demo-data";
+import { topUpsStore } from "@/lib/admin-demo-data";
 
 const statusStyles: Record<string, string> = {
   Completed: "bg-[#2d9d8f]/15 text-[#4bc4b4]",
@@ -23,23 +23,20 @@ const statusStyles: Record<string, string> = {
 
 function TransactionsPage() {
   const [query, setQuery] = useState("");
+  const [topUps] = topUpsStore.useStore();
 
   const matches = useMemo(() => {
     const search = query.trim().toLowerCase();
     if (!search) return topUps;
     return topUps.filter(
-      (row) =>
-        row.playerName.toLowerCase().includes(search) ||
-        row.playerId.toLowerCase().includes(search),
+      (row) => row.playerName.toLowerCase().includes(search),
     );
-  }, [query]);
+  }, [query, topUps]);
 
   const matchedPlayer = useMemo(() => {
     const search = query.trim().toLowerCase();
     if (!search) return null;
-    const first = topUps.find(
-      (row) => row.playerName.toLowerCase() === search || row.playerId.toLowerCase() === search,
-    );
+    const first = topUps.find((row) => row.playerName.toLowerCase() === search);
     return first ?? (matches.length > 0 ? matches[0] : null);
   }, [query, matches]);
 
@@ -104,7 +101,7 @@ function TransactionsPage() {
           <input
             value={query}
             onChange={(event) => setQuery(event.target.value)}
-            placeholder="Search by Player Name or Player ID"
+            placeholder="Search by username"
             className="h-11 w-full rounded-md border border-white/10 bg-[#101923] pl-10 pr-3 text-sm font-bold !text-white outline-none transition placeholder:!text-white/25 focus:border-coral"
           />
         </label>
@@ -112,8 +109,7 @@ function TransactionsPage() {
         {matchedPlayer && (
           <p className="mt-3 text-xs !text-white/45">
             Showing top-up history for{" "}
-            <span className="font-bold !text-white/80">{matchedPlayer.playerName}</span> (
-            {matchedPlayer.playerId})
+            <span className="font-bold !text-white/80">{matchedPlayer.playerName}</span>
           </p>
         )}
       </section>
@@ -153,7 +149,6 @@ function TransactionsPage() {
                   <td className="px-5 py-4 text-sm !text-white/45">{row.time}</td>
                   <td className="px-5 py-4">
                     <p className="font-bold !text-white">{row.playerName}</p>
-                    <p className="mt-0.5 text-[10px] !text-white/30">{row.playerId}</p>
                   </td>
                   <td className="px-5 py-4 font-mono text-xs !text-white/55">{row.bank}</td>
                   <td className="px-5 py-4 font-black !text-white">{formatMoney(row.amount)}</td>
@@ -172,7 +167,7 @@ function TransactionsPage() {
                   <td colSpan={6} className="py-16 text-center">
                     <p className="text-sm font-bold !text-white/40">No matching transactions</p>
                     <p className="mt-1 text-xs !text-white/25">
-                      Try a different player name or player ID.
+                      Try a different username.
                     </p>
                   </td>
                 </tr>

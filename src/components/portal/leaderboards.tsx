@@ -71,14 +71,12 @@ export function Leaderboards() {
   const realLeaderboardQuery = useLeaderboard("total_score");
   const realFriendsQuery = useFriends();
   const currentProfileQuery = usePlayerProfile();
-  const currentPlayerName = mockMode
-    ? "CAMERA_PRO"
-    : currentProfileQuery.data?.displayName || "";
+  const currentPlayerName = currentProfileQuery.data?.username || currentProfileQuery.data?.displayName || (mockMode ? "CAMERA_PRO" : "");
 
   const realGlobalLeaders = useMemo<Leader[]>(
     () =>
       (realLeaderboardQuery.data ?? []).map((entry) => ({
-        name: entry.displayName,
+        name: entry.username || entry.displayName,
         level: 0,
         score: entry.statValue,
         xp: 0,
@@ -92,7 +90,7 @@ export function Leaderboards() {
   const friendLeaders = useMemo<Leader[]>(() => {
     if (!mockMode) {
       return (realFriendsQuery.data ?? []).map((friend) => ({
-        name: friend.displayName,
+        name: friend.username || friend.displayName,
         level: friend.level ?? 1,
         score: 0,
         xp: 0,
@@ -104,7 +102,7 @@ export function Leaderboards() {
 
     return [
       {
-        name: "CAMERA_PRO",
+        name: currentPlayerName,
         level: 27,
         score: 984250,
         xp: 7020,
@@ -121,7 +119,7 @@ export function Leaderboards() {
         profileImage: friend.profileImage,
       })),
     ];
-  }, [friends, mockMode, realFriendsQuery.data]);
+  }, [currentPlayerName, friends, mockMode, realFriendsQuery.data]);
 
   const currentLeaders = useMemo(() => {
     let data: Leader[];
@@ -129,7 +127,11 @@ export function Leaderboards() {
     if (leaderTab === "Friends") {
       data = friendLeaders;
     } else {
-      data = mockMode ? globalLeaders : realGlobalLeaders;
+      data = mockMode
+        ? globalLeaders.map((leader) =>
+            leader.name === "CAMERA_PRO" ? { ...leader, name: currentPlayerName } : leader,
+          )
+        : realGlobalLeaders;
     }
 
     return [...data].sort((a, b) => {
@@ -418,57 +420,57 @@ export function Leaderboards() {
 
             <div className="mt-7 grid grid-cols-2 gap-3 sm:grid-cols-4">
 
-              <div className="rounded-xl border border-white/[0.06] bg-white/[0.035] p-4">
+              <div className="min-w-0 rounded-xl border border-white/[0.06] bg-white/[0.035] p-3 sm:p-4">
 
                 <TrendingUp className="size-4 text-coral" />
 
-                <p className="mt-3 text-[9px] font-black uppercase tracking-wider text-white/30">
+                <p className="mt-3 min-h-[1.5rem] break-words text-[8px] font-black uppercase leading-tight tracking-wider text-white/30 sm:text-[9px]">
                   Score
                 </p>
 
-                <p className="mt-1 text-lg font-black text-white">
+                <p className="mt-1 min-w-0 whitespace-nowrap text-sm font-black leading-none text-white">
                   {formatNumber(selectedLeader.score)}
                 </p>
 
               </div>
 
-              <div className="rounded-xl border border-white/[0.06] bg-white/[0.035] p-4">
+              <div className="min-w-0 rounded-xl border border-white/[0.06] bg-white/[0.035] p-3 sm:p-4">
 
                 <Star className="size-4 text-coral" />
 
-                <p className="mt-3 text-[9px] font-black uppercase tracking-wider text-white/30">
+                <p className="mt-3 min-h-[1.5rem] break-words text-[8px] font-black uppercase leading-tight tracking-wider text-white/30 sm:text-[9px]">
                   XP
                 </p>
 
-                <p className="mt-1 text-lg font-black text-white">
+                <p className="mt-1 min-w-0 whitespace-nowrap text-sm font-black leading-none text-white">
                   {formatNumber(selectedLeader.xp)}
                 </p>
 
               </div>
 
-              <div className="rounded-xl border border-white/[0.06] bg-white/[0.035] p-4">
+              <div className="min-w-0 rounded-xl border border-white/[0.06] bg-white/[0.035] p-3 sm:p-4">
 
                 <Film className="size-4 text-coral" />
 
-                <p className="mt-3 text-[9px] font-black uppercase tracking-wider text-white/30">
+                <p className="mt-3 min-h-[1.5rem] break-words text-[8px] font-black uppercase leading-tight tracking-wider text-white/30 sm:text-[9px]">
                   Productions
                 </p>
 
-                <p className="mt-1 text-lg font-black text-white">
+                <p className="mt-1 min-w-0 whitespace-nowrap text-sm font-black leading-none text-white">
                   {selectedLeader.productions}
                 </p>
 
               </div>
 
-              <div className="rounded-xl border border-white/[0.06] bg-white/[0.035] p-4">
+              <div className="min-w-0 rounded-xl border border-white/[0.06] bg-white/[0.035] p-3 sm:p-4">
 
                 <Award className="size-4 text-coral" />
 
-                <p className="mt-3 text-[9px] font-black uppercase tracking-wider text-white/30">
+                <p className="mt-3 min-h-[1.5rem] break-words text-[8px] font-black uppercase leading-tight tracking-wider text-white/30 sm:text-[9px]">
                   Rating
                 </p>
 
-                <p className="mt-1 text-lg font-black text-white">
+                <p className="mt-1 min-w-0 whitespace-nowrap text-sm font-black leading-none text-white">
                   {selectedLeader.rating}%
                 </p>
 

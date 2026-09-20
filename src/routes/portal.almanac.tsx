@@ -222,7 +222,7 @@ function AlmanacPage() {
         {tab === "Production Logs" ? (
           <ProductionLogs />
         ) : (
-          <section className="achievements-section">
+          <section className="achievements-section almanac-content-panel p-4 sm:p-6">
             <div className="achievements-toolbar">
               <div className="achievements-filters">
                 {["All", "Unlocked", "Locked"].map((option) => (
@@ -231,9 +231,13 @@ function AlmanacPage() {
                     type="button"
                     onClick={() => setFilter(option)}
                     className={
-                      filter === option
-                        ? "achievements-filter active"
-                        : "achievements-filter"
+                      option === "Unlocked"
+                        ? "achievements-filter achievements-filter-unlocked" + (filter === option ? " active" : "")
+                        : option === "Locked"
+                          ? "achievements-filter achievements-filter-locked" + (filter === option ? " active" : "")
+                          : filter === option
+                            ? "achievements-filter achievements-filter-all active"
+                            : "achievements-filter achievements-filter-all"
                     }
                   >
                     {option}
@@ -252,7 +256,7 @@ function AlmanacPage() {
               </select>
             </div>
 
-            <div className="player-account-scroll-list achievements-grid">
+            <div className="player-account-scroll-list almanac-content-scroll achievements-grid">
               {shownAchievements.map((achievement) => {
                 const AchievementIcon = achievement.icon;
                 return (
@@ -545,6 +549,37 @@ function AlmanacPage() {
           margin-top: 28px;
         }
 
+        .almanac-content-panel {
+          display: flex;
+          flex-direction: column;
+          min-height: 0;
+          height: clamp(32rem, 68vh, 44rem);
+          max-height: none;
+          overflow: hidden;
+        }
+
+        .almanac-content-body {
+          display: flex;
+          min-width: 0;
+          min-height: 0;
+          flex: 1 1 auto;
+          flex-direction: column;
+        }
+
+        .almanac-content-panel .achievements-toolbar {
+          flex-shrink: 0;
+        }
+
+        .almanac-content-panel .almanac-content-scroll {
+          min-height: 0;
+          height: auto;
+          max-height: none !important;
+          flex: 1 1 auto;
+          margin-top: 20px !important;
+          overflow-y: scroll !important;
+          scrollbar-gutter: stable;
+        }
+
         .achievements-toolbar {
           display: flex;
           flex-direction: column;
@@ -587,6 +622,40 @@ function AlmanacPage() {
         .achievements-filter.active {
           color: #131b34;
           border-bottom-color: #ff765f;
+        }
+
+        .portal-theme.portal-light .achievements-filter-all,
+        .portal-theme.portal-light .achievements-filter-all.active,
+        .portal-theme.portal-light .achievements-filter-all:hover,
+        .portal-theme.portal-light .achievements-filter-all:active,
+        .portal-theme.portal-light .achievements-filter-all:focus,
+        .portal-theme.portal-light .achievements-filter-unlocked,
+        .portal-theme.portal-light .achievements-filter-unlocked.active,
+        .portal-theme.portal-light .achievements-filter-unlocked:hover,
+        .portal-theme.portal-light .achievements-filter-unlocked:active,
+        .portal-theme.portal-light .achievements-filter-unlocked:focus {
+          color: #0a0e19 !important;
+          -webkit-text-fill-color: #0a0e19 !important;
+        }
+
+        .portal-theme.portal-dark .achievements-filter-all,
+        .portal-theme.portal-dark .achievements-filter-all.active,
+        .portal-theme.portal-dark .achievements-filter-all:hover,
+        .portal-theme.portal-dark .achievements-filter-unlocked,
+        .portal-theme.portal-dark .achievements-filter-unlocked.active,
+        .portal-theme.portal-dark .achievements-filter-unlocked:hover {
+          color: #fefdf8 !important;
+          -webkit-text-fill-color: #fefdf8 !important;
+        }
+
+        .portal-theme.portal-light .achievements-filter-locked,
+        .portal-theme.portal-dark .achievements-filter-locked,
+        .portal-theme.portal-light .achievements-filter-locked.active,
+        .portal-theme.portal-dark .achievements-filter-locked.active,
+        .portal-theme.portal-light .achievements-filter-locked:hover,
+        .portal-theme.portal-dark .achievements-filter-locked:hover {
+          color: #9ca3af !important;
+          -webkit-text-fill-color: #9ca3af !important;
         }
 
         .achievements-sort {

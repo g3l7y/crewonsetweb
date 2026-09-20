@@ -70,6 +70,22 @@ let MOCK_PLAYER_PROFILE: PlayerProfile = {
   lastLoginAt: new Date().toISOString(),
 };
 
+function getStoredMockProfileAccount(): { username: string; email: string } | null {
+  if (typeof window === 'undefined') return null;
+  try {
+    const raw = window.localStorage.getItem('cos.profile.account');
+    if (!raw) return null;
+    const account = JSON.parse(raw) as Partial<{ username: string; email: string }>;
+    if (!account.username) return null;
+    return {
+      username: account.username,
+      email: account.email ?? '',
+    };
+  } catch {
+    return null;
+  }
+}
+
 const MOCK_PROGRESSION: PlayerProgression = {
   level: 27,
   currentXp: 6820,
@@ -579,12 +595,12 @@ export function createMockService(): PlayFabService {
         };
         return { success: true, destination: '/portal', session: mockSession };
       },
-      async register({ email, displayName }: RegisterRequest): Promise<AuthResponse> {
+      async register({ email, username }: RegisterRequest): Promise<AuthResponse> {
         await randomDelay();
         mockSession = {
           playFabId: uid('PF'),
           role: 'player',
-          displayName: displayName || (email.split('@')[0] ?? 'PLAYER').toUpperCase(),
+          displayName: username || (email.split('@')[0] ?? 'PLAYER').toUpperCase(),
           email,
         };
         return { success: true, destination: '/portal', session: mockSession };
@@ -606,7 +622,14 @@ export function createMockService(): PlayFabService {
     player: {
       async getProfile(): Promise<PlayerProfile> {
         await randomDelay();
-        return { ...MOCK_PLAYER_PROFILE };
+        const account = getStoredMockProfileAccount();
+        if (!account) return { ...MOCK_PLAYER_PROFILE };
+        return {
+          ...MOCK_PLAYER_PROFILE,
+          displayName: account.username,
+          username: account.username,
+          email: account.email || MOCK_PLAYER_PROFILE.email,
+        };
       },
       async getProgression(): Promise<PlayerProgression> {
         await randomDelay();

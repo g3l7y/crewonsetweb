@@ -12,24 +12,23 @@ export const Route = createFileRoute("/admin/player-reports")({
 
 import { useMemo, useState } from "react";
 import { Eye, FileText, Search, Trash2, UserRound, X } from "lucide-react";
+import { ReportStatusDropdown } from "@/components/admin/report-status-dropdown";
+import { isMockMode } from "@/lib/playfab/config";
 import {
+  canAdvanceReportStatus,
+  addReportFeedback,
   deleteSharedRecords,
   deleteSharedRecord,
-  reportStatusColors,
   logAdminActivity,
   playerReportsStore,
+  playerReportTypes,
   updateSharedRecord,
   type PlayerReport,
   type PlayerReportStatus,
 } from "@/lib/demo/store";
 
 const statuses: PlayerReportStatus[] = ["New", "Investigating", "Resolved"];
-const statusStyles: Record<PlayerReportStatus, string> = {
-  New: "bg-[#d9a514]/15 text-[#f3c747]",
-  Investigating: "bg-[#c96a2d]/15 text-[#f39a5a]",
-  Resolved: "bg-[#2d9d8f]/15 text-[#4bc4b4]",
-};
-
+const mockMode = isMockMode();
 function formatDate(iso: string) {
   const date = new Date(iso);
   return Number.isNaN(date.getTime())
@@ -46,6 +45,7 @@ function formatDate(iso: string) {
 function PlayerReportsRouteComponent() {
   const [reports, setReports] = playerReportsStore.useStore();
   const [query, setQuery] = useState("");
+  const [category, setCategory] = useState("All Categories");
   const [status, setStatus] = useState<"All Statuses" | PlayerReportStatus>("All Statuses");
   const [selected, setSelected] = useState<PlayerReport | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<PlayerReport | null>(null);
@@ -59,15 +59,26 @@ function PlayerReportsRouteComponent() {
           `${report.id} ${report.reporterName} ${report.reportedUsername} ${report.reportType} ${report.description}`
             .toLowerCase()
             .includes(search)) &&
+        (category === "All Categories" || report.reportType === category) &&
         (status === "All Statuses" || report.status === status),
     );
-  }, [reports, query, status]);
+  }, [reports, query, category, status]);
 
   async function updateStatus(report: PlayerReport, next: PlayerReportStatus) {
+    if (!canAdvanceReportStatus(report.status, next)) return;
     const updated = { ...report, status: next };
     if (!(await updateSharedRecord("cos.playerReports", updated))) return;
     setReports((current) => current.map((item) => (item.id === report.id ? updated : item)));
     if (selected?.id === report.id) setSelected(updated);
+    if (report.status !== next) {
+      addReportFeedback({
+        recipientUsername: report.reporterName,
+        recipientPlayerId: report.reporterId,
+        reportId: report.id,
+        status: next,
+        body: "Your " + report.reportType.toLowerCase() + " report was reviewed and is now marked " + next + ".",
+      });
+    }
   }
 
   async function deleteReport(report: PlayerReport) {
@@ -114,6 +125,17 @@ function PlayerReportsRouteComponent() {
           />
         </label>
         <select
+          value={category}
+          onChange={(event) => setCategory(event.target.value)}
+          className="admin-input h-11 rounded-md border border-white/10 bg-[#101923] px-3 text-sm font-bold !text-white outline-none focus:border-coral"
+        >
+          <option>All Categories</option>
+          {playerReportTypes.map((item) => (
+            <option key={item}>{item}</option>
+          ))}
+        </select>
+
+        <select
           value={status}
           onChange={(event) => setStatus(event.target.value as typeof status)}
           className="admin-input h-11 rounded-md border border-white/10 bg-[#101923] px-3 text-sm font-bold !text-white outline-none focus:border-coral"
@@ -125,8 +147,8 @@ function PlayerReportsRouteComponent() {
         </select>
       </section>
       <div className="mb-3 flex items-center justify-between rounded-lg border border-white/[0.06] bg-[#182330] px-4 py-3"><label className="flex items-center gap-3 text-xs font-bold uppercase text-white/60"><input type="checkbox" checked={filtered.length > 0 && selectedIds.length === filtered.length} onChange={(event) => setSelectedIds(event.target.checked ? filtered.map((report) => report.id) : [])} /> Select all <span className="text-coral">{selectedIds.length} selected</span></label><button type="button" disabled={!selectedIds.length} onClick={deleteSelected} className="inline-flex items-center gap-2 rounded-md bg-coral px-3 py-2 text-[10px] font-black uppercase text-white disabled:opacity-30"><Trash2 className="size-3.5" /> Delete selected</button></div>
-      <section className="admin-table-wrap overflow-hidden rounded-lg border border-white/[0.06] bg-[#182330] shadow-xl">
-        <div className="overflow-x-auto">
+      <section className="admin-filter-results-card admin-filter-results-card--reports admin-table-wrap overflow-hidden rounded-lg border border-white/[0.06] bg-[#182330] shadow-xl">
+        <div className="admin-filter-results-scroll overflow-x-auto">
           <table className="admin-table min-w-[1050px] w-full text-left">
             <thead>
               <tr className="border-b border-white/[0.08] bg-[#141e29]">
@@ -166,17 +188,11 @@ function PlayerReportsRouteComponent() {
                     {formatDate(report.submittedAt)}
                   </td>
                   <td className="px-5 py-4">
-                    <select
+                    <ReportStatusDropdown
                       value={report.status}
-                      onChange={(event) =>
-                        updateStatus(report, event.target.value as PlayerReportStatus)
-                      }
-                      className={`rounded px-2.5 py-1.5 text-[10px] font-black uppercase outline-none ${statusStyles[report.status]}`} style={{ color: reportStatusColors[report.status] }}
-                    >
-                      {statuses.map((item) => (
-                        <option key={item}>{item}</option>
-                      ))}
-                    </select>
+                      enforceForwardOnly
+                      onChange={(next) => updateStatus(report, next as PlayerReportStatus)}
+                    />
                   </td>
                   <td className="px-5 py-4">
                     <div className="flex items-center gap-2">

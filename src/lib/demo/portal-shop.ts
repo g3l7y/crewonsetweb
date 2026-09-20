@@ -37,21 +37,19 @@ export const cosmeticCatalog: CosmeticItem[] = [
   { id: "glasses-gold-wire", name: "Gold Wire Frames", category: "Eyeglasses", price: 1050, rarity: "Legendary", description: "Fine gold frames with a warm, polished finish.", assetKey: "gold-wire" },
 ];
 
-export type CoinPackage = { id: string; coins: number; bonus?: number; priceLabel: string };
+export type CoinPackage = {
+  id: string;
+  coins: number;
+  bonus?: number;
+  priceLabel: string;
+  pricePhp: number;
+};
 
 export const coinPackages: CoinPackage[] = [
-  { id: "pack-500", coins: 500, priceLabel: "\u20b14.99" },
-  { id: "pack-1200", coins: 1200, bonus: 150, priceLabel: "\u20b19.99" },
-  { id: "pack-2600", coins: 2600, bonus: 500, priceLabel: "\u20b119.99" },
-  { id: "pack-6000", coins: 6000, bonus: 1500, priceLabel: "\u20b139.99" },
-];
-
-export type PaymentMethodId = "card" | "gcash" | "unionbank" | "paypal";
-export const paymentMethods: { id: PaymentMethodId; label: string; hint: string }[] = [
-  { id: "card", label: "Card", hint: "Visa, Mastercard" },
-  { id: "gcash", label: "GCash", hint: "Mobile wallet" },
-  { id: "unionbank", label: "UnionBank", hint: "Online banking" },
-  { id: "paypal", label: "PayPal", hint: "Pay with balance" },
+  { id: "pack-500", coins: 500, priceLabel: "\u20b14.99", pricePhp: 4.99 },
+  { id: "pack-1200", coins: 1200, bonus: 150, priceLabel: "\u20b19.99", pricePhp: 9.99 },
+  { id: "pack-2600", coins: 2600, bonus: 500, priceLabel: "\u20b119.99", pricePhp: 19.99 },
+  { id: "pack-6000", coins: 6000, bonus: 1500, priceLabel: "\u20b139.99", pricePhp: 39.99 },
 ];
 
 export const ownedItemsStore = createStore<string>("cos.ownedItems", ["hair-soft-crop", "top-coral-tee", "glasses-round-ink"]);

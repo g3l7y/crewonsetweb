@@ -144,10 +144,6 @@ function ShopPage() {
 
   function startPackageCheckout(packageId: string) {
     setShopError("");
-    if (!mockMode) {
-      setShopError("Live C-Coin top-ups are paused until a verified payment provider is configured.");
-      return;
-    }
     setCheckoutPayload({ kind: "coins", packageId });
     setCheckoutOpen(true);
   }
@@ -323,19 +319,15 @@ function ShopPage() {
 
             <section className="coin-pack-section" aria-labelledby="coin-pack-title">
               <div>
-                <p className="portal-kicker">DEMO WALLET TOP-UP</p>
+                <p className="portal-kicker">{mockMode ? "PAYMONGO TEST TOP-UP" : "PAYMONGO WALLET TOP-UP"}</p>
                 <h2 id="coin-pack-title">More C-Coins, when the set needs them.</h2>
-                <p>{mockMode ? "Demo checkout is clearly marked and never runs in real mode." : "Live top-ups are disabled until a verified payment provider is connected."}</p>
+                <p>{mockMode ? "Demo accounts use PayMongo test checkout when configured, with a local fallback when test keys are unavailable." : "Pay securely through PayMongo. Available payment methods are shown on PayMongo's hosted checkout."}</p>
               </div>
-              {mockMode ? (
-                <div className="coin-pack-grid">
-                  {coinPackages.map((pack) => (
-                    <article key={pack.id} className="coin-pack-card"><Coins /><strong>{formatCoins(pack.coins)} <small>C-COINS</small></strong>{pack.bonus && <span>+{formatCoins(pack.bonus)} bonus</span>}<p>{pack.priceLabel}</p><button type="button" onClick={() => startPackageCheckout(pack.id)}>Buy demo pack</button></article>
-                  ))}
-                </div>
-              ) : (
-                <div className="top-up-disabled"><Coins /><strong>Real-money top-ups unavailable</strong><span>No fake balance changes are made in real mode.</span></div>
-              )}
+              <div className="coin-pack-grid">
+                {coinPackages.map((pack) => (
+                  <article key={pack.id} className="coin-pack-card"><Coins /><strong>{formatCoins(pack.coins)} <small>C-COINS</small></strong>{pack.bonus && <span>+{formatCoins(pack.bonus)} bonus</span>}<p>{pack.priceLabel}</p><button type="button" onClick={() => startPackageCheckout(pack.id)}>{mockMode ? "Buy demo pack" : "Buy with PayMongo"}</button></article>
+                ))}
+              </div>
             </section>
           </>
         ) : (

@@ -17,6 +17,7 @@ export const Route = createFileRoute("/portal/settings")({
 
 import Image from "@/components/next-compat/image";
 import { ChangeEvent, useEffect, useRef, useState } from "react";
+import { useQueryClient } from "@tanstack/react-query";
 import {
   Bell,
   Bug,
@@ -28,17 +29,16 @@ import {
   Lock,
   Monitor,
   Paperclip,
-  RotateCcw,
   Save,
   Shield,
   Trash2,
   UserCircle,
   X,
 } from "lucide-react";
-import { EMAIL_ERROR, USERNAME_ERROR, PASSWORD_ERROR, isValidEmail, isValidPassword, isValidUsername } from "@/lib/validation";
+import { EMAIL_ERROR, USERNAME_ERROR, PASSWORD_ERROR, PASSWORD_INPUT_PATTERN, isValidEmail, isValidPassword, isValidUsername } from "@/lib/validation";
 import { DisplayThemeSwitcher } from "@/components/theme/display-theme-switcher";
 import { isMockMode } from "@/lib/playfab/config";
-import { usePlayerProfile, useUpdateProfile } from "@/lib/playfab/hooks";
+import { QUERY_KEYS, usePlayerProfile, useUpdateProfile } from "@/lib/playfab/hooks";
 import {
   bugCategories,
   adminNotificationsStore,
@@ -82,12 +82,12 @@ const sections = [
 type AccountData = {
   username: string;
   email: string;
-  displayName: string;
   avatar: string;
 };
 
 type Preferences = {
   profileVisibility: boolean;
+  showStatus: boolean;
   showCrewActivity: boolean;
   showCareerInfo: boolean;
   productionUpdates: boolean;
@@ -103,12 +103,12 @@ type Preferences = {
 const defaultAccount: AccountData = {
   username: "CAMERA_PRO",
   email: "player@gmail.com",
-  displayName: "Camera Pro",
   avatar: "/assets/crew-set-illustration.png",
 };
 
 const defaultPreferences: Preferences = {
   profileVisibility: true,
+  showStatus: true,
   showCrewActivity: true,
   showCareerInfo: true,
   productionUpdates: true,
@@ -126,7 +126,8 @@ function SettingsPage() {
   const mockMode = isMockMode();
   const profileQuery = usePlayerProfile();
   const updateProfileMutation = useUpdateProfile();
-  const reportPlayerName = mockMode ? BUG_REPORT_PLAYER_NAME : profileQuery.data?.displayName || profileQuery.data?.username || "Player";
+  const queryClient = useQueryClient();
+  const reportPlayerName = profileQuery.data?.username || profileQuery.data?.displayName || (mockMode ? BUG_REPORT_PLAYER_NAME : "Player");
   const reportPlayerId = mockMode ? BUG_REPORT_PLAYER_ID : profileQuery.data?.playFabId || "unknown";
 
   useEffect(() => {
@@ -142,8 +143,6 @@ function SettingsPage() {
   const [savedAccount, setSavedAccount] = useState<AccountData>(defaultAccount);
 
   const [preferences, setPreferences] = useState<Preferences>(defaultPreferences);
-
-  const [savedPreferences, setSavedPreferences] = useState<Preferences>(defaultPreferences);
 
   const [editing, setEditing] = useState<string | null>(null);
 
@@ -209,25 +208,44 @@ function SettingsPage() {
       const loadedAccount: AccountData = {
         username: profile.username || profile.displayName || "player",
         email: profile.email || "",
-        displayName: profile.displayName || profile.username || "Player",
         avatar: profile.avatarUrl || defaultAccount.avatar,
       };
       setAccount(loadedAccount);
       setSavedAccount(loadedAccount);
+      setPreferences({
+        ...defaultPreferences,
+        showStatus: profile.showStatus ?? defaultPreferences.showStatus,
+      });
       setLoaded(true);
       return;
     }
 
     try {
       const storedAccount = localStorage.getItem("player-account");
+      const storedIdentity = localStorage.getItem("cos.profile.account");
 
       const storedPreferences = localStorage.getItem("player-preferences");
 
-      const loadedAccount = storedAccount
+      const profileIdentity = storedIdentity
+        ? JSON.parse(storedIdentity) as { username?: string; email?: string }
+        : null;
+
+      const storedAccountData = storedAccount
+        ? JSON.parse(storedAccount) as Partial<AccountData> & { displayName?: string }
+        : null;
+      const loadedAccount = storedAccountData
         ? {
             ...defaultAccount,
-            ...JSON.parse(storedAccount),
+            username: storedAccountData.username || storedAccountData.displayName || defaultAccount.username,
+            email: storedAccountData.email || defaultAccount.email,
+            avatar: storedAccountData.avatar || defaultAccount.avatar,
           }
+        : profileIdentity?.username
+          ? {
+              ...defaultAccount,
+              username: profileIdentity.username,
+              email: profileIdentity.email ?? defaultAccount.email,
+            }
         : defaultAccount;
 
       const loadedPreferences = storedPreferences
@@ -235,27 +253,23 @@ function SettingsPage() {
             ...defaultPreferences,
             ...JSON.parse(storedPreferences),
           }
-        : defaultPreferences;
+        : {
+            ...defaultPreferences,
+            showStatus: mockMode
+              ? defaultPreferences.showStatus
+              : profileQuery.data?.showStatus ?? defaultPreferences.showStatus,
+          };
 
       setAccount(loadedAccount);
       setSavedAccount(loadedAccount);
 
       setPreferences(loadedPreferences);
-      setSavedPreferences(loadedPreferences);
     } catch {
       console.error("Unable to load player settings.");
     } finally {
       setLoaded(true);
     }
   }, [mockMode, profileQuery.data]);
-
-  /* =========================================================
-     UNSAVED CHANGES
-  ========================================================= */
-
-  const hasUnsavedChanges =
-    JSON.stringify(account) !== JSON.stringify(savedAccount) ||
-    JSON.stringify(preferences) !== JSON.stringify(savedPreferences);
 
   /* =========================================================
      MESSAGE
@@ -271,63 +285,72 @@ function SettingsPage() {
   };
 
   /* =========================================================
-     SAVE
+     IMMEDIATE PERSISTENCE
   ========================================================= */
 
-  const saveChanges = async () => {
-    if (!mockMode && account.username !== savedAccount.username) {
-      showMessage("Username changes are managed by the PlayFab account service.", "error");
-      return;
-    }
-
-    if (!mockMode && account.email !== savedAccount.email) {
-      showMessage("Email changes are managed by the PlayFab account service.", "error");
-      return;
-    }
-
+  const persistPreferences = async (
+    nextPreferences: Preferences,
+    previousPreferences: Preferences,
+  ) => {
     try {
-      if (!mockMode && account.displayName !== savedAccount.displayName) {
-        await updateProfileMutation.mutateAsync({
-          displayName: account.displayName,
-        });
+      if (!mockMode && profileQuery.data?.showStatus !== nextPreferences.showStatus) {
+        await updateProfileMutation.mutateAsync({ showStatus: nextPreferences.showStatus });
       }
 
-      if (mockMode) {
-        localStorage.setItem("player-account", JSON.stringify(account));
-      }
-      localStorage.setItem("player-preferences", JSON.stringify(preferences));
-
-      setSavedAccount(account);
-      setSavedPreferences(preferences);
-
-      setEditing(null);
-      setDraftValue("");
-
-      showMessage("Your settings have been saved.");
+      window.localStorage.setItem("player-preferences", JSON.stringify(nextPreferences));
+      setPreferences(nextPreferences);
+      showMessage("Preference updated.");
     } catch {
-      showMessage("Unable to save your settings through PlayFab.", "error");
+      setPreferences(previousPreferences);
+      showMessage("Unable to apply this preference.", "error");
     }
   };
 
-  /* =========================================================
-     DISCARD
-  ========================================================= */
+  const persistAccount = async (nextAccount: AccountData, successMessage: string) => {
+    try {
+      if (!mockMode && nextAccount.username !== savedAccount.username) {
+        await updateProfileMutation.mutateAsync({ username: nextAccount.username });
+      }
 
-  const discardChanges = () => {
-    setAccount(savedAccount);
-    setPreferences(savedPreferences);
+      if (mockMode) {
+        if (nextAccount.username.toLowerCase() !== savedAccount.username.toLowerCase()) {
+          const response = await fetch("/api/auth/check-username", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ username: nextAccount.username }),
+          });
+          if (!response.ok) {
+            const result = (await response.json()) as { error?: string };
+            throw new Error(result.error ?? "That username is already in use. Please choose another.");
+          }
+        }
+        window.localStorage.setItem("player-account", JSON.stringify(nextAccount));
+        window.localStorage.setItem(
+          "cos.profile.account",
+          JSON.stringify({
+            username: nextAccount.username,
+            email: nextAccount.email,
+          }),
+        );
+      }
 
-    setEditing(null);
-    setDraftValue("");
-
-    showMessage("Unsaved changes were discarded.");
+      setAccount(nextAccount);
+      setSavedAccount(nextAccount);
+      await queryClient.invalidateQueries({ queryKey: QUERY_KEYS.profile });
+      await queryClient.invalidateQueries({ queryKey: QUERY_KEYS.session });
+      showMessage(successMessage);
+      return true;
+    } catch {
+      showMessage("Unable to apply this account change.", "error");
+      return false;
+    }
   };
 
   /* =========================================================
      EDIT ACCOUNT FIELD
   ========================================================= */
 
-  const startEditing = (field: "Username" | "Email" | "Display Name", value: string) => {
+  const startEditing = (field: "Username" | "Email", value: string) => {
     setEditing(field);
     setDraftValue(value);
   };
@@ -336,15 +359,20 @@ function SettingsPage() {
      SAVE ACCOUNT FIELD
   ========================================================= */
 
-  const saveAccountField = (field: "Username" | "Email" | "Display Name") => {
+  const saveAccountField = async (field: "Username" | "Email") => {
     const value = draftValue.trim();
 
     if (!value) {
-      showMessage(`${field} cannot be empty.`, "error");
+      showMessage(field + " cannot be empty.", "error");
       return;
     }
 
-    if (field === "Email" && !isValidEmail(draftValue)) {
+    if (!mockMode && field === "Email") {
+      showMessage(field + " changes are managed by the PlayFab account service.", "error");
+      return;
+    }
+
+    if (field === "Email" && !isValidEmail(value)) {
       showMessage(EMAIL_ERROR, "error");
       return;
     }
@@ -354,26 +382,27 @@ function SettingsPage() {
       return;
     }
 
-    if (field === "Username") {
-      setAccount((prev) => ({
-        ...prev,
-        username: value.toUpperCase(),
-      }));
+    if (field === "Username" && value.toLowerCase() !== savedAccount.username.toLowerCase()) {
+      try {
+        const response = await fetch(`/api/auth/check-username?username=${encodeURIComponent(value)}`);
+        const result = (await response.json()) as { available?: boolean; error?: string };
+        if (!response.ok || result.available === false) {
+          showMessage(result.error ?? "That username is already in use. Please choose another.", "error");
+          return;
+        }
+      } catch {
+        showMessage("Unable to verify username availability. Please try again.", "error");
+        return;
+      }
     }
 
-    if (field === "Email") {
-      setAccount((prev) => ({
-        ...prev,
-        email: value,
-      }));
-    }
+    const nextAccount =
+      field === "Username"
+        ? { ...account, username: value.toUpperCase() }
+        : { ...account, email: value };
 
-    if (field === "Display Name") {
-      setAccount((prev) => ({
-        ...prev,
-        displayName: value,
-      }));
-    }
+    const saved = await persistAccount(nextAccount, field + " updated.");
+    if (!saved) return;
 
     setEditing(null);
     setDraftValue("");
@@ -412,10 +441,7 @@ function SettingsPage() {
         return;
       }
 
-      setAccount((prev) => ({
-        ...prev,
-        avatar: result,
-      }));
+      void persistAccount({ ...account, avatar: result }, "Avatar updated.");
     };
 
     reader.onerror = () => {
@@ -503,7 +529,6 @@ function SettingsPage() {
     setSavedAccount(defaultAccount);
 
     setPreferences(defaultPreferences);
-    setSavedPreferences(defaultPreferences);
 
     setDeleteOpen(false);
     setDeleteText("");
@@ -731,10 +756,14 @@ function SettingsPage() {
   ========================================================= */
 
   const togglePreference = (key: keyof Preferences) => {
-    setPreferences((prev) => ({
-      ...prev,
-      [key]: !prev[key],
-    }));
+    const previousPreferences = preferences;
+    const nextPreferences = {
+      ...previousPreferences,
+      [key]: !previousPreferences[key],
+    };
+
+    setPreferences(nextPreferences);
+    void persistPreferences(nextPreferences, previousPreferences);
   };
 
   /* =========================================================
@@ -751,11 +780,6 @@ function SettingsPage() {
       label: "Email",
       value: account.email,
       key: "Email" as const,
-    },
-    {
-      label: "Display Name",
-      value: account.displayName,
-      key: "Display Name" as const,
     },
   ];
 
@@ -789,31 +813,6 @@ function SettingsPage() {
             </h1>
           </div>
 
-          {/* SAVE / DISCARD */}
-
-          <div className="flex items-center gap-2">
-            {hasUnsavedChanges && (
-              <button
-                type="button"
-                onClick={discardChanges}
-                className="inline-flex items-center justify-center gap-2 rounded-md border border-white/10 bg-[#151c29] px-4 py-2.5 text-xs font-black text-white/60 transition hover:border-white/20 hover:bg-[#1b2433] hover:text-white"
-              >
-                <RotateCcw className="size-4" />
-                DISCARD
-              </button>
-            )}
-
-            {hasUnsavedChanges && (
-              <button
-                type="button"
-                onClick={saveChanges}
-                className="inline-flex items-center justify-center gap-2 rounded-md bg-coral px-4 py-2.5 text-xs font-black text-white transition hover:opacity-90"
-              >
-                <Save className="size-4" />
-                SAVE CHANGES
-              </button>
-            )}
-          </div>
         </header>
 
         {/* =====================================================
@@ -924,10 +923,18 @@ function SettingsPage() {
                         {editing === row.key ? (
                           <input
                             value={draftValue}
-                            onChange={(event) => setDraftValue(event.target.value)}
+                            onChange={(event) => {
+                              const nextValue = row.key === "Username"
+                                ? event.target.value
+                                  .replace(/[^A-Za-z0-9_]/g, "")
+                                  .replace(/^[^A-Za-z]+/, "")
+                                  .slice(0, 20)
+                                : event.target.value;
+                              setDraftValue(nextValue);
+                            }}
                             onKeyDown={(event) => {
                               if (event.key === "Enter") {
-                                saveAccountField(row.key);
+                                void saveAccountField(row.key);
                               }
 
                               if (event.key === "Escape") {
@@ -937,6 +944,11 @@ function SettingsPage() {
                             }}
                             autoFocus
                             type={row.key === "Email" ? "email" : "text"}
+                            minLength={row.key === "Username" ? 3 : undefined}
+                            maxLength={row.key === "Username" ? 20 : undefined}
+                            pattern={row.key === "Username" ? "[A-Za-z][A-Za-z0-9_]{2,19}" : undefined}
+                            title={row.key === "Username" ? USERNAME_ERROR : undefined}
+                            autoCapitalize={row.key === "Username" ? "none" : undefined}
                             className="mt-2 w-full rounded-md border border-white/10 bg-[#0d121c] px-3 py-2.5 text-sm text-white outline-none transition placeholder:text-white/20 focus:border-coral"
                           />
                         ) : (
@@ -948,7 +960,7 @@ function SettingsPage() {
                         type="button"
                         onClick={() => {
                           if (editing === row.key) {
-                            saveAccountField(row.key);
+                            void saveAccountField(row.key);
                           } else {
                             startEditing(row.key, row.value);
                           }
@@ -1156,6 +1168,13 @@ function SettingsPage() {
                     description="Let other players find and view your player profile."
                     checked={preferences.profileVisibility}
                     onChange={() => togglePreference("profileVisibility")}
+                  />
+
+                  <PreferenceRow
+                    label="Show Status"
+                    description="Let your friends see whether you are online."
+                    checked={preferences.showStatus}
+                    onChange={() => togglePreference("showStatus")}
                   />
 
                   <PreferenceRow
@@ -1701,6 +1720,7 @@ function SettingsPage() {
                       onChange={setNewPassword}
                       visible={showNewPassword}
                       onToggle={() => setShowNewPassword((value) => !value)}
+                      passwordRules
                     />
 
                     <PasswordField
@@ -1709,10 +1729,11 @@ function SettingsPage() {
                       onChange={setConfirmPassword}
                       visible={showConfirmPassword}
                       onToggle={() => setShowConfirmPassword((value) => !value)}
+                      passwordRules
                     />
 
                     <p className="text-xs text-white/30">
-                      Password must contain at least 8 characters.
+                      Password must be 8–64 characters with uppercase, lowercase, a number, a special character, and no spaces.
                     </p>
 
                     <button
@@ -1878,12 +1899,14 @@ function PasswordField({
   onChange,
   visible,
   onToggle,
+  passwordRules = false,
 }: {
   label: string;
   value: string;
   onChange: (value: string) => void;
   visible: boolean;
   onToggle: () => void;
+  passwordRules?: boolean;
 }) {
   return (
     <label className="block text-[10px] font-black uppercase tracking-wider text-white/35">
@@ -1894,6 +1917,10 @@ function PasswordField({
           type={visible ? "text" : "password"}
           value={value}
           onChange={(event) => onChange(event.target.value)}
+          minLength={passwordRules ? 8 : undefined}
+          maxLength={passwordRules ? 64 : undefined}
+          pattern={passwordRules ? PASSWORD_INPUT_PATTERN : undefined}
+          title={passwordRules ? PASSWORD_ERROR : undefined}
           className="w-full rounded-md border border-white/10 bg-[#0d121c] px-3 py-3 pr-11 text-sm font-bold text-white outline-none placeholder:text-white/15 focus:border-coral"
           autoComplete="off"
         />
@@ -1904,7 +1931,7 @@ function PasswordField({
           className="absolute right-3 top-1/2 -translate-y-1/2 text-white/25 transition hover:text-white"
           aria-label={visible ? "Hide password" : "Show password"}
         >
-          {visible ? <EyeOff className="size-4" /> : <Eye className="size-4" />}
+          {visible ? <Eye className="size-4" /> : <EyeOff className="size-4" />}
         </button>
       </div>
     </label>

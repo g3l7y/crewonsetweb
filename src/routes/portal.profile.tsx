@@ -26,7 +26,8 @@ import {
   Youtube,
 } from "lucide-react";
 import { ChangeEvent, useEffect, useMemo, useRef, useState } from "react";
-import { EMAIL_ERROR, isValidEmail } from "@/lib/validation";
+import { EMAIL_ERROR, USERNAME_ERROR, isValidEmail, isValidUsername } from "@/lib/validation";
+import { useQueryClient } from "@tanstack/react-query";
 import {
   formatCoins,
   formatTransactionDate,
@@ -37,7 +38,7 @@ import { CosmeticArt } from "@/components/portal/cosmetic-art";
 import { cosmeticCatalog, ownedItemsStore } from "@/lib/demo/portal-shop";
 import { getProfileArtwork } from "@/lib/demo/profile-art";
 import { isMockMode } from "@/lib/playfab/config";
-import { usePlayerInventory, usePlayerLoadout, usePlayerProfile, usePlayerProgression, useTransactions, useUpdateProfile } from "@/lib/playfab/hooks";
+import { QUERY_KEYS, usePlayerInventory, usePlayerLoadout, usePlayerProfile, usePlayerProgression, useTransactions, useUpdateProfile } from "@/lib/playfab/hooks";
 import { Coins, Lock } from "lucide-react";
 
 type ProfileTransaction = {
@@ -81,6 +82,7 @@ function CrewProfilePage() {
   const loadoutQuery = usePlayerLoadout();
   const transactionsQuery = useTransactions();
   const updateProfileMutation = useUpdateProfile();
+  const queryClient = useQueryClient();
 
   const demoOwnedItems = cosmeticCatalog.filter((item) => ownedIds.includes(item.id));
   const realOwnedItems = cosmeticCatalog.filter((item) =>
@@ -180,19 +182,19 @@ function CrewProfilePage() {
     if (!profile) return;
 
     setAccount({
-      username: profile.displayName || profile.username || "Player",
+      username: profile.username || profile.displayName || "Player",
       email: profile.email || "",
     });
     setBio(profile.bio || "");
     setTwitter(profile.socialLinks?.twitter || "");
     setInstagram(profile.socialLinks?.instagram || "");
     setYoutube(profile.socialLinks?.youtube || "");
-    setProfileImage(profile.avatarUrl || getProfileArtwork(profile.displayName || profile.username || "Player"));
+    setProfileImage(profile.avatarUrl || getProfileArtwork(profile.username || profile.displayName || "Player"));
   }, [mockMode, profileQuery.data]);
 
   const profileDisplayName = mockMode
     ? account.username
-    : profileQuery.data?.displayName || profileQuery.data?.username || account.username;
+    : profileQuery.data?.username || profileQuery.data?.displayName || account.username;
   const profileLevel = mockMode ? 27 : progressionQuery.data?.level ?? 1;
   const profileCurrentXp = mockMode ? 6820 : progressionQuery.data?.currentXp ?? 0;
   const profileXpToNextLevel = mockMode ? 10000 : progressionQuery.data?.xpToNextLevel ?? 0;
@@ -208,10 +210,6 @@ function CrewProfilePage() {
           year: "numeric",
         })
       : "—";
-  const profileCrewId = mockMode
-    ? "COS-2847-CP"
-    : profileQuery.data?.crewId || profileQuery.data?.playFabId || "—";
-
   const openEditor = () => {
     setDraftBio(bio);
     setDraftTwitter(twitter);
@@ -240,14 +238,14 @@ function CrewProfilePage() {
 
   const applySave = async () => {
     const nextAccount: ProfileAccount = {
-      username: draftUsername.trim() || account.username,
+      username: (draftUsername.trim() || account.username).toUpperCase(),
       email: draftEmail.trim() || account.email,
     };
 
     if (!mockMode) {
       try {
         await updateProfileMutation.mutateAsync({
-          displayName: nextAccount.username,
+          username: nextAccount.username,
           bio: draftBio,
           socialLinks: {
             twitter: draftTwitter,
@@ -261,15 +259,35 @@ function CrewProfilePage() {
       }
     } else {
       try {
+        if (nextAccount.username.toLowerCase() !== account.username.toLowerCase()) {
+          const response = await fetch("/api/auth/check-username", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ username: nextAccount.username }),
+          });
+          if (!response.ok) {
+            const result = (await response.json()) as { error?: string };
+            throw new Error(result.error ?? "That username is already in use. Please choose another.");
+          }
+        }
         window.localStorage.setItem(
           PROFILE_ACCOUNT_KEY,
           JSON.stringify(nextAccount)
+        );
+        const existingPlayerAccount = window.localStorage.getItem("player-account");
+        const playerAccount = existingPlayerAccount
+          ? JSON.parse(existingPlayerAccount) as Record<string, unknown>
+          : {};
+        window.localStorage.setItem(
+          "player-account",
+          JSON.stringify({ ...playerAccount, ...nextAccount }),
         );
         if (draftPassword) {
           window.localStorage.setItem("cos.profile.password", draftPassword);
         }
       } catch {
-        /* demo storage unavailable */
+        setFieldError("Unable to apply the username change. Please try again.");
+        return;
       }
     }
 
@@ -285,17 +303,24 @@ function CrewProfilePage() {
     setConfirmPasswordInput("");
     setConfirmError("");
     setSaved(true);
+    await queryClient.invalidateQueries({ queryKey: QUERY_KEYS.profile });
+    await queryClient.invalidateQueries({ queryKey: QUERY_KEYS.session });
 
     window.setTimeout(() => {
       setSaved(false);
     }, 2500);
   };
 
-  const saveProfile = () => {
+  const saveProfile = async () => {
     setFieldError("");
 
     if (!draftUsername.trim()) {
       setFieldError("Username cannot be empty.");
+      return;
+    }
+
+    if (!isValidUsername(draftUsername.trim())) {
+      setFieldError(USERNAME_ERROR);
       return;
     }
 
@@ -319,8 +344,22 @@ function CrewProfilePage() {
       return;
     }
 
+    if (draftUsername.trim().toLowerCase() !== account.username.toLowerCase()) {
+      try {
+        const response = await fetch("/api/auth/check-username?username=" + encodeURIComponent(draftUsername.trim()));
+        const result = (await response.json()) as { available?: boolean; error?: string };
+        if (!response.ok || result.available === false) {
+          setFieldError(result.error ?? "That username is already in use. Please choose another.");
+          return;
+        }
+      } catch {
+        setFieldError("Unable to verify username availability. Please try again.");
+        return;
+      }
+    }
+
     if (!mockMode) {
-      void applySave();
+      await applySave();
       return;
     }
 
@@ -495,7 +534,7 @@ function CrewProfilePage() {
             </div>
 
             {/* =====================================================
-                JOINED / CREW ID
+                JOINED
             ===================================================== */}
 
             <div className="mt-8 flex flex-wrap gap-x-12 gap-y-5 border-t border-white/[0.07] pt-7">
@@ -507,16 +546,6 @@ function CrewProfilePage() {
 
                 <strong className="mt-1.5 block text-sm text-white/80">
                   {profileJoined}
-                </strong>
-              </div>
-
-              <div>
-                <span className="block text-xs font-black uppercase tracking-[0.14em] text-white/35">
-                  Crew ID
-                </span>
-
-                <strong className="mt-1.5 block text-sm text-white/80">
-                  {profileCrewId}
                 </strong>
               </div>
             </div>
@@ -869,7 +898,19 @@ function CrewProfilePage() {
                   <input
                     id="profile-username"
                     value={draftUsername}
-                    onChange={(event) => setDraftUsername(event.target.value)}
+                    onChange={(event) =>
+                      setDraftUsername(
+                        event.target.value
+                          .replace(/[^A-Za-z0-9_]/g, "")
+                          .replace(/^[^A-Za-z]+/, "")
+                          .slice(0, 20),
+                      )
+                    }
+                    minLength={3}
+                    maxLength={20}
+                    pattern="[A-Za-z][A-Za-z0-9_]{2,19}"
+                    title={USERNAME_ERROR}
+                    autoCapitalize="none"
                     className="mt-2 w-full rounded-lg border border-white/10 bg-[#0d121c] px-4 py-3 text-sm text-white outline-none focus:border-coral focus:ring-4 focus:ring-coral/10"
                   />
                 </div>
@@ -907,7 +948,7 @@ function CrewProfilePage() {
                         aria-label={showNewPassword ? "Hide new password" : "Show new password"}
                         className="absolute right-2 top-1/2 grid size-8 -translate-y-1/2 place-items-center rounded text-white/50 transition hover:text-coral"
                       >
-                        {showNewPassword ? <EyeOff className="size-4" /> : <Eye className="size-4" />}
+                        {showNewPassword ? <Eye className="size-4" /> : <EyeOff className="size-4" />}
                       </button>
                     </span>
                   </div>
@@ -929,7 +970,7 @@ function CrewProfilePage() {
                         aria-label={showConfirmPassword ? "Hide confirm password" : "Show confirm password"}
                         className="absolute right-2 top-1/2 grid size-8 -translate-y-1/2 place-items-center rounded text-white/50 transition hover:text-coral"
                       >
-                        {showConfirmPassword ? <EyeOff className="size-4" /> : <Eye className="size-4" />}
+                        {showConfirmPassword ? <Eye className="size-4" /> : <EyeOff className="size-4" />}
                       </button>
                     </span>
                   </div>

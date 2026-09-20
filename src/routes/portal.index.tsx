@@ -29,8 +29,13 @@ import {
   Sparkles,
   ArrowRight,
   User,
+  Megaphone,
+  Flag,
+  Settings2,
 } from "lucide-react";
 import { cosmeticCatalog, ownedItemsStore } from "@/lib/demo/portal-shop";
+import { gameBuildStore, notificationsStore } from "@/lib/demo/store";
+import { isActivityNotification, matchesPlayerRecipient, relativeTime } from "@/lib/demo/inbox";
 import type { CosmeticItem } from "@/lib/demo/portal-shop";
 import { CosmeticArt } from "@/components/portal/cosmetic-art";
 import { Leaderboards } from "@/components/portal/leaderboards";
@@ -146,10 +151,12 @@ function PlayerDashboardPage() {
   const progressionQuery = usePlayerProgression();
   const achievementsQuery = useAchievements();
   const productionLogsQuery = useProductionLogs();
+  const [gameBuilds] = gameBuildStore.useStore();
+  const [demoNotifications] = notificationsStore.useStore();
+  const currentBuild = gameBuilds[0];
+  const playNowHref = currentBuild?.downloadUrl?.trim() || "notes://";
 
-  const displayName = mockMode
-    ? "CAMERA_PRO"
-    : profileQuery.data?.displayName || profileQuery.data?.username || "PLAYER";
+  const displayName = profileQuery.data?.username || profileQuery.data?.displayName || "CAMERA_PRO";
   const displayAvatar = mockMode
     ? getProfileArtwork(displayName)
     : profileQuery.data?.avatarUrl || getProfileArtwork(displayName);
@@ -174,7 +181,35 @@ function PlayerDashboardPage() {
         unlocked: achievement.unlocked,
       }));
   const dashboardActivity = mockMode
-    ? recentActivity
+    ? demoNotifications
+        .filter((notification) =>
+          isActivityNotification(notification) &&
+          matchesPlayerRecipient(
+            notification,
+            profileQuery.data?.username ?? profileQuery.data?.displayName ?? "CAMERA_PRO",
+            profileQuery.data?.email ?? "player@crewonset.com",
+            profileQuery.data?.playFabId ?? "MOCK-PLAYER-001",
+          ),
+        )
+        .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
+        .slice(0, 5)
+        .map((notification) => ({
+          id: notification.id,
+          kind: "production" as const,
+          title: notification.title,
+          detail: notification.body,
+          time: relativeTime(notification.createdAt),
+          createdAt: notification.createdAt,
+          icon: ({
+            announcement: Megaphone,
+            achievement: Award,
+            friend: UserPlus,
+            shop: ShoppingBag,
+            transaction: ShoppingBag,
+            report: Flag,
+            system: Settings2,
+          } as Record<string, typeof Film>)[notification.kind] ?? Settings2,
+        }))
     : (productionLogsQuery.data ?? []).slice(0, 5).map((log, index) => ({
         id: log.productionId || log.id || "production-" + index,
         kind: "production" as const,
@@ -273,11 +308,13 @@ function PlayerDashboardPage() {
           <div className="relative p-7 sm:p-10">
             <p className="text-xs font-black tracking-[.2em] text-yellow">LATEST UPDATE</p>
             <h2 className="mt-3 max-w-xl text-4xl font-black uppercase leading-[.9] tracking-tight text-white sm:text-5xl">
-              Crew On Set! <span className="text-coral">v1.4</span>
+              Crew On Set! <span className="text-coral">v{currentBuild?.version ?? "1.4"}</span>
             </h2>
             <p className="mt-4 text-lg text-white/75">Miss your crew? Play the game now.</p>
             <a
-              href="notes://"
+              href={playNowHref}
+              target="_blank"
+              rel="noreferrer"
               className="latest-update-play-button mt-7 inline-flex items-center gap-2 rounded-md bg-coral px-5 py-3 text-sm font-black text-white transition hover:bg-coral-dark"
             >
               <Play className="size-4 fill-current" />
@@ -357,7 +394,15 @@ function PlayerDashboardPage() {
               <h2 className="text-sm font-black uppercase tracking-wide text-white">
                 Recent Activity
               </h2>
-              <span className="text-[10px] font-bold uppercase text-white/30">Last 7 days</span>
+              <div className="flex items-center gap-3">
+                <span className="text-[10px] font-bold uppercase text-white/30">Last 7 days</span>
+                <Link
+                  href="/portal/inbox?tab=notifications"
+                  className="text-[10px] font-black uppercase tracking-wide text-coral transition hover:text-yellow"
+                >
+                  See more →
+                </Link>
+              </div>
             </div>
             <ul className="divide-y divide-white/5">
               {dashboardActivity.map((activity) => {
