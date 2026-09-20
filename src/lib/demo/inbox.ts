@@ -7,6 +7,15 @@ export type NotificationLike = {
   target?: { kind: "all" | "players"; playerIds?: string[] | undefined } | undefined;
 };
 
+export const RECENT_ACTIVITY_LIMIT = 5;
+export const NOTIFICATION_BELL_LIMIT = 10;
+
+export function sortNotificationsNewestFirst<T extends { createdAt: string }>(notifications: T[]) {
+  return [...notifications].sort(
+    (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime(),
+  );
+}
+
 const hrefByKind: Record<string, string> = {
   announcement: "/portal",
   achievement: "/portal/achievements",

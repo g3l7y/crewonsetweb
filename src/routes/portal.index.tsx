@@ -35,11 +35,17 @@ import {
 } from "lucide-react";
 import { cosmeticCatalog, ownedItemsStore } from "@/lib/demo/portal-shop";
 import { gameBuildStore, notificationsStore } from "@/lib/demo/store";
-import { isActivityNotification, matchesPlayerRecipient, relativeTime } from "@/lib/demo/inbox";
+import {
+  isActivityNotification,
+  matchesPlayerRecipient,
+  RECENT_ACTIVITY_LIMIT,
+  relativeTime,
+  sortNotificationsNewestFirst,
+} from "@/lib/demo/inbox";
 import type { CosmeticItem } from "@/lib/demo/portal-shop";
 import { CosmeticArt } from "@/components/portal/cosmetic-art";
 import { Leaderboards } from "@/components/portal/leaderboards";
-import { useAchievements, useCatalog, usePlayerInventory, usePlayerProfile, usePlayerProgression, useProductionLogs } from "@/lib/playfab/hooks";
+import { useAchievements, useCatalog, useNotifications, usePlayerInventory, usePlayerProfile, usePlayerProgression, useProductionLogs } from "@/lib/playfab/hooks";
 import { isMockMode } from "@/lib/playfab/config";
 import { sortNewestFirst } from "@/lib/validation";
 
@@ -151,6 +157,7 @@ function PlayerDashboardPage() {
   const progressionQuery = usePlayerProgression();
   const achievementsQuery = useAchievements();
   const productionLogsQuery = useProductionLogs();
+  const realNotificationsQuery = useNotifications();
   const [gameBuilds] = gameBuildStore.useStore();
   const [demoNotifications] = notificationsStore.useStore();
   const currentBuild = gameBuilds[0];
@@ -181,8 +188,8 @@ function PlayerDashboardPage() {
         unlocked: achievement.unlocked,
       }));
   const dashboardActivity = mockMode
-    ? demoNotifications
-        .filter((notification) =>
+    ? sortNotificationsNewestFirst(
+        demoNotifications.filter((notification) =>
           isActivityNotification(notification) &&
           matchesPlayerRecipient(
             notification,
@@ -190,9 +197,9 @@ function PlayerDashboardPage() {
             profileQuery.data?.email ?? "player@crewonset.com",
             profileQuery.data?.playFabId ?? "MOCK-PLAYER-001",
           ),
-        )
-        .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
-        .slice(0, 5)
+        ),
+      )
+        .slice(0, RECENT_ACTIVITY_LIMIT)
         .map((notification) => ({
           id: notification.id,
           kind: "production" as const,
@@ -210,15 +217,27 @@ function PlayerDashboardPage() {
             system: Settings2,
           } as Record<string, typeof Film>)[notification.kind] ?? Settings2,
         }))
-    : (productionLogsQuery.data ?? []).slice(0, 5).map((log, index) => ({
-        id: log.productionId || log.id || "production-" + index,
-        kind: "production" as const,
-        title: "Wrapped " + (log.clientName || log.client || log.title || "production"),
-        detail: "Scored " + String(log.overallScore ?? log.score ?? 0) + "%",
-        time: new Date(log.date).toLocaleDateString(),
-        createdAt: log.date,
-        icon: Film,
-      }));
+    : sortNotificationsNewestFirst(
+        (realNotificationsQuery.data ?? []).filter(isActivityNotification),
+      )
+        .slice(0, RECENT_ACTIVITY_LIMIT)
+        .map((notification) => ({
+          id: notification.id,
+          kind: "production" as const,
+          title: notification.title,
+          detail: notification.body ?? "",
+          time: relativeTime(notification.createdAt),
+          createdAt: notification.createdAt,
+          icon: ({
+            announcement: Megaphone,
+            achievement: Award,
+            friend: UserPlus,
+            shop: ShoppingBag,
+            transaction: ShoppingBag,
+            report: Flag,
+            system: Settings2,
+          } as Record<string, typeof Film>)[notification.kind ?? "system"] ?? Settings2,
+        }));
 
   const catalog = useMemo(() => {
     if (mockMode) return cosmeticCatalog;
@@ -243,6 +262,23 @@ function PlayerDashboardPage() {
     () => catalog.filter((item) => ownedIds.includes(item.id)),
     [catalog, ownedIds],
   );
+  const recentMockOwnedItems = useMemo(
+    () => ownedIds
+      .map((id) => catalog.find((item) => item.id === id))
+      .filter((item): item is CosmeticItem => item !== undefined)
+      .slice(-2),
+    [catalog, ownedIds],
+  );
+  const recentRealOwnedItems = useMemo(
+    () => [...(inventoryQuery.data ?? [])]
+      .sort((a, b) => new Date(b.acquiredAt).getTime() - new Date(a.acquiredAt).getTime())
+      .map((inventoryItem) => catalog.find((item) => item.id === inventoryItem.itemId))
+      .filter((item): item is CosmeticItem => item !== undefined)
+      .slice(0, 2),
+    [catalog, inventoryQuery.data],
+  );
+  const dashboardOwnedItems = mockMode ? recentMockOwnedItems : recentRealOwnedItems;
+  const ownedItemsTotal = mockMode ? ownedItems.length : (inventoryQuery.data?.length ?? 0);
   const ownedItemsLoading = !mockMode && (catalogQuery.isLoading || inventoryQuery.isLoading);
 
   return (
@@ -429,20 +465,24 @@ function PlayerDashboardPage() {
           <section className="dashboard-owned-items-card overflow-hidden rounded-xl border border-white/10 bg-[#121d32]">
             <div className="flex items-center justify-between border-b border-white/10 px-5 py-4">
               <h2 className="text-sm font-black uppercase tracking-wide text-white">Owned Items</h2>
-              <span className="text-[10px] font-bold uppercase text-white/30">{ownedItems.length} total</span>
+              <span className="text-[10px] font-bold uppercase text-white/30">{ownedItemsTotal} total</span>
             </div>
 
             {ownedItemsLoading ? (
               <p className="px-5 py-8 text-center text-sm text-white/40">
                 Syncing your collection…
               </p>
-            ) : ownedItems.length === 0 ? (
+            ) : ownedItemsTotal === 0 ? (
               <p className="px-5 py-8 text-center text-sm text-white/40">
                 You haven&apos;t collected any cosmetics yet.
               </p>
+            ) : dashboardOwnedItems.length === 0 ? (
+              <p className="px-5 py-8 text-center text-sm text-white/40">
+                Your collection is synced, but item artwork is still loading.
+              </p>
             ) : (
               <div className="grid grid-cols-2 gap-3 p-5">
-                {ownedItems.map((item) => (
+                {dashboardOwnedItems.map((item) => (
                   <div
                     key={item.id}
                     className="rounded-lg border border-white/10 bg-white/[0.03] p-3 text-center"
@@ -457,7 +497,7 @@ function PlayerDashboardPage() {
 
             <div className="border-t border-white/10 p-4">
               <Link
-                href="/portal/shop"
+                href="/portal/shop?view=owned"
                 className="dashboard-collection-button flex w-full items-center justify-center gap-2 rounded-md bg-coral px-4 py-2.5 text-xs font-black uppercase tracking-wide text-white transition hover:opacity-90"
               >
                 View Full Collection

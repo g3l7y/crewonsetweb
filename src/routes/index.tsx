@@ -199,16 +199,15 @@ function HomePage() {
 
           <div className="image-frame rotate-1">
             <div className="group relative aspect-video w-full overflow-hidden bg-black">
-              <iframe
-                className="absolute inset-0 h-full w-full"
-                src="https://www.youtube-nocookie.com/embed/BFQWKpAQ7vQ"
+              <video
+                className="absolute inset-0 h-full w-full object-cover"
+                src="/videos/crew-on-set-game-lore.mp4"
+                poster="/videos/crew-on-set-game-lore-poster.jpg"
                 title="The Story of Crew On Set!"
-                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                allowFullScreen
-                loading="lazy"
+                controls
+                preload="metadata"
+                playsInline
               />
-              {/* Blocks player hover so YouTube controls/details stay hidden until the frame is hovered */}
-              <div aria-hidden className="absolute inset-0 group-hover:pointer-events-none" />
             </div>
 
             <span className="frame-label">

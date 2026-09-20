@@ -14,10 +14,12 @@ import {
 
 } from "@/lib/demo/store";
 import {
+  NOTIFICATION_BELL_LIMIT,
   isActivityNotification,
   matchesPlayerRecipient,
   notificationHref as inboxNotificationHref,
   relativeTime as inboxRelativeTime,
+  sortNotificationsNewestFirst,
 } from "@/lib/demo/inbox";
 import type { PlayerNotification as PlayFabNotification } from "@/lib/playfab/types";
 import { isMockMode } from "@/lib/playfab/config";
@@ -108,9 +110,8 @@ export function NotificationBell({ dark = true }: { dark?: boolean }) {
     return () => document.removeEventListener("mousedown", onClickOutside);
   }, []);
 
-  const sorted = [...notifications].sort(
-    (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime(),
-  );
+  const sortedNotifications = sortNotificationsNewestFirst(notifications);
+  const sorted = sortedNotifications.slice(0, NOTIFICATION_BELL_LIMIT);
   const unreadCount = notifications.filter((n) => !n.read).length;
 
   function markRead(id: string) {

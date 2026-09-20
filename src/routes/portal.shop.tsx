@@ -12,7 +12,7 @@ export const Route = createFileRoute("/portal/shop")({
   component: ShopPage,
 });
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import {
   Check,
   Coins,
@@ -24,6 +24,7 @@ import {
   X,
 } from "lucide-react";
 import CheckoutPage from "@/components/portal/checkout";
+import { useSearchParams } from "@/components/next-compat/navigation";
 import { CosmeticArt } from "@/components/portal/cosmetic-art";
 import {
   cosmeticCatalog,
@@ -64,7 +65,13 @@ type ConfirmTarget = { mode: "cart" } | { mode: "single"; itemId: string };
 
 function ShopPage() {
   const mockMode = isMockMode();
-  const [view, setView] = useState<ViewMode>("shop");
+  const searchParams = useSearchParams();
+  const requestedView: ViewMode = searchParams.get("view") === "owned" ? "owned" : "shop";
+  const [view, setView] = useState<ViewMode>(requestedView);
+
+  useEffect(() => {
+    setView(requestedView);
+  }, [requestedView]);
   const [activeCategory, setActiveCategory] = useState<Category>("All");
   const [search, setSearch] = useState("");
   const [selectedItem, setSelectedItem] = useState<CosmeticItem | null>(null);
