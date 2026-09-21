@@ -529,7 +529,7 @@ function SettingsPage() {
         </section>
       </div>
 
-      {recoveryOpen && <PasswordRecoveryModal scope="admin" dark onClose={() => setRecoveryOpen(false)} />}
+      {recoveryOpen && <PasswordRecoveryModal scope="admin" onClose={() => setRecoveryOpen(false)} />}
 
       <SocialLinksSection />
 

@@ -2,6 +2,7 @@ import { FormEvent, useState } from "react";
 import { LoaderCircle, X } from "lucide-react";
 import { isMockMode } from "@/lib/playfab/config";
 import { EMAIL_ERROR, PASSWORD_ERROR, PASSWORD_INPUT_PATTERN, isValidEmail, isValidPassword } from "@/lib/validation";
+import { useDisplayTheme } from "@/components/theme/display-theme-switcher";
 
 type RecoveryScope = "player" | "admin";
 type RecoveryStep = "email" | "code" | "password" | "sent" | "done";
@@ -9,11 +10,12 @@ type RecoveryStep = "email" | "code" | "password" | "sent" | "done";
 type PasswordRecoveryModalProps = {
   scope: RecoveryScope;
   onClose: () => void;
-  dark?: boolean;
 };
 
-export function PasswordRecoveryModal({ scope, onClose, dark = false }: PasswordRecoveryModalProps) {
+export function PasswordRecoveryModal({ scope, onClose }: PasswordRecoveryModalProps) {
   const mockMode = isMockMode();
+  const displayTheme = useDisplayTheme(scope === "admin" ? "admin" : "player");
+  const dark = displayTheme === "dark";
   const [step, setStep] = useState<RecoveryStep>("email");
   const [email, setEmail] = useState("");
   const [demoCode, setDemoCode] = useState("");
@@ -31,7 +33,7 @@ export function PasswordRecoveryModal({ scope, onClose, dark = false }: Password
     ? "form-input !border-white/10 !bg-[#0d121c] !text-white placeholder:!text-white/25 focus:!border-coral"
     : "form-input";
   const emailLabelClass = `${dark ? labelClass : "!text-[#0a0e19]"} admin-recovery-email-label`;
-  const emailInputClass = `${dark ? inputClass : "form-input !bg-[#f0ede4]"} admin-recovery-email-input`;
+  const emailInputClass = `${dark ? inputClass : "form-input !bg-[#f0ede4] !text-[#0a0e19]"} admin-recovery-email-input`;
   const buttonClass = dark
     ? "bg-coral text-white hover:bg-coral-dark"
     : "bg-navy text-white hover:bg-coral";
