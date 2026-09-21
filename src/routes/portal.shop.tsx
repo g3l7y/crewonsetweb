@@ -373,7 +373,7 @@ function ShopPage() {
               </div>
               <div className="coin-pack-grid">
                 {coinPackages.map((pack) => (
-                  <article key={pack.id} className="coin-pack-card"><Coins /><strong>{formatCoins(pack.coins)} <small>C-COINS</small></strong>{pack.bonus && <span>+{formatCoins(pack.bonus)} bonus</span>}<p>{pack.priceLabel}</p><button type="button" onClick={() => startPackageCheckout(pack.id)}>{mockMode ? "Buy demo pack" : "Buy with PayMongo"}</button></article>
+                  <article key={pack.id} className="coin-pack-card"><Coins /><strong>{formatCoins(pack.coins)} <small>C-COINS</small></strong><p>{pack.priceLabel}</p><button type="button" onClick={() => startPackageCheckout(pack.id)}>{mockMode ? "Buy demo pack" : "Buy with PayMongo"}</button></article>
                 ))}
               </div>
             </section>
