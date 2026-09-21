@@ -93,6 +93,26 @@ export const Route = createFileRoute("/api/auth/password-recovery/request")({
             return Response.json({ success: false, error: "Email does not exist in this account type." }, { status: 404 });
           }
 
+          // PlayFab sends recovery mail to the contact email, which is separate
+          // from the login email. Existing accounts may predate Crew On Set's
+          // contact-email sync, so make the verified account email the contact
+          // email immediately before requesting recovery.
+          const contact = await playFabServerRequest("/Server/AddOrUpdateContactEmail", {
+            PlayFabId: playFabId,
+            EmailAddress: email,
+          }, secretKey);
+          if (!contact.response.ok || contact.result.code !== 200) {
+            console.error("[PlayFab] Could not register recovery contact email:", {
+              errorCode: contact.result.errorCode,
+              errorMessage: contact.result.errorMessage,
+              playFabId,
+              scope,
+            });
+            return Response.json({
+              success: false,
+              error: recoveryError(contact.result, "PlayFab could not register the account email for recovery."),
+            }, { status: 502 });
+          }
           // This is the documented PlayFab custom-template flow. The email is
           // sent to the account's PlayFab contact email, while the template's
           // $ConfirmationUrl$ carries the secure reset token.
