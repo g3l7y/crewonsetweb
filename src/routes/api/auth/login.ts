@@ -143,7 +143,10 @@ export const Route = createFileRoute("/api/auth/login")({
                 const tagsResult = await tagsResponse.json();
                 if (tagsResult.code === 200) {
                   const tags: string[] = tagsResult.data?.Tags ?? [];
-                  if (tags.some((t: string) => t.toLowerCase() === "role:admin")) {
+                  if (tags.some((t: string) => {
+                    const normalizedTag = t.toLowerCase();
+                    return normalizedTag === "role:admin" || normalizedTag.endsWith(":role:admin");
+                  })) {
                     role = "admin";
                   }
                 }

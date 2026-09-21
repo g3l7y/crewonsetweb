@@ -127,7 +127,11 @@ export async function validateSessionFromRequest(
         if (options.requireAdmin) return null;
       } else {
         const tags: unknown[] = tagsResult.data?.Tags ?? [];
-        if (tags.some((tag) => typeof tag === 'string' && tag.toLowerCase() === 'role:admin')) {
+        if (tags.some((tag) => {
+          if (typeof tag !== 'string') return false;
+          const normalizedTag = tag.toLowerCase();
+          return normalizedTag === 'role:admin' || normalizedTag.endsWith(':role:admin');
+        })) {
           role = 'admin';
         }
       }
