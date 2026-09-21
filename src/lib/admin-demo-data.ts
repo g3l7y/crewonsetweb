@@ -97,21 +97,33 @@ function seededPick<T>(list: readonly T[], seed: number) {
   return item as T;
 }
 
-export function getPlayerAccountInfo(id: number): PlayerAccountInfo {
+function getPlayerNumericSeed(id: number | string): number {
+  const numeric = Number(id);
+
+  if (Number.isFinite(numeric)) {
+    return Math.abs(Math.trunc(numeric));
+  }
+
+  return Array.from(String(id)).reduce((seed, character) => seed + character.charCodeAt(0), 0);
+}
+
+export function getPlayerAccountInfo(id: number | string): PlayerAccountInfo {
   const devices = ["Desktop — RTX 3060", "Laptop — Intel i7", "Desktop — RX 6700 XT"];
+  const seed = getPlayerNumericSeed(id);
+  const crewId = typeof id === "number" ? `COS-${String(id).padStart(4, "0")}` : `PF-${id}`;
 
   return {
-    crewId: `COS-${String(id).padStart(4, "0")}`,
+    crewId,
     platform: "Windows",
-    device: seededPick(devices, id),
+    device: seededPick(devices, seed),
     lastLogin: "Aug 09, 2026 — 21:14",
-    lastIp: `203.0.113.${(id * 7) % 255}`,
+    lastIp: `203.0.113.${(seed * 7) % 255}`,
     loginMethod: "Google",
-    twoFactor: id % 3 === 0 ? "Enabled" : "Disabled",
+    twoFactor: seed % 3 === 0 ? "Enabled" : "Disabled",
   };
 }
 
-export function getPlayerActivity(id: number, username: string): PlayerActivityEntry[] {
+export function getPlayerActivity(id: number | string, username: string): PlayerActivityEntry[] {
   return [
     {
       id: `act-${id}-1`,
