@@ -6,7 +6,7 @@ import {
   markPayMongoOrderFailed,
   markPayMongoOrderFulfilled,
 } from '@/lib/paymongo/ledger';
-import { addCurrency } from '@/lib/playfab/economy';
+import { addCurrency, getCcoinCurrencyCode } from '@/lib/playfab/economy';
 import { isMockMode } from '@/lib/playfab/config';
 import {
   WEBSITE_DATA_KEYS,
@@ -214,17 +214,18 @@ export const Route = createFileRoute('/api/paymongo/webhook')({
             if (!mockMode) {
               const credited = await addCurrency(
                 order.playFabId,
-                'CC',
+                getCcoinCurrencyCode(),
                 order.coins,
                 playfabSecret as string,
+                { source: 'paymongo', orderId: order.id },
               );
-              if (!credited) {
+              if (!credited.success) {
                 console.error('[PayMongo] Failed to credit order:', order.id);
                 let ledgerFailed = false;
                 try {
                   ledgerFailed = await markPayMongoOrderFailed(
                     order.id,
-                    'PlayFab currency grant did not complete.',
+                    credited.error,
                   );
                 } catch (error) {
                   console.error('[PayMongo] Could not mark failed ledger order:', error);

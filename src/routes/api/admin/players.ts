@@ -1,6 +1,7 @@
 import { createFileRoute } from '@tanstack/react-router';
 import { unauthorizedSessionResponse, validateSessionFromRequest } from '@/lib/playfab/session';
 import { PLAYFAB_API_BASE } from '@/lib/playfab/config';
+import { getCcoinCurrencyCode } from '@/lib/playfab/economy';
 import type { PlayerProfile } from '@/lib/playfab/types';
 
 function getSecretKey(): string | null {
@@ -75,7 +76,7 @@ export const Route = createFileRoute('/api/admin/players')({
                 },
                 wallet: {
                   bCoins: currencies['BC'] ?? 0,
-                  cCoins: currencies['CC'] ?? 0,
+                  cCoins: currencies[getCcoinCurrencyCode()] ?? 0,
                 },
                 inventory: info?.UserInventory || [],
                 statistics: info?.PlayerStatistics || [],

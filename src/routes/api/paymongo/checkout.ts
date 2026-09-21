@@ -110,6 +110,7 @@ export const Route = createFileRoute('/api/paymongo/checkout')({
           // the session on Vercel preview deployments instead of redirecting to a
           // different host through a shared PUBLIC_APP_URL value.
           const publicAppUrl = new URL(request.url).origin.replace(/\/$/, '');
+          const returnPath = mockMode ? '/api/paymongo/return' : '/portal/shop';
           const now = new Date().toISOString();
           const order: PayMongoOrder = {
             id: orderId,
@@ -172,8 +173,8 @@ export const Route = createFileRoute('/api/paymongo/checkout')({
                   description: 'Crew On Set C-Coin top-up',
                   show_description: true,
                   show_line_items: true,
-                  success_url: publicAppUrl + '/portal/shop?payment=success&reference=' + encodeURIComponent(orderId),
-                  cancel_url: publicAppUrl + '/portal/shop?payment=cancelled&reference=' + encodeURIComponent(orderId),
+                  success_url: publicAppUrl + returnPath + '?payment=success&reference=' + encodeURIComponent(orderId),
+                  cancel_url: publicAppUrl + returnPath + '?payment=cancelled&reference=' + encodeURIComponent(orderId),
                   reference_number: orderId,
                   send_email_receipt: true,
                   metadata: {
