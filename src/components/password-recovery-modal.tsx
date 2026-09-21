@@ -34,9 +34,7 @@ export function PasswordRecoveryModal({ scope, onClose }: PasswordRecoveryModalP
     : "form-input";
   const emailLabelClass = `${dark ? labelClass : "!text-[#0a0e19]"} admin-recovery-email-label`;
   const emailInputClass = `${dark ? inputClass : "form-input !bg-[#f0ede4] !text-[#0a0e19]"} admin-recovery-email-input`;
-  const buttonClass = dark
-    ? "bg-coral text-white hover:bg-coral-dark"
-    : "bg-navy text-white hover:bg-coral";
+  const buttonClass = "bg-coral text-white hover:bg-coral-dark";
   const title = scope === "admin" ? "Admin password recovery" : "Password recovery";
 
   async function submitEmail(event: FormEvent<HTMLFormElement>) {
@@ -123,7 +121,7 @@ export function PasswordRecoveryModal({ scope, onClose }: PasswordRecoveryModalP
 
   return (
     <div className="fixed inset-0 z-[90] grid place-items-center bg-black/70 p-4 backdrop-blur-sm" role="dialog" aria-modal="true" aria-labelledby="password-recovery-title">
-      <section className={`relative w-full max-w-md rounded-2xl border p-6 shadow-2xl sm:p-8 ${shellClass} ${dark ? "admin-recovery-modal" : ""}`}>
+      <section className={`relative w-full max-w-md rounded-2xl border p-6 shadow-2xl sm:p-8 ${shellClass} ${dark ? "admin-recovery-modal" : ""} recovery-modal-shell`}>
         <button type="button" onClick={onClose} aria-label="Close" className={`absolute right-4 top-4 ${dark ? "text-white/45 hover:text-white" : "text-navy/40 hover:text-navy"}`}>
           <X className="size-5" />
         </button>
