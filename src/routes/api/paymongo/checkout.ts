@@ -35,13 +35,20 @@ function createOrderId(): string {
   return 'COS-COIN-' + Date.now() + '-' + Math.random().toString(36).slice(2, 8);
 }
 
+const DEFAULT_PAYMONGO_MERCHANT_NAME = 'CREW ON SET';
+
 function getPaymentMethodTypes(): string[] {
   const configured = process.env['PAYMONGO_PAYMENT_METHOD_TYPES'];
   const methods = (configured || 'card,gcash,qrph')
     .split(',')
     .map((method) => method.trim())
     .filter(Boolean);
-  return methods.length > 0 ? methods : ['card', 'gcash', 'qrph'];
+  return methods.length > 0 ? Array.from(new Set(methods)) : ['card', 'gcash', 'qrph'];
+}
+
+function getMerchantName(): string {
+  const configured = process.env['PAYMONGO_MERCHANT_NAME']?.trim();
+  return configured || DEFAULT_PAYMONGO_MERCHANT_NAME;
 }
 
 export const Route = createFileRoute('/api/paymongo/checkout')({
@@ -138,12 +145,17 @@ export const Route = createFileRoute('/api/paymongo/checkout')({
                   line_items: [
                     {
                       name: totalCoins + ' C-Coins',
+                      description: 'C-Coin top-up for Crew On Set',
                       amount: amountInCentavos,
                       currency: 'PHP',
                       quantity: 1,
                     },
                   ],
                   payment_method_types: getPaymentMethodTypes(),
+                  merchant: getMerchantName(),
+                  description: 'Crew On Set C-Coin top-up',
+                  show_description: true,
+                  show_line_items: true,
                   success_url: publicAppUrl + '/portal/shop?payment=success&reference=' + encodeURIComponent(orderId),
                   cancel_url: publicAppUrl + '/portal/shop?payment=cancelled&reference=' + encodeURIComponent(orderId),
                   reference_number: orderId,

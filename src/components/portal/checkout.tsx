@@ -279,8 +279,8 @@ export default function CheckoutPage({ onBack }: CheckoutPageProps) {
           <div className="portal-card overflow-hidden rounded-2xl border border-navy/10 shadow-2xl">
             <header className="flex items-center justify-between gap-4 border-b border-navy/10 px-5 py-4 sm:px-8">
               <div>
-                <p className="text-lg font-black tracking-tight text-navy">PayMongo</p>
-                <p className="text-[11px] font-bold uppercase tracking-wider text-navy/45">Hosted Checkout</p>
+                <p className="text-lg font-black tracking-tight text-navy">CREW ON SET</p>
+                <p className="text-[11px] font-bold uppercase tracking-wider text-navy/45">PayMongo Hosted Checkout</p>
               </div>
               <span className="rounded-full bg-yellow/20 px-3 py-1 text-[10px] font-black uppercase tracking-wider text-navy">
                 Test mode
