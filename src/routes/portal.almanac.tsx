@@ -12,8 +12,9 @@ export const Route = createFileRoute("/portal/almanac")({
   component: AlmanacPage,
 });
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { ProductionLogs } from "@/components/portal/production-logs";
+import { useSearchParams } from "@/components/next-compat/navigation";
 import { isMockMode } from "@/lib/playfab/config";
 import { useAchievements } from "@/lib/playfab/hooks";
 import {
@@ -34,6 +35,7 @@ import {
 } from "lucide-react";
 
 type Achievement = {
+  id?: string;
   name: string;
   description: string;
   date?: string;
@@ -44,6 +46,7 @@ type Achievement = {
   requirement?: string;
   levelUnlocked: number;
   unlocks: string;
+  placeholder?: boolean;
 };
 
 const demoAchievements: Achievement[] = [
@@ -137,32 +140,58 @@ function formatShort(value?: string) {
   return value ?? "";
 }
 
+const realAchievementIcons = [Star, Trophy, Clapperboard, Camera, Film, Award, Users, Crown];
+
 function AlmanacPage() {
+  const searchParams = useSearchParams();
+  const requestedTab: "Production Logs" | "Achievements" = searchParams.get("tab") === "achievements"
+    ? "Achievements"
+    : "Production Logs";
   const [tab, setTab] = useState<"Production Logs" | "Achievements">(
-    "Production Logs"
+    requestedTab,
   );
+  useEffect(() => {
+    setTab(requestedTab);
+  }, [requestedTab]);
   const [filter, setFilter] = useState("All");
   const [achievementSort, setAchievementSort] = useState("Recent");
   const [selectedAchievement, setSelectedAchievement] =
     useState<Achievement | null>(null);
   const mockMode = isMockMode();
   const achievementsQuery = useAchievements();
-  const realAchievementIcons = [Star, Trophy, Clapperboard, Camera, Film, Award, Users, Crown];
-  const realAchievements = useMemo<Achievement[]>(() =>
-    (achievementsQuery.data ?? []).map((item, index) => ({
-      name: item.title,
-      description: item.description,
-      date: undefined,
-      unlocked: item.unlocked,
-      icon: realAchievementIcons[index % realAchievementIcons.length],
-      progress: item.maxProgress > 0 ? String(item.progress) + "/" + String(item.maxProgress) : undefined,
-      percent: item.maxProgress > 0 ? Math.min(100, Math.round((item.progress / item.maxProgress) * 100)) : undefined,
-      requirement: item.description,
-      levelUnlocked: 0,
-      unlocks: "No additional content metadata provided by PlayFab.",
-    })),
-    [achievementsQuery.data],
-  );
+  const realAchievements = useMemo<Achievement[]>(() => {
+    const records = achievementsQuery.data ?? [];
+    if (records.length === 0) {
+      return Array.from({ length: 6 }, (_, index) => ({
+        id: `real-locked-achievement-${index}`,
+        name: "",
+        description: "",
+        unlocked: false,
+        icon: Lock,
+        levelUnlocked: 0,
+        unlocks: "",
+        placeholder: true,
+      }));
+    }
+
+    return records.map((item, index) => {
+      const hasMetadata = Boolean(item.title.trim() && item.description.trim());
+      return {
+        id: item.id,
+        name: hasMetadata ? item.title : "",
+        description: hasMetadata ? item.description : "",
+        date: item.unlockedAt ? new Date(item.unlockedAt).toLocaleDateString() : undefined,
+        unlocked: hasMetadata && item.unlocked,
+        icon: hasMetadata ? realAchievementIcons[index % realAchievementIcons.length] : Lock,
+        progress: hasMetadata && item.maxProgress > 0 ? `${item.progress}/${item.maxProgress}` : undefined,
+        percent: hasMetadata && item.maxProgress > 0 ? Math.min(100, Math.round((item.progress / item.maxProgress) * 100)) : undefined,
+        requirement: hasMetadata ? item.description : "",
+        levelUnlocked: 0,
+        unlocks: "",
+        placeholder: !hasMetadata,
+      };
+    });
+  }, [achievementsQuery.data]);
   const achievements = mockMode ? demoAchievements : realAchievements;
 
   const shownAchievements = useMemo(() => {
@@ -257,11 +286,22 @@ function AlmanacPage() {
             </div>
 
             <div className="player-account-scroll-list almanac-content-scroll achievements-grid">
-              {shownAchievements.map((achievement) => {
+              {shownAchievements.map((achievement, index) => {
                 const AchievementIcon = achievement.icon;
+                if (achievement.placeholder) {
+                  return (
+                    <div
+                      key={achievement.id ?? `real-placeholder-${index}`}
+                      className="achievement-card achievement-card-placeholder locked"
+                      aria-label="Locked achievement"
+                    >
+                      <Lock className="achievement-placeholder-lock" />
+                    </div>
+                  );
+                }
                 return (
                   <button
-                    key={achievement.name}
+                    key={achievement.id ?? achievement.name}
                     type="button"
                     onClick={() => setSelectedAchievement(achievement)}
                     className={`achievement-card ${
@@ -292,24 +332,24 @@ function AlmanacPage() {
                       </div>
                     </div>
 
-                    <div className="achievement-level-row">
-                      <span className="achievement-level-badge">
-                        Level {achievement.levelUnlocked > 0 ? achievement.levelUnlocked : "—"}
-                      </span>
-                      <span className="achievement-level-label">
-                        {achievement.unlocked
-                          ? "Unlocked at"
-                          : "Unlocks at"}
-                      </span>
-                    </div>
+                    {(achievement.levelUnlocked > 0 || achievement.progress) && (
+                      <div className="achievement-level-row">
+                        <span className="achievement-level-badge">
+                          Level {achievement.levelUnlocked > 0 ? achievement.levelUnlocked : "—"}
+                        </span>
+                        <span className="achievement-level-label">
+                          {achievement.unlocked ? "Unlocked at" : "Unlocks at"}
+                        </span>
+                      </div>
+                    )}
 
-                    <div className="achievement-unlocks">
+                    {achievement.unlocks && <div className="achievement-unlocks">
                       <span className="achievement-unlocks-eyebrow">
                         <Sparkles className="achievement-unlocks-icon" />
                         Knowledge Unlocked
                       </span>
                       <p>{achievement.unlocks}</p>
-                    </div>
+                    </div>}
 
                     {achievement.unlocked ? (
                       <div className="achievement-footer unlocked">
@@ -385,7 +425,7 @@ function AlmanacPage() {
               <p>{selectedAchievement.description}</p>
             </div>
 
-            <div className="achievement-modal-level">
+            {(selectedAchievement.levelUnlocked > 0 || selectedAchievement.progress) && <div className="achievement-modal-level">
               <span className="achievement-level-badge">
                 Level {selectedAchievement.levelUnlocked}
               </span>
@@ -394,9 +434,9 @@ function AlmanacPage() {
                   ? "Level unlocked"
                   : "Level required"}
               </span>
-            </div>
+            </div>}
 
-            <div className="achievement-modal-block">
+            {selectedAchievement.unlocks && <div className="achievement-modal-block">
               <p className="achievement-modal-block-title">
                 <Sparkles className="achievement-unlocks-icon" />
                 Knowledge / Content Unlocked
@@ -404,21 +444,21 @@ function AlmanacPage() {
               <p className="achievement-modal-block-value">
                 {selectedAchievement.unlocks}
               </p>
-            </div>
+            </div>}
 
-            <div className="achievement-modal-block muted">
+            {selectedAchievement.requirement && <div className="achievement-modal-block muted">
               <p className="achievement-modal-block-title">Requirement</p>
               <p className="achievement-modal-block-value">
                 {selectedAchievement.requirement}
               </p>
-            </div>
+            </div>}
 
             {selectedAchievement.unlocked ? (
               <div className="achievement-modal-unlocked">
                 <Medal />
                 <span>Unlocked on {selectedAchievement.date}</span>
               </div>
-            ) : (
+            ) : selectedAchievement.progress && selectedAchievement.percent !== undefined ? (
               <div className="achievement-progress">
                 <div className="achievement-progress-labels">
                   <span>{selectedAchievement.progress}</span>
@@ -431,7 +471,7 @@ function AlmanacPage() {
                   />
                 </div>
               </div>
-            )}
+            ) : null}
           </div>
         </div>
       )}
@@ -721,6 +761,30 @@ function AlmanacPage() {
           opacity: 0.66;
         }
 
+        .achievement-card-placeholder {
+          min-height: 180px;
+          align-items: center;
+          justify-content: center;
+          text-align: center;
+          cursor: default;
+        }
+
+        .achievement-card-placeholder:hover {
+          transform: none;
+          box-shadow: none;
+          opacity: 0.66;
+        }
+
+        .achievement-placeholder-lock {
+          width: 40px;
+          height: 40px;
+          color: rgba(19, 27, 52, 0.28);
+        }
+
+        .portal-theme.portal-dark .achievement-placeholder-lock {
+          color: rgba(254, 253, 248, 0.34);
+        }
+
         .achievement-card:hover {
           transform: translateY(-4px);
           box-shadow: 0 12px 28px rgba(19, 27, 52, 0.1);
@@ -922,8 +986,13 @@ function AlmanacPage() {
 
         /* EMPTY */
         .empty-results {
+          display: flex;
+          min-height: 220px;
+          flex-direction: column;
+          align-items: center;
+          justify-content: center;
           margin-top: 24px;
-          padding: 48px 24px;
+          padding: 32px 24px 40px;
           border: 1px solid rgba(19, 27, 52, 0.1);
           border-radius: 16px;
           background: var(--blueprint-paper-soft);
@@ -935,19 +1004,22 @@ function AlmanacPage() {
           height: 40px;
           margin: 0 auto;
           color: rgba(19, 27, 52, 0.2);
+          transform: translateY(-8px);
         }
 
         .empty-results h3 {
-          margin: 16px 0 0;
+          margin: 8px 0 0;
           color: #131b34;
           font-weight: 900;
           text-transform: uppercase;
+          transform: translateY(-8px);
         }
 
         .empty-results p {
           margin: 8px 0 0;
           color: rgba(19, 27, 52, 0.45);
           font-size: 14px;
+          transform: translateY(-8px);
         }
 
         /* MODAL */

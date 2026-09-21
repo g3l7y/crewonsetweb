@@ -54,6 +54,17 @@ type Category = "All" | CosmeticCategory;
 type ViewMode = "shop" | "owned";
 const categories: Category[] = ["All", "Hair", "Tops", "Bottoms", "Eyeglasses"];
 
+const realCategoryPlaceholders: CosmeticItem[] = categories.slice(1).map((category) => ({
+  id: `real-placeholder-${category.toLowerCase()}`,
+  name: "",
+  category,
+  price: 0,
+  rarity: "Common",
+  description: "",
+  assetKey: "",
+  placeholder: true,
+}));
+
 const rarityStyles: Record<string, string> = {
   Common: "cos-rarity-common",
   Rare: "cos-rarity-rare",
@@ -91,18 +102,40 @@ function ShopPage() {
 
   const catalog = useMemo(() => {
     if (mockMode) return cosmeticCatalog;
-    return (catalogQuery.data ?? [])
+    const liveItems = (catalogQuery.data ?? [])
       .map((remote) => {
-        const base = cosmeticCatalog.find((item) => item.id === remote.itemId);
-        if (!base) return null;
+        const category = remote.category as CosmeticCategory;
+        if (!categories.slice(1).includes(category)) return null;
+        const name = remote.displayName ?? "";
+        const description = remote.description ?? "";
+        const assetKey = remote.customData?.assetKey ?? "";
+        const imageUrl = remote.customData?.imageUrl ?? "";
+        const rarityValue = String(remote.rarity ?? "").toLowerCase();
+        const rarity = rarityValue === "rare"
+          ? "Rare"
+          : rarityValue === "epic"
+            ? "Epic"
+            : rarityValue === "legendary"
+              ? "Legendary"
+              : "Common";
         return {
-          ...base,
-          name: remote.displayName || base.name,
-          price: remote.price ?? base.price,
-          description: remote.description || base.description,
-        };
+          id: remote.itemId,
+          name,
+          category,
+          price: remote.price ?? 0,
+          rarity,
+          description,
+          assetKey,
+          imageUrl,
+          placeholder: !name && !description && !assetKey && !imageUrl,
+        } satisfies CosmeticItem;
       })
       .filter((item): item is CosmeticItem => item !== null);
+    const liveCategories = new Set(liveItems.map((item) => item.category));
+    return [
+      ...liveItems,
+      ...realCategoryPlaceholders.filter((item) => !liveCategories.has(item.category)),
+    ];
   }, [catalogQuery.data, mockMode]);
 
   const ownedIds = mockMode
@@ -295,26 +328,34 @@ function ShopPage() {
                 {filteredItems.map((item) => {
                   const owned = ownedIds.includes(item.id);
                   const inCart = cart.some((line) => line.itemId === item.id);
+                  const hasArtwork = mockMode || Boolean(item.assetKey || item.imageUrl);
+                  const hasDetails = mockMode || !item.placeholder;
                   return (
-                    <article key={item.id} className="shop-card">
-                      <button type="button" className="shop-art-button" onClick={() => setSelectedItem(item)} aria-label={`View ${item.name} details`}>
-                        <CosmeticArt item={item} />
-                        <span className={`cos-rarity ${rarityStyles[item.rarity]}`}>{item.rarity}</span>
-                        {owned && <span className="owned-mark"><Check /></span>}
-                      </button>
+                    <article key={item.id} className={`shop-card${item.placeholder ? " real-placeholder-card" : ""}`}>
+                      {hasDetails && hasArtwork ? (
+                        <button type="button" className="shop-art-button" onClick={() => setSelectedItem(item)} aria-label={`View ${item.name || item.category} details`}>
+                          {item.imageUrl ? <img className="shop-live-image" src={item.imageUrl} alt="" /> : <CosmeticArt item={item} />}
+                          <span className={`cos-rarity ${rarityStyles[item.rarity]}`}>{item.rarity}</span>
+                          {owned && <span className="owned-mark"><Check /></span>}
+                        </button>
+                      ) : (
+                        <div className="shop-art-button shop-art-placeholder" aria-hidden="true" />
+                      )}
                       <div className="shop-card-copy">
                         <p className="shop-category">{item.category}</p>
-                        <h2>{item.name}</h2>
-                        <p className="shop-description">{item.description}</p>
-                        <div className="shop-card-bottom"><span className="shop-price"><Coins /> {formatCoins(item.price)}</span><span className="shop-status">{owned ? "Owned" : inCart ? "In cart" : "Available"}</span></div>
-                        {owned ? (
-                          <button type="button" className="shop-secondary-button" disabled>Owned</button>
-                        ) : (
-                          <div className="shop-card-actions">
-                            <button type="button" className="shop-secondary-button" onClick={() => addToCart(item.id)}>{inCart ? "In cart" : "Add to cart"}</button>
-                            <button type="button" className="shop-primary-button" onClick={() => setConfirmTarget({ mode: "single", itemId: item.id })}>Buy now</button>
-                          </div>
-                        )}
+                        {hasDetails && <>
+                          {item.name && <h2>{item.name}</h2>}
+                          {item.description && <p className="shop-description">{item.description}</p>}
+                          <div className="shop-card-bottom"><span className="shop-price"><Coins /> {formatCoins(item.price)}</span><span className="shop-status">{owned ? "Owned" : inCart ? "In cart" : "Available"}</span></div>
+                          {owned ? (
+                            <button type="button" className="shop-secondary-button" disabled>Owned</button>
+                          ) : (
+                            <div className="shop-card-actions">
+                              <button type="button" className="shop-secondary-button" onClick={() => addToCart(item.id)}>{inCart ? "In cart" : "Add to cart"}</button>
+                              <button type="button" className="shop-primary-button" onClick={() => setConfirmTarget({ mode: "single", itemId: item.id })}>Buy now</button>
+                            </div>
+                          )}
+                        </>}
                       </div>
                     </article>
                   );
@@ -351,7 +392,7 @@ function ShopPage() {
         <div className="shop-modal-backdrop" role="presentation" onMouseDown={() => setSelectedItem(null)}>
           <section className="shop-modal" role="dialog" aria-modal="true" aria-labelledby="cosmetic-modal-title" onMouseDown={(event) => event.stopPropagation()}>
             <button type="button" className="modal-close" onClick={() => setSelectedItem(null)} aria-label="Close product details"><X /></button>
-            <div className="modal-art"><CosmeticArt item={selectedItem} /></div>
+            <div className="modal-art">{selectedItem.imageUrl ? <img className="shop-live-image" src={selectedItem.imageUrl} alt="" /> : selectedItem.assetKey ? <CosmeticArt item={selectedItem} /> : <div className="shop-art-placeholder" aria-hidden="true" />}</div>
             <div className="modal-copy"><p className="shop-category">{selectedItem.category}</p><h2 id="cosmetic-modal-title">{selectedItem.name}</h2><p>{selectedItem.description}</p><strong className="modal-price"><Coins /> {formatCoins(selectedItem.price)} C-Coins</strong><div className="modal-meta"><span>{ownedIds.includes(selectedItem.id) ? "Owned" : "Not owned"}</span><span>{cart.some((line) => line.itemId === selectedItem.id) ? "In cart" : "Not in cart"}</span></div><div className="modal-actions"><button type="button" className="shop-secondary-button" disabled={ownedIds.includes(selectedItem.id) || cart.some((line) => line.itemId === selectedItem.id)} onClick={() => addToCart(selectedItem.id)}>{ownedIds.includes(selectedItem.id) ? "Owned" : cart.some((line) => line.itemId === selectedItem.id) ? "In cart" : "Add to cart"}</button><button type="button" className="shop-primary-button" disabled={ownedIds.includes(selectedItem.id)} onClick={() => { setSelectedItem(null); setConfirmTarget({ mode: "single", itemId: selectedItem.id }); }}>Buy now</button></div></div>
           </section>
         </div>

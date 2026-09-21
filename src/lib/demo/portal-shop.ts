@@ -12,6 +12,10 @@ export type CosmeticItem = {
   rarity: "Common" | "Rare" | "Epic" | "Legendary";
   description: string;
   assetKey: string;
+  /** True when real mode has a category but the game has not supplied item metadata yet. */
+  placeholder?: boolean;
+  /** Optional artwork URL supplied by the live game catalog. */
+  imageUrl?: string;
   gradient?: string;
   initials?: string;
 };
