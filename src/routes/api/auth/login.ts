@@ -4,7 +4,7 @@ import { createSessionCookies } from "@/lib/playfab/session";
 import { findMockAccount } from "@/lib/playfab/mock-accounts";
 import { isValidEmail, isValidUsername } from "@/lib/validation";
 import type { SessionData, AuthResponse } from "@/lib/playfab/types";
-import { syncPlayFabContactEmail } from "@/lib/playfab/contact-email";
+import { getPlayFabContactEmail, syncPlayFabContactEmail } from "@/lib/playfab/contact-email";
 
 export const Route = createFileRoute("/api/auth/login")({
   server: {
@@ -173,6 +173,28 @@ export const Route = createFileRoute("/api/auth/login")({
               );
             }
 
+            let sessionEmail = accountEmail;
+            if (accountEmail) {
+              let existingContactEmail: string | null = null;
+              try {
+                existingContactEmail = await getPlayFabContactEmail(sessionTicket);
+              } catch (contactEmailReadError) {
+                console.error("[PlayFab] Could not read login contact email:", contactEmailReadError);
+              }
+              if (existingContactEmail) {
+                sessionEmail = existingContactEmail;
+              } else {
+                try {
+                  await syncPlayFabContactEmail(sessionTicket, accountEmail, {
+                    playFabId,
+                    secretKey: secretKey?.trim(),
+                  });
+                } catch (contactEmailError) {
+                  console.error("[PlayFab] Could not sync login contact email:", contactEmailError);
+                }
+              }
+            }
+
             session = {
               playFabId,
               sessionTicket,
@@ -181,16 +203,8 @@ export const Route = createFileRoute("/api/auth/login")({
                 pfData.InfoResultPayload?.AccountInfo?.Username ??
                 displayName,
               displayName,
-              email: accountEmail,
+              email: sessionEmail,
             };
-
-            if (accountEmail) {
-              try {
-                await syncPlayFabContactEmail(sessionTicket, accountEmail);
-              } catch (contactEmailError) {
-                console.warn("[PlayFab] Could not sync login contact email:", contactEmailError);
-              }
-            }
           }
 
           // Set cookies

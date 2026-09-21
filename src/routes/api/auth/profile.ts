@@ -1,5 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { PLAYFAB_API_BASE, PLAYFAB_TITLE_ID, isMockMode } from "@/lib/playfab/config";
+import { PLAYFAB_API_BASE, isMockMode } from "@/lib/playfab/config";
+import { syncPlayFabContactEmail } from "@/lib/playfab/contact-email";
 import { PLAYFAB_DATA_KEYS } from "@/lib/playfab/constants";
 import { createSessionCookies, validateSessionFromRequest } from "@/lib/playfab/session";
 import { getMockAccountBySessionTicket, updateMockAccountEmail, updateMockAccountUsername } from "@/lib/playfab/mock-accounts";
@@ -70,9 +71,9 @@ export const Route = createFileRoute("/api/auth/profile")({
             await playFabClientRequest("/Client/UpdateUserTitleDisplayName", session.sessionTicket, { DisplayName: username });
           }
           if (email) {
-            await playFabClientRequest("/Client/AddOrUpdateContactEmail", session.sessionTicket, {
-              EmailAddress: email,
-              TitleId: PLAYFAB_TITLE_ID,
+            await syncPlayFabContactEmail(session.sessionTicket, email, {
+              playFabId: session.playFabId,
+              secretKey: process.env["PLAYFAB_SECRET_KEY"]?.trim(),
             });
           }
 
