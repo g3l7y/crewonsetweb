@@ -1,4 +1,4 @@
-import { FormEvent, useMemo, useState } from "react";
+import { FormEvent, useEffect, useMemo, useState } from "react";
 import {
   ArrowLeft,
   Check,
@@ -101,6 +101,61 @@ export default function CheckoutPage({ onBack }: CheckoutPageProps) {
     setProcessing(false);
   }
 
+  useEffect(() => {
+    if (!mockMode || typeof window === 'undefined' || !pack) return;
+    const params = new URLSearchParams(window.location.search);
+    if (params.get('payment') !== 'success') return;
+    const reference = params.get('reference')?.trim();
+    if (!reference) return;
+
+    const processedKey = `cos.paymongo.test.fulfilled.${reference}`;
+    const clearPaymentQuery = () => {
+      const url = new URL(window.location.href);
+      url.searchParams.delete('payment');
+      url.searchParams.delete('reference');
+      window.history.replaceState({}, '', `${url.pathname}${url.search}${url.hash}`);
+    };
+
+    if (window.localStorage.getItem(processedKey) === '1') {
+      setCheckoutPayload(null);
+      setSubmitted(true);
+      clearPaymentQuery();
+      return;
+    }
+
+    let cancelled = false;
+    setProcessing(true);
+    fetch(`/api/paymongo/status?orderId=${encodeURIComponent(reference)}`, { credentials: 'include' })
+      .then(async (response) => {
+        const result = (await response.json().catch(() => ({}))) as {
+          status?: string;
+          coins?: number;
+          error?: string;
+        };
+        if (!response.ok) throw new Error(result.error || 'Payment status is temporarily unavailable.');
+        return result;
+      })
+      .then((result) => {
+        if (cancelled) return;
+        if (result.status !== 'fulfilled' || result.coins !== pack.coins) {
+          setError('Payment is still being confirmed. Please wait for the PayMongo webhook and refresh this page.');
+          setProcessing(false);
+          return;
+        }
+        window.localStorage.setItem(processedKey, '1');
+        completeDemoPurchase();
+        clearPaymentQuery();
+      })
+      .catch((statusError) => {
+        if (cancelled) return;
+        setError(statusError instanceof Error ? statusError.message : 'Payment status is temporarily unavailable.');
+        setProcessing(false);
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [mockMode, pack?.id]);
   function handleBack() {
     setCheckoutPayload(null);
     if (onBack) {
@@ -144,14 +199,8 @@ export default function CheckoutPage({ onBack }: CheckoutPageProps) {
         throw new Error(result.error || "PayMongo checkout could not be started.");
       }
 
-      setCheckoutPayload(null);
       window.location.assign(result.checkoutUrl);
     } catch (checkoutError) {
-      if (mockMode) {
-        setShowHostedPreview(true);
-        setProcessing(false);
-        return;
-      }
       setError(checkoutError instanceof Error ? checkoutError.message : "PayMongo checkout could not be started.");
       setProcessing(false);
     }

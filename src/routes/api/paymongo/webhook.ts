@@ -1,11 +1,13 @@
 import { createFileRoute } from '@tanstack/react-router';
 import {
   claimPayMongoOrder,
+  getPayMongoOrder,
   isPayMongoLedgerConfigured,
   markPayMongoOrderFailed,
   markPayMongoOrderFulfilled,
 } from '@/lib/paymongo/ledger';
 import { addCurrency } from '@/lib/playfab/economy';
+import { isMockMode } from '@/lib/playfab/config';
 import {
   WEBSITE_DATA_KEYS,
   getWebsiteRecords,
@@ -90,9 +92,10 @@ export const Route = createFileRoute('/api/paymongo/webhook')({
   server: {
     handlers: {
       POST: async ({ request }) => {
+        const mockMode = isMockMode();
         const webhookSecret = process.env['PAYMONGO_WEBHOOK_SECRET'];
         const playfabSecret = process.env['PLAYFAB_SECRET_KEY'];
-        if (!webhookSecret || !playfabSecret || !isPayMongoLedgerConfigured()) {
+        if (!webhookSecret || (!mockMode && !playfabSecret) || !isPayMongoLedgerConfigured()) {
           return Response.json({ error: 'Webhook is not configured.' }, { status: 503 });
         }
 
@@ -117,13 +120,34 @@ export const Route = createFileRoute('/api/paymongo/webhook')({
           const eventId = String(body.id || eventData.id || '');
           if (!referenceNumber) return Response.json({ received: true });
 
-          const orders = await getWebsiteRecords<PayMongoOrder>(
-            WEBSITE_DATA_KEYS.paymongoOrders,
-            playfabSecret,
-          );
-          const order = orders.find(
-            (item) => item.id === referenceNumber || item.checkoutSessionId === String(eventData.id || ''),
-          );
+          let order: PayMongoOrder | null = null;
+          if (mockMode) {
+            const ledgerOrder = await getPayMongoOrder(referenceNumber);
+            if (ledgerOrder) {
+              order = {
+                id: ledgerOrder.orderId,
+                checkoutSessionId: ledgerOrder.checkoutSessionId,
+                playFabId: ledgerOrder.playFabId,
+                packageId: ledgerOrder.packageId,
+                coins: ledgerOrder.coins,
+                amountInCentavos: ledgerOrder.amountInCentavos,
+                currency: 'PHP',
+                email: '',
+                status: ledgerOrder.status,
+                createdAt: '',
+                updatedAt: '',
+              };
+            }
+          } else {
+            const orders = await getWebsiteRecords<PayMongoOrder>(
+              WEBSITE_DATA_KEYS.paymongoOrders,
+              playfabSecret as string,
+            );
+            order = orders.find(
+              (item) => item.id === referenceNumber || item.checkoutSessionId === String(eventData.id || ''),
+            ) ?? null;
+          }
+
           if (!order) {
             console.warn('[PayMongo] Paid checkout has no matching order:', referenceNumber);
             return Response.json({ received: true });
@@ -167,7 +191,7 @@ export const Route = createFileRoute('/api/paymongo/webhook')({
             }
 
             if (claim.status !== 'claimed') {
-              if (claim.status === 'fulfilled') {
+              if (claim.status === 'fulfilled' && !mockMode) {
                 const repaired = await updateWebsiteRecord<PayMongoOrder>(
                   WEBSITE_DATA_KEYS.paymongoOrders,
                   order.id,
@@ -178,7 +202,7 @@ export const Route = createFileRoute('/api/paymongo/webhook')({
                     updatedAt: new Date().toISOString(),
                     eventId: current.eventId || eventId,
                   }),
-                  playfabSecret,
+                  playfabSecret as string,
                 );
                 if (!repaired) {
                   console.warn('[PayMongo] Ledger is fulfilled but the website order could not be repaired:', order.id);
@@ -187,65 +211,69 @@ export const Route = createFileRoute('/api/paymongo/webhook')({
               return Response.json({ received: true });
             }
 
-            const credited = await addCurrency(
-              order.playFabId,
-              'CC',
-              order.coins,
-              playfabSecret,
-            );
-            if (!credited) {
-              console.error('[PayMongo] Failed to credit order:', order.id);
-              let ledgerFailed = false;
-              try {
-                ledgerFailed = await markPayMongoOrderFailed(
-                  order.id,
-                  'PlayFab currency grant did not complete.',
-                );
-              } catch (error) {
-                console.error('[PayMongo] Could not mark failed ledger order:', error);
-              }
-              await updateWebsiteRecord<PayMongoOrder>(
-                WEBSITE_DATA_KEYS.paymongoOrders,
-                order.id,
-                (current) => ({
-                  ...current,
-                  status: 'failed',
-                  updatedAt: new Date().toISOString(),
-                }),
-                playfabSecret,
+            if (!mockMode) {
+              const credited = await addCurrency(
+                order.playFabId,
+                'CC',
+                order.coins,
+                playfabSecret as string,
               );
-              if (!ledgerFailed) {
-                return Response.json({ error: 'Currency credit failed; manual review required.' }, { status: 500 });
+              if (!credited) {
+                console.error('[PayMongo] Failed to credit order:', order.id);
+                let ledgerFailed = false;
+                try {
+                  ledgerFailed = await markPayMongoOrderFailed(
+                    order.id,
+                    'PlayFab currency grant did not complete.',
+                  );
+                } catch (error) {
+                  console.error('[PayMongo] Could not mark failed ledger order:', error);
+                }
+                await updateWebsiteRecord<PayMongoOrder>(
+                  WEBSITE_DATA_KEYS.paymongoOrders,
+                  order.id,
+                  (current) => ({
+                    ...current,
+                    status: 'failed',
+                    updatedAt: new Date().toISOString(),
+                  }),
+                  playfabSecret as string,
+                );
+                if (!ledgerFailed) {
+                  return Response.json({ error: 'Currency credit failed; manual review required.' }, { status: 500 });
+                }
+                return Response.json({ received: true });
               }
-              return Response.json({ received: true });
             }
 
             let ledgerFulfilled = false;
             try {
               ledgerFulfilled = await markPayMongoOrderFulfilled(order.id, eventId);
             } catch (error) {
-              console.error('[PayMongo] Currency credited but ledger fulfillment could not be saved:', error);
+              console.error('[PayMongo] Payment was accepted but ledger fulfillment could not be saved:', error);
               return Response.json({ error: 'Ledger status could not be saved.' }, { status: 500 });
             }
             if (!ledgerFulfilled) {
-              console.warn('[PayMongo] Ledger was already finalized; website order will not be credited again:', order.id);
+              console.warn('[PayMongo] Ledger was already finalized; payment will not be credited again:', order.id);
               return Response.json({ received: true });
             }
 
-            const updated = await updateWebsiteRecord<PayMongoOrder>(
-              WEBSITE_DATA_KEYS.paymongoOrders,
-              order.id,
-              (current) => ({
-                ...current,
-                status: 'fulfilled',
-                paidAt: new Date().toISOString(),
-                updatedAt: new Date().toISOString(),
-                eventId,
-              }),
-              playfabSecret,
-            );
-            if (!updated) {
-              console.error('[PayMongo] Ledger fulfilled; website order could not be saved:', order.id);
+            if (!mockMode) {
+              const updated = await updateWebsiteRecord<PayMongoOrder>(
+                WEBSITE_DATA_KEYS.paymongoOrders,
+                order.id,
+                (current) => ({
+                  ...current,
+                  status: 'fulfilled',
+                  paidAt: new Date().toISOString(),
+                  updatedAt: new Date().toISOString(),
+                  eventId,
+                }),
+                playfabSecret as string,
+              );
+              if (!updated) {
+                console.error('[PayMongo] Ledger fulfilled; website order could not be saved:', order.id);
+              }
             }
 
             return Response.json({ received: true });

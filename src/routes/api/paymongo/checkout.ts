@@ -1,7 +1,8 @@
 import { createFileRoute } from '@tanstack/react-router';
-import { isPayMongoLedgerConfigured } from '@/lib/paymongo/ledger';
+import { isPayMongoLedgerConfigured, registerPayMongoOrder, activatePayMongoOrder, markPayMongoOrderFailed } from '@/lib/paymongo/ledger';
 import { coinPackages } from '@/lib/demo/portal-shop';
 import { isValidEmail } from '@/lib/validation';
+import { isMockMode } from '@/lib/playfab/config';
 import { unauthorizedSessionResponse, validateSessionFromRequest } from '@/lib/playfab/session';
 import {
   WEBSITE_DATA_KEYS,
@@ -50,9 +51,10 @@ export const Route = createFileRoute('/api/paymongo/checkout')({
         const session = await validateSessionFromRequest(request);
         if (!session) return unauthorizedSessionResponse();
 
+        const mockMode = isMockMode();
         const paymongoSecret = getSecret('PAYMONGO_SECRET_KEY');
         const playfabSecret = getSecret('PLAYFAB_SECRET_KEY');
-        if (!paymongoSecret || !playfabSecret) {
+        if (!paymongoSecret || (!mockMode && !playfabSecret)) {
           return Response.json(
             { error: 'PayMongo checkout is not configured on this server yet.' },
             { status: 503 },
@@ -100,11 +102,22 @@ export const Route = createFileRoute('/api/paymongo/checkout')({
             createdAt: now,
             updatedAt: now,
           };
-          const saved = await appendWebsiteRecord(
-            WEBSITE_DATA_KEYS.paymongoOrders,
-            order,
-            playfabSecret,
-          );
+
+          const saved = mockMode
+            ? await registerPayMongoOrder({
+                orderId,
+                checkoutSessionId: 'pending',
+                playFabId: session.playFabId,
+                packageId: pack.id,
+                coins: totalCoins,
+                amountInCentavos,
+                eventId: '',
+              })
+            : await appendWebsiteRecord(
+                WEBSITE_DATA_KEYS.paymongoOrders,
+                order,
+                playfabSecret as string,
+              );
           if (!saved) {
             return Response.json(
               { error: 'The checkout could not be recorded. Please try again.' },
@@ -157,35 +170,41 @@ export const Route = createFileRoute('/api/paymongo/checkout')({
 
           if (!paymongoResponse.ok || !checkoutUrl || !checkoutSessionId) {
             console.error('[PayMongo] Checkout session creation failed:', paymongoResponse.status, providerBody);
-            await updateWebsiteRecord<PayMongoOrder>(
-              WEBSITE_DATA_KEYS.paymongoOrders,
-              orderId,
-              (current) => ({
-                ...current,
-                status: 'failed',
-                updatedAt: new Date().toISOString(),
-              }),
-              playfabSecret,
-            );
+            if (mockMode) {
+              await markPayMongoOrderFailed(orderId, 'PayMongo checkout session creation failed.');
+            } else {
+              await updateWebsiteRecord<PayMongoOrder>(
+                WEBSITE_DATA_KEYS.paymongoOrders,
+                orderId,
+                (current) => ({
+                  ...current,
+                  status: 'failed',
+                  updatedAt: new Date().toISOString(),
+                }),
+                playfabSecret as string,
+              );
+            }
             return Response.json(
               { error: 'PayMongo could not start the checkout. Please try again.' },
               { status: 502 },
             );
           }
 
-          const activated = await updateWebsiteRecord<PayMongoOrder>(
-            WEBSITE_DATA_KEYS.paymongoOrders,
-            orderId,
-            (current) => ({
-              ...current,
-              checkoutSessionId,
-              status: current.status === 'fulfilled' || current.status === 'processing'
-                ? current.status
-                : 'active',
-              updatedAt: new Date().toISOString(),
-            }),
-            playfabSecret,
-          );
+          const activated = mockMode
+            ? await activatePayMongoOrder(orderId, checkoutSessionId)
+            : await updateWebsiteRecord<PayMongoOrder>(
+                WEBSITE_DATA_KEYS.paymongoOrders,
+                orderId,
+                (current) => ({
+                  ...current,
+                  checkoutSessionId,
+                  status: current.status === 'fulfilled' || current.status === 'processing'
+                    ? current.status
+                    : 'active',
+                  updatedAt: new Date().toISOString(),
+                }),
+                playfabSecret as string,
+              );
 
           if (!activated) {
             console.error('[PayMongo] Created checkout but could not activate order:', orderId);

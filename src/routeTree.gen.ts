@@ -58,6 +58,7 @@ import { Route as ApiAuthProfileRouteImport } from './routes/api/auth/profile'
 import { Route as ApiAuthRegisterRouteImport } from './routes/api/auth/register'
 import { Route as ApiAuthSessionRouteImport } from './routes/api/auth/session'
 import { Route as ApiPaymongoCheckoutRouteImport } from './routes/api/paymongo/checkout'
+import { Route as ApiPaymongoStatusRouteImport } from './routes/api/paymongo/status'
 import { Route as ApiPaymongoWebhookRouteImport } from './routes/api/paymongo/webhook'
 import { Route as ApiPlayfabClientRouteImport } from './routes/api/playfab/client'
 import { Route as ApiPlayfabFriendsAddRouteImport } from './routes/api/playfab/friends/add'
@@ -309,6 +310,11 @@ const ApiPaymongoCheckoutRoute = ApiPaymongoCheckoutRouteImport.update({
   path: '/api/paymongo/checkout',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiPaymongoStatusRoute = ApiPaymongoStatusRouteImport.update({
+  id: '/api/paymongo/status',
+  path: '/api/paymongo/status',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiPaymongoWebhookRoute = ApiPaymongoWebhookRouteImport.update({
   id: '/api/paymongo/webhook',
   path: '/api/paymongo/webhook',
@@ -385,6 +391,7 @@ export interface FileRoutesByFullPath {
   '/api/auth/register': typeof ApiAuthRegisterRoute
   '/api/auth/session': typeof ApiAuthSessionRoute
   '/api/paymongo/checkout': typeof ApiPaymongoCheckoutRoute
+  '/api/paymongo/status': typeof ApiPaymongoStatusRoute
   '/api/paymongo/webhook': typeof ApiPaymongoWebhookRoute
   '/api/playfab/client': typeof ApiPlayfabClientRoute
   '/api/playfab/friends/add': typeof ApiPlayfabFriendsAddRoute
@@ -439,6 +446,7 @@ export interface FileRoutesByTo {
   '/api/auth/register': typeof ApiAuthRegisterRoute
   '/api/auth/session': typeof ApiAuthSessionRoute
   '/api/paymongo/checkout': typeof ApiPaymongoCheckoutRoute
+  '/api/paymongo/status': typeof ApiPaymongoStatusRoute
   '/api/paymongo/webhook': typeof ApiPaymongoWebhookRoute
   '/api/playfab/client': typeof ApiPlayfabClientRoute
   '/api/playfab/friends/add': typeof ApiPlayfabFriendsAddRoute
@@ -496,6 +504,7 @@ export interface FileRoutesById {
   '/api/auth/register': typeof ApiAuthRegisterRoute
   '/api/auth/session': typeof ApiAuthSessionRoute
   '/api/paymongo/checkout': typeof ApiPaymongoCheckoutRoute
+  '/api/paymongo/status': typeof ApiPaymongoStatusRoute
   '/api/paymongo/webhook': typeof ApiPaymongoWebhookRoute
   '/api/playfab/client': typeof ApiPlayfabClientRoute
   '/api/playfab/friends/add': typeof ApiPlayfabFriendsAddRoute
@@ -554,6 +563,7 @@ export interface FileRouteTypes {
     | '/api/auth/register'
     | '/api/auth/session'
     | '/api/paymongo/checkout'
+    | '/api/paymongo/status'
     | '/api/paymongo/webhook'
     | '/api/playfab/client'
     | '/api/playfab/friends/add'
@@ -608,6 +618,7 @@ export interface FileRouteTypes {
     | '/api/auth/register'
     | '/api/auth/session'
     | '/api/paymongo/checkout'
+    | '/api/paymongo/status'
     | '/api/paymongo/webhook'
     | '/api/playfab/client'
     | '/api/playfab/friends/add'
@@ -664,6 +675,7 @@ export interface FileRouteTypes {
     | '/api/auth/register'
     | '/api/auth/session'
     | '/api/paymongo/checkout'
+    | '/api/paymongo/status'
     | '/api/paymongo/webhook'
     | '/api/playfab/client'
     | '/api/playfab/friends/add'
@@ -701,6 +713,7 @@ export interface RootRouteChildren {
   ApiAuthRegisterRoute: typeof ApiAuthRegisterRoute
   ApiAuthSessionRoute: typeof ApiAuthSessionRoute
   ApiPaymongoCheckoutRoute: typeof ApiPaymongoCheckoutRoute
+  ApiPaymongoStatusRoute: typeof ApiPaymongoStatusRoute
   ApiPaymongoWebhookRoute: typeof ApiPaymongoWebhookRoute
   ApiPlayfabClientRoute: typeof ApiPlayfabClientRoute
   ApiPlayfabFriendsAddRoute: typeof ApiPlayfabFriendsAddRoute
@@ -1053,6 +1066,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiPaymongoCheckoutRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/paymongo/status': {
+      id: '/api/paymongo/status'
+      path: '/api/paymongo/status'
+      fullPath: '/api/paymongo/status'
+      preLoaderRoute: typeof ApiPaymongoStatusRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/paymongo/webhook': {
       id: '/api/paymongo/webhook'
       path: '/api/paymongo/webhook'
@@ -1178,6 +1198,7 @@ const rootRouteChildren: RootRouteChildren = {
   ApiAuthRegisterRoute: ApiAuthRegisterRoute,
   ApiAuthSessionRoute: ApiAuthSessionRoute,
   ApiPaymongoCheckoutRoute: ApiPaymongoCheckoutRoute,
+  ApiPaymongoStatusRoute: ApiPaymongoStatusRoute,
   ApiPaymongoWebhookRoute: ApiPaymongoWebhookRoute,
   ApiPlayfabClientRoute: ApiPlayfabClientRoute,
   ApiPlayfabFriendsAddRoute: ApiPlayfabFriendsAddRoute,
