@@ -75,7 +75,7 @@ export const Route = createFileRoute('/api/paymongo/checkout')({
           }
 
           const orderId = createOrderId();
-          const totalCoins = pack.coins + (pack.bonus || 0);
+          const totalCoins = pack.coins;
           const amountInCentavos = Math.round(pack.pricePhp * 100);
           const publicAppUrl = (process.env['PUBLIC_APP_URL'] || new URL(request.url).origin).replace(/\/$/, '');
           const now = new Date().toISOString();

@@ -44,16 +44,15 @@ export const cosmeticCatalog: CosmeticItem[] = [
 export type CoinPackage = {
   id: string;
   coins: number;
-  bonus?: number;
   priceLabel: string;
   pricePhp: number;
 };
 
 export const coinPackages: CoinPackage[] = [
-  { id: "pack-500", coins: 500, priceLabel: "\u20b14.99", pricePhp: 4.99 },
-  { id: "pack-1200", coins: 1200, bonus: 150, priceLabel: "\u20b19.99", pricePhp: 9.99 },
-  { id: "pack-2600", coins: 2600, bonus: 500, priceLabel: "\u20b119.99", pricePhp: 19.99 },
-  { id: "pack-6000", coins: 6000, bonus: 1500, priceLabel: "\u20b139.99", pricePhp: 39.99 },
+  { id: "pack-500", coins: 500, priceLabel: "\u20b149.00", pricePhp: 49.00 },
+  { id: "pack-1350", coins: 1350, priceLabel: "\u20b1119.00", pricePhp: 119.00 },
+  { id: "pack-3100", coins: 3100, priceLabel: "\u20b1249.00", pricePhp: 249.00 },
+  { id: "pack-7500", coins: 7500, priceLabel: "\u20b1499.00", pricePhp: 499.00 },
 ];
 
 export const ownedItemsStore = createStore<string>("cos.ownedItems", ["hair-soft-crop", "top-coral-tee", "glasses-round-ink"]);

@@ -63,7 +63,7 @@ export default function CheckoutPage({ onBack }: CheckoutPageProps) {
 
   function completeDemoPurchase() {
     if (!pack) return;
-    const totalCoins = pack.coins + (pack.bonus ?? 0);
+    const totalCoins = pack.coins;
     const completedAt = new Date();
 
     topUpsStore.set([
@@ -180,7 +180,7 @@ export default function CheckoutPage({ onBack }: CheckoutPageProps) {
   }
 
   if (submitted) {
-    const totalCoins = pack.coins + (pack.bonus ?? 0);
+    const totalCoins = pack.coins;
     return (
       <main className="grid min-h-screen place-items-center px-4 py-10">
         <div className="portal-card w-full max-w-md rounded-2xl border border-navy/10 p-8 text-center shadow-2xl">
@@ -336,7 +336,6 @@ export default function CheckoutPage({ onBack }: CheckoutPageProps) {
                 <div className="mt-4 flex items-start justify-between gap-4">
                   <div>
                     <p className="font-black text-navy">{formatCoins(pack.coins)} C-Coins</p>
-                    {pack.bonus ? <p className="mt-1 text-xs text-navy/50">+{formatCoins(pack.bonus)} bonus</p> : null}
                   </div>
                   <p className="font-black text-coral">{pack.priceLabel}</p>
                 </div>
@@ -354,7 +353,7 @@ export default function CheckoutPage({ onBack }: CheckoutPageProps) {
     );
   }
 
-  const totalCoins = pack.coins + (pack.bonus ?? 0);
+  const totalCoins = pack.coins;
 
   return (
     <main className="portal-checkout-page min-h-screen px-4 py-8 text-navy sm:px-6 lg:px-10">
@@ -379,7 +378,7 @@ export default function CheckoutPage({ onBack }: CheckoutPageProps) {
             </div>
             <div className="min-w-0 flex-1">
               <p className="truncate font-black text-navy">
-                {formatCoins(pack.coins)} C-Coins{pack.bonus ? " + " + formatCoins(pack.bonus) + " bonus" : ""}
+                {formatCoins(pack.coins)} C-Coins
               </p>
               <p className="text-xs text-navy/40">C-Coin package</p>
             </div>
