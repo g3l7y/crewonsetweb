@@ -15,7 +15,7 @@ import {
 import { topUpsStore } from "@/lib/admin-demo-data";
 import { walletStore, formatCoins, notificationsStore, uid } from "@/lib/demo/store";
 import { isMockMode } from "@/lib/playfab/config";
-import { useSession } from "@/lib/playfab/hooks";
+import { usePlayerWallet, useSession } from "@/lib/playfab/hooks";
 import { EMAIL_ERROR, isValidEmail } from "@/lib/validation";
 
 type CheckoutPageProps = {
@@ -35,6 +35,7 @@ type CheckoutResponse = {
 export default function CheckoutPage({ onBack }: CheckoutPageProps) {
   const mockMode = isMockMode();
   const { data: session } = useSession();
+  const walletQuery = usePlayerWallet();
   const [wallet, setWallet] = walletStore.useStore();
   const [notifications, setNotifications] = notificationsStore.useStore();
   const [payload] = useState(() => getCheckoutPayload());
@@ -43,7 +44,7 @@ export default function CheckoutPage({ onBack }: CheckoutPageProps) {
   const [processing, setProcessing] = useState(false);
   const [submitted, setSubmitted] = useState(false);
 
-  const balance = wallet[0] ?? 0;
+  const balance = mockMode ? (wallet[0] ?? 0) : (walletQuery.data?.cCoins ?? 0);
 
   const pack = useMemo(
     () => (payload?.kind === "coins" ? coinPackages.find((item) => item.id === payload.packageId) : undefined),
@@ -91,13 +92,14 @@ export default function CheckoutPage({ onBack }: CheckoutPageProps) {
   }
 
   useEffect(() => {
-    if (!mockMode || typeof window === 'undefined' || !pack) return;
+    if (typeof window === 'undefined' || !pack) return;
     const params = new URLSearchParams(window.location.search);
     if (params.get('payment') !== 'success') return;
     const reference = params.get('reference')?.trim();
     if (!reference) return;
 
-    const processedKey = `cos.paymongo.test.fulfilled.${reference}`;
+    const processedKey = `cos.paymongo.fulfilled.${reference}`;
+    const legacyProcessedKey = `cos.paymongo.test.fulfilled.${reference}`;
     const clearPaymentQuery = () => {
       const url = new URL(window.location.href);
       url.searchParams.delete('payment');
@@ -105,8 +107,12 @@ export default function CheckoutPage({ onBack }: CheckoutPageProps) {
       window.history.replaceState({}, '', `${url.pathname}${url.search}${url.hash}`);
     };
 
-    if (window.localStorage.getItem(processedKey) === '1') {
+    if (
+      window.localStorage.getItem(processedKey) === '1' ||
+      (mockMode && window.localStorage.getItem(legacyProcessedKey) === '1')
+    ) {
       setCheckoutPayload(null);
+      if (!mockMode) void walletQuery.refetch();
       setSubmitted(true);
       clearPaymentQuery();
       return;
@@ -114,25 +120,39 @@ export default function CheckoutPage({ onBack }: CheckoutPageProps) {
 
     let cancelled = false;
     setProcessing(true);
-    fetch(`/api/paymongo/status?orderId=${encodeURIComponent(reference)}`, { credentials: 'include' })
-      .then(async (response) => {
+
+    async function confirmPayment() {
+      for (let attempt = 0; attempt < 20; attempt += 1) {
+        const response = await fetch(`/api/paymongo/status?orderId=${encodeURIComponent(reference)}`, {
+          credentials: 'include',
+          cache: 'no-store',
+        });
         const result = (await response.json().catch(() => ({}))) as {
           status?: string;
           coins?: number;
           error?: string;
         };
         if (!response.ok) throw new Error(result.error || 'Payment status is temporarily unavailable.');
-        return result;
-      })
-      .then((result) => {
+        if (result.status === 'fulfilled' && result.coins === pack.coins) return;
+        if (result.status === 'failed') throw new Error('Payment was received, but the C-Coin credit failed. Please contact support.');
+        if (attempt < 19) await new Promise((resolve) => window.setTimeout(resolve, 1000));
+      }
+      throw new Error('Payment succeeded, but confirmation is still processing. Please refresh this page shortly.');
+    }
+
+    confirmPayment()
+      .then(async () => {
         if (cancelled) return;
-        if (result.status !== 'fulfilled' || result.coins !== pack.coins) {
-          setError('Payment is still being confirmed. Please wait for the PayMongo webhook and refresh this page.');
-          setProcessing(false);
-          return;
-        }
         window.localStorage.setItem(processedKey, '1');
-        completeDemoPurchase();
+        if (mockMode) {
+          completeDemoPurchase();
+        } else {
+          await walletQuery.refetch();
+          if (cancelled) return;
+          setCheckoutPayload(null);
+          setSubmitted(true);
+          setProcessing(false);
+        }
         clearPaymentQuery();
       })
       .catch((statusError) => {
@@ -220,13 +240,13 @@ export default function CheckoutPage({ onBack }: CheckoutPageProps) {
           <h1 className="mt-2 text-3xl font-black text-navy">Thanks for your order.</h1>
           <p className="mt-3 text-sm leading-relaxed text-navy/55">
             {formatCoins(totalCoins)} C-Coins has been credited to your wallet.
-            This is a demo checkout — no real payment was made.
+            {mockMode ? " This is a demo checkout — no live money was charged." : " PayMongo confirmed the payment and PlayFab updated your wallet."}
           </p>
 
           <div className="mt-5 flex items-center gap-3 rounded-lg border border-navy/10 bg-navy/[0.03] p-3 text-left">
             <Mail className="size-5 shrink-0 text-coral" />
             <p className="text-xs text-navy/60">
-              A confirmation email has been mock-sent to <strong>{email}</strong>.
+              {mockMode ? <>A demo confirmation was prepared for <strong>{email || "your email address"}</strong>.</> : <>Your PayMongo payment was confirmed securely.</>}
             </p>
           </div>
 

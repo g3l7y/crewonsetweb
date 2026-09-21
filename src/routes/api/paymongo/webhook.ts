@@ -163,7 +163,7 @@ export const Route = createFileRoute('/api/paymongo/webhook')({
             const currency = String(paymentAttributes.currency || 'PHP').toUpperCase();
             const rawAmount = paymentAttributes.amount ?? paymentAttributes.net_amount;
             const amount = rawAmount === undefined ? undefined : Number(rawAmount);
-            const amountMatches = amount === undefined || amount === order.amountInCentavos;
+            const amountMatches = amount === order.amountInCentavos;
             return status === 'paid' && currency === 'PHP' && amountMatches;
           });
           if (!hasPaidPayment) return Response.json({ received: true });

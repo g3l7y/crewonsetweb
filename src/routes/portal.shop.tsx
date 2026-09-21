@@ -189,7 +189,7 @@ function ShopPage() {
   }
 
   const [checkoutOpen, setCheckoutOpen] = useState(
-    () => mockMode && searchParams.get("payment") === "success" && Boolean(searchParams.get("reference")),
+    () => searchParams.get("payment") === "success" && Boolean(searchParams.get("reference")),
   );
   const [cartOpen, setCartOpen] = useState(false);
   const [confirmTarget, setConfirmTarget] = useState<ConfirmTarget | null>(null);
