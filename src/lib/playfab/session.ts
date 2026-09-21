@@ -1,6 +1,7 @@
 import { PLAYFAB_SESSION_COOKIE, PLAYFAB_ROLE_COOKIE } from '@/lib/session.constants';
 import type { SessionData } from './types';
 import { isMockMode, PLAYFAB_API_BASE, PLAYFAB_TITLE_ID } from './config';
+import { PLAYFAB_DATA_KEYS } from './constants';
 import { getMockAccountBySessionTicket } from './mock-accounts';
 
 /**
@@ -48,9 +49,7 @@ export function clearSessionCookies(): string[] {
 }
 
 export function unauthorizedSessionResponse(status = 403): Response {
-  const headers = new Headers({ 'Content-Type': 'application/json' });
-  for (const cookie of clearSessionCookies()) headers.append('Set-Cookie', cookie);
-  return new Response(JSON.stringify({ error: 'Unauthorized' }), { status, headers });
+  return Response.json({ error: 'Unauthorized' }, { status });
 }
 
 /**
@@ -166,12 +165,39 @@ export async function validateSessionFromRequest(
     }
 
     if (options.requireAdmin && role !== 'admin') return null;
+
+    let savedUsername = '';
+    const accountDisplayName = account?.TitleInfo?.DisplayName || account?.Username || '';
+    if (accountDisplayName === 'Player' || !accountDisplayName) {
+      try {
+        const userDataResponse = await fetch(`${PLAYFAB_API_BASE}/Client/GetUserData`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'X-Authorization': parsed.sessionTicket,
+          },
+          body: JSON.stringify({ Keys: [PLAYFAB_DATA_KEYS.profile_metadata] }),
+        });
+        const userDataResult = await userDataResponse.json();
+        const rawMetadata = userDataResult?.data?.Data?.[PLAYFAB_DATA_KEYS.profile_metadata]?.Value;
+        if (typeof rawMetadata === 'string' && rawMetadata) {
+          const metadata = JSON.parse(rawMetadata) as { username?: unknown };
+          if (typeof metadata.username === 'string' && metadata.username.trim()) {
+            savedUsername = metadata.username.trim();
+          }
+        }
+      } catch {
+        // Profile metadata is optional; keep the PlayFab account name if it is unavailable.
+      }
+    }
+
+    const resolvedUsername = savedUsername || accountDisplayName || 'Player';
     return {
       playFabId,
       sessionTicket: parsed.sessionTicket,
       role,
-      username: account?.TitleInfo?.DisplayName || account?.Username || 'Player',
-      displayName: account?.TitleInfo?.DisplayName || account?.Username || 'Player',
+      username: resolvedUsername,
+      displayName: resolvedUsername,
       email: account?.PrivateInfo?.Email || '',
     };
   } catch {

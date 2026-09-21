@@ -30,7 +30,11 @@ type SessionIdentity = {
 async function getSessionIdentity(): Promise<SessionIdentity | null> {
   if (typeof window === 'undefined') return null;
   try {
-    const response = await fetch('/api/auth/session', { method: 'GET' });
+    const response = await fetch('/api/auth/session', {
+      method: 'GET',
+      credentials: 'same-origin',
+      cache: 'no-store',
+    });
     if (!response.ok) return null;
     const data = await response.json();
     return data?.session ?? null;
@@ -55,7 +59,11 @@ async function resolveSessionTicket(): Promise<string> {
   if (_cachedTicket) return _cachedTicket;
 
   try {
-    const res = await fetch('/api/auth/session', { method: 'GET' });
+    const res = await fetch('/api/auth/session', {
+      method: 'GET',
+      credentials: 'same-origin',
+      cache: 'no-store',
+    });
     if (res.ok) {
       const data = await res.json();
       if (data?.session) {
@@ -97,7 +105,11 @@ function createRealService(): PlayFabService {
       },
       getSession: async () => {
         try {
-          const res = await fetch('/api/auth/session', { method: 'GET' });
+          const res = await fetch('/api/auth/session', {
+            method: 'GET',
+            credentials: 'same-origin',
+            cache: 'no-store',
+          });
           if (!res.ok) return null;
           const data = await res.json();
           return data.session ?? null;
@@ -107,7 +119,11 @@ function createRealService(): PlayFabService {
       },
       isAdmin: async () => {
         try {
-          const res = await fetch('/api/auth/session', { method: 'GET' });
+          const res = await fetch('/api/auth/session', {
+            method: 'GET',
+            credentials: 'same-origin',
+            cache: 'no-store',
+          });
           if (!res.ok) return false;
           const data = await res.json();
           return data?.session?.role === 'admin';

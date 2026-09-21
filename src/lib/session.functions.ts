@@ -1,6 +1,5 @@
 import { createServerFn } from "@tanstack/react-start";
-import { deleteCookie, getRequest } from "@tanstack/react-start/server";
-import { PLAYFAB_SESSION_COOKIE, PLAYFAB_ROLE_COOKIE } from "./session.constants";
+import { getRequest } from "@tanstack/react-start/server";
 import { validateSessionFromRequest } from "./playfab/session";
 
 export interface CrewSession {
@@ -22,8 +21,6 @@ export const getCrewSession = createServerFn({ method: "GET" }).handler(
     try {
       const session = await validateSessionFromRequest(getRequest());
       if (!session) {
-        deleteCookie(PLAYFAB_SESSION_COOKIE, { path: "/" });
-        deleteCookie(PLAYFAB_ROLE_COOKIE, { path: "/" });
         return null;
       }
 
