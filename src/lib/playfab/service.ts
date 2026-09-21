@@ -5,7 +5,7 @@ import { PlayFabError, playfabClientApi } from './client';
 import { PLAYFAB_DATA_KEYS } from './constants';
 import { getPlayerProfile, updateDisplayName, getUserData, updateUserData } from './player';
 import { getPlayerProgression } from './progression';
-import { getVirtualCurrency } from './economy';
+import { getCcoinCurrencyCode, getVirtualCurrency } from './economy';
 import { getInventory } from './inventory';
 import { getAchievements } from './achievements';
 import { getKnowledge } from './almanac';
@@ -66,7 +66,7 @@ function mapPlayFabCatalogItem(item: Record<string, unknown>): InventoryItem | n
 
   const rarityValue = String(item.ItemRarity ?? customData.rarity ?? '').trim().toLowerCase();
   const rarity = ['common', 'uncommon', 'rare', 'epic', 'legendary'].includes(rarityValue) ? rarityValue : 'common';
-  const price = virtualCurrencyPrices.CC ?? virtualCurrencyPrices.cCoins ?? item.Price;
+  const price = virtualCurrencyPrices[getCcoinCurrencyCode()] ?? virtualCurrencyPrices.cCoins ?? item.Price;
 
   return {
     itemId,
@@ -370,7 +370,7 @@ function createRealService(): PlayFabService {
 
         const currency = typeof priceOrCurrency === 'string' ? priceOrCurrency : (currencyOrPrice as string);
         const price = typeof priceOrCurrency === 'number' ? priceOrCurrency : Number(currencyOrPrice);
-        const pfCurrency = currency === 'cCoins' ? 'CC' : 'BC';
+        const pfCurrency = currency === 'cCoins' ? getCcoinCurrencyCode() : 'BC';
 
         try {
           await playfabClientApi('/Client/PurchaseItem', {

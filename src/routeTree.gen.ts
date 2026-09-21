@@ -60,6 +60,7 @@ import { Route as ApiAuthProfileRouteImport } from './routes/api/auth/profile'
 import { Route as ApiAuthRegisterRouteImport } from './routes/api/auth/register'
 import { Route as ApiAuthSessionRouteImport } from './routes/api/auth/session'
 import { Route as ApiPaymongoCheckoutRouteImport } from './routes/api/paymongo/checkout'
+import { Route as ApiPaymongoReturnRouteImport } from './routes/api/paymongo/return'
 import { Route as ApiPaymongoStatusRouteImport } from './routes/api/paymongo/status'
 import { Route as ApiPaymongoWebhookRouteImport } from './routes/api/paymongo/webhook'
 import { Route as ApiPlayfabClientRouteImport } from './routes/api/playfab/client'
@@ -327,6 +328,11 @@ const ApiPaymongoCheckoutRoute = ApiPaymongoCheckoutRouteImport.update({
   path: '/api/paymongo/checkout',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiPaymongoReturnRoute = ApiPaymongoReturnRouteImport.update({
+  id: '/api/paymongo/return',
+  path: '/api/paymongo/return',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiPaymongoStatusRoute = ApiPaymongoStatusRouteImport.update({
   id: '/api/paymongo/status',
   path: '/api/paymongo/status',
@@ -433,6 +439,7 @@ export interface FileRoutesByFullPath {
   '/api/auth/register': typeof ApiAuthRegisterRoute
   '/api/auth/session': typeof ApiAuthSessionRoute
   '/api/paymongo/checkout': typeof ApiPaymongoCheckoutRoute
+  '/api/paymongo/return': typeof ApiPaymongoReturnRoute
   '/api/paymongo/status': typeof ApiPaymongoStatusRoute
   '/api/paymongo/webhook': typeof ApiPaymongoWebhookRoute
   '/api/playfab/client': typeof ApiPlayfabClientRoute
@@ -494,6 +501,7 @@ export interface FileRoutesByTo {
   '/api/auth/register': typeof ApiAuthRegisterRoute
   '/api/auth/session': typeof ApiAuthSessionRoute
   '/api/paymongo/checkout': typeof ApiPaymongoCheckoutRoute
+  '/api/paymongo/return': typeof ApiPaymongoReturnRoute
   '/api/paymongo/status': typeof ApiPaymongoStatusRoute
   '/api/paymongo/webhook': typeof ApiPaymongoWebhookRoute
   '/api/playfab/client': typeof ApiPlayfabClientRoute
@@ -558,6 +566,7 @@ export interface FileRoutesById {
   '/api/auth/register': typeof ApiAuthRegisterRoute
   '/api/auth/session': typeof ApiAuthSessionRoute
   '/api/paymongo/checkout': typeof ApiPaymongoCheckoutRoute
+  '/api/paymongo/return': typeof ApiPaymongoReturnRoute
   '/api/paymongo/status': typeof ApiPaymongoStatusRoute
   '/api/paymongo/webhook': typeof ApiPaymongoWebhookRoute
   '/api/playfab/client': typeof ApiPlayfabClientRoute
@@ -623,6 +632,7 @@ export interface FileRouteTypes {
     | '/api/auth/register'
     | '/api/auth/session'
     | '/api/paymongo/checkout'
+    | '/api/paymongo/return'
     | '/api/paymongo/status'
     | '/api/paymongo/webhook'
     | '/api/playfab/client'
@@ -684,6 +694,7 @@ export interface FileRouteTypes {
     | '/api/auth/register'
     | '/api/auth/session'
     | '/api/paymongo/checkout'
+    | '/api/paymongo/return'
     | '/api/paymongo/status'
     | '/api/paymongo/webhook'
     | '/api/playfab/client'
@@ -747,6 +758,7 @@ export interface FileRouteTypes {
     | '/api/auth/register'
     | '/api/auth/session'
     | '/api/paymongo/checkout'
+    | '/api/paymongo/return'
     | '/api/paymongo/status'
     | '/api/paymongo/webhook'
     | '/api/playfab/client'
@@ -791,6 +803,7 @@ export interface RootRouteChildren {
   ApiAuthRegisterRoute: typeof ApiAuthRegisterRoute
   ApiAuthSessionRoute: typeof ApiAuthSessionRoute
   ApiPaymongoCheckoutRoute: typeof ApiPaymongoCheckoutRoute
+  ApiPaymongoReturnRoute: typeof ApiPaymongoReturnRoute
   ApiPaymongoStatusRoute: typeof ApiPaymongoStatusRoute
   ApiPaymongoWebhookRoute: typeof ApiPaymongoWebhookRoute
   ApiPlayfabClientRoute: typeof ApiPlayfabClientRoute
@@ -1162,6 +1175,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiPaymongoCheckoutRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/paymongo/return': {
+      id: '/api/paymongo/return'
+      path: '/api/paymongo/return'
+      fullPath: '/api/paymongo/return'
+      preLoaderRoute: typeof ApiPaymongoReturnRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/paymongo/status': {
       id: '/api/paymongo/status'
       path: '/api/paymongo/status'
@@ -1324,6 +1344,7 @@ const rootRouteChildren: RootRouteChildren = {
   ApiAuthRegisterRoute: ApiAuthRegisterRoute,
   ApiAuthSessionRoute: ApiAuthSessionRoute,
   ApiPaymongoCheckoutRoute: ApiPaymongoCheckoutRoute,
+  ApiPaymongoReturnRoute: ApiPaymongoReturnRoute,
   ApiPaymongoStatusRoute: ApiPaymongoStatusRoute,
   ApiPaymongoWebhookRoute: ApiPaymongoWebhookRoute,
   ApiPlayfabClientRoute: ApiPlayfabClientRoute,

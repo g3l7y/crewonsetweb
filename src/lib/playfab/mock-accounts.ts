@@ -135,3 +135,9 @@ export function getMockAccountBySessionTicket(sessionTicket: string) {
     (account) => account.sessionTicket === sessionTicket,
   ) ?? null;
 }
+
+export function getMockAccountByPlayFabId(playFabId: string) {
+  return Array.from(mockAccounts.values()).find(
+    (account) => account.playFabId === playFabId,
+  ) ?? null;
+}

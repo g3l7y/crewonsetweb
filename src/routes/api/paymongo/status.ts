@@ -6,7 +6,7 @@ import {
   markPayMongoOrderFailed,
   markPayMongoOrderFulfilled,
 } from '@/lib/paymongo/ledger';
-import { addCurrency } from '@/lib/playfab/economy';
+import { addCurrency, getCcoinCurrencyCode } from '@/lib/playfab/economy';
 import { isMockMode } from '@/lib/playfab/config';
 import { unauthorizedSessionResponse, validateSessionFromRequest } from '@/lib/playfab/session';
 import {
@@ -137,9 +137,15 @@ async function reconcilePaidOrder(order: PayMongoOrder, mockMode: boolean, playf
 
   if (!mockMode) {
     if (!playfabSecret) throw new Error('PlayFab server credentials are missing.');
-    const credited = await addCurrency(order.playFabId, 'CC', order.coins, playfabSecret);
-    if (!credited) {
-      await markPayMongoOrderFailed(order.id, 'PlayFab currency grant did not complete.');
+    const credited = await addCurrency(
+      order.playFabId,
+      getCcoinCurrencyCode(),
+      order.coins,
+      playfabSecret,
+      { source: 'paymongo', orderId: order.id },
+    );
+    if (!credited.success) {
+      await markPayMongoOrderFailed(order.id, credited.error);
       await repairWebsiteOrder(order.id, playfabSecret, 'failed');
       return 'failed';
     }

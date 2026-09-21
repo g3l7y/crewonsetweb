@@ -51,8 +51,16 @@ export default function CheckoutPage({ onBack }: CheckoutPageProps) {
     [payload],
   );
 
-  function completeDemoPurchase() {
+  function completeDemoPurchase(reference: string) {
     if (!pack) return;
+    const creditedKey = `cos.paymongo.demo.credited.${reference}`;
+    if (window.localStorage.getItem(creditedKey) === '1') {
+      setCheckoutPayload(null);
+      setSubmitted(true);
+      setProcessing(false);
+      return;
+    }
+    window.localStorage.setItem(creditedKey, '1');
     const totalCoins = pack.coins;
     const completedAt = new Date();
 
@@ -74,7 +82,7 @@ export default function CheckoutPage({ onBack }: CheckoutPageProps) {
       ...topUpsStore.get(),
     ]);
 
-    setWallet([balance + totalCoins]);
+    setWallet((current) => [(current[0] ?? 0) + totalCoins]);
     setNotifications([
       {
         id: uid("ntf"),
@@ -111,9 +119,13 @@ export default function CheckoutPage({ onBack }: CheckoutPageProps) {
       window.localStorage.getItem(processedKey) === '1' ||
       (mockMode && window.localStorage.getItem(legacyProcessedKey) === '1')
     ) {
-      setCheckoutPayload(null);
-      if (!mockMode) void walletQuery.refetch();
-      setSubmitted(true);
+      if (mockMode) {
+        completeDemoPurchase(reference);
+      } else {
+        setCheckoutPayload(null);
+        void walletQuery.refetch();
+        setSubmitted(true);
+      }
       clearPaymentQuery();
       return;
     }
@@ -145,7 +157,7 @@ export default function CheckoutPage({ onBack }: CheckoutPageProps) {
         if (cancelled) return;
         window.localStorage.setItem(processedKey, '1');
         if (mockMode) {
-          completeDemoPurchase();
+          completeDemoPurchase(reference);
         } else {
           await walletQuery.refetch();
           if (cancelled) return;
