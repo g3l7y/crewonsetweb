@@ -73,7 +73,12 @@ export const Route = createFileRoute("/api/auth/password-recovery/request")({
           const recoveryRequest: Record<string, unknown> = { Email: email, EmailTemplateId: templateId };
           const sent = await playFabAdminRequest("/Admin/SendAccountRecoveryEmail", recoveryRequest, secretKey);
           if (!sent.response.ok || sent.result?.code !== 200) {
-            const message = sent.result?.errorMessage ?? "PlayFab could not send the recovery email.";
+            const errorCode = sent.result?.errorCode;
+            const message = errorCode === 1325
+              ? "This account does not have a PlayFab contact email yet. Sign in once, then request recovery again."
+              : errorCode === 1341
+                ? "PlayFab email delivery is not configured. Enable the SMTP add-on and try again."
+                : sent.result?.errorMessage ?? "PlayFab could not send the recovery email.";
             return Response.json({ success: false, error: message }, { status: 502 });
           }
 

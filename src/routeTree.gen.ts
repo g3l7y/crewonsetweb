@@ -52,6 +52,7 @@ import { Route as ApiAdminPaymongoOrdersRouteImport } from './routes/api/admin/p
 import { Route as ApiAdminPlayerReportsRouteImport } from './routes/api/admin/player-reports'
 import { Route as ApiAdminPlayersRouteImport } from './routes/api/admin/players'
 import { Route as ApiAuthCheckUsernameRouteImport } from './routes/api/auth/check-username'
+import { Route as ApiAuthGoogleRouteImport } from './routes/api/auth/google'
 import { Route as ApiAuthLoginRouteImport } from './routes/api/auth/login'
 import { Route as ApiAuthLogoutRouteImport } from './routes/api/auth/logout'
 import { Route as ApiAuthProfileRouteImport } from './routes/api/auth/profile'
@@ -283,6 +284,11 @@ const ApiAuthCheckUsernameRoute = ApiAuthCheckUsernameRouteImport.update({
   path: '/api/auth/check-username',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiAuthGoogleRoute = ApiAuthGoogleRouteImport.update({
+  id: '/api/auth/google',
+  path: '/api/auth/google',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiAuthLoginRoute = ApiAuthLoginRouteImport.update({
   id: '/api/auth/login',
   path: '/api/auth/login',
@@ -406,6 +412,7 @@ export interface FileRoutesByFullPath {
   '/api/admin/player-reports': typeof ApiAdminPlayerReportsRoute
   '/api/admin/players': typeof ApiAdminPlayersRoute
   '/api/auth/check-username': typeof ApiAuthCheckUsernameRoute
+  '/api/auth/google': typeof ApiAuthGoogleRoute
   '/api/auth/login': typeof ApiAuthLoginRoute
   '/api/auth/logout': typeof ApiAuthLogoutRoute
   '/api/auth/profile': typeof ApiAuthProfileRoute
@@ -464,6 +471,7 @@ export interface FileRoutesByTo {
   '/api/admin/player-reports': typeof ApiAdminPlayerReportsRoute
   '/api/admin/players': typeof ApiAdminPlayersRoute
   '/api/auth/check-username': typeof ApiAuthCheckUsernameRoute
+  '/api/auth/google': typeof ApiAuthGoogleRoute
   '/api/auth/login': typeof ApiAuthLoginRoute
   '/api/auth/logout': typeof ApiAuthLogoutRoute
   '/api/auth/profile': typeof ApiAuthProfileRoute
@@ -525,6 +533,7 @@ export interface FileRoutesById {
   '/api/admin/player-reports': typeof ApiAdminPlayerReportsRoute
   '/api/admin/players': typeof ApiAdminPlayersRoute
   '/api/auth/check-username': typeof ApiAuthCheckUsernameRoute
+  '/api/auth/google': typeof ApiAuthGoogleRoute
   '/api/auth/login': typeof ApiAuthLoginRoute
   '/api/auth/logout': typeof ApiAuthLogoutRoute
   '/api/auth/profile': typeof ApiAuthProfileRoute
@@ -587,6 +596,7 @@ export interface FileRouteTypes {
     | '/api/admin/player-reports'
     | '/api/admin/players'
     | '/api/auth/check-username'
+    | '/api/auth/google'
     | '/api/auth/login'
     | '/api/auth/logout'
     | '/api/auth/profile'
@@ -645,6 +655,7 @@ export interface FileRouteTypes {
     | '/api/admin/player-reports'
     | '/api/admin/players'
     | '/api/auth/check-username'
+    | '/api/auth/google'
     | '/api/auth/login'
     | '/api/auth/logout'
     | '/api/auth/profile'
@@ -705,6 +716,7 @@ export interface FileRouteTypes {
     | '/api/admin/player-reports'
     | '/api/admin/players'
     | '/api/auth/check-username'
+    | '/api/auth/google'
     | '/api/auth/login'
     | '/api/auth/logout'
     | '/api/auth/profile'
@@ -746,6 +758,7 @@ export interface RootRouteChildren {
   ApiAdminPlayerReportsRoute: typeof ApiAdminPlayerReportsRoute
   ApiAdminPlayersRoute: typeof ApiAdminPlayersRoute
   ApiAuthCheckUsernameRoute: typeof ApiAuthCheckUsernameRoute
+  ApiAuthGoogleRoute: typeof ApiAuthGoogleRoute
   ApiAuthLoginRoute: typeof ApiAuthLoginRoute
   ApiAuthLogoutRoute: typeof ApiAuthLogoutRoute
   ApiAuthProfileRoute: typeof ApiAuthProfileRoute
@@ -1066,6 +1079,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiAuthCheckUsernameRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/auth/google': {
+      id: '/api/auth/google'
+      path: '/api/auth/google'
+      fullPath: '/api/auth/google'
+      preLoaderRoute: typeof ApiAuthGoogleRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/auth/login': {
       id: '/api/auth/login'
       path: '/api/auth/login'
@@ -1255,6 +1275,7 @@ const rootRouteChildren: RootRouteChildren = {
   ApiAdminPlayerReportsRoute: ApiAdminPlayerReportsRoute,
   ApiAdminPlayersRoute: ApiAdminPlayersRoute,
   ApiAuthCheckUsernameRoute: ApiAuthCheckUsernameRoute,
+  ApiAuthGoogleRoute: ApiAuthGoogleRoute,
   ApiAuthLoginRoute: ApiAuthLoginRoute,
   ApiAuthLogoutRoute: ApiAuthLogoutRoute,
   ApiAuthProfileRoute: ApiAuthProfileRoute,

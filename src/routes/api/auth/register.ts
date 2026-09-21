@@ -3,6 +3,7 @@ import { isMockMode, PLAYFAB_TITLE_ID } from '@/lib/playfab/config';
 import { createSessionCookies } from '@/lib/playfab/session';
 import { isValidPassword, isValidUsername, PASSWORD_ERROR, USERNAME_ERROR } from '@/lib/validation';
 import { registerMockAccount } from '@/lib/playfab/mock-accounts';
+import { syncPlayFabContactEmail } from '@/lib/playfab/contact-email';
 import type { SessionData, AuthResponse } from '@/lib/playfab/types';
 
 export const Route = createFileRoute('/api/auth/register')({
@@ -88,6 +89,12 @@ export const Route = createFileRoute('/api/auth/register')({
               displayName: normalizedUsername,
               email: normalizedEmail,
             };
+
+            try {
+              await syncPlayFabContactEmail(session.sessionTicket, normalizedEmail);
+            } catch (contactEmailError) {
+              console.warn('[PlayFab] Could not sync registration contact email:', contactEmailError);
+            }
           }
 
           const headers = new Headers({ 'Content-Type': 'application/json' });
