@@ -3974,8 +3974,9 @@ html[data-display-theme="dark"] .display-theme-switcher button[aria-pressed="tru
   height: clamp(20rem, 60vh, 34rem);
   max-height: none;
 }
-/* BLOCKED EMPTY STATE: center the icon and copy inside the shared Friends card. */
-.portal-theme .blocked-empty-state {
+/* FRIENDS EMPTY STATES: center every empty tab exactly like Blocked inside the
+   shared Friends card viewport in both display themes. */
+.portal-theme :where(.friends-empty-state, .blocked-empty-state) {
   display: flex;
   min-height: 100%;
   height: 100%;

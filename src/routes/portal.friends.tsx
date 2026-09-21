@@ -90,6 +90,24 @@ type SentRequest = {
 
 type Player = Friend;
 
+type RelationshipState =
+  | "available"
+  | "friend"
+  | "pending"
+  | "incoming"
+  | "blocked";
+
+function samePlayer(
+  left: Pick<Player, "crewId" | "name">,
+  right: Pick<Player, "crewId" | "name">,
+) {
+  if (left.crewId && right.crewId && left.crewId === right.crewId) {
+    return true;
+  }
+
+  return left.name.trim().toLowerCase() === right.name.trim().toLowerCase();
+}
+
 function mapSearchResultToPlayer(result: PlayerSearchResult): Player {
   return {
     name: result.username || result.displayName || "Player",
@@ -626,27 +644,50 @@ function FriendsPage() {
     setSelectedProfile(null);
   }
 
+  function getRelationship(player: Player): RelationshipState {
+    if (friends.some((friend) => samePlayer(friend, player))) {
+      return "friend";
+    }
+
+    if (sentRequests.some((request) => samePlayer(request, player))) {
+      return "pending";
+    }
+
+    if (requests.some((request) => samePlayer(request, player))) {
+      return "incoming";
+    }
+
+    if (blocked.some((blockedPlayer) => samePlayer(blockedPlayer, player))) {
+      return "blocked";
+    }
+
+    return "available";
+  }
+
   function addFriend(player: Player) {
-    const alreadyFriend = friends.some(
-      (friend) => friend.name === player.name
-    );
+    const relationship = getRelationship(player);
 
-    const isBlocked = blocked.some(
-      (blockedPlayer) =>
-        blockedPlayer.name === player.name
-    );
-
-    if (alreadyFriend) {
+    if (relationship === "friend") {
       setMessage(
         `${player.name} is already your friend.`
       );
       return;
     }
 
-    if (isBlocked) {
+    if (relationship === "blocked") {
       setMessage(
         `Unblock ${player.name} before adding them.`
       );
+      return;
+    }
+
+    if (relationship === "pending") {
+      setMessage(`A friend request to ${player.name} is already pending.`);
+      return;
+    }
+
+    if (relationship === "incoming") {
+      setMessage(`${player.name} has already sent you a friend request.`);
       return;
     }
 
@@ -661,13 +702,19 @@ function FriendsPage() {
       return;
     }
 
-    setFriends((current) => [
+    setSentRequests((current) => [
       ...current,
-      player,
+      {
+        name: player.name,
+        level: player.level,
+        role: player.role,
+        crewId: player.crewId,
+        sentDate: "Just now",
+      },
     ]);
 
     setMessage(
-      `${player.name} has been added to your friends.`
+      `Friend request sent to ${player.name}.`
     );
 
     setAddSearch("");
@@ -920,11 +967,8 @@ function FriendsPage() {
                     </p>
                   ) : (
                     globalSearchResults.map((player) => {
-                      const isFriend = friends.some(
-                        (friend) =>
-                          friend.name.trim().toLowerCase() ===
-                          player.name.trim().toLowerCase()
-                      );
+                      const relationship = getRelationship(player);
+                      const isFriend = relationship === "friend";
 
                       return (
                         <button
@@ -1189,12 +1233,9 @@ function FriendsPage() {
                       ) : (
                         searchResults.map(
                           (player) => {
-                            const isFriend =
-                              friends.some(
-                                (friend) =>
-                                  friend.name ===
-                                  player.name
-                              );
+                            const relationship = getRelationship(player);
+                            const isFriend = relationship === "friend";
+                            const canAdd = relationship === "available";
 
                             return (
                               <div
@@ -1228,9 +1269,7 @@ function FriendsPage() {
 
                                 <button
                                   type="button"
-                                  disabled={
-                                    isFriend
-                                  }
+                                  disabled={!canAdd}
                                   onClick={(event) => {
                                     event.stopPropagation();
                                     addFriend(
@@ -1238,14 +1277,20 @@ function FriendsPage() {
                                     );
                                   }}
                                   className={`rounded-md px-3 py-2 text-[10px] font-black ${
-                                    isFriend
+                                    !canAdd
                                       ? "cursor-not-allowed bg-white/[0.06] text-white/25"
                                       : "bg-coral text-white hover:opacity-90"
                                   }`}
                                 >
-                                  {isFriend
-                                    ? "ADDED"
-                                    : "ADD"}
+                                  {relationship === "friend"
+                                    ? "CREW MATE"
+                                    : relationship === "pending"
+                                      ? "REQUEST SENT"
+                                      : relationship === "incoming"
+                                        ? "REQUEST RECEIVED"
+                                        : relationship === "blocked"
+                                          ? "BLOCKED"
+                                          : "ADD"}
                                 </button>
 
                               </div>
@@ -1577,6 +1622,9 @@ function FriendsPage() {
         <PlayerProfile
           player={selectedProfile.player}
           canViewStatus={selectedProfile.canViewStatus}
+          relationship={getRelationship(selectedProfile.player)}
+          onAdd={() => addFriend(selectedProfile.player)}
+          isAdding={addFriendMutation.isPending}
           onClose={closeProfile}
         />
       )}
@@ -1652,10 +1700,16 @@ function FriendsPage() {
 function PlayerProfile({
   player,
   canViewStatus,
+  relationship,
+  onAdd,
+  isAdding,
   onClose,
 }: {
   player: Friend;
   canViewStatus: boolean;
+  relationship: RelationshipState;
+  onAdd: () => void;
+  isAdding: boolean;
   onClose: () => void;
 }) {
   const profileImage = player.profileImage ?? getProfileArtwork(player.name);
@@ -1767,6 +1821,43 @@ function PlayerProfile({
                   <span>
                     Level {player.level}
                   </span>
+
+                  {relationship === "available" && (
+                    <button
+                      type="button"
+                      onClick={onAdd}
+                      disabled={isAdding}
+                      className="inline-flex items-center gap-1.5 rounded-md bg-coral px-3 py-2 text-[10px] font-black tracking-wide text-white transition hover:opacity-90 disabled:cursor-wait disabled:opacity-60"
+                    >
+                      <UserPlus className="size-3.5" />
+                      {isAdding ? "ADDING..." : "ADD"}
+                    </button>
+                  )}
+
+                  {relationship === "friend" && (
+                    <span className="inline-flex items-center gap-1.5 rounded-md border border-[#2d9d8f]/35 bg-[#2d9d8f]/10 px-3 py-2 text-[10px] font-black tracking-wide text-[#55b8aa]">
+                      <Check className="size-3.5" />
+                      CREW MATE
+                    </span>
+                  )}
+
+                  {relationship === "pending" && (
+                    <span className="rounded-md border border-white/10 bg-white/[0.06] px-3 py-2 text-[10px] font-black tracking-wide text-white/45">
+                      REQUEST SENT
+                    </span>
+                  )}
+
+                  {relationship === "incoming" && (
+                    <span className="rounded-md border border-yellow/25 bg-yellow/10 px-3 py-2 text-[10px] font-black tracking-wide text-yellow">
+                      REQUEST RECEIVED
+                    </span>
+                  )}
+
+                  {relationship === "blocked" && (
+                    <span className="rounded-md border border-coral/25 bg-coral/10 px-3 py-2 text-[10px] font-black tracking-wide text-coral">
+                      BLOCKED
+                    </span>
+                  )}
 
                 </div>
 
@@ -2258,7 +2349,7 @@ function EmptyState({
   className?: string;
 }) {
   return (
-    <div className={`px-6 py-14 text-center ${className ?? ""}`}>
+    <div className={`friends-empty-state px-6 py-14 text-center ${className ?? ""}`}>
 
       <Users className="mx-auto size-8 text-white/15" />
 
