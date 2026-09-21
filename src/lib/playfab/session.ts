@@ -102,15 +102,29 @@ export async function validateSessionFromRequest(
   }
 
   try {
-    const accountResponse = await fetch(`${PLAYFAB_API_BASE}/Client/GetAccountInfo`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'X-Authorization': parsed.sessionTicket,
-      },
-      body: JSON.stringify({ TitleId: PLAYFAB_TITLE_ID }),
-    });
-    const accountResult = await accountResponse.json();
+    let accountResponse: Response | null = null;
+    let accountResult: any = null;
+    for (let attempt = 0; attempt < 2; attempt += 1) {
+      try {
+        accountResponse = await fetch(`${PLAYFAB_API_BASE}/Client/GetAccountInfo`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'X-Authorization': parsed.sessionTicket,
+          },
+          body: JSON.stringify({}),
+        });
+        accountResult = await accountResponse.json();
+      } catch (error) {
+        if (attempt === 1) throw error;
+        continue;
+      }
+
+      const retryable = accountResponse.status === 429 || accountResponse.status >= 500 || accountResult?.code >= 500;
+      if (!retryable || attempt === 1) break;
+    }
+
+    if (!accountResponse) return null;
     if (!accountResponse.ok || accountResult.code !== 200) {
       // A temporary PlayFab/network failure must not erase a valid browser
       // session. The ticket is still the credential used for every protected

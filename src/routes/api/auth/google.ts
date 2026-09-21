@@ -73,10 +73,7 @@ export const Route = createFileRoute("/api/auth/google")({
                 "Content-Type": "application/json",
                 "X-Authorization": pfData.SessionTicket,
               },
-              body: JSON.stringify({
-                TitleId: PLAYFAB_TITLE_ID,
-                Keys: [PLAYFAB_DATA_KEYS.profile_metadata],
-              }),
+              body: JSON.stringify({ Keys: [PLAYFAB_DATA_KEYS.profile_metadata] }),
             });
             const userDataResult = await userDataResponse.json();
             const rawMetadata = userDataResult?.data?.Data?.[PLAYFAB_DATA_KEYS.profile_metadata]?.Value;

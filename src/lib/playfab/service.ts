@@ -20,6 +20,25 @@ import { cosmeticCatalog } from '@/lib/demo/portal-shop';
 let _cachedTicket: string | null = null;
 const COOKIE_SESSION_SENTINEL = '__cookie_session__';
 
+type SessionIdentity = {
+  playFabId?: string;
+  username?: string;
+  displayName?: string;
+  email?: string;
+};
+
+async function getSessionIdentity(): Promise<SessionIdentity | null> {
+  if (typeof window === 'undefined') return null;
+  try {
+    const response = await fetch('/api/auth/session', { method: 'GET' });
+    if (!response.ok) return null;
+    const data = await response.json();
+    return data?.session ?? null;
+  } catch {
+    return null;
+  }
+}
+
 export function setCachedSessionTicket(ticket: string | null) {
   _cachedTicket = ticket;
 }
@@ -101,20 +120,22 @@ function createRealService(): PlayFabService {
     player: {
       getProfile: async () => {
         const ticket = await resolveSessionTicket();
+        const sessionIdentity = await getSessionIdentity();
+        const fallbackProfile = {
+          id: sessionIdentity?.playFabId ?? '',
+          playFabId: sessionIdentity?.playFabId ?? '',
+          email: sessionIdentity?.email ?? '',
+          displayName: sessionIdentity?.displayName || sessionIdentity?.username || 'Player',
+          username: sessionIdentity?.username || sessionIdentity?.displayName || 'player',
+          avatarUrl: null,
+          role: 'cameraman' as const,
+          crewId: 'CREW-001',
+          bio: '',
+          joinedAt: new Date().toISOString(),
+          lastLoginAt: new Date().toISOString(),
+        };
         if (!ticket) {
-          return {
-            id: '',
-            playFabId: '',
-            email: '',
-            displayName: 'Player',
-            username: 'player',
-            avatarUrl: null,
-            role: 'cameraman',
-            crewId: 'CREW-001',
-            bio: '',
-            joinedAt: new Date().toISOString(),
-            lastLoginAt: new Date().toISOString(),
-          };
+          return fallbackProfile;
         }
         const profile = await getPlayerProfile(ticket);
         if (profile) {
@@ -127,20 +148,16 @@ function createRealService(): PlayFabService {
               // Ignore malformed optional profile metadata and keep the PlayFab profile.
             }
           }
+          if ((profile.username === 'player' || profile.displayName === 'Player') && sessionIdentity?.username) {
+            return {
+              ...profile,
+              username: sessionIdentity.username,
+              displayName: sessionIdentity.displayName || sessionIdentity.username,
+              email: profile.email || sessionIdentity.email || '',
+            };
+          }
         }
-        return profile ?? {
-          id: '',
-          playFabId: '',
-          email: '',
-          displayName: 'Player',
-          username: 'player',
-          avatarUrl: null,
-          role: 'cameraman',
-          crewId: 'CREW-001',
-          bio: '',
-          joinedAt: new Date().toISOString(),
-          lastLoginAt: new Date().toISOString(),
-        };
+        return profile ?? fallbackProfile;
       },
 
       getProgression: async () => {

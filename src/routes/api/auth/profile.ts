@@ -1,7 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { PLAYFAB_API_BASE, PLAYFAB_TITLE_ID, isMockMode } from "@/lib/playfab/config";
 import { PLAYFAB_DATA_KEYS } from "@/lib/playfab/constants";
-import { validateSessionFromRequest } from "@/lib/playfab/session";
+import { createSessionCookies, validateSessionFromRequest } from "@/lib/playfab/session";
 import { isValidUsername, USERNAME_ERROR } from "@/lib/validation";
 
 type ProfileMetadata = {
@@ -23,7 +23,7 @@ async function playFabClientRequest(
       "Content-Type": "application/json",
       "X-Authorization": sessionTicket,
     },
-    body: JSON.stringify({ TitleId: PLAYFAB_TITLE_ID, ...body }),
+    body: JSON.stringify(body),
   });
   const result = await response.json();
   if (!response.ok || result.code !== 200) {
@@ -48,7 +48,15 @@ export const Route = createFileRoute("/api/auth/profile")({
         }
 
         if (isMockMode()) {
-          return Response.json({ success: true, username });
+          const headers = new Headers({ "Content-Type": "application/json" });
+          for (const cookie of createSessionCookies({
+            ...session,
+            username,
+            displayName: username,
+          })) {
+            headers.append("Set-Cookie", cookie);
+          }
+          return new Response(JSON.stringify({ success: true, username }), { headers });
         }
 
         try {
@@ -79,7 +87,15 @@ export const Route = createFileRoute("/api/auth/profile")({
             },
           });
 
-          return Response.json({ success: true, username });
+          const headers = new Headers({ "Content-Type": "application/json" });
+          for (const cookie of createSessionCookies({
+            ...session,
+            username,
+            displayName: username,
+          })) {
+            headers.append("Set-Cookie", cookie);
+          }
+          return new Response(JSON.stringify({ success: true, username }), { headers });
         } catch (error) {
           const message = error instanceof Error ? error.message : "PlayFab could not save your profile.";
           const status = /name|display/i.test(message) ? 409 : 400;

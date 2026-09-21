@@ -27,7 +27,7 @@ export const Route = createFileRoute('/api/playfab/client')({
               'Content-Type': 'application/json',
               'X-Authorization': session.sessionTicket,
             },
-            body: JSON.stringify({ ...(body.body ?? {}), TitleId: PLAYFAB_TITLE_ID }),
+            body: JSON.stringify(body.body ?? {}),
           });
           const result = await playfabResponse.json();
           return Response.json(result, { status: playfabResponse.status });
