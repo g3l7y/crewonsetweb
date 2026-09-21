@@ -1037,7 +1037,7 @@ function SettingsPage() {
                         setDeleteText("");
                         setDeleteError("");
                       }}
-                      className="inline-flex w-fit items-center gap-2 rounded-md border border-coral px-4 py-2.5 text-xs font-black text-coral transition hover:bg-coral hover:text-white"
+                      className="inline-flex w-fit items-center gap-2 rounded-md border border-coral px-4 py-2.5 text-xs font-black text-[#0a0e19] transition hover:bg-coral hover:text-[#0a0e19]"
                     >
                       <Trash2 className="size-4" />
                       DELETE ACCOUNT
