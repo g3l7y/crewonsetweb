@@ -28,7 +28,8 @@ type PayMongoOrder = {
 };
 
 function getSecret(name: 'PAYMONGO_SECRET_KEY' | 'PLAYFAB_SECRET_KEY'): string | null {
-  return process.env[name] || null;
+  const value = process.env[name]?.trim();
+  return value || null;
 }
 
 function createOrderId(): string {
@@ -61,9 +62,21 @@ export const Route = createFileRoute('/api/paymongo/checkout')({
         const mockMode = isMockMode();
         const paymongoSecret = getSecret('PAYMONGO_SECRET_KEY');
         const playfabSecret = getSecret('PLAYFAB_SECRET_KEY');
-        if (!paymongoSecret || (!mockMode && !playfabSecret)) {
+        if (!paymongoSecret) {
+          const error = mockMode
+            ? 'Mock mode requires PAYMONGO_SECRET_KEY with an sk_test_ key.'
+            : 'PayMongo checkout is not configured on this server yet.';
+          return Response.json({ error }, { status: 503 });
+        }
+        if (!mockMode && !playfabSecret) {
           return Response.json(
             { error: 'PayMongo checkout is not configured on this server yet.' },
+            { status: 503 },
+          );
+        }
+        if (mockMode && !paymongoSecret.startsWith('sk_test_')) {
+          return Response.json(
+            { error: 'Mock mode requires a PayMongo Test secret key beginning with sk_test_.' },
             { status: 503 },
           );
         }

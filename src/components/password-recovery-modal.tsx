@@ -30,6 +30,8 @@ export function PasswordRecoveryModal({ scope, onClose, dark = false }: Password
   const inputClass = dark
     ? "form-input !border-white/10 !bg-[#0d121c] !text-white placeholder:!text-white/25 focus:!border-coral"
     : "form-input";
+  const emailLabelClass = `${dark ? labelClass : "!text-[#0a0e19]"} admin-recovery-email-label`;
+  const emailInputClass = `${dark ? inputClass : "form-input !bg-[#f0ede4]"} admin-recovery-email-input`;
   const buttonClass = dark
     ? "bg-coral text-white hover:bg-coral-dark"
     : "bg-navy text-white hover:bg-coral";
@@ -119,7 +121,7 @@ export function PasswordRecoveryModal({ scope, onClose, dark = false }: Password
 
   return (
     <div className="fixed inset-0 z-[90] grid place-items-center bg-black/70 p-4 backdrop-blur-sm" role="dialog" aria-modal="true" aria-labelledby="password-recovery-title">
-      <section className={`relative w-full max-w-md rounded-2xl border p-6 shadow-2xl sm:p-8 ${shellClass}`}>
+      <section className={`relative w-full max-w-md rounded-2xl border p-6 shadow-2xl sm:p-8 ${shellClass} ${dark ? "admin-recovery-modal" : ""}`}>
         <button type="button" onClick={onClose} aria-label="Close" className={`absolute right-4 top-4 ${dark ? "text-white/45 hover:text-white" : "text-navy/40 hover:text-navy"}`}>
           <X className="size-5" />
         </button>
@@ -132,8 +134,8 @@ export function PasswordRecoveryModal({ scope, onClose, dark = false }: Password
             <p className={`text-sm leading-relaxed ${mutedClass}`}>
               Enter the email used by the account.
             </p>
-            <label className={`form-label mt-4 ${labelClass}`}>EMAIL
-              <input className={inputClass} type="email" required value={email} onChange={(event) => setEmail(event.target.value)} placeholder="player@example.com" />
+            <label className={`form-label mt-4 ${emailLabelClass}`}>EMAIL
+              <input className={emailInputClass} type="email" required value={email} onChange={(event) => setEmail(event.target.value)} placeholder="player@example.com" />
             </label>
             {error && <p role="alert" className="mt-3 text-sm font-bold text-coral">{error}</p>}
             <button disabled={busy} type="submit" className={`mt-5 inline-flex w-full items-center justify-center gap-2 rounded-md px-5 py-3.5 text-sm font-black tracking-wider transition disabled:cursor-wait disabled:opacity-70 ${buttonClass}`}>
