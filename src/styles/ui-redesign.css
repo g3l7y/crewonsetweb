@@ -2220,8 +2220,8 @@ body { min-width: 320px; }
 /* PLAYER PROFILE DETAILS: use the dark console surface for the information,
    account, and production-statistics cards while preserving status colors. */
 .admin-theme:not(.admin-light) .admin-player-profile-info-card {
-  background-color: #0f1626 !important;
-  border-color: #0f1626 !important;
+  background-color: #172235 !important;
+  border-color: #172235 !important;
 }
 
 .admin-theme:not(.admin-light) .admin-player-profile-info-card :where(p) {
