@@ -25,6 +25,9 @@ import {
   topUpsStore,
 } from "@/lib/admin-demo-data";
 import { notificationsStore, uid } from "@/lib/demo/store";
+import { isMockMode } from "@/lib/playfab/config";
+import { useAdminPlayers } from "@/lib/playfab/hooks";
+import type { PlayerProfile } from "@/lib/playfab/types";
 
 export const Route = createFileRoute("/admin/players")({
   head: () => ({
@@ -44,7 +47,7 @@ export const Route = createFileRoute("/admin/players")({
 type PlayerStatus = "Active" | "Inactive" | "Banned";
 
 type Player = {
-  id: number;
+  id: string;
   username: string;
   email: string;
   status: PlayerStatus;
@@ -127,6 +130,39 @@ function getPlaytime(score: number) {
   return `${hours}h ${minutes}m`;
 }
 
+function formatJoinedDate(value: string) {
+  if (!value) {
+    return "—";
+  }
+
+  const parsed = new Date(value);
+
+  if (Number.isNaN(parsed.getTime())) {
+    return value;
+  }
+
+  return new Intl.DateTimeFormat("en-US", {
+    month: "short",
+    day: "2-digit",
+    year: "numeric",
+  }).format(parsed);
+}
+
+function mapPlayFabPlayer(player: PlayerProfile): Player {
+  const id = player.playFabId || player.id || player.username;
+  const username = player.username || player.displayName || `Player ${id}`;
+
+  return {
+    id,
+    username,
+    email: player.email || "—",
+    status: "Active",
+    joined: formatJoinedDate(player.joinedAt),
+    score: 0,
+    role: player.primaryRole || player.role || "Player",
+  };
+}
+
 function getInitials(username: string) {
   const clean = username.replace(/[^a-zA-Z0-9]/g, "");
 
@@ -175,6 +211,8 @@ function getPlayerDateValue(joined: string) {
    ========================================================= */
 
 function PlayersPage() {
+  const mockMode = isMockMode();
+  const realPlayersQuery = useAdminPlayers(!mockMode);
   /* =======================================================
      PLAYER DATA
      ======================================================= */
@@ -292,7 +330,7 @@ function PlayersPage() {
     });
   }
 
-  function handleRowClick(id: number) {
+  function handleRowClick(id: string) {
     if (isDragging.current) {
       return;
     }
@@ -300,7 +338,7 @@ function PlayersPage() {
     togglePlayerSelection(id);
   }
 
-  const [selectedPlayers, setSelectedPlayers] = useState<number[]>([]);
+  const [selectedPlayers, setSelectedPlayers] = useState<string[]>([]);
 
   const [selectedPlayer, setSelectedPlayer] = useState<Player | null>(null);
   const [topUps] = topUpsStore.useStore();
@@ -341,12 +379,12 @@ function PlayersPage() {
     | {
         type: "delete" | "reset";
 
-        id: number;
+        id: string;
       }
     | {
         type: "mass-delete" | "mass-reset";
 
-        ids: number[];
+        ids: string[];
       }
     | null
   >(null);
@@ -356,16 +394,30 @@ function PlayersPage() {
      ========================================================= */
 
   useEffect(() => {
+    if (!mockMode) {
+      return;
+    }
+
     setPlayerList(
       initialPlayers.map(
         (player) =>
           ({
             ...player,
+            id: String(player.id),
           }) as Player,
       ),
     );
-  }, []);
+  }, [mockMode]);
 
+  useEffect(() => {
+    if (mockMode || !realPlayersQuery.data) {
+      return;
+    }
+
+    setPlayerList(realPlayersQuery.data.map((player) => mapPlayFabPlayer(player)));
+    setSelectedPlayers([]);
+    setSelectedPlayer(null);
+  }, [mockMode, realPlayersQuery.data]);
   /* =========================================================
      APPLY SEARCH + FILTERS
 
@@ -685,7 +737,7 @@ function PlayersPage() {
     sortedPlayers.length > 0 &&
     sortedPlayers.every((player) => selectedPlayers.includes(player.id));
 
-  function togglePlayerSelection(id: number) {
+  function togglePlayerSelection(id: string) {
     setSelectedPlayers((current) =>
       current.includes(id) ? current.filter((playerId) => playerId !== id) : [...current, id],
     );
@@ -715,7 +767,7 @@ function PlayersPage() {
      PLAYER ACTIONS
      ========================================================= */
 
-  function deletePlayer(id: number) {
+  function deletePlayer(id: string) {
     setPlayerList((current) => current.filter((player) => player.id !== id));
 
     setSelectedPlayers((current) => current.filter((playerId) => playerId !== id));
@@ -725,7 +777,7 @@ function PlayersPage() {
     }
   }
 
-  function resetPlayer(id: number) {
+  function resetPlayer(id: string) {
     setPlayerList((current) =>
       current.map((player) =>
         player.id === id

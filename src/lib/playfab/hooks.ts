@@ -223,12 +223,12 @@ export function useCatalog() {
 }
 
 // Admin Hooks
-export function useAdminPlayers() {
+export function useAdminPlayers(enabled = true) {
   const { data: session } = useSession();
   return useQuery({
     queryKey: QUERY_KEYS.adminPlayers,
     queryFn: () => getPlayFabService().admin.getPlayers(),
-    enabled: !!session && (session.role === 'admin' || session.role === 'developer'),
+    enabled: enabled && !!session && (session.role === 'admin' || session.role === 'developer'),
     staleTime: 2 * 60 * 1000,
   });
 }
