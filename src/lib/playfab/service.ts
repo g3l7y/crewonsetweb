@@ -14,7 +14,6 @@ import { getTransactions } from './transactions';
 import { getNotifications } from './notifications';
 import { getGlobalLeaderboard, getLeaderboardAroundPlayer } from './leaderboard';
 import { getFriendsList } from './friends';
-import { cosmeticCatalog } from '@/lib/demo/portal-shop';
 
 // Cached session ticket in memory for fast authenticated Client API calls
 let _cachedTicket: string | null = null;
@@ -26,6 +25,62 @@ type SessionIdentity = {
   displayName?: string;
   email?: string;
 };
+
+type CosmeticCatalogCategory = 'Hair' | 'Tops' | 'Bottoms' | 'Eyeglasses';
+
+function parseCatalogCustomData(value: unknown): Record<string, string> {
+  const parsed = typeof value === 'string'
+    ? (() => {
+        try { return JSON.parse(value); } catch { return {}; }
+      })()
+    : value;
+
+  if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) return {};
+  return Object.fromEntries(
+    Object.entries(parsed).filter(([, entry]) => entry !== null && entry !== undefined).map(([key, entry]) => [key, String(entry)]),
+  );
+}
+
+function normalizeCosmeticCategory(value: unknown): CosmeticCatalogCategory | null {
+  const normalized = String(value ?? '').trim().toLowerCase();
+  if (normalized.includes('eyeglass') || normalized.includes('glass')) return 'Eyeglasses';
+  if (normalized.includes('hair')) return 'Hair';
+  if (normalized === 'top' || normalized === 'tops' || normalized.includes('shirt')) return 'Tops';
+  if (normalized === 'bottom' || normalized === 'bottoms' || normalized.includes('pant') || normalized.includes('trouser')) return 'Bottoms';
+  return null;
+}
+
+function mapPlayFabCatalogItem(item: Record<string, unknown>): InventoryItem | null {
+  const itemId = String(item?.ItemId ?? '').trim();
+  if (!itemId) return null;
+
+  const customData = parseCatalogCustomData(item.CustomData);
+  const virtualCurrencyPrices = item.VirtualCurrencyPrices && typeof item.VirtualCurrencyPrices === 'object' && !Array.isArray(item.VirtualCurrencyPrices)
+    ? item.VirtualCurrencyPrices as Record<string, unknown>
+    : {};
+  const tags = Array.isArray(item.Tags) ? item.Tags : [];
+  const category = normalizeCosmeticCategory(
+    item.ItemClass ?? customData.category ?? customData.Category ?? tags.join(' '),
+  );
+  if (!category) return null;
+
+  const rarityValue = String(item.ItemRarity ?? customData.rarity ?? '').trim().toLowerCase();
+  const rarity = ['common', 'uncommon', 'rare', 'epic', 'legendary'].includes(rarityValue) ? rarityValue : 'common';
+  const price = virtualCurrencyPrices.CC ?? virtualCurrencyPrices.cCoins ?? item.Price;
+
+  return {
+    itemId,
+    displayName: typeof item.DisplayName === 'string' ? item.DisplayName : '',
+    category: category as unknown as InventoryItem['category'],
+    rarity: rarity as InventoryItem['rarity'],
+    price: Number.isFinite(Number(price)) ? Number(price) : undefined,
+    currency: 'cCoins',
+    acquiredAt: '',
+    quantity: 1,
+    description: typeof item.Description === 'string' ? item.Description : '',
+    customData,
+  };
+}
 
 async function getSessionIdentity(): Promise<SessionIdentity | null> {
   if (typeof window === 'undefined') return null;
@@ -222,7 +277,7 @@ function createRealService(): PlayFabService {
           if (rawLoadout) {
             return JSON.parse(rawLoadout);
           }
-        } catch {}
+        } catch { /* Ignore malformed saved loadout and use an empty loadout. */ }
         return {};
       },
 
@@ -307,23 +362,16 @@ function createRealService(): PlayFabService {
 
     shop: {
       getCatalog: async (): Promise<InventoryItem[]> => {
-        return cosmeticCatalog.map((item) => ({
-          itemId: item.id,
-          displayName: item.name,
-          category: item.category as any,
-          rarity: item.rarity as any,
-          price: item.price,
-          currency: 'cCoins' as any,
-          acquiredAt: new Date().toISOString(),
-          quantity: 1,
-          description: item.description,
-          customData: {
-            priceCoins: String(item.price),
-            currency: 'cCoins',
-            ...(item.gradient ? { gradient: item.gradient } : {}),
-            ...(item.initials ? { initials: item.initials } : {}),
-          },
-        }));
+        const ticket = await resolveSessionTicket();
+        if (!ticket) return [];
+        try {
+          const data = await playfabClientApi<{ Catalog?: unknown[] }>('/Client/GetCatalogItems', {}, ticket);
+          return (data.Catalog ?? [])
+            .map((item) => mapPlayFabCatalogItem(item as Record<string, unknown>))
+            .filter((item): item is InventoryItem => item !== null);
+        } catch {
+          return [];
+        }
       },
 
       purchaseItem: async (itemId, priceOrCurrency: any, currencyOrPrice?: any) => {

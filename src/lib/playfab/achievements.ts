@@ -15,74 +15,63 @@ export const STANDARD_ACHIEVEMENT_DEFINITIONS: (Omit<Achievement, 'unlocked' | '
 
 /**
  * Fetch achievements for the player.
- * Authoritative progress and unlock state come from PlayFab User Data.
- * Returns standard achievements with 0 progress and locked state if no player data exists yet.
+ *
+ * Real mode deliberately returns only records written by the game to PlayFab.
+ * The website must not invent achievement names, descriptions, progress, or
+ * unlock dates when the game has not supplied them yet.
  */
 export async function getAchievements(sessionTicket: string): Promise<Achievement[]> {
   try {
     const data = await getUserData(sessionTicket, [PLAYFAB_DATA_KEYS.achievements]);
     const raw = data[PLAYFAB_DATA_KEYS.achievements];
-    const playerProgressMap: Record<string, { progress?: number; unlocked?: boolean; unlockedAt?: string | null }> = {};
+    if (!raw) return [];
 
-    if (raw) {
-      try {
-        const parsed = JSON.parse(raw);
-        if (Array.isArray(parsed)) {
-          for (const item of parsed) {
-            if (item && item.id) {
-              playerProgressMap[item.id] = {
-                progress: item.progress ?? (item.unlocked ? 1 : 0),
-                unlocked: item.unlocked ?? item.isCompleted ?? false,
-                unlockedAt: item.unlockedAt ?? null,
-              };
-            }
-          }
-        }
-      } catch {
-        console.warn('[Achievements] Could not parse achievements JSON from PlayFab.');
-      }
-    }
+    const parsed = JSON.parse(raw);
+    const records = Array.isArray(parsed)
+      ? parsed
+      : parsed && Array.isArray(parsed.achievements)
+        ? parsed.achievements
+        : [];
 
-    return STANDARD_ACHIEVEMENT_DEFINITIONS.map((def) => {
-      const p = playerProgressMap[def.id];
-      const progress = p?.progress ?? 0;
-      const isCompleted = p?.unlocked ?? (progress >= def.maxProgress);
-      const unlockedAt = p?.unlockedAt ?? (isCompleted ? new Date().toISOString() : null);
-
-      return {
-        ...def,
-        progress,
-        unlocked: isCompleted,
-        isCompleted,
-        unlockedAt,
-      };
-    });
+    return mapDataToAchievements(records);
   } catch (error) {
     console.error('Failed to parse achievements:', error);
-    return STANDARD_ACHIEVEMENT_DEFINITIONS.map((def) => ({
-      ...def,
-      progress: 0,
-      unlocked: false,
-      isCompleted: false,
-      unlockedAt: null,
-    }));
+    return [];
   }
 }
 
 /**
  * Mapper for achievements data.
  */
-export function mapDataToAchievements(data: any): Achievement[] {
+type AchievementRecord = Record<string, unknown>;
+
+export function mapDataToAchievements(data: unknown): Achievement[] {
   if (!Array.isArray(data)) return [];
-  return data.map((item: any) => ({
-    id: item.id,
-    name: item.name || item.title || 'Unknown',
-    title: item.title || item.name || 'Unknown',
-    description: item.description || '',
-    unlockedAt: item.unlockedAt ? new Date(item.unlockedAt).toISOString() : null,
-    progress: item.progress || 0,
-    maxProgress: item.maxProgress || 1,
-    unlocked: Boolean(item.unlocked || item.isCompleted || (item.progress >= (item.maxProgress || 1))),
-    isCompleted: Boolean(item.unlocked || item.isCompleted || (item.progress >= (item.maxProgress || 1))),
-  })) as Achievement[];
+  return data
+    .filter((item): item is AchievementRecord => Boolean(item && typeof item === 'object'))
+    .map((item) => {
+      const id = String(item.id ?? item.achievementId ?? '').trim();
+      const title = String(item.title ?? item.name ?? '').trim();
+      const description = String(item.description ?? '').trim();
+      const progress = Number.isFinite(Number(item.progress)) ? Number(item.progress) : 0;
+      const maxProgress = Number.isFinite(Number(item.maxProgress)) ? Number(item.maxProgress) : 0;
+      const explicitlyUnlocked = item.unlocked ?? item.isCompleted;
+      const unlocked = typeof explicitlyUnlocked === 'boolean'
+        ? explicitlyUnlocked
+        : maxProgress > 0 && progress >= maxProgress;
+
+      return {
+        id,
+        name: title,
+        title,
+        description,
+        unlockedAt: item.unlockedAt ? new Date(item.unlockedAt).toISOString() : null,
+        progress,
+        maxProgress,
+        unlocked: Boolean(unlocked),
+        isCompleted: Boolean(unlocked),
+        iconUrl: typeof item.iconUrl === 'string' ? item.iconUrl : undefined,
+      };
+    })
+    .filter((item) => item.id.length > 0) as Achievement[];
 }

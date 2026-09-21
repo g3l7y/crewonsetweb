@@ -38,7 +38,7 @@ import { CosmeticArt } from "@/components/portal/cosmetic-art";
 import { cosmeticCatalog, ownedItemsStore } from "@/lib/demo/portal-shop";
 import { getProfileArtwork } from "@/lib/demo/profile-art";
 import { isMockMode } from "@/lib/playfab/config";
-import { QUERY_KEYS, usePlayerInventory, usePlayerLoadout, usePlayerProfile, usePlayerProgression, useTransactions, useUpdateProfile } from "@/lib/playfab/hooks";
+import { QUERY_KEYS, useCatalog, usePlayerInventory, usePlayerLoadout, usePlayerProfile, usePlayerProgression, useTransactions, useUpdateProfile } from "@/lib/playfab/hooks";
 import { Coins, Lock } from "lucide-react";
 
 type ProfileTransaction = {
@@ -79,13 +79,38 @@ function CrewProfilePage() {
   const profileQuery = usePlayerProfile();
   const progressionQuery = usePlayerProgression();
   const inventoryQuery = usePlayerInventory();
+  const catalogQuery = useCatalog();
   const loadoutQuery = usePlayerLoadout();
   const transactionsQuery = useTransactions();
   const updateProfileMutation = useUpdateProfile();
   const queryClient = useQueryClient();
 
   const demoOwnedItems = cosmeticCatalog.filter((item) => ownedIds.includes(item.id));
-  const realOwnedItems = cosmeticCatalog.filter((item) =>
+  const realCatalogItems = useMemo(() => (catalogQuery.data ?? [])
+    .map((remote) => {
+      const category = remote.category as (typeof cosmeticCatalog)[number]["category"];
+      if (!["Hair", "Tops", "Bottoms", "Eyeglasses"].includes(category)) return null;
+      const rarityValue = String(remote.rarity ?? "").toLowerCase();
+      const rarity = rarityValue === "rare"
+        ? "Rare"
+        : rarityValue === "epic"
+          ? "Epic"
+          : rarityValue === "legendary"
+            ? "Legendary"
+            : "Common";
+      return {
+        id: remote.itemId,
+        name: remote.displayName ?? "",
+        category,
+        price: remote.price ?? 0,
+        rarity,
+        description: remote.description ?? "",
+        assetKey: remote.customData?.assetKey ?? "",
+        imageUrl: remote.customData?.imageUrl ?? "",
+      };
+    })
+    .filter((item): item is (typeof cosmeticCatalog)[number] => item !== null), [catalogQuery.data]);
+  const realOwnedItems = realCatalogItems.filter((item) =>
     inventoryQuery.data?.some((inventoryItem) => inventoryItem.itemId === item.id)
   );
   const ownedItems = mockMode ? demoOwnedItems : realOwnedItems;
@@ -647,12 +672,10 @@ function CrewProfilePage() {
                       {piece ? (
                         <>
                           <div className="size-14 overflow-hidden rounded-full border border-white/10 bg-[#0d121c]">
-                            <CosmeticArt item={piece} className="size-full" />
+                            {piece.imageUrl ? <img src={piece.imageUrl} alt="" className="size-full object-cover" /> : piece.assetKey ? <CosmeticArt item={piece} className="size-full" /> : <div className="size-full" aria-hidden="true" />}
                           </div>
 
-                          <p className="truncate text-xs font-bold text-white">
-                            {piece.name}
-                          </p>
+                          {piece.name && <p className="truncate text-xs font-bold text-white">{piece.name}</p>}
                         </>
                       ) : (
                         <>

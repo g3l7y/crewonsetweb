@@ -31,6 +31,7 @@ import {
   User,
   Megaphone,
   Flag,
+  Lock,
   Settings2,
 } from "lucide-react";
 import { cosmeticCatalog, ownedItemsStore } from "@/lib/demo/portal-shop";
@@ -182,11 +183,17 @@ function PlayerDashboardPage() {
       ];
   const dashboardBadges = mockMode
     ? badges
-    : (achievementsQuery.data ?? []).slice(0, 6).map((achievement, index) => ({
-        icon: ["🎬", "⭐", "🏆", "🎥", "👑", "💯"][index] ?? "🎬",
-        name: achievement.title,
-        unlocked: achievement.unlocked,
-      }));
+    : Array.from({ length: 6 }, (_, index) => {
+        const achievement = (achievementsQuery.data ?? []).filter(
+          (item) => Boolean(item.title.trim() && item.description.trim()),
+        )[index];
+        return {
+          id: achievement?.id ?? `real-locked-badge-${index}`,
+          icon: ["🎬", "⭐", "🏆", "🎥", "👑", "💯"][index] ?? "🎬",
+          name: achievement?.title ?? "",
+          unlocked: Boolean(achievement?.unlocked),
+        };
+      });
   const dashboardActivity = mockMode
     ? sortNotificationsNewestFirst(
         demoNotifications.filter((notification) =>
@@ -243,13 +250,26 @@ function PlayerDashboardPage() {
     if (mockMode) return cosmeticCatalog;
     return (catalogQuery.data ?? [])
       .map((remote) => {
-        const base = cosmeticCatalog.find((item) => item.id === remote.itemId);
-        if (!base) return null;
+        const category = remote.category as CosmeticItem["category"];
+        if (!["Hair", "Tops", "Bottoms", "Eyeglasses"].includes(category)) return null;
+        const rarityValue = String(remote.rarity ?? "").toLowerCase();
+        const rarity = rarityValue === "rare"
+          ? "Rare"
+          : rarityValue === "epic"
+            ? "Epic"
+            : rarityValue === "legendary"
+              ? "Legendary"
+              : "Common";
         return {
-          ...base,
-          name: remote.displayName || base.name,
-          price: remote.price ?? base.price,
-          description: remote.description || base.description,
+          id: remote.itemId,
+          name: remote.displayName ?? "",
+          category,
+          price: remote.price ?? 0,
+          rarity,
+          description: remote.description ?? "",
+          assetKey: remote.customData?.assetKey ?? "",
+          imageUrl: remote.customData?.imageUrl ?? "",
+          placeholder: !remote.displayName && !remote.description && !remote.customData?.assetKey && !remote.customData?.imageUrl,
         };
       })
       .filter((item): item is CosmeticItem => item !== null);
@@ -393,7 +413,7 @@ function PlayerDashboardPage() {
             </div>
 
             <Link
-              href="/portal/almanac"
+              href="/portal/almanac?tab=achievements"
               className="text-xs font-black text-coral transition hover:text-white"
             >
               VIEW ALL →
@@ -403,7 +423,7 @@ function PlayerDashboardPage() {
           <div className="mt-5 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
             {dashboardBadges.map((badge) => (
               <div
-                key={badge.name}
+                key={"id" in badge ? badge.id : badge.name}
                 className={`group rounded-xl border p-5 text-center transition ${
                   badge.unlocked
                     ? "border-yellow/20 bg-yellow/[0.06] hover:-translate-y-1 hover:border-yellow/40 hover:bg-yellow/[0.09] hover:shadow-lg hover:shadow-black/20"
@@ -411,12 +431,10 @@ function PlayerDashboardPage() {
                 }`}
               >
                 <span className="text-3xl transition group-hover:scale-110">
-                  {badge.unlocked ? badge.icon : "🔒"}
+                  {badge.unlocked ? badge.icon : <Lock className="mx-auto size-6" aria-label="Locked badge" />}
                 </span>
 
-                <p className="badge-label mt-3 text-xs font-black uppercase text-white/80">
-                  {badge.name}
-                </p>
+                {badge.name && <p className="badge-label mt-3 text-xs font-black uppercase text-white/80">{badge.name}</p>}
               </div>
             ))}
           </div>
@@ -487,8 +505,8 @@ function PlayerDashboardPage() {
                     key={item.id}
                     className="rounded-lg border border-white/10 bg-white/[0.03] p-3 text-center"
                   >
-                    <CosmeticArt item={item} className="owned-item-art" />
-                    <p className="mt-2 truncate text-xs font-bold text-white">{item.name}</p>
+                    {item.imageUrl ? <img className="owned-item-art" src={item.imageUrl} alt="" /> : item.assetKey ? <CosmeticArt item={item} className="owned-item-art" /> : <div className="owned-item-art shop-art-placeholder" aria-hidden="true" />}
+                    {item.name && <p className="mt-2 truncate text-xs font-bold text-white">{item.name}</p>}
                     <p className="text-[10px] uppercase text-white/30">{item.category}</p>
                   </div>
                 ))}
