@@ -106,7 +106,10 @@ export const Route = createFileRoute('/api/paymongo/checkout')({
           const orderId = createOrderId();
           const totalCoins = pack.coins;
           const amountInCentavos = Math.round(pack.pricePhp * 100);
-          const publicAppUrl = (process.env['PUBLIC_APP_URL'] || new URL(request.url).origin).replace(/\/$/, '');
+          // Always return to the deployment that created the order. This preserves
+          // the session on Vercel preview deployments instead of redirecting to a
+          // different host through a shared PUBLIC_APP_URL value.
+          const publicAppUrl = new URL(request.url).origin.replace(/\/$/, '');
           const now = new Date().toISOString();
           const order: PayMongoOrder = {
             id: orderId,

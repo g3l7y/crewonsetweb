@@ -188,7 +188,9 @@ function ShopPage() {
     setCheckoutOpen(true);
   }
 
-  const [checkoutOpen, setCheckoutOpen] = useState(false);
+  const [checkoutOpen, setCheckoutOpen] = useState(
+    () => searchParams.get("payment") === "success" && Boolean(searchParams.get("reference")),
+  );
   const [cartOpen, setCartOpen] = useState(false);
   const [confirmTarget, setConfirmTarget] = useState<ConfirmTarget | null>(null);
   const [purchaseSuccess, setPurchaseSuccess] = useState<{ names: string[]; spent: number; remaining: number } | null>(null);
