@@ -145,7 +145,7 @@ export const Route = createFileRoute("/api/auth/login")({
                   const tags: string[] = tagsResult.data?.Tags ?? [];
                   if (tags.some((t: string) => {
                     const normalizedTag = t.toLowerCase();
-                    return normalizedTag === "role:admin" || normalizedTag.endsWith(":role:admin");
+                    return normalizedTag === "role:admin" || normalizedTag.endsWith(":role:admin") || normalizedTag.endsWith(".role:admin");
                   })) {
                     role = "admin";
                   }

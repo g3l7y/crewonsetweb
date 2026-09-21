@@ -130,7 +130,7 @@ export async function validateSessionFromRequest(
         if (tags.some((tag) => {
           if (typeof tag !== 'string') return false;
           const normalizedTag = tag.toLowerCase();
-          return normalizedTag === 'role:admin' || normalizedTag.endsWith(':role:admin');
+          return normalizedTag === 'role:admin' || normalizedTag.endsWith(':role:admin') || normalizedTag.endsWith('.role:admin');
         })) {
           role = 'admin';
         }
