@@ -121,7 +121,7 @@ function createRealService(): PlayFabService {
           const metadataRaw = (await getUserData(ticket, [PLAYFAB_DATA_KEYS.profile_metadata]))[PLAYFAB_DATA_KEYS.profile_metadata];
           if (metadataRaw) {
             try {
-              const metadata = JSON.parse(metadataRaw) as Pick<PlayerProfile, 'bio' | 'socialLinks' | 'showStatus'>;
+              const metadata = JSON.parse(metadataRaw) as Pick<PlayerProfile, 'username' | 'bio' | 'socialLinks' | 'showStatus'>;
               return { ...profile, ...metadata };
             } catch {
               // Ignore malformed optional profile metadata and keep the PlayFab profile.
@@ -237,12 +237,13 @@ function createRealService(): PlayFabService {
         }
         if ('bio' in updates || 'socialLinks' in updates || 'showStatus' in updates) {
           const currentRaw = (await getUserData(ticket, [PLAYFAB_DATA_KEYS.profile_metadata]))[PLAYFAB_DATA_KEYS.profile_metadata];
-          let current: Pick<PlayerProfile, 'bio' | 'socialLinks' | 'showStatus'> = {};
+          let current: Partial<Pick<PlayerProfile, 'username' | 'bio' | 'socialLinks' | 'showStatus'>> = {};
           if (currentRaw) {
             try { current = JSON.parse(currentRaw); } catch { /* replace malformed metadata */ }
           }
           await updateUserData(ticket, {
             [PLAYFAB_DATA_KEYS.profile_metadata]: JSON.stringify({
+              username: 'username' in updates ? updates.username ?? current.username ?? '' : current.username ?? '',
               bio: 'bio' in updates ? updates.bio ?? '' : current.bio ?? '',
               socialLinks: 'socialLinks' in updates ? updates.socialLinks ?? {} : current.socialLinks ?? {},
               showStatus: 'showStatus' in updates ? updates.showStatus ?? true : current.showStatus ?? true,

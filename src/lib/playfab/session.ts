@@ -10,7 +10,7 @@ import { getMockAccountBySessionTicket } from './mock-accounts';
  */
 function buildCookie(name: string, value: string, maxAge: number): string {
   const secure = process.env['NODE_ENV'] === 'production' ? '; Secure' : '';
-  return `${name}=${encodeURIComponent(value)}; Path=/; HttpOnly; SameSite=Strict; Max-Age=${maxAge}${secure}`;
+  return `${name}=${encodeURIComponent(value)}; Path=/; HttpOnly; SameSite=Lax; Max-Age=${maxAge}${secure}`;
 }
 
 function expireCookie(name: string): string {
@@ -23,9 +23,13 @@ function expireCookie(name: string): string {
  * Returns an array of Set-Cookie header values.
  */
 export function createSessionCookies(session: SessionData): string[] {
-  const maxAge = 60 * 60 * 8; // 8 hours
+  const maxAge = 60 * 60 * 24 * 30; // Keep the browser session for 30 days; PlayFab still validates the ticket.
   const sessionValue = JSON.stringify({
     sessionTicket: session.sessionTicket,
+    playFabId: session.playFabId,
+    username: session.username,
+    displayName: session.displayName,
+    email: session.email,
   });
   return [
     buildCookie(PLAYFAB_SESSION_COOKIE, sessionValue, maxAge),
@@ -107,7 +111,17 @@ export async function validateSessionFromRequest(
       body: JSON.stringify({ TitleId: PLAYFAB_TITLE_ID }),
     });
     const accountResult = await accountResponse.json();
-    if (!accountResponse.ok || accountResult.code !== 200) return null;
+    if (!accountResponse.ok || accountResult.code !== 200) {
+      // A temporary PlayFab/network failure must not erase a valid browser
+      // session. The ticket is still the credential used for every protected
+      // PlayFab request. Admin requests remain fail-closed because their role
+      // must be checked against the server-side tag on every request.
+      const errorText = String(accountResult?.error ?? accountResult?.errorMessage ?? '').toLowerCase();
+      const definitelyInvalid = accountResponse.status === 401 || accountResponse.status === 403 ||
+        /not.?authenticated|invalid.?session|session.?ticket/.test(errorText);
+      if (!options.requireAdmin && !definitelyInvalid) return parsed;
+      return null;
+    }
 
     const account = accountResult.data?.AccountInfo;
     const playFabId = account?.PlayFabId;
@@ -147,7 +161,9 @@ export async function validateSessionFromRequest(
       email: account?.PrivateInfo?.Email || '',
     };
   } catch {
-    return null;
+    // Do not turn a short PlayFab outage into an apparent logout for players.
+    // Admin authorization still fails closed when the role cannot be checked.
+    return options.requireAdmin ? null : parsed;
   }
 }
 

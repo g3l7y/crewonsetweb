@@ -1,5 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { PLAYFAB_TITLE_ID, isMockMode } from "@/lib/playfab/config";
+import { PLAYFAB_DATA_KEYS } from "@/lib/playfab/constants";
 import { createSessionCookies } from "@/lib/playfab/session";
 import type { AuthResponse, SessionData } from "@/lib/playfab/types";
 
@@ -59,15 +60,40 @@ export const Route = createFileRoute("/api/auth/google")({
             playerProfile?.DisplayName ??
             accountInfo?.TitleInfo?.DisplayName ??
             accountInfo?.Username ??
-            email.split("@")[0] ??
-            "Player";
+            "";
+
+          // This marker is stored in PlayFab player data, not in browser
+          // storage, so the same Google account always reopens the same
+          // profile on every device and in the game client.
+          let metadata: { username?: string } = {};
+          try {
+            const userDataResponse = await fetch(`https://${PLAYFAB_TITLE_ID}.playfabapi.com/Client/GetUserData`, {
+              method: "POST",
+              headers: {
+                "Content-Type": "application/json",
+                "X-Authorization": pfData.SessionTicket,
+              },
+              body: JSON.stringify({
+                TitleId: PLAYFAB_TITLE_ID,
+                Keys: [PLAYFAB_DATA_KEYS.profile_metadata],
+              }),
+            });
+            const userDataResult = await userDataResponse.json();
+            const rawMetadata = userDataResult?.data?.Data?.[PLAYFAB_DATA_KEYS.profile_metadata]?.Value;
+            if (rawMetadata) metadata = JSON.parse(rawMetadata) as { username?: string };
+          } catch {
+            // Missing metadata is expected for a first-time Google account.
+          }
+
+          const savedUsername = metadata.username?.trim() ?? "";
+          const resolvedDisplayName = savedUsername || displayName || email.split("@")[0] || "Player";
 
           const session: SessionData = {
             playFabId: pfData.PlayFabId,
             sessionTicket: pfData.SessionTicket,
             role: "player",
-            username: accountInfo?.Username ?? displayName,
-            displayName,
+            username: savedUsername || resolvedDisplayName,
+            displayName: resolvedDisplayName,
             email,
           };
 
@@ -76,7 +102,7 @@ export const Route = createFileRoute("/api/auth/google")({
             headers.append("Set-Cookie", cookie);
           }
 
-          const response: AuthResponse = {
+          const response = {
             success: true,
             session: {
               playFabId: session.playFabId,
@@ -86,6 +112,7 @@ export const Route = createFileRoute("/api/auth/google")({
               email: session.email,
             },
             destination: "/portal",
+            needsProfileSetup: !savedUsername,
           };
 
           return new Response(JSON.stringify(response), { headers });

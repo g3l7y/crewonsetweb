@@ -54,6 +54,7 @@ import { Route as ApiAuthCheckUsernameRouteImport } from './routes/api/auth/chec
 import { Route as ApiAuthGoogleRouteImport } from './routes/api/auth/google'
 import { Route as ApiAuthLoginRouteImport } from './routes/api/auth/login'
 import { Route as ApiAuthLogoutRouteImport } from './routes/api/auth/logout'
+import { Route as ApiAuthProfileRouteImport } from './routes/api/auth/profile'
 import { Route as ApiAuthRegisterRouteImport } from './routes/api/auth/register'
 import { Route as ApiAuthSessionRouteImport } from './routes/api/auth/session'
 import { Route as ApiPaymongoCheckoutRouteImport } from './routes/api/paymongo/checkout'
@@ -285,6 +286,11 @@ const ApiAuthLogoutRoute = ApiAuthLogoutRouteImport.update({
   path: '/api/auth/logout',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiAuthProfileRoute = ApiAuthProfileRouteImport.update({
+  id: '/api/auth/profile',
+  path: '/api/auth/profile',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiAuthRegisterRoute = ApiAuthRegisterRouteImport.update({
   id: '/api/auth/register',
   path: '/api/auth/register',
@@ -357,6 +363,7 @@ export interface FileRoutesByFullPath {
   '/api/auth/google': typeof ApiAuthGoogleRoute
   '/api/auth/login': typeof ApiAuthLoginRoute
   '/api/auth/logout': typeof ApiAuthLogoutRoute
+  '/api/auth/profile': typeof ApiAuthProfileRoute
   '/api/auth/register': typeof ApiAuthRegisterRoute
   '/api/auth/session': typeof ApiAuthSessionRoute
   '/api/paymongo/checkout': typeof ApiPaymongoCheckoutRoute
@@ -407,6 +414,7 @@ export interface FileRoutesByTo {
   '/api/auth/google': typeof ApiAuthGoogleRoute
   '/api/auth/login': typeof ApiAuthLoginRoute
   '/api/auth/logout': typeof ApiAuthLogoutRoute
+  '/api/auth/profile': typeof ApiAuthProfileRoute
   '/api/auth/register': typeof ApiAuthRegisterRoute
   '/api/auth/session': typeof ApiAuthSessionRoute
   '/api/paymongo/checkout': typeof ApiPaymongoCheckoutRoute
@@ -460,6 +468,7 @@ export interface FileRoutesById {
   '/api/auth/google': typeof ApiAuthGoogleRoute
   '/api/auth/login': typeof ApiAuthLoginRoute
   '/api/auth/logout': typeof ApiAuthLogoutRoute
+  '/api/auth/profile': typeof ApiAuthProfileRoute
   '/api/auth/register': typeof ApiAuthRegisterRoute
   '/api/auth/session': typeof ApiAuthSessionRoute
   '/api/paymongo/checkout': typeof ApiPaymongoCheckoutRoute
@@ -514,6 +523,7 @@ export interface FileRouteTypes {
     | '/api/auth/google'
     | '/api/auth/login'
     | '/api/auth/logout'
+    | '/api/auth/profile'
     | '/api/auth/register'
     | '/api/auth/session'
     | '/api/paymongo/checkout'
@@ -564,6 +574,7 @@ export interface FileRouteTypes {
     | '/api/auth/google'
     | '/api/auth/login'
     | '/api/auth/logout'
+    | '/api/auth/profile'
     | '/api/auth/register'
     | '/api/auth/session'
     | '/api/paymongo/checkout'
@@ -616,6 +627,7 @@ export interface FileRouteTypes {
     | '/api/auth/google'
     | '/api/auth/login'
     | '/api/auth/logout'
+    | '/api/auth/profile'
     | '/api/auth/register'
     | '/api/auth/session'
     | '/api/paymongo/checkout'
@@ -649,6 +661,7 @@ export interface RootRouteChildren {
   ApiAuthGoogleRoute: typeof ApiAuthGoogleRoute
   ApiAuthLoginRoute: typeof ApiAuthLoginRoute
   ApiAuthLogoutRoute: typeof ApiAuthLogoutRoute
+  ApiAuthProfileRoute: typeof ApiAuthProfileRoute
   ApiAuthRegisterRoute: typeof ApiAuthRegisterRoute
   ApiAuthSessionRoute: typeof ApiAuthSessionRoute
   ApiPaymongoCheckoutRoute: typeof ApiPaymongoCheckoutRoute
@@ -973,6 +986,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiAuthLogoutRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/auth/profile': {
+      id: '/api/auth/profile'
+      path: '/api/auth/profile'
+      fullPath: '/api/auth/profile'
+      preLoaderRoute: typeof ApiAuthProfileRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/auth/register': {
       id: '/api/auth/register'
       path: '/api/auth/register'
@@ -1094,6 +1114,7 @@ const rootRouteChildren: RootRouteChildren = {
   ApiAuthGoogleRoute: ApiAuthGoogleRoute,
   ApiAuthLoginRoute: ApiAuthLoginRoute,
   ApiAuthLogoutRoute: ApiAuthLogoutRoute,
+  ApiAuthProfileRoute: ApiAuthProfileRoute,
   ApiAuthRegisterRoute: ApiAuthRegisterRoute,
   ApiAuthSessionRoute: ApiAuthSessionRoute,
   ApiPaymongoCheckoutRoute: ApiPaymongoCheckoutRoute,

@@ -120,21 +120,25 @@ async function registerWithCredentials(username: string, email: string, password
   return result.destination ?? "/portal";
 }
 
-async function loginWithGoogleAccessToken(accessToken: string) {
+async function loginWithGoogleAccessToken(accessToken: string, intent: "login" | "signup") {
   const response = await fetch("/api/auth/google", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ accessToken }),
+    body: JSON.stringify({ accessToken, intent }),
   });
   const result = (await response.json()) as {
     error?: string;
     destination?: string;
     success?: boolean;
+    needsProfileSetup?: boolean;
   };
   if (!response.ok || result.success === false) {
     throw new Error(result.error ?? "Unable to sign in with Google.");
   }
-  return result.destination ?? "/portal";
+  return {
+    destination: result.destination ?? "/portal",
+    needsProfileSetup: result.needsProfileSetup === true,
+  };
 }
 
 function rememberMockProfile(session?: { displayName?: string; email?: string }) {
@@ -160,6 +164,7 @@ export function CrewAccessPage({ mode, scope = "player" }: CrewAccessPageProps) 
   const [passwordVisible, setPasswordVisible] = useState(false);
   const [confirmationVisible, setConfirmationVisible] = useState(false);
   const [forgotOpen, setForgotOpen] = useState(false);
+  const [googleProfileSetupOpen, setGoogleProfileSetupOpen] = useState(false);
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -229,13 +234,21 @@ export function CrewAccessPage({ mode, scope = "player" }: CrewAccessPageProps) 
     setError("");
     setGoogleLoading(true);
     try {
-      const destination = isMockMode()
+      const googleResult = isMockMode()
         ? await (async () => {
             await new Promise((resolve) => setTimeout(resolve, 1200));
-            return loginWithCredentials("player@crewonset.com", "player", "player");
+            return {
+              destination: await loginWithCredentials("player@crewonset.com", "player", "player"),
+              needsProfileSetup: false,
+            };
           })()
-        : await loginWithGoogleAccessToken(await requestGoogleAccessToken());
-      router.push(destination);
+        : await loginWithGoogleAccessToken(await requestGoogleAccessToken(), isLogin ? "login" : "signup");
+      if (googleResult.needsProfileSetup) {
+        setGoogleProfileSetupOpen(true);
+        setGoogleLoading(false);
+        return;
+      }
+      router.push(googleResult.destination);
       router.refresh();
     } catch (err) {
       setError(err instanceof Error ? err.message : "Unable to sign in with Google.");
@@ -370,7 +383,79 @@ export function CrewAccessPage({ mode, scope = "player" }: CrewAccessPageProps) 
       </div>
 
       {forgotOpen && <ForgotPasswordModal onClose={() => setForgotOpen(false)} />}
+      {googleProfileSetupOpen && (
+        <GoogleProfileSetupModal
+          onComplete={() => {
+            setGoogleProfileSetupOpen(false);
+            router.push("/portal");
+            router.refresh();
+          }}
+        />
+      )}
     </main>
+  );
+}
+
+function GoogleProfileSetupModal({ onComplete }: { onComplete: () => void }) {
+  const [username, setUsername] = useState("");
+  const [error, setError] = useState("");
+  const [saving, setSaving] = useState(false);
+
+  async function submit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    const normalized = username.trim();
+    if (!isValidUsername(normalized)) {
+      setError(USERNAME_ERROR);
+      return;
+    }
+
+    setSaving(true);
+    setError("");
+    try {
+      const response = await fetch("/api/auth/profile", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ username: normalized }),
+      });
+      const result = (await response.json()) as { success?: boolean; error?: string };
+      if (!response.ok || result.success === false) {
+        throw new Error(result.error ?? "Unable to save your username.");
+      }
+      onComplete();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Unable to save your username.");
+      setSaving(false);
+    }
+  }
+
+  return (
+    <div className="fixed inset-0 z-[80] grid place-items-center bg-[#05080d]/85 p-4 backdrop-blur-md">
+      <section className="w-full max-w-md rounded-2xl border border-navy/15 bg-cream p-6 text-navy shadow-2xl sm:p-8" role="dialog" aria-modal="true" aria-labelledby="google-profile-title">
+        <p className="text-xs font-black tracking-[.18em] text-coral">ONE LAST STEP</p>
+        <h2 id="google-profile-title" className="mt-2 text-3xl font-black uppercase">Set up your profile</h2>
+        <p className="mt-3 text-sm leading-relaxed text-navy/65">Choose the username your crew will see. It will be saved to your real PlayFab account and used every time you sign in with Google.</p>
+        <form onSubmit={submit} className="mt-6">
+          <label className="form-label">USERNAME
+            <input
+              className="form-input"
+              value={username}
+              onChange={(event) => setUsername(event.target.value.replace(/[^A-Za-z0-9_]/g, "").replace(/^[^A-Za-z]+/, "").slice(0, 20))}
+              minLength={3}
+              maxLength={20}
+              pattern="[A-Za-z][A-Za-z0-9_]{2,19}"
+              autoCapitalize="none"
+              autoFocus
+              required
+              placeholder="jane_director"
+            />
+          </label>
+          {error && <p role="alert" className="mt-3 text-sm font-bold text-coral">{error}</p>}
+          <button disabled={saving} type="submit" className="mt-5 inline-flex w-full items-center justify-center gap-2 rounded-md bg-navy px-5 py-3.5 text-sm font-black tracking-wider text-white transition hover:bg-coral disabled:cursor-wait disabled:opacity-70">
+            {saving ? <><LoaderCircle className="size-4 animate-spin" /> SAVING PROFILE</> : <>SAVE PROFILE <Send className="size-4" /></>}
+          </button>
+        </form>
+      </section>
+    </div>
   );
 }
 
