@@ -91,19 +91,17 @@ function CrewProfilePage() {
   const ownedItems = mockMode ? demoOwnedItems : realOwnedItems;
 
   const demoEquippedBySlot = {
-    Head: undefined,
     Hair: demoOwnedItems.find((item) => item.category === "Hair"),
-    Shirt: demoOwnedItems.find((item) => item.category === "Tops"),
-    Accessory: demoOwnedItems.find((item) => item.category === "Eyeglasses"),
-    Shoes: demoOwnedItems.find((item) => item.category === "Bottoms"),
+    Tops: demoOwnedItems.find((item) => item.category === "Tops"),
+    Bottoms: demoOwnedItems.find((item) => item.category === "Bottoms"),
+    Eyeglasses: demoOwnedItems.find((item) => item.category === "Eyeglasses"),
   };
   const realLoadout = loadoutQuery.data ?? {};
   const realEquippedBySlot = {
-    Head: realOwnedItems.find((item) => item.id === (realLoadout.Head ?? realLoadout.head)),
     Hair: realOwnedItems.find((item) => item.id === (realLoadout.Hair ?? realLoadout.hair)),
-    Shirt: realOwnedItems.find((item) => item.id === (realLoadout.Shirt ?? realLoadout.shirt ?? realLoadout.costume)),
-    Accessory: realOwnedItems.find((item) => item.id === (realLoadout.Accessory ?? realLoadout.accessory ?? realLoadout.decorator)),
-    Shoes: realOwnedItems.find((item) => item.id === (realLoadout.Shoes ?? realLoadout.shoes ?? realLoadout.equipment)),
+    Tops: realOwnedItems.find((item) => item.id === (realLoadout.Tops ?? realLoadout.tops ?? realLoadout.Shirt ?? realLoadout.shirt ?? realLoadout.costume)),
+    Bottoms: realOwnedItems.find((item) => item.id === (realLoadout.Bottoms ?? realLoadout.bottoms ?? realLoadout.Shoes ?? realLoadout.shoes ?? realLoadout.equipment)),
+    Eyeglasses: realOwnedItems.find((item) => item.id === (realLoadout.Eyeglasses ?? realLoadout.eyeglasses ?? realLoadout.Accessory ?? realLoadout.accessory ?? realLoadout.decorator)),
   };
   const equippedBySlot = mockMode ? demoEquippedBySlot : realEquippedBySlot;
 

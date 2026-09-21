@@ -1077,9 +1077,9 @@ export const adminNotificationsStore = createStore<AdminNotification>(
 
 /* --------------------------------------------------------- equipped loadout */
 
-export type LoadoutSlot = "Head" | "Hair" | "Shirt" | "Accessory" | "Shoes";
+export type LoadoutSlot = "Hair" | "Tops" | "Bottoms" | "Eyeglasses";
 
-export const loadoutSlots: LoadoutSlot[] = ["Head", "Hair", "Shirt", "Accessory", "Shoes"];
+export const loadoutSlots: LoadoutSlot[] = ["Hair", "Tops", "Bottoms", "Eyeglasses"];
 
 export type LoadoutPiece = {
   slot: LoadoutSlot;
@@ -1090,21 +1090,20 @@ export type LoadoutPiece = {
 };
 
 export const loadoutStore = createStore<LoadoutPiece>("cos.loadout", [
-  { slot: "Head", itemName: "Crew Cap", initials: "CC", gradient: "from-slate-400 to-slate-600" },
   { slot: "Hair", itemName: "Buzz Cut", initials: "BZ", gradient: "from-amber-400 to-orange-600" },
   {
-    slot: "Shirt",
+    slot: "Tops",
     itemName: "PA Windbreaker",
     initials: "PA",
     gradient: "from-sky-400 to-blue-600",
   },
   {
-    slot: "Accessory",
-    itemName: "Boom Headphones",
-    initials: "BH",
-    gradient: "from-emerald-400 to-teal-600",
+    slot: "Eyeglasses",
+    itemName: "Round Ink Frames",
+    initials: "RI",
+    gradient: "from-slate-400 to-slate-600",
   },
-  { slot: "Shoes", itemName: null },
+  { slot: "Bottoms", itemName: null },
 ]);
 
 /* ------------------------------------------------------ admin activity log */
