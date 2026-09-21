@@ -8,6 +8,10 @@ import {
   deleteWebsiteRecords,
 } from '@/lib/playfab/websiteData';
 import type { PartnershipApplication } from '@/lib/playfab/types';
+import {
+  parseSubmissionRequest,
+  uploadSubmissionAttachment,
+} from '@/lib/playfab/submission-attachments';
 
 function getSecretKey(): string {
   const key = process.env['PLAYFAB_SECRET_KEY'];
@@ -46,7 +50,7 @@ export const Route = createFileRoute('/api/admin/partnerships')({
       POST: async ({ request }) => {
         try {
           const session = await validateSessionFromRequest(request);
-          const body = await request.json();
+          const { fields, attachment } = await parseSubmissionRequest(request);
           const {
             brand,
             productType,
@@ -58,9 +62,9 @@ export const Route = createFileRoute('/api/admin/partnerships')({
             email,
             description,
             attachmentName,
-            attachmentUrl,
             attachmentType,
-          } = body as Record<string, unknown>;
+            fileName,
+          } = fields;
 
           if (!brand || !productType || !exactModel || !email) {
             return Response.json(
@@ -69,8 +73,23 @@ export const Route = createFileRoute('/api/admin/partnerships')({
             );
           }
 
+          const id = uid('APP');
+          let uploadedAttachment: { attachmentUrl: string; fileName: string } | undefined;
+          if (attachment) {
+            try {
+              uploadedAttachment = await uploadSubmissionAttachment(
+                id,
+                attachment,
+                getSecretKey(),
+              );
+            } catch (error) {
+              const message = error instanceof Error ? error.message : 'Attachment upload failed.';
+              return Response.json({ error: message }, { status: 400 });
+            }
+          }
+
           const application: PartnershipApplication = {
-            id: uid('APP'),
+            id,
             brand: String(brand),
             productType: String(productType),
             exactModel: String(exactModel),
@@ -80,9 +99,10 @@ export const Route = createFileRoute('/api/admin/partnerships')({
             durationUnit: durationUnit ? String(durationUnit) : undefined,
             email: String(email),
             description: description ? String(description) : undefined,
-            attachmentName: attachmentName ? String(attachmentName) : undefined,
-            attachmentUrl: attachmentUrl ? String(attachmentUrl) : undefined,
-            attachmentType: attachmentType ? String(attachmentType) : undefined,
+            fileName: attachment?.name || fileName || undefined,
+            attachmentName: attachment?.name || (attachmentName ? String(attachmentName) : undefined),
+            attachmentUrl: uploadedAttachment?.attachmentUrl || undefined,
+            attachmentType: attachment?.type || (attachmentType ? String(attachmentType) : undefined),
             submittedAt: new Date().toISOString(),
             status: 'Pending',
             // Include applicant PlayFab info if logged in
