@@ -901,7 +901,7 @@ function CrewProfilePage() {
                   </p>
                   <Link
                     href="/portal/settings"
-                    className="inline-flex items-center rounded-md border border-coral/50 px-3 py-2 text-[11px] font-black uppercase tracking-wide text-coral transition hover:bg-coral hover:text-white"
+                    className="inline-flex items-center rounded-md border border-coral/50 px-3 py-2 text-[11px] font-black uppercase tracking-wide text-[#0a0e19] transition hover:bg-coral hover:text-[#0a0e19]"
                   >
                     Edit Credentials
                   </Link>

@@ -56,7 +56,7 @@ export function PasswordRecoveryModal({ scope, onClose, dark = false }: Password
       setEmail(normalizedEmail);
       if (result.mode === "mock") {
         setDemoCode(result.demoCode ?? "");
-        setStep("code");
+        setStep("sent");
       } else {
         setStep("sent");
       }
@@ -130,14 +130,14 @@ export function PasswordRecoveryModal({ scope, onClose, dark = false }: Password
         {step === "email" && (
           <form onSubmit={submitEmail} className="mt-6">
             <p className={`text-sm leading-relaxed ${mutedClass}`}>
-              Enter the email used by the account. Someone is trying to change this password; if it&apos;s you, use the recovery {mockMode ? "code" : "link"} and never share it with anyone.
+              Enter the email used by the account.
             </p>
             <label className={`form-label mt-4 ${labelClass}`}>EMAIL
               <input className={inputClass} type="email" required value={email} onChange={(event) => setEmail(event.target.value)} placeholder="player@example.com" />
             </label>
             {error && <p role="alert" className="mt-3 text-sm font-bold text-coral">{error}</p>}
             <button disabled={busy} type="submit" className={`mt-5 inline-flex w-full items-center justify-center gap-2 rounded-md px-5 py-3.5 text-sm font-black tracking-wider transition disabled:cursor-wait disabled:opacity-70 ${buttonClass}`}>
-              {busy ? <><LoaderCircle className="size-4 animate-spin" /> SENDING RECOVERY</> : mockMode ? "SEND RECOVERY CODE" : "SEND RECOVERY EMAIL"}
+              {busy ? <><LoaderCircle className="size-4 animate-spin" /> SENDING RECOVERY</> : mockMode ? "SEND DEMO RECOVERY EMAIL" : "SEND RECOVERY EMAIL"}
             </button>
           </form>
         )}
@@ -145,7 +145,7 @@ export function PasswordRecoveryModal({ scope, onClose, dark = false }: Password
         {step === "code" && (
           <form onSubmit={verifyCode} className="mt-6">
             <p className={`text-sm leading-relaxed ${mutedClass}`}>
-              This is a demo recovery. The code was created for <strong>{email}</strong>. Use it once and never share it: <strong className="text-coral">{demoCode}</strong>
+              Enter the demo recovery code to continue.
             </p>
             <label className={`form-label mt-4 ${labelClass}`}>RECOVERY CODE
               <input className={inputClass} inputMode="numeric" pattern="[0-9]{6}" maxLength={6} required value={code} onChange={(event) => setCode(event.target.value.replace(/\D/g, "").slice(0, 6))} placeholder="123456" />
@@ -175,10 +175,26 @@ export function PasswordRecoveryModal({ scope, onClose, dark = false }: Password
 
         {step === "sent" && (
           <div className="mt-6">
-            <p className={`text-sm leading-relaxed ${mutedClass}`}>
-              We sent a secure recovery link to <strong>{email}</strong>. Someone is trying to change this password; if it&apos;s you, open the link and never share it with anyone. The link expires after 30 minutes.
-            </p>
-            <button type="button" onClick={onClose} className={`mt-5 inline-flex w-full items-center justify-center rounded-md px-5 py-3.5 text-sm font-black tracking-wider transition ${buttonClass}`}>BACK TO LOGIN</button>
+            {mockMode ? (
+              <>
+                <p className={`text-sm leading-relaxed ${mutedClass}`}>
+                  A demo recovery code was prepared for your email address.
+                </p>
+                <div className={`mt-4 rounded-md border px-4 py-3 text-sm ${dark ? "border-white/10 bg-white/5" : "border-navy/10 bg-navy/5"}`}>
+                  <p className={`text-xs font-black tracking-[.16em] ${mutedClass}`}>DEMO RECOVERY CODE</p>
+                  <p className="mt-1 text-xl font-black tracking-[.2em] text-coral">{demoCode}</p>
+                  <p className={`mt-1 text-xs ${mutedClass}`}>Use this code once and never share it.</p>
+                </div>
+                <button type="button" onClick={() => setStep("code")} className={`mt-5 inline-flex w-full items-center justify-center rounded-md px-5 py-3.5 text-sm font-black tracking-wider transition ${buttonClass}`}>CONTINUE TO CODE</button>
+              </>
+            ) : (
+              <>
+                <p className={`text-sm leading-relaxed ${mutedClass}`}>
+                  A recovery link was sent to your email address.
+                </p>
+                <button type="button" onClick={onClose} className={`mt-5 inline-flex w-full items-center justify-center rounded-md px-5 py-3.5 text-sm font-black tracking-wider transition ${buttonClass}`}>BACK TO LOGIN</button>
+              </>
+            )}
           </div>
         )}
 
