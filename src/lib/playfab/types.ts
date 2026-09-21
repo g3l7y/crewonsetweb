@@ -157,7 +157,7 @@ export interface InventoryItem {
   category: ItemCategory;
   /** Rarity tier */
   rarity: ItemRarity;
-  /** Equipped slot name if currently equipped (e.g. "costume", "Head") */
+  /** Equipped slot name if currently equipped (e.g. "Hair", "Tops") */
   equippedSlot?: string | undefined;
   /** ISO timestamp when item was granted / purchased */
   acquiredAt: string;
@@ -186,6 +186,13 @@ export interface InventoryItem {
  * Equipped cosmetic and equipment loadout mapped by slot name.
  */
 export interface Loadout {
+  /** Current portal cosmetic slots. */
+  Hair?: string | undefined;
+  Tops?: string | undefined;
+  Bottoms?: string | undefined;
+  Eyeglasses?: string | undefined;
+
+  /** Legacy slots retained so older PlayFab player data can still be read. */
   costume?: string | undefined;
   decorator?: string | undefined;
   equipment?: string | undefined;

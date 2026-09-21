@@ -121,9 +121,9 @@ const MOCK_INVENTORY: InventoryItem[] = [
 ];
 
 let MOCK_LOADOUT: Loadout = {
-  costume: 'cos-classic-vest',
-  decorator: 'cos-golden-clapper',
-  equipment: 'cos-neon-headset',
+  Hair: 'hair-soft-crop',
+  Tops: 'top-coral-tee',
+  Eyeglasses: 'glasses-round-ink',
 };
 
 const MOCK_ACHIEVEMENTS: Achievement[] = [
