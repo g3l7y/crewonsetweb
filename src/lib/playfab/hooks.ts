@@ -1,5 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { getPlayFabService } from './service';
+import { isMockMode } from './config';
 import type {
   PlayerProfile, PlayerProgression, PlayerWallet, InventoryItem, Loadout,
   Achievement, KnowledgeEntry, ProductionLog, LeaderboardEntry, FriendInfo,
@@ -21,6 +22,7 @@ export const QUERY_KEYS = {
   productionLogs: ['playfab', 'player', 'productionLogs'] as const,
   transactions: ['playfab', 'player', 'transactions'] as const,
   friends: ['playfab', 'player', 'friends'] as const,
+  playerSearch: (query: string) => ['playfab', 'player', 'search', query] as const,
   notifications: ['playfab', 'player', 'notifications'] as const,
   leaderboard: (stat: string) => ['playfab', 'leaderboard', stat] as const,
   leaderboardAround: (stat: string) => ['playfab', 'leaderboard', 'around', stat] as const,
@@ -148,6 +150,37 @@ export function useFriends() {
     queryFn: () => getPlayFabService().player.getFriends(),
     enabled: !!session,
     staleTime: 2 * 60 * 1000,
+  });
+}
+
+export type PlayerSearchResult = {
+  playFabId: string;
+  username: string;
+  displayName: string;
+  avatarUrl?: string | null;
+  level?: number;
+  role?: string;
+  online?: boolean;
+};
+
+export function useSearchPlayers(query: string, enabled = true) {
+  const normalizedQuery = query.trim();
+  return useQuery<PlayerSearchResult[]>({
+    queryKey: QUERY_KEYS.playerSearch(normalizedQuery),
+    queryFn: async () => {
+      const response = await fetch(`/api/playfab/players/search?q=${encodeURIComponent(normalizedQuery)}`, {
+        credentials: 'same-origin',
+        cache: 'no-store',
+      });
+      const result = await response.json();
+      if (!response.ok || result?.success === false) {
+        throw new Error(result?.error ?? 'Player search failed.');
+      }
+      return (result?.data ?? []) as PlayerSearchResult[];
+    },
+    enabled: enabled && !isMockMode() && normalizedQuery.length >= 3,
+    staleTime: 15_000,
+    retry: false,
   });
 }
 

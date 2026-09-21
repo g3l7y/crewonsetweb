@@ -37,7 +37,14 @@ import {
 } from "@/lib/demo/friends";
 import { getProfileArtwork } from "@/lib/demo/profile-art";
 import { isMockMode } from "@/lib/playfab/config";
-import { useAddFriend, useFriends, usePlayerProfile, useRemoveFriend } from "@/lib/playfab/hooks";
+import {
+  useAddFriend,
+  useFriends,
+  usePlayerProfile,
+  useRemoveFriend,
+  useSearchPlayers,
+  type PlayerSearchResult,
+} from "@/lib/playfab/hooks";
 
 type Socials = {
   instagram?: string;
@@ -82,6 +89,25 @@ type SentRequest = {
 };
 
 type Player = Friend;
+
+function mapSearchResultToPlayer(result: PlayerSearchResult): Player {
+  return {
+    name: result.username || result.displayName || "Player",
+    level: result.level ?? 1,
+    role: result.role ?? "Crew Member",
+    online: result.online ?? false,
+    crewId: result.playFabId,
+    profileImage: result.avatarUrl ?? undefined,
+    bio: "Crew profile synced from PlayFab.",
+    joinedDate: "—",
+    socials: {},
+    career: {
+      productionsCompleted: 0,
+      yearsExperience: 0,
+      specialties: [result.role ?? "Crew Member"],
+    },
+  };
+}
 
 const initialFriends: Friend[] = [
   {
@@ -382,6 +408,8 @@ function FriendsPage() {
   const [demoFriends, setDemoFriends] = friendRosterStore.useStore();
   const friendsQuery = useFriends();
   const profileQuery = usePlayerProfile();
+  const globalPlayersQuery = useSearchPlayers(search, !mockMode);
+  const addPlayersQuery = useSearchPlayers(addSearch, !mockMode);
   const addFriendMutation = useAddFriend();
   const removeFriendMutation = useRemoveFriend();
   const realFriends = useMemo<Friend[]>(() =>
@@ -491,12 +519,16 @@ function FriendsPage() {
       return [];
     }
 
+    if (!mockMode) {
+      return (globalPlayersQuery.data ?? []).map(mapSearchResultToPlayer);
+    }
+
     return allPlayers.filter(
       (player) =>
         player.name.toLowerCase().includes(query) ||
         player.role.toLowerCase().includes(query)
     );
-  }, [allPlayers, search]);
+  }, [allPlayers, globalPlayersQuery.data, mockMode, search]);
 
   const filteredFriends = useMemo(() => {
     const query = search.trim().toLowerCase();
@@ -517,6 +549,16 @@ function FriendsPage() {
 
     if (!query) {
       return [];
+    }
+
+    if (!mockMode) {
+      const connectedPlayerIds = new Set([
+        ...friends.map((friend) => friend.crewId),
+        ...blocked.map((player) => player.crewId),
+      ]);
+      return (addPlayersQuery.data ?? [])
+        .map(mapSearchResultToPlayer)
+        .filter((player) => !connectedPlayerIds.has(player.crewId));
     }
 
     const connectedPlayerNames = new Set([
@@ -542,6 +584,8 @@ function FriendsPage() {
     friends,
     requests,
     sentRequests,
+    addPlayersQuery.data,
+    mockMode,
   ]);
 
   async function copyUsername() {
@@ -1110,16 +1154,8 @@ function FriendsPage() {
                         )
                       }
                       onKeyDown={(event) => {
-                        if (
-                          event.key ===
-                          "Enter"
-                        ) {
-                          const first =
-                            searchResults[0];
-
-                          if (first) {
-                            addFriend(first);
-                          }
+                        if (event.key === "Enter" && !addSearch.trim()) {
+                          setMessage("Enter a username to search.");
                         }
                       }}
                       className="flex-1 rounded-md border border-white/10 bg-[#0d121c] px-4 py-3 text-sm text-white outline-none placeholder:text-white/25 focus:border-coral"
@@ -1130,16 +1166,7 @@ function FriendsPage() {
                       type="button"
                       className="flex items-center justify-center gap-2 rounded-md bg-coral px-5 py-3 text-xs font-black text-white transition hover:opacity-90"
                       onClick={() => {
-                        const first =
-                          searchResults[0];
-
-                        if (first) {
-                          addFriend(first);
-                        } else {
-                          setMessage(
-                            "No player found."
-                          );
-                        }
+                        setMessage(addSearch.trim() ? "" : "Enter a username to search.");
                       }}
                     >
                       <Search className="size-4" />

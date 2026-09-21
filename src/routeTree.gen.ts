@@ -60,6 +60,9 @@ import { Route as ApiAuthSessionRouteImport } from './routes/api/auth/session'
 import { Route as ApiPaymongoCheckoutRouteImport } from './routes/api/paymongo/checkout'
 import { Route as ApiPaymongoWebhookRouteImport } from './routes/api/paymongo/webhook'
 import { Route as ApiPlayfabClientRouteImport } from './routes/api/playfab/client'
+import { Route as ApiPlayfabFriendsAddRouteImport } from './routes/api/playfab/friends/add'
+import { Route as ApiPlayfabFriendsRemoveRouteImport } from './routes/api/playfab/friends/remove'
+import { Route as ApiPlayfabPlayersSearchRouteImport } from './routes/api/playfab/players/search'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
@@ -316,6 +319,21 @@ const ApiPlayfabClientRoute = ApiPlayfabClientRouteImport.update({
   path: '/api/playfab/client',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiPlayfabFriendsAddRoute = ApiPlayfabFriendsAddRouteImport.update({
+  id: '/api/playfab/friends/add',
+  path: '/api/playfab/friends/add',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiPlayfabFriendsRemoveRoute = ApiPlayfabFriendsRemoveRouteImport.update({
+  id: '/api/playfab/friends/remove',
+  path: '/api/playfab/friends/remove',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiPlayfabPlayersSearchRoute = ApiPlayfabPlayersSearchRouteImport.update({
+  id: '/api/playfab/players/search',
+  path: '/api/playfab/players/search',
+  getParentRoute: () => rootRouteImport,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -369,6 +387,9 @@ export interface FileRoutesByFullPath {
   '/api/paymongo/checkout': typeof ApiPaymongoCheckoutRoute
   '/api/paymongo/webhook': typeof ApiPaymongoWebhookRoute
   '/api/playfab/client': typeof ApiPlayfabClientRoute
+  '/api/playfab/friends/add': typeof ApiPlayfabFriendsAddRoute
+  '/api/playfab/friends/remove': typeof ApiPlayfabFriendsRemoveRoute
+  '/api/playfab/players/search': typeof ApiPlayfabPlayersSearchRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -420,6 +441,9 @@ export interface FileRoutesByTo {
   '/api/paymongo/checkout': typeof ApiPaymongoCheckoutRoute
   '/api/paymongo/webhook': typeof ApiPaymongoWebhookRoute
   '/api/playfab/client': typeof ApiPlayfabClientRoute
+  '/api/playfab/friends/add': typeof ApiPlayfabFriendsAddRoute
+  '/api/playfab/friends/remove': typeof ApiPlayfabFriendsRemoveRoute
+  '/api/playfab/players/search': typeof ApiPlayfabPlayersSearchRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -474,6 +498,9 @@ export interface FileRoutesById {
   '/api/paymongo/checkout': typeof ApiPaymongoCheckoutRoute
   '/api/paymongo/webhook': typeof ApiPaymongoWebhookRoute
   '/api/playfab/client': typeof ApiPlayfabClientRoute
+  '/api/playfab/friends/add': typeof ApiPlayfabFriendsAddRoute
+  '/api/playfab/friends/remove': typeof ApiPlayfabFriendsRemoveRoute
+  '/api/playfab/players/search': typeof ApiPlayfabPlayersSearchRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -529,6 +556,9 @@ export interface FileRouteTypes {
     | '/api/paymongo/checkout'
     | '/api/paymongo/webhook'
     | '/api/playfab/client'
+    | '/api/playfab/friends/add'
+    | '/api/playfab/friends/remove'
+    | '/api/playfab/players/search'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -580,6 +610,9 @@ export interface FileRouteTypes {
     | '/api/paymongo/checkout'
     | '/api/paymongo/webhook'
     | '/api/playfab/client'
+    | '/api/playfab/friends/add'
+    | '/api/playfab/friends/remove'
+    | '/api/playfab/players/search'
   id:
     | '__root__'
     | '/'
@@ -633,6 +666,9 @@ export interface FileRouteTypes {
     | '/api/paymongo/checkout'
     | '/api/paymongo/webhook'
     | '/api/playfab/client'
+    | '/api/playfab/friends/add'
+    | '/api/playfab/friends/remove'
+    | '/api/playfab/players/search'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -667,6 +703,9 @@ export interface RootRouteChildren {
   ApiPaymongoCheckoutRoute: typeof ApiPaymongoCheckoutRoute
   ApiPaymongoWebhookRoute: typeof ApiPaymongoWebhookRoute
   ApiPlayfabClientRoute: typeof ApiPlayfabClientRoute
+  ApiPlayfabFriendsAddRoute: typeof ApiPlayfabFriendsAddRoute
+  ApiPlayfabFriendsRemoveRoute: typeof ApiPlayfabFriendsRemoveRoute
+  ApiPlayfabPlayersSearchRoute: typeof ApiPlayfabPlayersSearchRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -1028,6 +1067,27 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiPlayfabClientRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/playfab/friends/add': {
+      id: '/api/playfab/friends/add'
+      path: '/api/playfab/friends/add'
+      fullPath: '/api/playfab/friends/add'
+      preLoaderRoute: typeof ApiPlayfabFriendsAddRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/playfab/friends/remove': {
+      id: '/api/playfab/friends/remove'
+      path: '/api/playfab/friends/remove'
+      fullPath: '/api/playfab/friends/remove'
+      preLoaderRoute: typeof ApiPlayfabFriendsRemoveRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/playfab/players/search': {
+      id: '/api/playfab/players/search'
+      path: '/api/playfab/players/search'
+      fullPath: '/api/playfab/players/search'
+      preLoaderRoute: typeof ApiPlayfabPlayersSearchRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
@@ -1120,6 +1180,9 @@ const rootRouteChildren: RootRouteChildren = {
   ApiPaymongoCheckoutRoute: ApiPaymongoCheckoutRoute,
   ApiPaymongoWebhookRoute: ApiPaymongoWebhookRoute,
   ApiPlayfabClientRoute: ApiPlayfabClientRoute,
+  ApiPlayfabFriendsAddRoute: ApiPlayfabFriendsAddRoute,
+  ApiPlayfabFriendsRemoveRoute: ApiPlayfabFriendsRemoveRoute,
+  ApiPlayfabPlayersSearchRoute: ApiPlayfabPlayersSearchRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
