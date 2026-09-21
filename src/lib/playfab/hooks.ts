@@ -162,10 +162,10 @@ export function useNotifications() {
 }
 
 // Leaderboard
-export function useLeaderboard(statistic: string) {
+export function useLeaderboard(statistic: string, maxResults = 100) {
   return useQuery({
-    queryKey: QUERY_KEYS.leaderboard(statistic),
-    queryFn: () => getPlayFabService().leaderboard.getGlobal(statistic),
+    queryKey: [...QUERY_KEYS.leaderboard(statistic), maxResults] as const,
+    queryFn: () => getPlayFabService().leaderboard.getGlobal(statistic, maxResults),
     staleTime: 2 * 60 * 1000,
   });
 }

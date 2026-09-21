@@ -6,12 +6,13 @@ import { isMockMode } from "@/lib/playfab/config";
 import { useFriends, useLeaderboard, usePlayerProfile } from "@/lib/playfab/hooks";
 
 type Leader = {
+  playFabId?: string;
   name: string;
-  level: number;
+  level: number | null;
   score: number;
-  xp: number;
-  productions: number;
-  rating: number;
+  xp: number | null;
+  productions: number | null;
+  rating: number | null;
   legendary?: boolean;
   profileImage?: string;
 };
@@ -68,7 +69,7 @@ export function Leaderboards() {
   const [selectedLeader, setSelectedLeader] = useState<Leader | null>(null);
   const mockMode = isMockMode();
   const [friends] = friendRosterStore.useStore();
-  const realLeaderboardQuery = useLeaderboard("total_score");
+  const realLeaderboardQuery = useLeaderboard("total_score", 100);
   const realFriendsQuery = useFriends();
   const currentProfileQuery = usePlayerProfile();
   const currentPlayerName = currentProfileQuery.data?.username || currentProfileQuery.data?.displayName || (mockMode ? "CAMERA_PRO" : "");
@@ -76,12 +77,13 @@ export function Leaderboards() {
   const realGlobalLeaders = useMemo<Leader[]>(
     () =>
       (realLeaderboardQuery.data ?? []).map((entry) => ({
+        playFabId: entry.playFabId,
         name: entry.username || entry.displayName,
-        level: 0,
+        level: null,
         score: entry.statValue,
-        xp: 0,
-        productions: 0,
-        rating: 0,
+        xp: null,
+        productions: null,
+        rating: null,
         profileImage: entry.avatarUrl,
       })),
     [realLeaderboardQuery.data],
@@ -89,15 +91,18 @@ export function Leaderboards() {
 
   const friendLeaders = useMemo<Leader[]>(() => {
     if (!mockMode) {
-      return (realFriendsQuery.data ?? []).map((friend) => ({
-        name: friend.username || friend.displayName,
-        level: friend.level ?? 1,
-        score: 0,
-        xp: 0,
-        productions: 0,
-        rating: 0,
-        profileImage: friend.avatarUrl,
-      }));
+      const friendIds = new Set(
+        [
+          currentProfileQuery.data?.playFabId,
+          ...(realFriendsQuery.data ?? [])
+            .filter((friend) => friend.status === "confirmed")
+            .map((friend) => friend.playFabId),
+        ].filter((id): id is string => Boolean(id)),
+      );
+
+      return realGlobalLeaders.filter(
+        (leader) => leader.playFabId && friendIds.has(leader.playFabId),
+      );
     }
 
     return [
@@ -119,7 +124,14 @@ export function Leaderboards() {
         profileImage: friend.profileImage,
       })),
     ];
-  }, [currentPlayerName, friends, mockMode, realFriendsQuery.data]);
+  }, [
+    currentPlayerName,
+    currentProfileQuery.data?.playFabId,
+    friends,
+    mockMode,
+    realFriendsQuery.data,
+    realGlobalLeaders,
+  ]);
 
   const currentLeaders = useMemo(() => {
     let data: Leader[];
@@ -136,20 +148,23 @@ export function Leaderboards() {
 
     return [...data].sort((a, b) => {
       if (leaderSort === "XP") {
-        return b.xp - a.xp;
+        return (b.xp ?? Number.NEGATIVE_INFINITY) - (a.xp ?? Number.NEGATIVE_INFINITY);
       }
 
       if (leaderSort === "Productions") {
-        return b.productions - a.productions;
+        return (b.productions ?? Number.NEGATIVE_INFINITY) - (a.productions ?? Number.NEGATIVE_INFINITY);
       }
 
       if (leaderSort === "Rating") {
-        return b.rating - a.rating;
+        return (b.rating ?? Number.NEGATIVE_INFINITY) - (a.rating ?? Number.NEGATIVE_INFINITY);
       }
 
       return b.score - a.score;
     });
-  }, [currentPlayerName, friendLeaders, leaderSort, leaderTab, mockMode]);
+  }, [currentPlayerName, friendLeaders, leaderSort, leaderTab, mockMode, realGlobalLeaders]);
+
+  const formatMetric = (value: number | null, suffix = "") =>
+    value === null ? "—" : `${formatNumber(value)}${suffix}`;
 
   return (
     <section className="mt-12">
@@ -255,7 +270,7 @@ export function Leaderboards() {
 
               return (
                 <tr
-                  key={leader.name}
+                  key={leader.playFabId ?? leader.name}
                   onClick={() => setSelectedLeader(leader)}
                   className={`cursor-pointer border-b border-white/[0.05] transition-colors hover:bg-white/[0.035] ${
                     isCurrentPlayer ? "bg-yellow/[0.05]" : ""
@@ -315,19 +330,19 @@ export function Leaderboards() {
                   </td>
 
                   <td className="px-5 py-4 text-sm text-white/55">
-                    Level {leader.level}
+                    {leader.level === null ? "Level —" : `Level ${leader.level}`}
                   </td>
 
                   <td className="px-5 py-4 text-sm text-white/55">
-                    {leader.productions}
+                    {formatMetric(leader.productions)}
                   </td>
 
                   <td className="px-5 py-4 text-sm text-white/55">
-                    {leader.rating}%
+                    {formatMetric(leader.rating, "%")}
                   </td>
 
                   <td className="px-5 py-4 font-black text-white">
-                    {formatNumber(leader.score)}
+                    {formatMetric(leader.score)}
                   </td>
 
                 </tr>
@@ -344,12 +359,13 @@ export function Leaderboards() {
             <Users className="mx-auto size-9 text-white/20" />
 
             <h3 className="mt-3 font-black uppercase text-white">
-              No friends yet
+              {leaderTab === "Friends" ? "No friends yet" : "No leaderboard entries yet"}
             </h3>
 
             <p className="mt-1 text-sm text-white/35">
-              Add crew members as friends to compare your
-              leaderboard performance.
+              {leaderTab === "Friends"
+                ? "Add crew members as friends to compare your leaderboard performance."
+                : "Players with a recorded total score will appear here."}
             </p>
 
           </div>
@@ -399,7 +415,7 @@ export function Leaderboards() {
                   </div>
 
                   <p className="mt-1 text-xs font-bold uppercase tracking-wider text-white/30">
-                    Level {selectedLeader.level}
+                    {selectedLeader.level === null ? "Level —" : `Level ${selectedLeader.level}`}
                   </p>
 
                 </div>
@@ -429,7 +445,7 @@ export function Leaderboards() {
                 </p>
 
                 <p className="mt-1 min-w-0 whitespace-nowrap text-sm font-black leading-none text-white">
-                  {formatNumber(selectedLeader.score)}
+                  {formatMetric(selectedLeader.score)}
                 </p>
 
               </div>
@@ -443,7 +459,7 @@ export function Leaderboards() {
                 </p>
 
                 <p className="mt-1 min-w-0 whitespace-nowrap text-sm font-black leading-none text-white">
-                  {formatNumber(selectedLeader.xp)}
+                  {formatMetric(selectedLeader.xp)}
                 </p>
 
               </div>
@@ -457,7 +473,7 @@ export function Leaderboards() {
                 </p>
 
                 <p className="mt-1 min-w-0 whitespace-nowrap text-sm font-black leading-none text-white">
-                  {selectedLeader.productions}
+                  {formatMetric(selectedLeader.productions)}
                 </p>
 
               </div>
@@ -471,7 +487,7 @@ export function Leaderboards() {
                 </p>
 
                 <p className="mt-1 min-w-0 whitespace-nowrap text-sm font-black leading-none text-white">
-                  {selectedLeader.rating}%
+                  {formatMetric(selectedLeader.rating, "%")}
                 </p>
 
               </div>
@@ -487,9 +503,10 @@ export function Leaderboards() {
               </p>
 
               <p className="mt-2 text-sm leading-relaxed text-white/50">
-                {selectedLeader.name} is a Level {selectedLeader.level} crew
-                member with {selectedLeader.productions} completed productions
-                and an average production rating of {selectedLeader.rating}%.
+                {selectedLeader.name} is a crew member ranked by the
+                {" "}
+                {formatMetric(selectedLeader.score)} total score. Additional
+                career metrics will appear when PlayFab provides them.
               </p>
 
             </div>
