@@ -874,13 +874,6 @@ function CrewProfilePage() {
                       Change Photo
                     </button>
 
-                    <button
-                      type="button"
-                      onClick={removeProfileImage}
-                      className="rounded-md border border-white/10 px-4 py-3 text-xs font-black uppercase text-white/50 transition hover:border-red-400/40 hover:text-red-400"
-                    >
-                      Reset
-                    </button>
 
                     <input
                       ref={fileInputRef}
@@ -902,108 +895,48 @@ function CrewProfilePage() {
               ================================================= */}
 
               <div className="space-y-4 rounded-lg border border-white/10 bg-black/[0.03] p-4">
-                <p className="text-xs font-black uppercase tracking-[0.15em] text-white/40">
-                  Account Credentials
-                </p>
+                <div className="flex flex-wrap items-center justify-between gap-3">
+                  <p className="text-xs font-black uppercase tracking-[0.15em] text-white/40">
+                    Account Credentials
+                  </p>
+                  <Link
+                    href="/portal/settings"
+                    className="inline-flex items-center rounded-md border border-coral/50 px-3 py-2 text-[11px] font-black uppercase tracking-wide text-coral transition hover:bg-coral hover:text-white"
+                  >
+                    Edit Credentials
+                  </Link>
+                </div>
 
+                <p className="text-xs leading-relaxed text-white/40">
+                  Your sign-in credentials are protected here. Use Account Settings to change your username, email, or password.
+                </p>
                 {fieldError && (
                   <p className="rounded-md border border-coral/30 bg-coral/10 px-3 py-2 text-xs font-bold text-coral">
                     {fieldError}
                   </p>
                 )}
-
-                <div>
-                  <label htmlFor="profile-username" className="text-xs font-bold text-white/50">
-                    Username
-                  </label>
-                  <input
-                    id="profile-username"
-                    value={draftUsername}
-                    onChange={(event) =>
-                      setDraftUsername(
-                        event.target.value
-                          .replace(/[^A-Za-z0-9_]/g, "")
-                          .replace(/^[^A-Za-z]+/, "")
-                          .slice(0, 20),
-                      )
-                    }
-                    minLength={3}
-                    maxLength={20}
-                    pattern="[A-Za-z][A-Za-z0-9_]{2,19}"
-                    title={USERNAME_ERROR}
-                    autoCapitalize="none"
-                    className="mt-2 w-full rounded-lg border border-white/10 bg-[#0d121c] px-4 py-3 text-sm text-white outline-none focus:border-coral focus:ring-4 focus:ring-coral/10"
-                  />
-                </div>
-
-                <div>
-                  <label htmlFor="profile-email" className="text-xs font-bold text-white/50">
-                    Email
-                  </label>
-                  <input
-                    id="profile-email"
-                    type="email"
-                    value={draftEmail}
-                    onChange={(event) => setDraftEmail(event.target.value)}
-                    className="mt-2 w-full rounded-lg border border-white/10 bg-[#0d121c] px-4 py-3 text-sm text-white outline-none focus:border-coral focus:ring-4 focus:ring-coral/10"
-                  />
-                </div>
-
-                <div className="grid gap-4 sm:grid-cols-2">
+                <div className="grid gap-3 sm:grid-cols-2">
                   <div>
-                    <label htmlFor="profile-password" className="text-xs font-bold text-white/50">
-                      New Password
-                    </label>
-                    <span className="relative mt-2 block">
-                      <input
-                        id="profile-password"
-                        type={showNewPassword ? "text" : "password"}
-                        value={draftPassword}
-                        onChange={(event) => setDraftPassword(event.target.value)}
-                        placeholder="Leave blank to keep current"
-                        className="w-full rounded-lg border border-white/10 bg-[#0d121c] px-4 py-3 pr-12 text-sm text-white outline-none placeholder:text-white/20 focus:border-coral focus:ring-4 focus:ring-coral/10"
-                      />
-                      <button
-                        type="button"
-                        onClick={() => setShowNewPassword((visible) => !visible)}
-                        aria-label={showNewPassword ? "Hide new password" : "Show new password"}
-                        className="absolute right-2 top-1/2 grid size-8 -translate-y-1/2 place-items-center rounded text-white/50 transition hover:text-coral"
-                      >
-                        {showNewPassword ? <Eye className="size-4" /> : <EyeOff className="size-4" />}
-                      </button>
-                    </span>
+                    <p className="text-xs font-bold text-white/50">Username</p>
+                    <div className="mt-2 rounded-lg border border-white/10 bg-[#0d121c] px-4 py-3 text-sm text-white/80">
+                      {account.username || "—"}
+                    </div>
                   </div>
                   <div>
-                    <label htmlFor="profile-password-confirm" className="text-xs font-bold text-white/50">
-                      Confirm New Password
-                    </label>
-                    <span className="relative mt-2 block">
-                      <input
-                        id="profile-password-confirm"
-                        type={showConfirmPassword ? "text" : "password"}
-                        value={draftPasswordConfirm}
-                        onChange={(event) => setDraftPasswordConfirm(event.target.value)}
-                        className="w-full rounded-lg border border-white/10 bg-[#0d121c] px-4 py-3 pr-12 text-sm text-white outline-none focus:border-coral focus:ring-4 focus:ring-coral/10"
-                      />
-                      <button
-                        type="button"
-                        onClick={() => setShowConfirmPassword((visible) => !visible)}
-                        aria-label={showConfirmPassword ? "Hide confirm password" : "Show confirm password"}
-                        className="absolute right-2 top-1/2 grid size-8 -translate-y-1/2 place-items-center rounded text-white/50 transition hover:text-coral"
-                      >
-                        {showConfirmPassword ? <Eye className="size-4" /> : <EyeOff className="size-4" />}
-                      </button>
-                    </span>
+                    <p className="text-xs font-bold text-white/50">Email</p>
+                    <div className="mt-2 break-all rounded-lg border border-white/10 bg-[#0d121c] px-4 py-3 text-sm text-white/80">
+                      {account.email || "—"}
+                    </div>
+                  </div>
+                  <div className="sm:col-span-2">
+                    <p className="text-xs font-bold text-white/50">Password</p>
+                    <div className="mt-2 rounded-lg border border-white/10 bg-[#0d121c] px-4 py-3 text-sm tracking-[0.25em] text-white/80">
+                      ••••••••
+                    </div>
                   </div>
                 </div>
-
-                <p className="text-[11px] text-white/30">
-                  Changing your username, email, or password requires
-                  confirming your current password.
-                </p>
               </div>
-
-              {/* =================================================
+{/* =================================================
                   BIO
               ================================================= */}
 

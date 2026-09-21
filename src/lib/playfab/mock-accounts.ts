@@ -112,6 +112,24 @@ export function registerMockAccount(email: string, password: string, username: s
   return account;
 }
 
+export function updateMockAccountEmail(sessionTicket: string, email: string) {
+  const account = getMockAccountBySessionTicket(sessionTicket);
+  if (!account) return { success: false as const, error: "Session expired. Please sign in again." };
+  const conflict = Array.from(mockAccounts.values()).some(
+    (candidate) => candidate.sessionTicket !== sessionTicket && accountKey(candidate.email) === accountKey(email),
+  );
+  if (conflict) return { success: false as const, error: "That email is already in use. Please choose another." };
+  account.email = email;
+  return { success: true as const };
+}
+
+export function updateMockAccountPassword(sessionTicket: string, password: string) {
+  const account = getMockAccountBySessionTicket(sessionTicket);
+  if (!account) return { success: false as const, error: "Session expired. Please sign in again." };
+  account.password = password;
+  return { success: true as const };
+}
+
 export function getMockAccountBySessionTicket(sessionTicket: string) {
   return Array.from(mockAccounts.values()).find(
     (account) => account.sessionTicket === sessionTicket,

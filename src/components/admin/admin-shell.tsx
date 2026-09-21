@@ -22,8 +22,6 @@ import {
   ChevronsLeft,
   ChevronsRight,
   ExternalLink,
-  Eye,
-  EyeOff,
   Gamepad2,
   HandCoins,
   LayoutDashboard,
@@ -76,7 +74,6 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
   const [mobileOpen, setMobileOpen] = useState(false);
   const [collapsed, setCollapsed] = useState(false);
   const [identityOpen, setIdentityOpen] = useState(false);
-  const [showPassword, setShowPassword] = useState(false);
   const [logoutConfirmOpen, setLogoutConfirmOpen] = useState(false);
   const [notificationsOpen, setNotificationsOpen] = useState(false);
   const [account] = adminAccountStore.useStore();
@@ -281,24 +278,10 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
                 <span className="font-black uppercase tracking-wide text-white/30">Email: </span>
                 {admin?.email ?? "—"}
               </p>
-              {mockMode ? (
-                <div className="mt-1.5 flex items-center gap-2 text-[11px] text-white/50">
-                  <span className="font-black uppercase tracking-wide text-white/30">Password:</span>
-                  <span className="min-w-0 flex-1 truncate">
-                    {showPassword ? (admin?.password ?? "—") : "••••••••"}
-                  </span>
-                  <button
-                    type="button"
-                    onClick={() => setShowPassword((current) => !current)}
-                    aria-label={showPassword ? "Hide password" : "Show password"}
-                    className="shrink-0 text-white/40 transition hover:text-yellow"
-                  >
-                    {showPassword ? <Eye className="size-3.5" /> : <EyeOff className="size-3.5" />}
-                  </button>
-                </div>
-              ) : (
-                <p className="mt-1.5 text-[11px] text-white/50">Password managed by PlayFab.</p>
-              )}
+              <div className="mt-1.5 flex items-center gap-2 text-[11px] text-white/50">
+                <span className="font-black uppercase tracking-wide text-white/30">Password:</span>
+                <span className="tracking-[0.2em]">••••••••</span>
+              </div>
               <div className="mt-3 space-y-1 border-t border-white/10 pt-2">
                 <Link
                   href="/"

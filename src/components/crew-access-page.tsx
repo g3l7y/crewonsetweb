@@ -4,12 +4,82 @@ import { FormEvent, useState } from "react";
 import { useRouter } from "@/components/next-compat/navigation";
 import { ArrowLeft, Eye, EyeOff, KeyRound, LoaderCircle, Send, UserPlus, X } from "lucide-react";
 import { EMAIL_ERROR, PASSWORD_ERROR, PASSWORD_INPUT_PATTERN, USERNAME_ERROR, isValidEmail, isValidPassword, isValidUsername } from "@/lib/validation";
-import { isMockMode } from "@/lib/playfab/config";
+import { PasswordRecoveryModal } from "@/components/password-recovery-modal";
+import { GOOGLE_CLIENT_ID, isGoogleAuthConfigured, isMockMode } from "@/lib/playfab/config";
 
 type CrewAccessPageProps = {
   mode: "login" | "signup";
   scope?: "player" | "admin";
 };
+
+type GoogleTokenResponse = {
+  access_token?: string;
+  error?: string;
+  error_description?: string;
+};
+
+type GoogleAccessTokenClient = {
+  requestAccessToken: () => void;
+};
+
+declare global {
+  interface Window {
+    google?: {
+      accounts?: {
+        oauth2?: {
+          initTokenClient: (options: {
+            client_id: string;
+            scope: string;
+            callback: (response: GoogleTokenResponse) => void;
+          }) => GoogleAccessTokenClient;
+        };
+      };
+    };
+  }
+}
+
+let googleScriptPromise: Promise<void> | undefined;
+
+async function requestGoogleAccessToken() {
+  if (typeof window === "undefined") {
+    throw new Error("Google sign-in is only available in a browser.");
+  }
+  if (!GOOGLE_CLIENT_ID) {
+    throw new Error("Google sign-in is not configured yet.");
+  }
+
+  if (!window.google?.accounts?.oauth2) {
+    googleScriptPromise ??= new Promise<void>((resolve, reject) => {
+      const script = document.createElement("script");
+      script.src = "https://accounts.google.com/gsi/client";
+      script.async = true;
+      script.onload = () => resolve();
+      script.onerror = () => reject(new Error("Unable to load Google sign-in."));
+      document.head.appendChild(script);
+    });
+    await googleScriptPromise;
+  }
+
+  const oauth2 = window.google?.accounts?.oauth2;
+  if (!oauth2) throw new Error("Google sign-in is unavailable. Please try again.");
+
+  return new Promise<string>((resolve, reject) => {
+    const client = oauth2.initTokenClient({
+      client_id: GOOGLE_CLIENT_ID,
+      scope: "openid email profile",
+      callback: (response) => {
+        if (response.error) {
+          reject(new Error(response.error_description ?? "Google sign-in was cancelled."));
+        } else if (!response.access_token) {
+          reject(new Error("Google did not return an access token."));
+        } else {
+          resolve(response.access_token);
+        }
+      },
+    });
+    client.requestAccessToken();
+  });
+}
 
 async function loginWithCredentials(
   identifier: string,
@@ -51,6 +121,27 @@ async function registerWithCredentials(username: string, email: string, password
   return result.destination ?? "/portal";
 }
 
+async function loginWithGoogleAccessToken(accessToken: string, intent: "login" | "signup") {
+  const response = await fetch("/api/auth/google", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ accessToken, intent }),
+  });
+  const result = (await response.json()) as {
+    error?: string;
+    destination?: string;
+    success?: boolean;
+    needsProfileSetup?: boolean;
+  };
+  if (!response.ok || result.success === false) {
+    throw new Error(result.error ?? "Unable to sign in with Google.");
+  }
+  return {
+    destination: result.destination ?? "/portal",
+    needsProfileSetup: result.needsProfileSetup === true,
+  };
+}
+
 function rememberMockProfile(session?: { displayName?: string; email?: string }) {
   if (!isMockMode() || typeof window === "undefined" || !session?.displayName) return;
   window.localStorage.setItem("cos.profile.account", JSON.stringify({
@@ -74,6 +165,7 @@ export function CrewAccessPage({ mode, scope = "player" }: CrewAccessPageProps) 
   const [passwordVisible, setPasswordVisible] = useState(false);
   const [confirmationVisible, setConfirmationVisible] = useState(false);
   const [forgotOpen, setForgotOpen] = useState(false);
+  const [googleProfileSetupOpen, setGoogleProfileSetupOpen] = useState(false);
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -139,13 +231,25 @@ export function CrewAccessPage({ mode, scope = "player" }: CrewAccessPageProps) 
     }
   }
 
-  async function handleGoogleMock() {
+  async function handleGoogleSignIn() {
     setError("");
     setGoogleLoading(true);
-    await new Promise((resolve) => setTimeout(resolve, 1200));
     try {
-      const destination = await loginWithCredentials("player@crewonset.com", "player", "player");
-      router.push(destination);
+      const googleResult = isMockMode()
+        ? await (async () => {
+            await new Promise((resolve) => setTimeout(resolve, 1200));
+            return {
+              destination: await loginWithCredentials("player@crewonset.com", "player", "player"),
+              needsProfileSetup: false,
+            };
+          })()
+        : await loginWithGoogleAccessToken(await requestGoogleAccessToken(), isLogin ? "login" : "signup");
+      if (googleResult.needsProfileSetup) {
+        setGoogleProfileSetupOpen(true);
+        setGoogleLoading(false);
+        return;
+      }
+      router.push(googleResult.destination);
       router.refresh();
     } catch (err) {
       setError(err instanceof Error ? err.message : "Unable to sign in with Google.");
@@ -238,7 +342,7 @@ export function CrewAccessPage({ mode, scope = "player" }: CrewAccessPageProps) 
               {loading ? <><LoaderCircle className="size-4 animate-spin" /> {isLogin ? "SIGNING IN" : "CREATING ACCOUNT"}</> : <>{isAdmin ? "ENTER CONSOLE" : isLogin ? "ENTER PORTAL" : "JOIN THE CREW"} <Send className="size-4" /></>}
             </button>
 
-            {!isAdmin && isMockMode() && (
+            {!isAdmin && (isMockMode() || isGoogleAuthConfigured()) && (
               <>
                 <div className="my-4 flex items-center gap-3 text-[10px] font-black uppercase tracking-widest text-navy/35">
                   <span className="h-px flex-1 bg-navy/10" /> or <span className="h-px flex-1 bg-navy/10" />
@@ -247,11 +351,11 @@ export function CrewAccessPage({ mode, scope = "player" }: CrewAccessPageProps) 
                 <button
                   type="button"
                   disabled={googleLoading}
-                  onClick={handleGoogleMock}
+                  onClick={handleGoogleSignIn}
                   className="inline-flex w-full items-center justify-center gap-3 rounded-md border border-navy/20 bg-white px-5 py-3.5 text-sm font-black tracking-wider text-navy transition hover:bg-navy/5 disabled:cursor-wait disabled:opacity-70"
                 >
                   {googleLoading ? (
-                    <><LoaderCircle className="size-4 animate-spin" /> CONNECTING TO GOOGLE (DEMO)</>
+                    <><LoaderCircle className="size-4 animate-spin" /> {isMockMode() ? "CONNECTING TO GOOGLE (DEMO)" : "CONNECTING TO GOOGLE"}</>
                   ) : (
                     <>
                       <svg className="size-5" viewBox="0 0 24 24" aria-hidden="true">
@@ -260,12 +364,12 @@ export function CrewAccessPage({ mode, scope = "player" }: CrewAccessPageProps) 
                         <path fill="#FBBC05" d="M6.51 13.89a5.86 5.86 0 0 1 0-3.76V7.61H3.27a9.75 9.75 0 0 0 0 8.8l3.24-2.52Z" />
                         <path fill="#EA4335" d="M12 6.09c1.43 0 2.72.49 3.74 1.45l2.8-2.8C16.83 3.18 14.63 2.2 12 2.2a9.75 9.75 0 0 0-8.73 5.41l3.24 2.52C7.29 7.81 9.45 6.09 12 6.09Z" />
                       </svg>
-                      CONTINUE WITH GOOGLE (DEMO)
+                      CONTINUE WITH GOOGLE{isMockMode() ? " (DEMO)" : ""}
                     </>
                   )}
                 </button>
                 <p className="mt-2 text-center text-[11px] leading-relaxed text-navy/40">
-                  Simulated OAuth for demo purposes — signs you in as the demo player.
+                  {isMockMode() ? "Simulated OAuth for demo purposes — signs you in as the demo player." : "Use Google to create or open your player account."}
                 </p>
               </>
             )}
@@ -279,139 +383,79 @@ export function CrewAccessPage({ mode, scope = "player" }: CrewAccessPageProps) 
         </section>
       </div>
 
-      {forgotOpen && <ForgotPasswordModal onClose={() => setForgotOpen(false)} />}
+      {forgotOpen && <PasswordRecoveryModal scope={scope} onClose={() => setForgotOpen(false)} />}
+      {googleProfileSetupOpen && (
+        <GoogleProfileSetupModal
+          onComplete={() => {
+            setGoogleProfileSetupOpen(false);
+            router.push("/portal");
+            router.refresh();
+          }}
+        />
+      )}
     </main>
   );
 }
 
-function ForgotPasswordModal({ onClose }: { onClose: () => void }) {
-  const [step, setStep] = useState<"email" | "code" | "password" | "done">("email");
-  const [email, setEmail] = useState("");
-  const [sentCode, setSentCode] = useState("");
-  const [codeInput, setCodeInput] = useState("");
+function GoogleProfileSetupModal({ onComplete }: { onComplete: () => void }) {
+  const [username, setUsername] = useState("");
   const [error, setError] = useState("");
-  const [sending, setSending] = useState(false);
-  const [newPasswordVisible, setNewPasswordVisible] = useState(false);
-  const [confirmPasswordVisible, setConfirmPasswordVisible] = useState(false);
+  const [saving, setSaving] = useState(false);
 
-  function handleEmailSubmit(event: FormEvent<HTMLFormElement>) {
+  async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    if (!isValidEmail(email)) {
-      setError(EMAIL_ERROR);
+    const normalized = username.trim();
+    if (!isValidUsername(normalized)) {
+      setError(USERNAME_ERROR);
       return;
     }
-    setError("");
-    setSending(true);
-    const code = String(Math.floor(100000 + Math.random() * 900000));
-    setTimeout(() => {
-      setSentCode(code);
-      setSending(false);
-      setStep("code");
-    }, 900);
-  }
 
-  function handleCodeSubmit(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-    if (codeInput !== sentCode) {
-      setError("That code doesn't match. Please try again.");
-      return;
-    }
+    setSaving(true);
     setError("");
-    setStep("password");
-  }
-
-  function handlePasswordSubmit(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-    const data = new FormData(event.currentTarget);
-    const password = String(data.get("newPassword") ?? "");
-    const confirm = String(data.get("confirmPassword") ?? "");
-    if (!isValidPassword(password)) {
-      setError(PASSWORD_ERROR);
-      return;
+    try {
+      const response = await fetch("/api/auth/profile", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ username: normalized }),
+      });
+      const result = (await response.json()) as { success?: boolean; error?: string };
+      if (!response.ok || result.success === false) {
+        throw new Error(result.error ?? "Unable to save your username.");
+      }
+      onComplete();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Unable to save your username.");
+      setSaving(false);
     }
-    if (password !== confirm) {
-      setError("Passwords do not match.");
-      return;
-    }
-    setError("");
-    setStep("done");
   }
 
   return (
-    <div className="fixed inset-0 z-[60] grid place-items-center bg-black/60 px-5" role="dialog" aria-modal="true">
-      <div className="relative w-full max-w-md rounded-lg border border-navy/10 bg-cream p-6 text-navy shadow-2xl sm:p-8">
-        <button type="button" onClick={onClose} aria-label="Close" className="absolute right-4 top-4 text-navy/40 hover:text-navy">
-          <X className="size-5" />
-        </button>
-
-        <p className="text-xs font-black tracking-[.18em] text-coral">PASSWORD RECOVERY (DEMO)</p>
-        <h2 className="mt-2 text-2xl font-black uppercase">Forgot password?</h2>
-
-        {step === "email" && (
-          <form onSubmit={handleEmailSubmit} className="mt-6">
-            <p className="text-sm leading-relaxed text-navy/60">Enter your account email and we&apos;ll simulate sending a 6-digit recovery code.</p>
-            <label className="form-label mt-4">EMAIL
-              <input className="form-input" type="email" required value={email} onChange={(event) => setEmail(event.target.value)} placeholder="player@gmail.com" />
-            </label>
-            {error && <p role="alert" className="mt-3 text-sm font-bold text-coral">{error}</p>}
-            <button disabled={sending} type="submit" className="mt-5 inline-flex w-full items-center justify-center gap-2 rounded-md bg-navy px-5 py-3.5 text-sm font-black tracking-wider text-white transition hover:bg-coral disabled:cursor-wait disabled:opacity-70">
-              {sending ? <><LoaderCircle className="size-4 animate-spin" /> SENDING CODE</> : "SEND RECOVERY CODE"}
-            </button>
-          </form>
-        )}
-
-        {step === "code" && (
-          <form onSubmit={handleCodeSubmit} className="mt-6">
-            <p className="text-sm leading-relaxed text-navy/60">
-              A simulated 6-digit code was &quot;sent&quot; to <strong>{email}</strong>. For this demo, here it is: <strong className="text-coral">{sentCode}</strong>
-            </p>
-            <label className="form-label mt-4">RECOVERY CODE
-              <input className="form-input" required maxLength={6} value={codeInput} onChange={(event) => setCodeInput(event.target.value)} placeholder="123456" />
-            </label>
-            {error && <p role="alert" className="mt-3 text-sm font-bold text-coral">{error}</p>}
-            <button type="submit" className="mt-5 inline-flex w-full items-center justify-center gap-2 rounded-md bg-navy px-5 py-3.5 text-sm font-black tracking-wider text-white transition hover:bg-coral">
-              VERIFY CODE
-            </button>
-          </form>
-        )}
-
-        {step === "password" && (
-          <form onSubmit={handlePasswordSubmit} className="mt-6">
-            <p className="text-sm leading-relaxed text-navy/60">Code verified. Choose a new password.</p>
-            <label className="form-label mt-4">NEW PASSWORD
-              <span className="relative block">
-                <input className="form-input pr-12" name="newPassword" type={newPasswordVisible ? "text" : "password"} minLength={8} maxLength={64} pattern={PASSWORD_INPUT_PATTERN} title={PASSWORD_ERROR} required placeholder="8+ characters with upper/lowercase, number, and symbol" />
-                <button type="button" onClick={() => setNewPasswordVisible((visible) => !visible)} className="absolute right-1 top-[calc(50%+4px)] grid size-10 -translate-y-1/2 place-items-center rounded text-navy/40 transition hover:bg-navy/5 hover:text-navy" aria-label={newPasswordVisible ? "Hide new password" : "Show new password"}>
-                  {newPasswordVisible ? <Eye className="size-4" /> : <EyeOff className="size-4" />}
-                </button>
-              </span>
-            </label>
-            <label className="form-label mt-4">CONFIRM PASSWORD
-              <span className="relative block">
-                <input className="form-input pr-12" name="confirmPassword" type={confirmPasswordVisible ? "text" : "password"} minLength={8} maxLength={64} pattern={PASSWORD_INPUT_PATTERN} title={PASSWORD_ERROR} required placeholder="Repeat password" />
-                <button type="button" onClick={() => setConfirmPasswordVisible((visible) => !visible)} className="absolute right-1 top-[calc(50%+4px)] grid size-10 -translate-y-1/2 place-items-center rounded text-navy/40 transition hover:bg-navy/5 hover:text-navy" aria-label={confirmPasswordVisible ? "Hide confirm password" : "Show confirm password"}>
-                  {confirmPasswordVisible ? <Eye className="size-4" /> : <EyeOff className="size-4" />}
-                </button>
-              </span>
-            </label>
-            {error && <p role="alert" className="mt-3 text-sm font-bold text-coral">{error}</p>}
-            <button type="submit" className="mt-5 inline-flex w-full items-center justify-center gap-2 rounded-md bg-navy px-5 py-3.5 text-sm font-black tracking-wider text-white transition hover:bg-coral">
-              RESET PASSWORD
-            </button>
-          </form>
-        )}
-
-        {step === "done" && (
-          <div className="mt-6">
-            <p className="text-sm leading-relaxed text-navy/60">
-              Your password has been reset (simulated). You can now sign in with your new password.
-            </p>
-            <button type="button" onClick={onClose} className="mt-5 inline-flex w-full items-center justify-center gap-2 rounded-md bg-[#278b78] px-5 py-3.5 text-sm font-black tracking-wider text-white transition hover:bg-[#1f7464]">
-              BACK TO LOGIN
-            </button>
-          </div>
-        )}
-      </div>
+    <div className="fixed inset-0 z-[80] grid place-items-center bg-[#05080d]/85 p-4 backdrop-blur-md">
+      <section className="w-full max-w-md rounded-2xl border border-navy/15 bg-cream p-6 text-navy shadow-2xl sm:p-8" role="dialog" aria-modal="true" aria-labelledby="google-profile-title">
+        <p className="text-xs font-black tracking-[.18em] text-coral">ONE LAST STEP</p>
+        <h2 id="google-profile-title" className="mt-2 text-3xl font-black uppercase">Set up your profile</h2>
+        <p className="mt-3 text-sm leading-relaxed text-navy/65">Choose the username your crew will see. It will be saved to your real PlayFab account and used every time you sign in with Google.</p>
+        <form onSubmit={submit} className="mt-6">
+          <label className="form-label">USERNAME
+            <input
+              className="form-input"
+              value={username}
+              onChange={(event) => setUsername(event.target.value.replace(/[^A-Za-z0-9_]/g, "").replace(/^[^A-Za-z]+/, "").slice(0, 20))}
+              minLength={3}
+              maxLength={20}
+              pattern="[A-Za-z][A-Za-z0-9_]{2,19}"
+              autoCapitalize="none"
+              autoFocus
+              required
+              placeholder="jane_director"
+            />
+          </label>
+          {error && <p role="alert" className="mt-3 text-sm font-bold text-coral">{error}</p>}
+          <button disabled={saving} type="submit" className="mt-5 inline-flex w-full items-center justify-center gap-2 rounded-md bg-navy px-5 py-3.5 text-sm font-black tracking-wider text-white transition hover:bg-coral disabled:cursor-wait disabled:opacity-70">
+            {saving ? <><LoaderCircle className="size-4 animate-spin" /> SAVING PROFILE</> : <>SAVE PROFILE <Send className="size-4" /></>}
+          </button>
+        </form>
+      </section>
     </div>
   );
 }

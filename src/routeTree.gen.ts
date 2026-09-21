@@ -16,6 +16,7 @@ import { Route as ContactRouteImport } from './routes/contact'
 import { Route as DownloadRouteImport } from './routes/download'
 import { Route as FeaturesRouteImport } from './routes/features'
 import { Route as LoginRouteImport } from './routes/login'
+import { Route as PasswordRecoveryRouteImport } from './routes/password-recovery'
 import { Route as PortalRouteImport } from './routes/portal'
 import { Route as SignupRouteImport } from './routes/signup'
 import { Route as StoryRouteImport } from './routes/story'
@@ -53,11 +54,16 @@ import { Route as ApiAdminPlayersRouteImport } from './routes/api/admin/players'
 import { Route as ApiAuthCheckUsernameRouteImport } from './routes/api/auth/check-username'
 import { Route as ApiAuthLoginRouteImport } from './routes/api/auth/login'
 import { Route as ApiAuthLogoutRouteImport } from './routes/api/auth/logout'
+import { Route as ApiAuthProfileRouteImport } from './routes/api/auth/profile'
 import { Route as ApiAuthRegisterRouteImport } from './routes/api/auth/register'
 import { Route as ApiAuthSessionRouteImport } from './routes/api/auth/session'
 import { Route as ApiPaymongoCheckoutRouteImport } from './routes/api/paymongo/checkout'
 import { Route as ApiPaymongoWebhookRouteImport } from './routes/api/paymongo/webhook'
 import { Route as ApiPlayfabClientRouteImport } from './routes/api/playfab/client'
+import { Route as ApiAuthPasswordRecoveryRequestRouteImport } from './routes/api/auth/password-recovery/request'
+import { Route as ApiAuthPasswordRecoveryResetRouteImport } from './routes/api/auth/password-recovery/reset'
+import { Route as ApiAuthPasswordRecoveryVerifyRouteImport } from './routes/api/auth/password-recovery/verify'
+import { Route as ApiAuthPasswordChangeRouteImport } from './routes/api/auth/password/change'
 import { Route as ApiPlayfabFriendsAddRouteImport } from './routes/api/playfab/friends/add'
 import { Route as ApiPlayfabFriendsRemoveRouteImport } from './routes/api/playfab/friends/remove'
 import { Route as ApiPlayfabPlayersSearchRouteImport } from './routes/api/playfab/players/search'
@@ -95,6 +101,11 @@ const FeaturesRoute = FeaturesRouteImport.update({
 const LoginRoute = LoginRouteImport.update({
   id: '/login',
   path: '/login',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const PasswordRecoveryRoute = PasswordRecoveryRouteImport.update({
+  id: '/password-recovery',
+  path: '/password-recovery',
   getParentRoute: () => rootRouteImport,
 } as any)
 const PortalRoute = PortalRouteImport.update({
@@ -282,6 +293,11 @@ const ApiAuthLogoutRoute = ApiAuthLogoutRouteImport.update({
   path: '/api/auth/logout',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiAuthProfileRoute = ApiAuthProfileRouteImport.update({
+  id: '/api/auth/profile',
+  path: '/api/auth/profile',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiAuthRegisterRoute = ApiAuthRegisterRouteImport.update({
   id: '/api/auth/register',
   path: '/api/auth/register',
@@ -305,6 +321,29 @@ const ApiPaymongoWebhookRoute = ApiPaymongoWebhookRouteImport.update({
 const ApiPlayfabClientRoute = ApiPlayfabClientRouteImport.update({
   id: '/api/playfab/client',
   path: '/api/playfab/client',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiAuthPasswordRecoveryRequestRoute =
+  ApiAuthPasswordRecoveryRequestRouteImport.update({
+    id: '/api/auth/password-recovery/request',
+    path: '/api/auth/password-recovery/request',
+    getParentRoute: () => rootRouteImport,
+  } as any)
+const ApiAuthPasswordRecoveryResetRoute =
+  ApiAuthPasswordRecoveryResetRouteImport.update({
+    id: '/api/auth/password-recovery/reset',
+    path: '/api/auth/password-recovery/reset',
+    getParentRoute: () => rootRouteImport,
+  } as any)
+const ApiAuthPasswordRecoveryVerifyRoute =
+  ApiAuthPasswordRecoveryVerifyRouteImport.update({
+    id: '/api/auth/password-recovery/verify',
+    path: '/api/auth/password-recovery/verify',
+    getParentRoute: () => rootRouteImport,
+  } as any)
+const ApiAuthPasswordChangeRoute = ApiAuthPasswordChangeRouteImport.update({
+  id: '/api/auth/password/change',
+  path: '/api/auth/password/change',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ApiPlayfabFriendsAddRoute = ApiPlayfabFriendsAddRouteImport.update({
@@ -331,6 +370,7 @@ export interface FileRoutesByFullPath {
   '/download': typeof DownloadRoute
   '/features': typeof FeaturesRoute
   '/login': typeof LoginRoute
+  '/password-recovery': typeof PasswordRecoveryRoute
   '/portal': typeof PortalRouteWithChildren
   '/signup': typeof SignupRoute
   '/story': typeof StoryRoute
@@ -368,11 +408,16 @@ export interface FileRoutesByFullPath {
   '/api/auth/check-username': typeof ApiAuthCheckUsernameRoute
   '/api/auth/login': typeof ApiAuthLoginRoute
   '/api/auth/logout': typeof ApiAuthLogoutRoute
+  '/api/auth/profile': typeof ApiAuthProfileRoute
   '/api/auth/register': typeof ApiAuthRegisterRoute
   '/api/auth/session': typeof ApiAuthSessionRoute
   '/api/paymongo/checkout': typeof ApiPaymongoCheckoutRoute
   '/api/paymongo/webhook': typeof ApiPaymongoWebhookRoute
   '/api/playfab/client': typeof ApiPlayfabClientRoute
+  '/api/auth/password-recovery/request': typeof ApiAuthPasswordRecoveryRequestRoute
+  '/api/auth/password-recovery/reset': typeof ApiAuthPasswordRecoveryResetRoute
+  '/api/auth/password-recovery/verify': typeof ApiAuthPasswordRecoveryVerifyRoute
+  '/api/auth/password/change': typeof ApiAuthPasswordChangeRoute
   '/api/playfab/friends/add': typeof ApiPlayfabFriendsAddRoute
   '/api/playfab/friends/remove': typeof ApiPlayfabFriendsRemoveRoute
   '/api/playfab/players/search': typeof ApiPlayfabPlayersSearchRoute
@@ -384,6 +429,7 @@ export interface FileRoutesByTo {
   '/download': typeof DownloadRoute
   '/features': typeof FeaturesRoute
   '/login': typeof LoginRoute
+  '/password-recovery': typeof PasswordRecoveryRoute
   '/signup': typeof SignupRoute
   '/story': typeof StoryRoute
   '/team': typeof TeamRoute
@@ -420,11 +466,16 @@ export interface FileRoutesByTo {
   '/api/auth/check-username': typeof ApiAuthCheckUsernameRoute
   '/api/auth/login': typeof ApiAuthLoginRoute
   '/api/auth/logout': typeof ApiAuthLogoutRoute
+  '/api/auth/profile': typeof ApiAuthProfileRoute
   '/api/auth/register': typeof ApiAuthRegisterRoute
   '/api/auth/session': typeof ApiAuthSessionRoute
   '/api/paymongo/checkout': typeof ApiPaymongoCheckoutRoute
   '/api/paymongo/webhook': typeof ApiPaymongoWebhookRoute
   '/api/playfab/client': typeof ApiPlayfabClientRoute
+  '/api/auth/password-recovery/request': typeof ApiAuthPasswordRecoveryRequestRoute
+  '/api/auth/password-recovery/reset': typeof ApiAuthPasswordRecoveryResetRoute
+  '/api/auth/password-recovery/verify': typeof ApiAuthPasswordRecoveryVerifyRoute
+  '/api/auth/password/change': typeof ApiAuthPasswordChangeRoute
   '/api/playfab/friends/add': typeof ApiPlayfabFriendsAddRoute
   '/api/playfab/friends/remove': typeof ApiPlayfabFriendsRemoveRoute
   '/api/playfab/players/search': typeof ApiPlayfabPlayersSearchRoute
@@ -438,6 +489,7 @@ export interface FileRoutesById {
   '/download': typeof DownloadRoute
   '/features': typeof FeaturesRoute
   '/login': typeof LoginRoute
+  '/password-recovery': typeof PasswordRecoveryRoute
   '/portal': typeof PortalRouteWithChildren
   '/signup': typeof SignupRoute
   '/story': typeof StoryRoute
@@ -475,11 +527,16 @@ export interface FileRoutesById {
   '/api/auth/check-username': typeof ApiAuthCheckUsernameRoute
   '/api/auth/login': typeof ApiAuthLoginRoute
   '/api/auth/logout': typeof ApiAuthLogoutRoute
+  '/api/auth/profile': typeof ApiAuthProfileRoute
   '/api/auth/register': typeof ApiAuthRegisterRoute
   '/api/auth/session': typeof ApiAuthSessionRoute
   '/api/paymongo/checkout': typeof ApiPaymongoCheckoutRoute
   '/api/paymongo/webhook': typeof ApiPaymongoWebhookRoute
   '/api/playfab/client': typeof ApiPlayfabClientRoute
+  '/api/auth/password-recovery/request': typeof ApiAuthPasswordRecoveryRequestRoute
+  '/api/auth/password-recovery/reset': typeof ApiAuthPasswordRecoveryResetRoute
+  '/api/auth/password-recovery/verify': typeof ApiAuthPasswordRecoveryVerifyRoute
+  '/api/auth/password/change': typeof ApiAuthPasswordChangeRoute
   '/api/playfab/friends/add': typeof ApiPlayfabFriendsAddRoute
   '/api/playfab/friends/remove': typeof ApiPlayfabFriendsRemoveRoute
   '/api/playfab/players/search': typeof ApiPlayfabPlayersSearchRoute
@@ -494,6 +551,7 @@ export interface FileRouteTypes {
     | '/download'
     | '/features'
     | '/login'
+    | '/password-recovery'
     | '/portal'
     | '/signup'
     | '/story'
@@ -531,11 +589,16 @@ export interface FileRouteTypes {
     | '/api/auth/check-username'
     | '/api/auth/login'
     | '/api/auth/logout'
+    | '/api/auth/profile'
     | '/api/auth/register'
     | '/api/auth/session'
     | '/api/paymongo/checkout'
     | '/api/paymongo/webhook'
     | '/api/playfab/client'
+    | '/api/auth/password-recovery/request'
+    | '/api/auth/password-recovery/reset'
+    | '/api/auth/password-recovery/verify'
+    | '/api/auth/password/change'
     | '/api/playfab/friends/add'
     | '/api/playfab/friends/remove'
     | '/api/playfab/players/search'
@@ -547,6 +610,7 @@ export interface FileRouteTypes {
     | '/download'
     | '/features'
     | '/login'
+    | '/password-recovery'
     | '/signup'
     | '/story'
     | '/team'
@@ -583,11 +647,16 @@ export interface FileRouteTypes {
     | '/api/auth/check-username'
     | '/api/auth/login'
     | '/api/auth/logout'
+    | '/api/auth/profile'
     | '/api/auth/register'
     | '/api/auth/session'
     | '/api/paymongo/checkout'
     | '/api/paymongo/webhook'
     | '/api/playfab/client'
+    | '/api/auth/password-recovery/request'
+    | '/api/auth/password-recovery/reset'
+    | '/api/auth/password-recovery/verify'
+    | '/api/auth/password/change'
     | '/api/playfab/friends/add'
     | '/api/playfab/friends/remove'
     | '/api/playfab/players/search'
@@ -600,6 +669,7 @@ export interface FileRouteTypes {
     | '/download'
     | '/features'
     | '/login'
+    | '/password-recovery'
     | '/portal'
     | '/signup'
     | '/story'
@@ -637,11 +707,16 @@ export interface FileRouteTypes {
     | '/api/auth/check-username'
     | '/api/auth/login'
     | '/api/auth/logout'
+    | '/api/auth/profile'
     | '/api/auth/register'
     | '/api/auth/session'
     | '/api/paymongo/checkout'
     | '/api/paymongo/webhook'
     | '/api/playfab/client'
+    | '/api/auth/password-recovery/request'
+    | '/api/auth/password-recovery/reset'
+    | '/api/auth/password-recovery/verify'
+    | '/api/auth/password/change'
     | '/api/playfab/friends/add'
     | '/api/playfab/friends/remove'
     | '/api/playfab/players/search'
@@ -655,6 +730,7 @@ export interface RootRouteChildren {
   DownloadRoute: typeof DownloadRoute
   FeaturesRoute: typeof FeaturesRoute
   LoginRoute: typeof LoginRoute
+  PasswordRecoveryRoute: typeof PasswordRecoveryRoute
   PortalRoute: typeof PortalRouteWithChildren
   SignupRoute: typeof SignupRoute
   StoryRoute: typeof StoryRoute
@@ -672,11 +748,16 @@ export interface RootRouteChildren {
   ApiAuthCheckUsernameRoute: typeof ApiAuthCheckUsernameRoute
   ApiAuthLoginRoute: typeof ApiAuthLoginRoute
   ApiAuthLogoutRoute: typeof ApiAuthLogoutRoute
+  ApiAuthProfileRoute: typeof ApiAuthProfileRoute
   ApiAuthRegisterRoute: typeof ApiAuthRegisterRoute
   ApiAuthSessionRoute: typeof ApiAuthSessionRoute
   ApiPaymongoCheckoutRoute: typeof ApiPaymongoCheckoutRoute
   ApiPaymongoWebhookRoute: typeof ApiPaymongoWebhookRoute
   ApiPlayfabClientRoute: typeof ApiPlayfabClientRoute
+  ApiAuthPasswordRecoveryRequestRoute: typeof ApiAuthPasswordRecoveryRequestRoute
+  ApiAuthPasswordRecoveryResetRoute: typeof ApiAuthPasswordRecoveryResetRoute
+  ApiAuthPasswordRecoveryVerifyRoute: typeof ApiAuthPasswordRecoveryVerifyRoute
+  ApiAuthPasswordChangeRoute: typeof ApiAuthPasswordChangeRoute
   ApiPlayfabFriendsAddRoute: typeof ApiPlayfabFriendsAddRoute
   ApiPlayfabFriendsRemoveRoute: typeof ApiPlayfabFriendsRemoveRoute
   ApiPlayfabPlayersSearchRoute: typeof ApiPlayfabPlayersSearchRoute
@@ -731,6 +812,13 @@ declare module '@tanstack/react-router' {
       path: '/login'
       fullPath: '/login'
       preLoaderRoute: typeof LoginRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/password-recovery': {
+      id: '/password-recovery'
+      path: '/password-recovery'
+      fullPath: '/password-recovery'
+      preLoaderRoute: typeof PasswordRecoveryRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/portal': {
@@ -992,6 +1080,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiAuthLogoutRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/auth/profile': {
+      id: '/api/auth/profile'
+      path: '/api/auth/profile'
+      fullPath: '/api/auth/profile'
+      preLoaderRoute: typeof ApiAuthProfileRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/auth/register': {
       id: '/api/auth/register'
       path: '/api/auth/register'
@@ -1025,6 +1120,34 @@ declare module '@tanstack/react-router' {
       path: '/api/playfab/client'
       fullPath: '/api/playfab/client'
       preLoaderRoute: typeof ApiPlayfabClientRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/auth/password-recovery/request': {
+      id: '/api/auth/password-recovery/request'
+      path: '/api/auth/password-recovery/request'
+      fullPath: '/api/auth/password-recovery/request'
+      preLoaderRoute: typeof ApiAuthPasswordRecoveryRequestRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/auth/password-recovery/reset': {
+      id: '/api/auth/password-recovery/reset'
+      path: '/api/auth/password-recovery/reset'
+      fullPath: '/api/auth/password-recovery/reset'
+      preLoaderRoute: typeof ApiAuthPasswordRecoveryResetRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/auth/password-recovery/verify': {
+      id: '/api/auth/password-recovery/verify'
+      path: '/api/auth/password-recovery/verify'
+      fullPath: '/api/auth/password-recovery/verify'
+      preLoaderRoute: typeof ApiAuthPasswordRecoveryVerifyRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/auth/password/change': {
+      id: '/api/auth/password/change'
+      path: '/api/auth/password/change'
+      fullPath: '/api/auth/password/change'
+      preLoaderRoute: typeof ApiAuthPasswordChangeRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/api/playfab/friends/add': {
@@ -1116,6 +1239,7 @@ const rootRouteChildren: RootRouteChildren = {
   DownloadRoute: DownloadRoute,
   FeaturesRoute: FeaturesRoute,
   LoginRoute: LoginRoute,
+  PasswordRecoveryRoute: PasswordRecoveryRoute,
   PortalRoute: PortalRouteWithChildren,
   SignupRoute: SignupRoute,
   StoryRoute: StoryRoute,
@@ -1133,11 +1257,16 @@ const rootRouteChildren: RootRouteChildren = {
   ApiAuthCheckUsernameRoute: ApiAuthCheckUsernameRoute,
   ApiAuthLoginRoute: ApiAuthLoginRoute,
   ApiAuthLogoutRoute: ApiAuthLogoutRoute,
+  ApiAuthProfileRoute: ApiAuthProfileRoute,
   ApiAuthRegisterRoute: ApiAuthRegisterRoute,
   ApiAuthSessionRoute: ApiAuthSessionRoute,
   ApiPaymongoCheckoutRoute: ApiPaymongoCheckoutRoute,
   ApiPaymongoWebhookRoute: ApiPaymongoWebhookRoute,
   ApiPlayfabClientRoute: ApiPlayfabClientRoute,
+  ApiAuthPasswordRecoveryRequestRoute: ApiAuthPasswordRecoveryRequestRoute,
+  ApiAuthPasswordRecoveryResetRoute: ApiAuthPasswordRecoveryResetRoute,
+  ApiAuthPasswordRecoveryVerifyRoute: ApiAuthPasswordRecoveryVerifyRoute,
+  ApiAuthPasswordChangeRoute: ApiAuthPasswordChangeRoute,
   ApiPlayfabFriendsAddRoute: ApiPlayfabFriendsAddRoute,
   ApiPlayfabFriendsRemoveRoute: ApiPlayfabFriendsRemoveRoute,
   ApiPlayfabPlayersSearchRoute: ApiPlayfabPlayersSearchRoute,
