@@ -95,6 +95,11 @@ export const Route = createFileRoute('/api/admin/players')({
               StatisticName: 'total_xp',
               StartPosition: 0,
               MaxResultsCount: 100,
+              ProfileConstraints: {
+                ShowDisplayName: true,
+                ShowCreated: true,
+                ShowLastLogin: true,
+              },
             }),
           });
 
@@ -104,19 +109,25 @@ export const Route = createFileRoute('/api/admin/players')({
             return Response.json({ success: true, data: [] });
           }
 
-          const players: PlayerProfile[] = result.data.Leaderboard.map((entry: any) => ({
-            id: entry.PlayFabId,
-            playFabId: entry.PlayFabId,
-            displayName: entry.DisplayName || `Player_${entry.Position + 1}`,
-            username: entry.DisplayName || "player_" + (entry.Position + 1),
-            email: '',
-            avatarUrl: '/assets/crew-team-illustration.png',
-            role: 'cameraman',
-            crewId: 'CREW-001',
-            bio: '',
-            joinedAt: new Date().toISOString(),
-            lastLoginAt: new Date().toISOString(),
-          }));
+          const players: PlayerProfile[] = result.data.Leaderboard.map((entry: any) => {
+            const profile = entry.Profile || {};
+            const createdAt = profile.Created ? new Date(profile.Created).toISOString() : '';
+            const lastLoginAt = profile.LastLogin ? new Date(profile.LastLogin).toISOString() : '';
+
+            return {
+              id: entry.PlayFabId,
+              playFabId: entry.PlayFabId,
+              displayName: profile.DisplayName || entry.DisplayName || ("Player_" + (entry.Position + 1)),
+              username: profile.DisplayName || entry.DisplayName || ("player_" + (entry.Position + 1)),
+              email: '',
+              avatarUrl: profile.AvatarUrl || '/assets/crew-team-illustration.png',
+              role: 'cameraman',
+              crewId: 'CREW-001',
+              bio: '',
+              joinedAt: createdAt,
+              lastLoginAt,
+            };
+          });
 
           return Response.json({ success: true, data: players });
         } catch (error) {
