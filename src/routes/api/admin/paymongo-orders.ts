@@ -15,7 +15,7 @@ type PayMongoOrder = {
   amountInCentavos: number;
   currency: 'PHP';
   email: string;
-  status: 'pending' | 'active' | 'fulfilled' | 'failed';
+  status: 'pending' | 'active' | 'processing' | 'fulfilled' | 'failed';
   createdAt: string;
   updatedAt: string;
   paidAt?: string;
