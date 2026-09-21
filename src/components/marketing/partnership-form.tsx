@@ -2,6 +2,7 @@ import { FormEvent, useRef, useState } from "react";
 import { CheckCircle2, FileImage, Send, X } from "lucide-react";
 
 import { EMAIL_ERROR, isValidEmail } from "@/lib/validation";
+import { isMockMode } from "@/lib/playfab/config";
 import {
   applicationsStore,
   insertSharedRecord,
@@ -12,6 +13,7 @@ import {
 } from "@/lib/demo/store";
 
 export function PartnershipForm() {
+  const mockMode = isMockMode();
   const [file, setFile] = useState<File | null>(null);
   const fileInput = useRef<HTMLInputElement>(null);
   const [submitted, setSubmitted] = useState(false);
@@ -80,12 +82,12 @@ export function PartnershipForm() {
     setError("");
 
     let attachmentUrl = "";
-    if (file) {
+    if (file && mockMode) {
       try {
         attachmentUrl = await readAttachmentAsDataUrl(file, "partnerships");
       } catch (error) {
         const message = error instanceof Error ? error.message : String(error);
-        console.warn(`[Crew On Set] partnership attachment upload failed; submitting without attachment`, { message });
+        console.warn(`[Crew On Set] partnership attachment preview failed; submitting without attachment`, { message });
       }
     }
 
@@ -107,7 +109,7 @@ export function PartnershipForm() {
       status: "Pending",
     };
 
-    const persisted = await insertSharedRecord("cos.applications", application);
+    const persisted = await insertSharedRecord("cos.applications", application, (message) => setError(message), mockMode ? undefined : file);
     if (!persisted) {
       setError("We could not submit your application. Please try again.");
       return;

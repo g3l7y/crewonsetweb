@@ -57,21 +57,37 @@ async function responseError(response: Response): Promise<string> {
   }
 }
 
-export async function insertSharedRecord<T extends { id: string }>(key: string, item: T, onError?: (message: string) => void) {
+export async function insertSharedRecord<T extends { id: string }>(
+  key: string,
+  item: T,
+  onError?: (message: string) => void,
+  attachment?: File | null,
+) {
   const endpoint = sharedEndpoints[key];
   if (!endpoint) return false;
   if (isMockMode()) return true;
 
   try {
     const record = item as Record<string, unknown>;
-    const response = await fetch(endpoint, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        ...record,
-        attachmentName: record["attachmentName"] ?? record["fileName"],
-      }),
-    });
+    let response: Response;
+    if (attachment) {
+      const form = new FormData();
+      for (const [key, value] of Object.entries(record)) {
+        if (value === undefined || value === null || key === "attachmentUrl") continue;
+        form.append(key, String(value));
+      }
+      form.append("attachment", attachment, attachment.name);
+      response = await fetch(endpoint, { method: "POST", body: form });
+    } else {
+      response = await fetch(endpoint, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          ...record,
+          attachmentName: record["attachmentName"] ?? record["fileName"],
+        }),
+      });
+    }
     if (!response.ok) {
       const message = await responseError(response);
       console.error("[Crew On Set] Failed to create shared record.", { endpoint, message });
@@ -237,7 +253,6 @@ export function createStore<T>(key: string, seed: T[]) {
     const resolved = typeof next === "function" ? next(current) : next;
     if (usesServerApi) {
       serverItems = resolved;
-      void persistServerTable(key, resolved);
       if (isBrowser()) window.dispatchEvent(new CustomEvent(event));
       return;
     }

@@ -51,6 +51,7 @@ import { Route as ApiAdminPartnershipsRouteImport } from './routes/api/admin/par
 import { Route as ApiAdminPaymongoOrdersRouteImport } from './routes/api/admin/paymongo-orders'
 import { Route as ApiAdminPlayerReportsRouteImport } from './routes/api/admin/player-reports'
 import { Route as ApiAdminPlayersRouteImport } from './routes/api/admin/players'
+import { Route as ApiAdminSubmissionAttachmentsRouteImport } from './routes/api/admin/submission-attachments'
 import { Route as ApiAuthCheckUsernameRouteImport } from './routes/api/auth/check-username'
 import { Route as ApiAuthGoogleRouteImport } from './routes/api/auth/google'
 import { Route as ApiAuthLoginRouteImport } from './routes/api/auth/login'
@@ -280,6 +281,12 @@ const ApiAdminPlayersRoute = ApiAdminPlayersRouteImport.update({
   path: '/api/admin/players',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiAdminSubmissionAttachmentsRoute =
+  ApiAdminSubmissionAttachmentsRouteImport.update({
+    id: '/api/admin/submission-attachments',
+    path: '/api/admin/submission-attachments',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 const ApiAuthCheckUsernameRoute = ApiAuthCheckUsernameRouteImport.update({
   id: '/api/auth/check-username',
   path: '/api/auth/check-username',
@@ -417,6 +424,7 @@ export interface FileRoutesByFullPath {
   '/api/admin/paymongo-orders': typeof ApiAdminPaymongoOrdersRoute
   '/api/admin/player-reports': typeof ApiAdminPlayerReportsRoute
   '/api/admin/players': typeof ApiAdminPlayersRoute
+  '/api/admin/submission-attachments': typeof ApiAdminSubmissionAttachmentsRoute
   '/api/auth/check-username': typeof ApiAuthCheckUsernameRoute
   '/api/auth/google': typeof ApiAuthGoogleRoute
   '/api/auth/login': typeof ApiAuthLoginRoute
@@ -477,6 +485,7 @@ export interface FileRoutesByTo {
   '/api/admin/paymongo-orders': typeof ApiAdminPaymongoOrdersRoute
   '/api/admin/player-reports': typeof ApiAdminPlayerReportsRoute
   '/api/admin/players': typeof ApiAdminPlayersRoute
+  '/api/admin/submission-attachments': typeof ApiAdminSubmissionAttachmentsRoute
   '/api/auth/check-username': typeof ApiAuthCheckUsernameRoute
   '/api/auth/google': typeof ApiAuthGoogleRoute
   '/api/auth/login': typeof ApiAuthLoginRoute
@@ -540,6 +549,7 @@ export interface FileRoutesById {
   '/api/admin/paymongo-orders': typeof ApiAdminPaymongoOrdersRoute
   '/api/admin/player-reports': typeof ApiAdminPlayerReportsRoute
   '/api/admin/players': typeof ApiAdminPlayersRoute
+  '/api/admin/submission-attachments': typeof ApiAdminSubmissionAttachmentsRoute
   '/api/auth/check-username': typeof ApiAuthCheckUsernameRoute
   '/api/auth/google': typeof ApiAuthGoogleRoute
   '/api/auth/login': typeof ApiAuthLoginRoute
@@ -604,6 +614,7 @@ export interface FileRouteTypes {
     | '/api/admin/paymongo-orders'
     | '/api/admin/player-reports'
     | '/api/admin/players'
+    | '/api/admin/submission-attachments'
     | '/api/auth/check-username'
     | '/api/auth/google'
     | '/api/auth/login'
@@ -664,6 +675,7 @@ export interface FileRouteTypes {
     | '/api/admin/paymongo-orders'
     | '/api/admin/player-reports'
     | '/api/admin/players'
+    | '/api/admin/submission-attachments'
     | '/api/auth/check-username'
     | '/api/auth/google'
     | '/api/auth/login'
@@ -726,6 +738,7 @@ export interface FileRouteTypes {
     | '/api/admin/paymongo-orders'
     | '/api/admin/player-reports'
     | '/api/admin/players'
+    | '/api/admin/submission-attachments'
     | '/api/auth/check-username'
     | '/api/auth/google'
     | '/api/auth/login'
@@ -769,6 +782,7 @@ export interface RootRouteChildren {
   ApiAdminPaymongoOrdersRoute: typeof ApiAdminPaymongoOrdersRoute
   ApiAdminPlayerReportsRoute: typeof ApiAdminPlayerReportsRoute
   ApiAdminPlayersRoute: typeof ApiAdminPlayersRoute
+  ApiAdminSubmissionAttachmentsRoute: typeof ApiAdminSubmissionAttachmentsRoute
   ApiAuthCheckUsernameRoute: typeof ApiAuthCheckUsernameRoute
   ApiAuthGoogleRoute: typeof ApiAuthGoogleRoute
   ApiAuthLoginRoute: typeof ApiAuthLoginRoute
@@ -1085,6 +1099,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiAdminPlayersRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/admin/submission-attachments': {
+      id: '/api/admin/submission-attachments'
+      path: '/api/admin/submission-attachments'
+      fullPath: '/api/admin/submission-attachments'
+      preLoaderRoute: typeof ApiAdminSubmissionAttachmentsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/auth/check-username': {
       id: '/api/auth/check-username'
       path: '/api/auth/check-username'
@@ -1294,6 +1315,7 @@ const rootRouteChildren: RootRouteChildren = {
   ApiAdminPaymongoOrdersRoute: ApiAdminPaymongoOrdersRoute,
   ApiAdminPlayerReportsRoute: ApiAdminPlayerReportsRoute,
   ApiAdminPlayersRoute: ApiAdminPlayersRoute,
+  ApiAdminSubmissionAttachmentsRoute: ApiAdminSubmissionAttachmentsRoute,
   ApiAuthCheckUsernameRoute: ApiAuthCheckUsernameRoute,
   ApiAuthGoogleRoute: ApiAuthGoogleRoute,
   ApiAuthLoginRoute: ApiAuthLoginRoute,

@@ -8,6 +8,10 @@ import {
   deleteWebsiteRecords,
 } from '@/lib/playfab/websiteData';
 import type { PlayerReport } from '@/lib/playfab/types';
+import {
+  parseSubmissionRequest,
+  uploadSubmissionAttachment,
+} from '@/lib/playfab/submission-attachments';
 
 function getSecretKey(): string {
   const key = process.env['PLAYFAB_SECRET_KEY'];
@@ -47,32 +51,46 @@ export const Route = createFileRoute('/api/admin/player-reports')({
             return Response.json({ error: 'Authentication required.' }, { status: 401 });
           }
 
-          const body = await request.json();
+          const { fields, attachment } = await parseSubmissionRequest(request);
           const {
             reportedUsername,
             reportedPlayerId,
             reportType,
             description,
             attachmentName,
-            attachmentUrl,
             attachmentType,
-          } = body as Record<string, string>;
+          } = fields;
 
           if (!description) {
             return Response.json({ error: 'Description is required.' }, { status: 400 });
           }
 
+          const id = uid('PR');
+          let uploadedAttachment: { attachmentUrl: string; fileName: string } | undefined;
+          if (attachment) {
+            try {
+              uploadedAttachment = await uploadSubmissionAttachment(
+                id,
+                attachment,
+                getSecretKey(),
+              );
+            } catch (error) {
+              const message = error instanceof Error ? error.message : 'Attachment upload failed.';
+              return Response.json({ error: message }, { status: 400 });
+            }
+          }
+
           const report: PlayerReport = {
-            id: uid('PR'),
+            id,
             reporterId: session.playFabId,
             reporterName: session.username || session.displayName || 'Player',
             reportedUsername: reportedUsername || 'Unknown',
             reportedPlayerId: reportedPlayerId || undefined,
             reportType: reportType || 'Other',
             description,
-            attachmentName: attachmentName || undefined,
-            attachmentUrl: attachmentUrl || undefined,
-            attachmentType: attachmentType || undefined,
+            attachmentName: attachment?.name || attachmentName || undefined,
+            attachmentUrl: uploadedAttachment?.attachmentUrl || undefined,
+            attachmentType: attachment?.type || attachmentType || undefined,
             submittedAt: new Date().toISOString(),
             status: 'New',
           };

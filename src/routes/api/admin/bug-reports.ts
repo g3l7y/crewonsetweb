@@ -8,6 +8,10 @@ import {
   deleteWebsiteRecords,
 } from '@/lib/playfab/websiteData';
 import type { BugReport } from '@/lib/playfab/types';
+import {
+  parseSubmissionRequest,
+  uploadSubmissionAttachment,
+} from '@/lib/playfab/submission-attachments';
 
 function getSecretKey(): string {
   const key = process.env['PLAYFAB_SECRET_KEY'];
@@ -43,16 +47,8 @@ export const Route = createFileRoute('/api/admin/bug-reports')({
       POST: async ({ request }) => {
         try {
           const session = await validateSessionFromRequest(request);
-          const body = await request.json();
-          const {
-            category,
-            description,
-            email,
-            attachmentName,
-            attachmentUrl,
-            attachmentType,
-            page,
-          } = body as Record<string, string>;
+          const { fields, attachment } = await parseSubmissionRequest(request);
+          const { category, description, email, attachmentName, attachmentType } = fields;
 
           if (!category || !description) {
             return Response.json(
@@ -61,16 +57,31 @@ export const Route = createFileRoute('/api/admin/bug-reports')({
             );
           }
 
+          const id = uid('BUG');
+          let uploadedAttachment: { attachmentUrl: string; fileName: string } | undefined;
+          if (attachment) {
+            try {
+              uploadedAttachment = await uploadSubmissionAttachment(
+                id,
+                attachment,
+                getSecretKey(),
+              );
+            } catch (error) {
+              const message = error instanceof Error ? error.message : 'Attachment upload failed.';
+              return Response.json({ error: message }, { status: 400 });
+            }
+          }
+
           const report: BugReport = {
-            id: uid('BUG'),
+            id,
             playerId: session?.playFabId ?? 'anonymous',
             playerName: session?.username || session?.displayName || 'Anonymous',
             category,
             description,
             email: email || session?.email || '',
-            attachmentName: attachmentName || undefined,
-            attachmentUrl: attachmentUrl || undefined,
-            attachmentType: attachmentType || undefined,
+            attachmentName: attachment?.name || attachmentName || undefined,
+            attachmentUrl: uploadedAttachment?.attachmentUrl || undefined,
+            attachmentType: attachment?.type || attachmentType || undefined,
             submittedAt: new Date().toISOString(),
             status: 'New',
           };

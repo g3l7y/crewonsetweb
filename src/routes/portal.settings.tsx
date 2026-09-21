@@ -610,7 +610,7 @@ function SettingsPage() {
 
     setBugWarning("");
     let attachmentUrl = "";
-    if (bugAttachment) {
+    if (bugAttachment && mockMode) {
       try {
         attachmentUrl = await readAttachmentAsDataUrl(bugAttachment, "bug-reports");
       } catch (error) {
@@ -634,7 +634,8 @@ function SettingsPage() {
       status: "New" as const,
     };
     let insertError = "";
-    if (!(await insertSharedRecord("cos.bugReports", bugReport, (message) => { insertError = message; }))) {
+    const bugPersisted = await insertSharedRecord("cos.bugReports", bugReport, (message) => { insertError = message; }, mockMode ? undefined : bugAttachment);
+    if (!bugPersisted) {
       setBugError(insertError || "We could not submit your bug report. Please try again.");
       return;
     }
@@ -665,7 +666,7 @@ function SettingsPage() {
       return;
     }
     let playerAttachmentUrl = "";
-    if (playerReportAttachment) {
+    if (playerReportAttachment && mockMode) {
       try {
         playerAttachmentUrl = await readAttachmentAsDataUrl(playerReportAttachment, "player-reports");
       } catch (error) {
@@ -689,7 +690,7 @@ function SettingsPage() {
       submittedAt,
       status: "New" as const,
     };
-    if (!(await insertSharedRecord("cos.playerReports", playerReport))) {
+    if (!(await insertSharedRecord("cos.playerReports", playerReport, undefined, mockMode ? undefined : playerReportAttachment))) {
       setPlayerReportError("We could not submit your report. Please try again.");
       return;
     }
