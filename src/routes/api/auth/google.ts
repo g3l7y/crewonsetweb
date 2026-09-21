@@ -1,0 +1,102 @@
+import { createFileRoute } from "@tanstack/react-router";
+import { PLAYFAB_TITLE_ID, isMockMode } from "@/lib/playfab/config";
+import { createSessionCookies } from "@/lib/playfab/session";
+import type { AuthResponse, SessionData } from "@/lib/playfab/types";
+
+export const Route = createFileRoute("/api/auth/google")({
+  server: {
+    handlers: {
+      POST: async ({ request }) => {
+        try {
+          if (isMockMode()) {
+            return Response.json(
+              { success: false, error: "Google sign-in is only available in real mode." } satisfies AuthResponse,
+              { status: 400 },
+            );
+          }
+
+          const { accessToken } = (await request.json()) as { accessToken?: string };
+          if (!accessToken?.trim()) {
+            return Response.json(
+              { success: false, error: "Google access token is required." } satisfies AuthResponse,
+              { status: 400 },
+            );
+          }
+
+          const playfabResponse = await fetch(
+            "https://" + PLAYFAB_TITLE_ID + ".playfabapi.com/Client/LoginWithGoogleAccount",
+            {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({
+                TitleId: PLAYFAB_TITLE_ID,
+                AccessToken: accessToken,
+                CreateAccount: true,
+                InfoRequestParameters: {
+                  GetPlayerProfile: true,
+                  GetUserAccountInfo: true,
+                },
+              }),
+            },
+          );
+
+          const pfResult = await playfabResponse.json();
+          if (!playfabResponse.ok || pfResult.code !== 200) {
+            return Response.json(
+              {
+                success: false,
+                error: pfResult.errorMessage ?? "Google sign-in failed in PlayFab.",
+              } satisfies AuthResponse,
+              { status: 401 },
+            );
+          }
+
+          const pfData = pfResult.data;
+          const accountInfo = pfData.InfoResultPayload?.AccountInfo;
+          const playerProfile = pfData.InfoResultPayload?.PlayerProfile;
+          const email = accountInfo?.PrivateInfo?.Email ?? "";
+          const displayName =
+            playerProfile?.DisplayName ??
+            accountInfo?.TitleInfo?.DisplayName ??
+            accountInfo?.Username ??
+            email.split("@")[0] ??
+            "Player";
+
+          const session: SessionData = {
+            playFabId: pfData.PlayFabId,
+            sessionTicket: pfData.SessionTicket,
+            role: "player",
+            username: accountInfo?.Username ?? displayName,
+            displayName,
+            email,
+          };
+
+          const headers = new Headers({ "Content-Type": "application/json" });
+          for (const cookie of createSessionCookies(session)) {
+            headers.append("Set-Cookie", cookie);
+          }
+
+          const response: AuthResponse = {
+            success: true,
+            session: {
+              playFabId: session.playFabId,
+              role: session.role,
+              username: session.username || session.displayName,
+              displayName: session.displayName,
+              email: session.email,
+            },
+            destination: "/portal",
+          };
+
+          return new Response(JSON.stringify(response), { headers });
+        } catch (error) {
+          console.error("[Auth] Google login error:", error);
+          return Response.json(
+            { success: false, error: "Unable to complete Google sign-in." } satisfies AuthResponse,
+            { status: 500 },
+          );
+        }
+      },
+    },
+  },
+});

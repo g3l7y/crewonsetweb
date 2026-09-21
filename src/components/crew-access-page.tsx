@@ -4,12 +4,81 @@ import { FormEvent, useState } from "react";
 import { useRouter } from "@/components/next-compat/navigation";
 import { ArrowLeft, Eye, EyeOff, KeyRound, LoaderCircle, Send, UserPlus, X } from "lucide-react";
 import { EMAIL_ERROR, PASSWORD_ERROR, PASSWORD_INPUT_PATTERN, USERNAME_ERROR, isValidEmail, isValidPassword, isValidUsername } from "@/lib/validation";
-import { isMockMode } from "@/lib/playfab/config";
+import { GOOGLE_CLIENT_ID, isGoogleAuthConfigured, isMockMode } from "@/lib/playfab/config";
 
 type CrewAccessPageProps = {
   mode: "login" | "signup";
   scope?: "player" | "admin";
 };
+
+type GoogleTokenResponse = {
+  access_token?: string;
+  error?: string;
+  error_description?: string;
+};
+
+type GoogleAccessTokenClient = {
+  requestAccessToken: () => void;
+};
+
+declare global {
+  interface Window {
+    google?: {
+      accounts?: {
+        oauth2?: {
+          initTokenClient: (options: {
+            client_id: string;
+            scope: string;
+            callback: (response: GoogleTokenResponse) => void;
+          }) => GoogleAccessTokenClient;
+        };
+      };
+    };
+  }
+}
+
+let googleScriptPromise: Promise<void> | undefined;
+
+async function requestGoogleAccessToken() {
+  if (typeof window === "undefined") {
+    throw new Error("Google sign-in is only available in a browser.");
+  }
+  if (!GOOGLE_CLIENT_ID) {
+    throw new Error("Google sign-in is not configured yet.");
+  }
+
+  if (!window.google?.accounts?.oauth2) {
+    googleScriptPromise ??= new Promise<void>((resolve, reject) => {
+      const script = document.createElement("script");
+      script.src = "https://accounts.google.com/gsi/client";
+      script.async = true;
+      script.onload = () => resolve();
+      script.onerror = () => reject(new Error("Unable to load Google sign-in."));
+      document.head.appendChild(script);
+    });
+    await googleScriptPromise;
+  }
+
+  const oauth2 = window.google?.accounts?.oauth2;
+  if (!oauth2) throw new Error("Google sign-in is unavailable. Please try again.");
+
+  return new Promise<string>((resolve, reject) => {
+    const client = oauth2.initTokenClient({
+      client_id: GOOGLE_CLIENT_ID,
+      scope: "openid email profile",
+      callback: (response) => {
+        if (response.error) {
+          reject(new Error(response.error_description ?? "Google sign-in was cancelled."));
+        } else if (!response.access_token) {
+          reject(new Error("Google did not return an access token."));
+        } else {
+          resolve(response.access_token);
+        }
+      },
+    });
+    client.requestAccessToken();
+  });
+}
 
 async function loginWithCredentials(
   identifier: string,
@@ -48,6 +117,23 @@ async function registerWithCredentials(username: string, email: string, password
     throw new Error(result.error ?? "Unable to create your account.");
   }
   rememberMockProfile(result.session);
+  return result.destination ?? "/portal";
+}
+
+async function loginWithGoogleAccessToken(accessToken: string) {
+  const response = await fetch("/api/auth/google", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ accessToken }),
+  });
+  const result = (await response.json()) as {
+    error?: string;
+    destination?: string;
+    success?: boolean;
+  };
+  if (!response.ok || result.success === false) {
+    throw new Error(result.error ?? "Unable to sign in with Google.");
+  }
   return result.destination ?? "/portal";
 }
 
@@ -139,12 +225,16 @@ export function CrewAccessPage({ mode, scope = "player" }: CrewAccessPageProps) 
     }
   }
 
-  async function handleGoogleMock() {
+  async function handleGoogleSignIn() {
     setError("");
     setGoogleLoading(true);
-    await new Promise((resolve) => setTimeout(resolve, 1200));
     try {
-      const destination = await loginWithCredentials("player@crewonset.com", "player", "player");
+      const destination = isMockMode()
+        ? await (async () => {
+            await new Promise((resolve) => setTimeout(resolve, 1200));
+            return loginWithCredentials("player@crewonset.com", "player", "player");
+          })()
+        : await loginWithGoogleAccessToken(await requestGoogleAccessToken());
       router.push(destination);
       router.refresh();
     } catch (err) {
@@ -238,7 +328,7 @@ export function CrewAccessPage({ mode, scope = "player" }: CrewAccessPageProps) 
               {loading ? <><LoaderCircle className="size-4 animate-spin" /> {isLogin ? "SIGNING IN" : "CREATING ACCOUNT"}</> : <>{isAdmin ? "ENTER CONSOLE" : isLogin ? "ENTER PORTAL" : "JOIN THE CREW"} <Send className="size-4" /></>}
             </button>
 
-            {!isAdmin && isMockMode() && (
+            {!isAdmin && (isMockMode() || isGoogleAuthConfigured()) && (
               <>
                 <div className="my-4 flex items-center gap-3 text-[10px] font-black uppercase tracking-widest text-navy/35">
                   <span className="h-px flex-1 bg-navy/10" /> or <span className="h-px flex-1 bg-navy/10" />
@@ -247,11 +337,11 @@ export function CrewAccessPage({ mode, scope = "player" }: CrewAccessPageProps) 
                 <button
                   type="button"
                   disabled={googleLoading}
-                  onClick={handleGoogleMock}
+                  onClick={handleGoogleSignIn}
                   className="inline-flex w-full items-center justify-center gap-3 rounded-md border border-navy/20 bg-white px-5 py-3.5 text-sm font-black tracking-wider text-navy transition hover:bg-navy/5 disabled:cursor-wait disabled:opacity-70"
                 >
                   {googleLoading ? (
-                    <><LoaderCircle className="size-4 animate-spin" /> CONNECTING TO GOOGLE (DEMO)</>
+                    <><LoaderCircle className="size-4 animate-spin" /> {isMockMode() ? "CONNECTING TO GOOGLE (DEMO)" : "CONNECTING TO GOOGLE"}</>
                   ) : (
                     <>
                       <svg className="size-5" viewBox="0 0 24 24" aria-hidden="true">
@@ -260,12 +350,12 @@ export function CrewAccessPage({ mode, scope = "player" }: CrewAccessPageProps) 
                         <path fill="#FBBC05" d="M6.51 13.89a5.86 5.86 0 0 1 0-3.76V7.61H3.27a9.75 9.75 0 0 0 0 8.8l3.24-2.52Z" />
                         <path fill="#EA4335" d="M12 6.09c1.43 0 2.72.49 3.74 1.45l2.8-2.8C16.83 3.18 14.63 2.2 12 2.2a9.75 9.75 0 0 0-8.73 5.41l3.24 2.52C7.29 7.81 9.45 6.09 12 6.09Z" />
                       </svg>
-                      CONTINUE WITH GOOGLE (DEMO)
+                      CONTINUE WITH GOOGLE{isMockMode() ? " (DEMO)" : ""}
                     </>
                   )}
                 </button>
                 <p className="mt-2 text-center text-[11px] leading-relaxed text-navy/40">
-                  Simulated OAuth for demo purposes — signs you in as the demo player.
+                  {isMockMode() ? "Simulated OAuth for demo purposes — signs you in as the demo player." : "Use Google to create or open your player account."}
                 </p>
               </>
             )}
