@@ -73,7 +73,6 @@ const DEMO_PASSWORD = "player";
 
 const sections = [
   { name: "Account", icon: UserCircle },
-  { name: "Profile", icon: UserCircle },
   { name: "Display", icon: Monitor },
   { name: "Privacy", icon: Shield },
   { name: "Notifications", icon: Bell },
@@ -1047,50 +1046,6 @@ function SettingsPage() {
               </section>
             )}
 
-            {/* =================================================
-                PROFILE
-            ================================================= */}
-
-            {section === "Profile" && (
-              <section className="overflow-hidden rounded-xl border border-white/[0.07] bg-[#151c29]">
-                <div className="border-b border-white/[0.07] p-7">
-                  <p className="text-[10px] font-black uppercase tracking-[.18em] text-coral">
-                    PROFILE CONTROL
-                  </p>
-
-                  <h2 className="mt-2 text-2xl font-black uppercase tracking-tight text-white">
-                    Profile
-                  </h2>
-
-                  <p className="mt-2 text-sm text-white/40">
-                    Control what other players can see on your profile.
-                  </p>
-                </div>
-
-                <div className="space-y-3 p-7">
-                  <PreferenceRow
-                    label="Show Career Information"
-                    description="Display your career overview and achievements."
-                    checked={preferences.showCareerInfo}
-                    onChange={() => togglePreference("showCareerInfo")}
-                  />
-
-                  <PreferenceRow
-                    label="Show Crew Activity"
-                    description="Allow other players to see your recent crew activity."
-                    checked={preferences.showCrewActivity}
-                    onChange={() => togglePreference("showCrewActivity")}
-                  />
-
-                  <PreferenceRow
-                    label="Public Profile"
-                    description="Allow other players to open and view your profile."
-                    checked={preferences.profileVisibility}
-                    onChange={() => togglePreference("profileVisibility")}
-                  />
-                </div>
-              </section>
-            )}
 
             {/* =================================================
                 DISPLAY
