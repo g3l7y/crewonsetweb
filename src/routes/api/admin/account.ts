@@ -1,5 +1,6 @@
 import { createFileRoute } from '@tanstack/react-router';
-import { PLAYFAB_API_BASE, PLAYFAB_TITLE_ID, isMockMode } from '@/lib/playfab/config';
+import { isMockMode } from '@/lib/playfab/config';
+import { syncPlayFabContactEmail } from '@/lib/playfab/contact-email';
 import { unauthorizedSessionResponse, validateSessionFromRequest } from '@/lib/playfab/session';
 
 export const Route = createFileRoute('/api/admin/account')({
@@ -11,30 +12,22 @@ export const Route = createFileRoute('/api/admin/account')({
         if (isMockMode()) return Response.json({ success: true });
 
         const body = (await request.json()) as { email?: string };
-        const email = body.email?.trim();
+        const email = body.email?.trim().toLowerCase();
         const sessionTicket = session.sessionTicket;
         if (!email || !sessionTicket) return Response.json({ error: 'Email is required.' }, { status: 400 });
 
         try {
-          const response = await fetch(`${PLAYFAB_API_BASE}/Client/AddOrUpdateContactEmail`, {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-              'X-Authorization': sessionTicket,
-            },
-            body: JSON.stringify({ EmailAddress: email, TitleId: PLAYFAB_TITLE_ID }),
+          await syncPlayFabContactEmail(sessionTicket, email, {
+            playFabId: session.playFabId,
+            secretKey: process.env['PLAYFAB_SECRET_KEY']?.trim(),
           });
-          const result = await response.json();
-          if (!response.ok || result.code !== 200) {
-            return Response.json(
-              { error: result.errorMessage ?? 'PlayFab rejected the email update.' },
-              { status: 400 },
-            );
-          }
           return Response.json({ success: true, email });
         } catch (error) {
           console.error('[API] PATCH admin/account error:', error);
-          return Response.json({ error: 'Failed to update the administrator email.' }, { status: 500 });
+          return Response.json(
+            { error: error instanceof Error ? error.message : 'Failed to update the administrator contact email.' },
+            { status: 400 },
+          );
         }
       },
     },

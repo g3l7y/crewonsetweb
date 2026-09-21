@@ -3,7 +3,7 @@ import { PLAYFAB_TITLE_ID, isMockMode } from "@/lib/playfab/config";
 import { PLAYFAB_DATA_KEYS } from "@/lib/playfab/constants";
 import { createSessionCookies } from "@/lib/playfab/session";
 import type { AuthResponse, SessionData } from "@/lib/playfab/types";
-import { syncPlayFabContactEmail } from "@/lib/playfab/contact-email";
+import { getPlayFabContactEmail, syncPlayFabContactEmail } from "@/lib/playfab/contact-email";
 
 export const Route = createFileRoute("/api/auth/google")({
   server: {
@@ -86,22 +86,36 @@ export const Route = createFileRoute("/api/auth/google")({
           const savedUsername = metadata.username?.trim() ?? "";
           const resolvedDisplayName = savedUsername || displayName || email.split("@")[0] || "Player";
 
+          let sessionEmail = email;
+          if (email) {
+            let existingContactEmail: string | null = null;
+            try {
+              existingContactEmail = await getPlayFabContactEmail(pfData.SessionTicket);
+            } catch (contactEmailReadError) {
+              console.error("[PlayFab] Could not read Google contact email:", contactEmailReadError);
+            }
+            if (existingContactEmail) {
+              sessionEmail = existingContactEmail;
+            } else {
+              try {
+                await syncPlayFabContactEmail(pfData.SessionTicket, email, {
+                  playFabId: pfData.PlayFabId,
+                  secretKey: process.env['PLAYFAB_SECRET_KEY']?.trim(),
+                });
+              } catch (contactEmailError) {
+                console.error("[PlayFab] Could not sync Google contact email:", contactEmailError);
+              }
+            }
+          }
+
           const session: SessionData = {
             playFabId: pfData.PlayFabId,
             sessionTicket: pfData.SessionTicket,
             role: "player",
             username: savedUsername || resolvedDisplayName,
             displayName: resolvedDisplayName,
-            email,
+            email: sessionEmail,
           };
-
-          if (email) {
-            try {
-              await syncPlayFabContactEmail(session.sessionTicket, email);
-            } catch (contactEmailError) {
-              console.warn("[PlayFab] Could not sync Google contact email:", contactEmailError);
-            }
-          }
 
           const headers = new Headers({ "Content-Type": "application/json" });
           for (const cookie of createSessionCookies(session)) {

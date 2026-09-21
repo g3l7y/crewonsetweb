@@ -91,9 +91,12 @@ export const Route = createFileRoute('/api/auth/register')({
             };
 
             try {
-              await syncPlayFabContactEmail(session.sessionTicket, normalizedEmail);
+              await syncPlayFabContactEmail(session.sessionTicket, normalizedEmail, {
+                playFabId: session.playFabId,
+                secretKey: process.env['PLAYFAB_SECRET_KEY']?.trim(),
+              });
             } catch (contactEmailError) {
-              console.warn('[PlayFab] Could not sync registration contact email:', contactEmailError);
+              console.error('[PlayFab] Could not sync registration contact email:', contactEmailError);
             }
           }
 
