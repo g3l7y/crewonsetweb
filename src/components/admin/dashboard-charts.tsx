@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+import { useQuery } from "@tanstack/react-query";
 import {
   Area,
   AreaChart,
@@ -16,6 +17,7 @@ import {
 } from "@/lib/admin-demo-data";
 import Link from "@/components/next-compat/link";
 import { isMockMode } from "@/lib/playfab/config";
+import { useAdminPlayers } from "@/lib/playfab/hooks";
 
 type ChartKey = "players" | "sales";
 
@@ -29,6 +31,14 @@ type ChartConfig = {
   gradientId: string;
   currency?: boolean;
   expanded?: boolean;
+};
+
+const MONTH_LABELS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+
+type AdminSalesRecord = {
+  date: string;
+  amount: number;
+  status: string;
 };
 
 const chartConfigs: ChartConfig[] = [
@@ -76,7 +86,7 @@ function ChartVisualization({
           margin={{
             top: 10,
             right: 12,
-            left: currency ? 8 : 0,
+            left: 8,
             bottom: expanded ? 28 : 4,
           }}
         >
@@ -248,50 +258,99 @@ export function DashboardCharts({
   const [activeKey, setActiveKey] = useState<ChartKey>(initialActiveKey);
   const [topUps] = topUpsStore.useStore();
   const mockMode = isMockMode();
+  const adminPlayersQuery = useAdminPlayers();
+  const realSalesQuery = useQuery({
+    queryKey: ["admin", "paymongo-orders", "chart"],
+    queryFn: async (): Promise<AdminSalesRecord[]> => {
+      try {
+        const response = await fetch("/api/admin/paymongo-orders", {
+          cache: "no-store",
+        });
+        if (!response.ok) return [];
+        const result = (await response.json().catch(() => ({}))) as { data?: unknown };
+        return Array.isArray(result.data) ? result.data as AdminSalesRecord[] : [];
+      } catch {
+        return [];
+      }
+    },
+    enabled: !mockMode,
+    staleTime: 60 * 1000,
+  });
 
-  const salesData = useMemo(() => {
-    const completedByMonth = new Map<string, number>();
-    const monthLabels = [
-      "Jan",
-      "Feb",
-      "Mar",
-      "Apr",
-      "May",
-      "Jun",
-      "Jul",
-      "Aug",
-      "Sep",
-      "Oct",
-      "Nov",
-      "Dec",
-    ];
-
-    for (const topUp of topUps) {
-      if (topUp.status !== "Completed") continue;
-      const month = monthLabels[Number(topUp.date.slice(5, 7)) - 1];
-      if (!month) continue;
-      completedByMonth.set(month, (completedByMonth.get(month) ?? 0) + topUp.amount);
-    }
-
-    if (!mockMode) {
-      return monthLabels.map((date) => ({
+  const playerData = useMemo(() => {
+    if (mockMode) {
+      const seededByMonth = new Map(playerChartData.map((point) => [point.date, point.players]));
+      return MONTH_LABELS.map((date) => ({
         date,
-        sales: completedByMonth.get(date) ?? 0,
+        players: seededByMonth.get(date) ?? 0,
       }));
     }
 
-    return salesChartData.map((point) => ({
-      ...point,
-      sales: point.sales + (completedByMonth.get(point.date) ?? 0),
+    const dates = (adminPlayersQuery.data ?? [])
+      .map((player) => new Date(player.joinedAt))
+      .filter((date) => !Number.isNaN(date.getTime()));
+    const years = dates.map((date) => date.getUTCFullYear());
+    const latestYear = years.length > 0
+      ? Math.max(...years)
+      : new Date().getUTCFullYear();
+    const registrationsByMonth = new Map<number, number>();
+
+    for (const date of dates) {
+      if (date.getUTCFullYear() !== latestYear) continue;
+      const month = date.getUTCMonth();
+      registrationsByMonth.set(month, (registrationsByMonth.get(month) ?? 0) + 1);
+    }
+
+    let cumulative = 0;
+    return MONTH_LABELS.map((date, index) => {
+      cumulative += registrationsByMonth.get(index) ?? 0;
+      return { date, players: cumulative };
+    });
+  }, [adminPlayersQuery.data, mockMode]);
+
+  const salesData = useMemo(() => {
+    const salesByMonth = new Map<number, number>();
+
+    if (mockMode) {
+      for (const topUp of topUps) {
+        if (topUp.status !== "Completed") continue;
+        const date = new Date(topUp.date);
+        if (Number.isNaN(date.getTime())) continue;
+        const month = date.getUTCMonth();
+        salesByMonth.set(month, (salesByMonth.get(month) ?? 0) + topUp.amount);
+      }
+
+      for (const point of salesChartData) {
+        const month = MONTH_LABELS.indexOf(point.date);
+        if (month >= 0) {
+          salesByMonth.set(month, (salesByMonth.get(month) ?? 0) + point.sales);
+        }
+      }
+    } else {
+      for (const sale of realSalesQuery.data ?? []) {
+        if (sale.status !== "Completed") continue;
+        const date = new Date(sale.date);
+        const amount = Number(sale.amount);
+        if (Number.isNaN(date.getTime()) || !Number.isFinite(amount)) continue;
+        const month = date.getUTCMonth();
+        salesByMonth.set(month, (salesByMonth.get(month) ?? 0) + amount);
+      }
+    }
+
+    return MONTH_LABELS.map((date, index) => ({
+      date,
+      sales: salesByMonth.get(index) ?? 0,
     }));
-  }, [mockMode, topUps]);
+  }, [mockMode, realSalesQuery.data, topUps]);
 
   const charts = useMemo(
     () =>
-      chartConfigs.map((chart) => ({ ...chart, data: chart.key === "sales" ? salesData : mockMode ? chart.data : [] })),
-    [mockMode, salesData],
+      chartConfigs.map((chart) => ({
+        ...chart,
+        data: chart.key === "sales" ? salesData : playerData,
+      })),
+    [playerData, salesData],
   );
-
   useEffect(() => {
     setActiveKey(initialActiveKey);
   }, [initialActiveKey]);
