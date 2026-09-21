@@ -3,6 +3,7 @@ import { PLAYFAB_TITLE_ID, isMockMode } from "@/lib/playfab/config";
 import { PLAYFAB_DATA_KEYS } from "@/lib/playfab/constants";
 import { createSessionCookies } from "@/lib/playfab/session";
 import type { AuthResponse, SessionData } from "@/lib/playfab/types";
+import { syncPlayFabContactEmail } from "@/lib/playfab/contact-email";
 
 export const Route = createFileRoute("/api/auth/google")({
   server: {
@@ -93,6 +94,14 @@ export const Route = createFileRoute("/api/auth/google")({
             displayName: resolvedDisplayName,
             email,
           };
+
+          if (email) {
+            try {
+              await syncPlayFabContactEmail(session.sessionTicket, email);
+            } catch (contactEmailError) {
+              console.warn("[PlayFab] Could not sync Google contact email:", contactEmailError);
+            }
+          }
 
           const headers = new Headers({ "Content-Type": "application/json" });
           for (const cookie of createSessionCookies(session)) {

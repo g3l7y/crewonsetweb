@@ -4,6 +4,7 @@ import { createSessionCookies } from "@/lib/playfab/session";
 import { findMockAccount } from "@/lib/playfab/mock-accounts";
 import { isValidEmail, isValidUsername } from "@/lib/validation";
 import type { SessionData, AuthResponse } from "@/lib/playfab/types";
+import { syncPlayFabContactEmail } from "@/lib/playfab/contact-email";
 
 export const Route = createFileRoute("/api/auth/login")({
   server: {
@@ -185,6 +186,14 @@ export const Route = createFileRoute("/api/auth/login")({
               displayName,
               email: accountEmail,
             };
+
+            if (accountEmail) {
+              try {
+                await syncPlayFabContactEmail(sessionTicket, accountEmail);
+              } catch (contactEmailError) {
+                console.warn("[PlayFab] Could not sync login contact email:", contactEmailError);
+              }
+            }
           }
 
           // Set cookies
