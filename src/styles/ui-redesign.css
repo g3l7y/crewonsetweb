@@ -966,6 +966,7 @@ body { min-width: 320px; }
 
 /* PASSWORD RECOVERY: keep the admin dialog compact and make its light-theme
    email field match the rest of the light admin surface. */
+.recovery-modal-shell,
 .admin-theme .admin-recovery-modal {
   width: 100% !important;
   max-width: 32rem !important;
