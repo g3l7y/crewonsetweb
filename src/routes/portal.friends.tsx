@@ -406,6 +406,8 @@ function FriendsPage() {
 
   const mockMode = isMockMode();
   const [demoFriends, setDemoFriends] = friendRosterStore.useStore();
+  const [search, setSearch] = useState("");
+  const [addSearch, setAddSearch] = useState("");
   const friendsQuery = useFriends();
   const profileQuery = usePlayerProfile();
   const globalPlayersQuery = useSearchPlayers(search, !mockMode);
@@ -459,8 +461,6 @@ function FriendsPage() {
   const [blockedFriends, setBlockedFriends] =
     useState<Record<string, Friend>>({});
 
-  const [search, setSearch] = useState("");
-  const [addSearch, setAddSearch] = useState("");
   const currentUsername =
     profileQuery.data?.username || profileQuery.data?.displayName || (mockMode ? "CAMERA_PRO" : "PLAYER");
 
