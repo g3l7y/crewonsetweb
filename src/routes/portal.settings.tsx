@@ -1654,7 +1654,7 @@ function SettingsPage() {
         </div>
       )}
 
-      {recoveryOpen && <PasswordRecoveryModal scope="player" dark onClose={() => setRecoveryOpen(false)} />}
+      {recoveryOpen && <PasswordRecoveryModal scope="player" onClose={() => setRecoveryOpen(false)} />}
 
       {/* =========================================================
           CHANGE PASSWORD MODAL
