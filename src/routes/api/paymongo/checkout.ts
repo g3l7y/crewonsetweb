@@ -1,6 +1,8 @@
 import { createFileRoute } from '@tanstack/react-router';
+import { isPayMongoLedgerConfigured, registerPayMongoOrder, activatePayMongoOrder, markPayMongoOrderFailed } from '@/lib/paymongo/ledger';
 import { coinPackages } from '@/lib/demo/portal-shop';
 import { isValidEmail } from '@/lib/validation';
+import { isMockMode } from '@/lib/playfab/config';
 import { unauthorizedSessionResponse, validateSessionFromRequest } from '@/lib/playfab/session';
 import {
   WEBSITE_DATA_KEYS,
@@ -18,7 +20,7 @@ type PayMongoOrder = {
   amountInCentavos: number;
   currency: 'PHP';
   email: string;
-  status: 'pending' | 'active' | 'fulfilled' | 'failed';
+  status: 'pending' | 'active' | 'processing' | 'fulfilled' | 'failed';
   createdAt: string;
   updatedAt: string;
   paidAt?: string;
@@ -26,12 +28,15 @@ type PayMongoOrder = {
 };
 
 function getSecret(name: 'PAYMONGO_SECRET_KEY' | 'PLAYFAB_SECRET_KEY'): string | null {
-  return process.env[name] || null;
+  const value = process.env[name]?.trim();
+  return value || null;
 }
 
 function createOrderId(): string {
   return 'COS-COIN-' + Date.now() + '-' + Math.random().toString(36).slice(2, 8);
 }
+
+const DEFAULT_PAYMONGO_MERCHANT_NAME = 'CREW ON SET';
 
 function getPaymentMethodTypes(): string[] {
   const configured = process.env['PAYMONGO_PAYMENT_METHOD_TYPES'];
@@ -39,7 +44,12 @@ function getPaymentMethodTypes(): string[] {
     .split(',')
     .map((method) => method.trim())
     .filter(Boolean);
-  return methods.length > 0 ? methods : ['card', 'gcash', 'qrph'];
+  return methods.length > 0 ? Array.from(new Set(methods)) : ['card', 'gcash', 'qrph'];
+}
+
+function getMerchantName(): string {
+  const configured = process.env['PAYMONGO_MERCHANT_NAME']?.trim();
+  return configured || DEFAULT_PAYMONGO_MERCHANT_NAME;
 }
 
 export const Route = createFileRoute('/api/paymongo/checkout')({
@@ -49,11 +59,30 @@ export const Route = createFileRoute('/api/paymongo/checkout')({
         const session = await validateSessionFromRequest(request);
         if (!session) return unauthorizedSessionResponse();
 
+        const mockMode = isMockMode();
         const paymongoSecret = getSecret('PAYMONGO_SECRET_KEY');
         const playfabSecret = getSecret('PLAYFAB_SECRET_KEY');
-        if (!paymongoSecret || !playfabSecret) {
+        if (!paymongoSecret) {
+          const error = mockMode
+            ? 'Mock mode requires PAYMONGO_SECRET_KEY with an sk_test_ key.'
+            : 'PayMongo checkout is not configured on this server yet.';
+          return Response.json({ error }, { status: 503 });
+        }
+        if (!mockMode && !playfabSecret) {
           return Response.json(
             { error: 'PayMongo checkout is not configured on this server yet.' },
+            { status: 503 },
+          );
+        }
+        if (mockMode && !paymongoSecret.startsWith('sk_test_')) {
+          return Response.json(
+            { error: 'Mock mode requires a PayMongo Test secret key beginning with sk_test_.' },
+            { status: 503 },
+          );
+        }
+        if (!isPayMongoLedgerConfigured()) {
+          return Response.json(
+            { error: 'The payment ledger is not configured on this server yet.' },
             { status: 503 },
           );
         }
@@ -93,11 +122,22 @@ export const Route = createFileRoute('/api/paymongo/checkout')({
             createdAt: now,
             updatedAt: now,
           };
-          const saved = await appendWebsiteRecord(
-            WEBSITE_DATA_KEYS.paymongoOrders,
-            order,
-            playfabSecret,
-          );
+
+          const saved = mockMode
+            ? await registerPayMongoOrder({
+                orderId,
+                checkoutSessionId: 'pending',
+                playFabId: session.playFabId,
+                packageId: pack.id,
+                coins: totalCoins,
+                amountInCentavos,
+                eventId: '',
+              })
+            : await appendWebsiteRecord(
+                WEBSITE_DATA_KEYS.paymongoOrders,
+                order,
+                playfabSecret as string,
+              );
           if (!saved) {
             return Response.json(
               { error: 'The checkout could not be recorded. Please try again.' },
@@ -118,12 +158,17 @@ export const Route = createFileRoute('/api/paymongo/checkout')({
                   line_items: [
                     {
                       name: totalCoins + ' C-Coins',
+                      description: 'C-Coin top-up for Crew On Set',
                       amount: amountInCentavos,
                       currency: 'PHP',
                       quantity: 1,
                     },
                   ],
                   payment_method_types: getPaymentMethodTypes(),
+                  merchant: getMerchantName(),
+                  description: 'Crew On Set C-Coin top-up',
+                  show_description: true,
+                  show_line_items: true,
                   success_url: publicAppUrl + '/portal/shop?payment=success&reference=' + encodeURIComponent(orderId),
                   cancel_url: publicAppUrl + '/portal/shop?payment=cancelled&reference=' + encodeURIComponent(orderId),
                   reference_number: orderId,
@@ -150,33 +195,41 @@ export const Route = createFileRoute('/api/paymongo/checkout')({
 
           if (!paymongoResponse.ok || !checkoutUrl || !checkoutSessionId) {
             console.error('[PayMongo] Checkout session creation failed:', paymongoResponse.status, providerBody);
-            await updateWebsiteRecord<PayMongoOrder>(
-              WEBSITE_DATA_KEYS.paymongoOrders,
-              orderId,
-              (current) => ({
-                ...current,
-                status: 'failed',
-                updatedAt: new Date().toISOString(),
-              }),
-              playfabSecret,
-            );
+            if (mockMode) {
+              await markPayMongoOrderFailed(orderId, 'PayMongo checkout session creation failed.');
+            } else {
+              await updateWebsiteRecord<PayMongoOrder>(
+                WEBSITE_DATA_KEYS.paymongoOrders,
+                orderId,
+                (current) => ({
+                  ...current,
+                  status: 'failed',
+                  updatedAt: new Date().toISOString(),
+                }),
+                playfabSecret as string,
+              );
+            }
             return Response.json(
               { error: 'PayMongo could not start the checkout. Please try again.' },
               { status: 502 },
             );
           }
 
-          const activated = await updateWebsiteRecord<PayMongoOrder>(
-            WEBSITE_DATA_KEYS.paymongoOrders,
-            orderId,
-            (current) => ({
-              ...current,
-              checkoutSessionId,
-              status: current.status === 'fulfilled' ? 'fulfilled' : 'active',
-              updatedAt: new Date().toISOString(),
-            }),
-            playfabSecret,
-          );
+          const activated = mockMode
+            ? await activatePayMongoOrder(orderId, checkoutSessionId)
+            : await updateWebsiteRecord<PayMongoOrder>(
+                WEBSITE_DATA_KEYS.paymongoOrders,
+                orderId,
+                (current) => ({
+                  ...current,
+                  checkoutSessionId,
+                  status: current.status === 'fulfilled' || current.status === 'processing'
+                    ? current.status
+                    : 'active',
+                  updatedAt: new Date().toISOString(),
+                }),
+                playfabSecret as string,
+              );
 
           if (!activated) {
             console.error('[PayMongo] Created checkout but could not activate order:', orderId);

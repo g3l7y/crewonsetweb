@@ -964,6 +964,19 @@ body { min-width: 320px; }
   width: 100%;
 }
 
+/* PASSWORD RECOVERY: keep the admin dialog compact and make its light-theme
+   email field match the rest of the light admin surface. */
+.admin-theme .admin-recovery-modal {
+  width: 100% !important;
+  max-width: 32rem !important;
+}
+.admin-theme.admin-light .admin-recovery-email-label {
+  color: #0a0e19 !important;
+}
+.admin-theme.admin-light .admin-recovery-email-input {
+  background: #f0ede4 !important;
+  color: #0a0e19 !important;
+}
 /* ADMIN CONTROL ROOM */
 .admin-theme {
   --admin-bg: var(--cos-ink);

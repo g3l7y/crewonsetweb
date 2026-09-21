@@ -1,14 +1,11 @@
-import { FormEvent, useMemo, useState } from "react";
+import { FormEvent, useEffect, useMemo, useState } from "react";
 import {
   ArrowLeft,
   Check,
   Coins,
-  CreditCard,
   LockKeyhole,
   Mail,
-  QrCode,
   ShieldCheck,
-  Smartphone,
 } from "lucide-react";
 import {
   coinPackages,
@@ -30,12 +27,10 @@ type CheckoutResponse = {
   error?: string;
 };
 
-type DemoPaymentMethod = "card" | "gcash" | "qrph";
-
 /**
- * Checkout uses PayMongo Hosted Checkout in both demo and real modes when a
- * PayMongo key is configured. Demo accounts retain a clearly marked local
- * fallback so the rest of the portal remains usable without provider keys.
+ * Checkout uses PayMongo Hosted Checkout in both demo and real modes. Mock
+ * mode uses the PayMongo Test environment and never falls back to a local
+ * payment form, so the payment flow remains an authentic provider flow.
  */
 export default function CheckoutPage({ onBack }: CheckoutPageProps) {
   const mockMode = isMockMode();
@@ -47,12 +42,6 @@ export default function CheckoutPage({ onBack }: CheckoutPageProps) {
   const [error, setError] = useState("");
   const [processing, setProcessing] = useState(false);
   const [submitted, setSubmitted] = useState(false);
-  const [showHostedPreview, setShowHostedPreview] = useState(false);
-  const [demoPaymentMethod, setDemoPaymentMethod] = useState<DemoPaymentMethod>("card");
-  const [demoCardNumber, setDemoCardNumber] = useState("");
-  const [demoCardName, setDemoCardName] = useState("");
-  const [demoCardExpiry, setDemoCardExpiry] = useState("");
-  const [demoCardCvc, setDemoCardCvc] = useState("");
 
   const balance = wallet[0] ?? 0;
 
@@ -101,6 +90,61 @@ export default function CheckoutPage({ onBack }: CheckoutPageProps) {
     setProcessing(false);
   }
 
+  useEffect(() => {
+    if (!mockMode || typeof window === 'undefined' || !pack) return;
+    const params = new URLSearchParams(window.location.search);
+    if (params.get('payment') !== 'success') return;
+    const reference = params.get('reference')?.trim();
+    if (!reference) return;
+
+    const processedKey = `cos.paymongo.test.fulfilled.${reference}`;
+    const clearPaymentQuery = () => {
+      const url = new URL(window.location.href);
+      url.searchParams.delete('payment');
+      url.searchParams.delete('reference');
+      window.history.replaceState({}, '', `${url.pathname}${url.search}${url.hash}`);
+    };
+
+    if (window.localStorage.getItem(processedKey) === '1') {
+      setCheckoutPayload(null);
+      setSubmitted(true);
+      clearPaymentQuery();
+      return;
+    }
+
+    let cancelled = false;
+    setProcessing(true);
+    fetch(`/api/paymongo/status?orderId=${encodeURIComponent(reference)}`, { credentials: 'include' })
+      .then(async (response) => {
+        const result = (await response.json().catch(() => ({}))) as {
+          status?: string;
+          coins?: number;
+          error?: string;
+        };
+        if (!response.ok) throw new Error(result.error || 'Payment status is temporarily unavailable.');
+        return result;
+      })
+      .then((result) => {
+        if (cancelled) return;
+        if (result.status !== 'fulfilled' || result.coins !== pack.coins) {
+          setError('Payment is still being confirmed. Please wait for the PayMongo webhook and refresh this page.');
+          setProcessing(false);
+          return;
+        }
+        window.localStorage.setItem(processedKey, '1');
+        completeDemoPurchase();
+        clearPaymentQuery();
+      })
+      .catch((statusError) => {
+        if (cancelled) return;
+        setError(statusError instanceof Error ? statusError.message : 'Payment status is temporarily unavailable.');
+        setProcessing(false);
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [mockMode, pack?.id]);
   function handleBack() {
     setCheckoutPayload(null);
     if (onBack) {
@@ -134,32 +178,15 @@ export default function CheckoutPage({ onBack }: CheckoutPageProps) {
       });
       const result = (await response.json().catch(() => ({}))) as CheckoutResponse;
 
-      if (mockMode && response.status === 503) {
-        setShowHostedPreview(true);
-        setProcessing(false);
-        return;
-      }
-
       if (!response.ok || !result.checkoutUrl) {
         throw new Error(result.error || "PayMongo checkout could not be started.");
       }
 
-      setCheckoutPayload(null);
       window.location.assign(result.checkoutUrl);
     } catch (checkoutError) {
-      if (mockMode) {
-        setShowHostedPreview(true);
-        setProcessing(false);
-        return;
-      }
       setError(checkoutError instanceof Error ? checkoutError.message : "PayMongo checkout could not be started.");
       setProcessing(false);
     }
-  }
-
-  function handleDemoHostedSubmit(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-    completeDemoPurchase();
   }
 
   if (!payload || !pack) {
@@ -210,144 +237,6 @@ export default function CheckoutPage({ onBack }: CheckoutPageProps) {
           >
             <ArrowLeft className="size-4" /> Back to Shop
           </button>
-        </div>
-      </main>
-    );
-  }
-
-  if (showHostedPreview) {
-    const demoMethods = [
-      { id: "card" as const, label: "Card", detail: "Visa or Mastercard", icon: CreditCard },
-      { id: "gcash" as const, label: "GCash", detail: "Mobile wallet", icon: Smartphone },
-      { id: "qrph" as const, label: "QR Ph", detail: "Scan to pay", icon: QrCode },
-    ];
-    const selectedMethod = demoMethods.find((method) => method.id === demoPaymentMethod) ?? demoMethods[0];
-    const SelectedIcon = selectedMethod.icon;
-
-    return (
-      <main className="portal-checkout-page min-h-screen px-4 py-8 text-navy sm:px-6 lg:px-10">
-        <div className="mx-auto max-w-4xl">
-          <div className="portal-card overflow-hidden rounded-2xl border border-navy/10 shadow-2xl">
-            <header className="flex items-center justify-between gap-4 border-b border-navy/10 px-5 py-4 sm:px-8">
-              <div>
-                <p className="text-lg font-black tracking-tight text-navy">PayMongo</p>
-                <p className="text-[11px] font-bold uppercase tracking-wider text-navy/45">Hosted Checkout</p>
-              </div>
-              <span className="rounded-full bg-yellow/20 px-3 py-1 text-[10px] font-black uppercase tracking-wider text-navy">
-                Test mode
-              </span>
-            </header>
-
-            <div className="grid gap-0 lg:grid-cols-[1fr_0.8fr]">
-              <form onSubmit={handleDemoHostedSubmit} className="space-y-5 p-5 sm:p-8">
-                <div>
-                  <p className="text-xs font-black uppercase tracking-wider text-coral">Secure payment</p>
-                  <h1 className="mt-1 text-2xl font-black text-navy">Choose a payment method</h1>
-                  <p className="mt-2 text-sm text-navy/55">
-                    This demo preview mirrors the PayMongo test checkout. With a test key configured, the real PayMongo-hosted page opens instead.
-                  </p>
-                </div>
-
-                <div className="grid gap-2 sm:grid-cols-3">
-                  {demoMethods.map((method) => {
-                    const Icon = method.icon;
-                    const active = demoPaymentMethod === method.id;
-                    return (
-                      <button
-                        key={method.id}
-                        type="button"
-                        onClick={() => setDemoPaymentMethod(method.id)}
-                        className={"flex items-center gap-2 rounded-lg border px-3 py-3 text-left transition " + (active ? "border-coral bg-coral/10" : "border-navy/15 hover:border-coral/60")}
-                      >
-                        <Icon className="size-4 shrink-0 text-coral" />
-                        <span>
-                          <span className="block text-xs font-black text-navy">{method.label}</span>
-                          <span className="block text-[10px] text-navy/45">{method.detail}</span>
-                        </span>
-                      </button>
-                    );
-                  })}
-                </div>
-
-                {demoPaymentMethod === "card" ? (
-                  <div className="space-y-3 rounded-xl border border-navy/10 bg-navy/[0.02] p-4">
-                    <input
-                      required
-                      value={demoCardNumber}
-                      onChange={(event) => setDemoCardNumber(event.target.value)}
-                      placeholder="Card number"
-                      inputMode="numeric"
-                      className="w-full rounded-md border border-navy/15 px-3 py-3 text-sm outline-none focus:border-coral"
-                    />
-                    <div className="grid grid-cols-2 gap-3">
-                      <input
-                        required
-                        value={demoCardExpiry}
-                        onChange={(event) => setDemoCardExpiry(event.target.value)}
-                        placeholder="MM / YY"
-                        className="w-full rounded-md border border-navy/15 px-3 py-3 text-sm outline-none focus:border-coral"
-                      />
-                      <input
-                        required
-                        value={demoCardCvc}
-                        onChange={(event) => setDemoCardCvc(event.target.value)}
-                        placeholder="CVC"
-                        inputMode="numeric"
-                        className="w-full rounded-md border border-navy/15 px-3 py-3 text-sm outline-none focus:border-coral"
-                      />
-                    </div>
-                    <input
-                      required
-                      value={demoCardName}
-                      onChange={(event) => setDemoCardName(event.target.value)}
-                      placeholder="Name on card"
-                      className="w-full rounded-md border border-navy/15 px-3 py-3 text-sm outline-none focus:border-coral"
-                    />
-                    <p className="text-[11px] text-navy/45">Test card example: 4343 4343 4343 4345</p>
-                  </div>
-                ) : (
-                  <div className="rounded-xl border border-navy/10 bg-navy/[0.02] p-5">
-                    <div className="flex items-start gap-3">
-                      <SelectedIcon className="mt-0.5 size-5 shrink-0 text-coral" />
-                      <p className="text-sm leading-relaxed text-navy/65">
-                        Continue to the {selectedMethod.label} test screen to simulate authorization. No real wallet or bank account is charged.
-                      </p>
-                    </div>
-                  </div>
-                )}
-
-                <button
-                  type="submit"
-                  className="flex w-full items-center justify-center gap-2 rounded-md bg-coral px-4 py-3.5 text-sm font-black uppercase tracking-wide text-white transition hover:opacity-90"
-                >
-                  <LockKeyhole className="size-4" /> Pay {pack.priceLabel}
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setShowHostedPreview(false)}
-                  className="w-full text-xs font-black uppercase tracking-wide text-navy/50 hover:text-coral"
-                >
-                  Return to order
-                </button>
-              </form>
-
-              <aside className="border-t border-navy/10 bg-navy/[0.03] p-5 sm:p-8 lg:border-l lg:border-t-0">
-                <p className="text-xs font-black uppercase tracking-wider text-navy/45">Order summary</p>
-                <div className="mt-4 flex items-start justify-between gap-4">
-                  <div>
-                    <p className="font-black text-navy">{formatCoins(pack.coins)} C-Coins</p>
-                  </div>
-                  <p className="font-black text-coral">{pack.priceLabel}</p>
-                </div>
-                <div className="mt-6 border-t border-navy/10 pt-4 text-xs text-navy/55">
-                  <p className="font-black text-navy">PayMongo Test Checkout</p>
-                  <p className="mt-2 leading-relaxed">
-                    This screen is only shown for demo accounts without a configured PayMongo test key. Live payments always open PayMongo’s hosted page.
-                  </p>
-                </div>
-              </aside>
-            </div>
-          </div>
         </div>
       </main>
     );
