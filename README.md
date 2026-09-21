@@ -22,3 +22,11 @@ cd <repository-name>
 npm i
 npm run dev
 ```
+
+## PlayFab password recovery
+
+Real-mode password recovery uses PlayFab’s account-recovery email and expiring reset token. Configure `PLAYFAB_RECOVERY_EMAIL_TEMPLATE_ID` in Vercel Production and Preview, and set that PlayFab Account Recovery template’s callback URL to `https://your-deployment-domain/password-recovery`. The template body should clearly warn the player, for example:
+
+> Someone is trying to change your Crew On Set password. If this was you, open the secure reset link below and never share it with anyone.
+
+Include PlayFab’s `$ConfirmationUrl$` placeholder as the link target. PlayFab also needs an SMTP add-on configured for the title before it can deliver the email. Mock mode intentionally keeps a demo-only six-digit code and does not send real email.

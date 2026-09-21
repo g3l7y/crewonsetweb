@@ -37,6 +37,7 @@ import {
 } from "lucide-react";
 import { EMAIL_ERROR, USERNAME_ERROR, PASSWORD_ERROR, PASSWORD_INPUT_PATTERN, isValidEmail, isValidPassword, isValidUsername } from "@/lib/validation";
 import { DisplayThemeSwitcher } from "@/components/theme/display-theme-switcher";
+import { PasswordRecoveryModal } from "@/components/password-recovery-modal";
 import { isMockMode } from "@/lib/playfab/config";
 import { QUERY_KEYS, usePlayerProfile, useUpdateProfile } from "@/lib/playfab/hooks";
 import {
@@ -150,6 +151,7 @@ function SettingsPage() {
 
   const [deleteOpen, setDeleteOpen] = useState(false);
   const [passwordOpen, setPasswordOpen] = useState(false);
+  const [recoveryOpen, setRecoveryOpen] = useState(false);
 
   const [currentPassword, setCurrentPassword] = useState("");
 
@@ -308,8 +310,17 @@ function SettingsPage() {
 
   const persistAccount = async (nextAccount: AccountData, successMessage: string) => {
     try {
-      if (!mockMode && nextAccount.username !== savedAccount.username) {
-        await updateProfileMutation.mutateAsync({ username: nextAccount.username });
+      if (!mockMode && (nextAccount.username !== savedAccount.username || nextAccount.email !== savedAccount.email)) {
+        const response = await fetch("/api/auth/profile", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            ...(nextAccount.username !== savedAccount.username ? { username: nextAccount.username } : {}),
+            ...(nextAccount.email !== savedAccount.email ? { email: nextAccount.email } : {}),
+          }),
+        });
+        const result = (await response.json().catch(() => ({}))) as { error?: string };
+        if (!response.ok) throw new Error(result.error ?? "Unable to apply this account change.");
       }
 
       if (mockMode) {
@@ -325,13 +336,7 @@ function SettingsPage() {
           }
         }
         window.localStorage.setItem("player-account", JSON.stringify(nextAccount));
-        window.localStorage.setItem(
-          "cos.profile.account",
-          JSON.stringify({
-            username: nextAccount.username,
-            email: nextAccount.email,
-          }),
-        );
+        window.localStorage.setItem("cos.profile.account", JSON.stringify({ username: nextAccount.username, email: nextAccount.email }));
       }
 
       setAccount(nextAccount);
@@ -340,12 +345,11 @@ function SettingsPage() {
       await queryClient.invalidateQueries({ queryKey: QUERY_KEYS.session });
       showMessage(successMessage);
       return true;
-    } catch {
-      showMessage("Unable to apply this account change.", "error");
+    } catch (error) {
+      showMessage(error instanceof Error ? error.message : "Unable to apply this account change.", "error");
       return false;
     }
   };
-
   /* =========================================================
      EDIT ACCOUNT FIELD
   ========================================================= */
@@ -457,47 +461,44 @@ function SettingsPage() {
      PASSWORD
   ========================================================= */
 
-  const handlePasswordChange = () => {
-    if (!mockMode) {
-      setPasswordError("Password changes must be completed through the PlayFab account service.");
-      return;
-    }
+  const handlePasswordChange = async () => {
     setPasswordError("");
     setPasswordSuccess(false);
-
     if (!currentPassword || !newPassword || !confirmPassword) {
       setPasswordError("Please complete all password fields.");
       return;
     }
-
     if (!isValidPassword(newPassword)) {
       setPasswordError(PASSWORD_ERROR);
       return;
     }
-
     if (newPassword !== confirmPassword) {
       setPasswordError("New passwords do not match.");
       return;
     }
-
-    if (currentPassword !== DEMO_PASSWORD) {
-      setPasswordError("Current password is incorrect.");
+    if (!mockMode) {
+      setPasswordError("Real PlayFab passwords use the secure Forgot Password recovery flow.");
       return;
     }
-
-    // The demo auth service owns password changes; never persist passwords in browser storage.
+    const response = await fetch("/api/auth/password/change", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ currentPassword, newPassword }),
+    });
+    const result = (await response.json().catch(() => ({}))) as { success?: boolean; error?: string };
+    if (!response.ok || result.success === false) {
+      setPasswordError(result.error ?? "Unable to update your password.");
+      return;
+    }
     setPasswordSuccess(true);
-
     setCurrentPassword("");
     setNewPassword("");
     setConfirmPassword("");
-
     window.setTimeout(() => {
       setPasswordOpen(false);
       setPasswordSuccess(false);
     }, 1200);
   };
-
   /* =========================================================
      DELETE ACCOUNT
   ========================================================= */
@@ -893,18 +894,27 @@ function SettingsPage() {
                     </p>
                   </div>
 
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setPasswordOpen(true);
-                      setPasswordError("");
-                      setPasswordSuccess(false);
-                    }}
-                    className="change-password-button inline-flex items-center justify-center gap-2 rounded-md border border-white/10 bg-[#1b2433] px-4 py-2.5 text-xs font-black text-white/70 transition hover:border-yellow/40 hover:text-white"
-                  >
-                    <Lock className="size-4" />
-                    CHANGE PASSWORD
-                  </button>
+                  <div className="flex flex-wrap gap-2">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setPasswordOpen(true);
+                        setPasswordError("");
+                        setPasswordSuccess(false);
+                      }}
+                      className="change-password-button inline-flex items-center justify-center gap-2 rounded-md border border-white/10 bg-[#1b2433] px-4 py-2.5 text-xs font-black text-white/70 transition hover:border-yellow/40 hover:text-white"
+                    >
+                      <Lock className="size-4" />
+                      CHANGE PASSWORD
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setRecoveryOpen(true)}
+                      className="inline-flex items-center justify-center rounded-md border border-coral/50 px-4 py-2.5 text-xs font-black text-coral transition hover:bg-coral hover:text-white"
+                    >
+                      FORGOT PASSWORD?
+                    </button>
+                  </div>
                 </div>
 
                 <div className="divide-y divide-white/[0.07] px-6">
@@ -1650,6 +1660,8 @@ function SettingsPage() {
         </div>
       )}
 
+      {recoveryOpen && <PasswordRecoveryModal scope="player" dark onClose={() => setRecoveryOpen(false)} />}
+
       {/* =========================================================
           CHANGE PASSWORD MODAL
       ========================================================= */}
@@ -1735,6 +1747,17 @@ function SettingsPage() {
                     <p className="text-xs text-white/30">
                       Password must be 8–64 characters with uppercase, lowercase, a number, a special character, and no spaces.
                     </p>
+
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setPasswordOpen(false);
+                        setRecoveryOpen(true);
+                      }}
+                      className="text-left text-xs font-black uppercase tracking-wide text-coral hover:underline"
+                    >
+                      Forgot password?
+                    </button>
 
                     <button
                       type="button"

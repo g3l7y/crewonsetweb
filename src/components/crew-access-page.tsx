@@ -4,6 +4,7 @@ import { FormEvent, useState } from "react";
 import { useRouter } from "@/components/next-compat/navigation";
 import { ArrowLeft, Eye, EyeOff, KeyRound, LoaderCircle, Send, UserPlus, X } from "lucide-react";
 import { EMAIL_ERROR, PASSWORD_ERROR, PASSWORD_INPUT_PATTERN, USERNAME_ERROR, isValidEmail, isValidPassword, isValidUsername } from "@/lib/validation";
+import { PasswordRecoveryModal } from "@/components/password-recovery-modal";
 import { GOOGLE_CLIENT_ID, isGoogleAuthConfigured, isMockMode } from "@/lib/playfab/config";
 
 type CrewAccessPageProps = {
@@ -382,7 +383,7 @@ export function CrewAccessPage({ mode, scope = "player" }: CrewAccessPageProps) 
         </section>
       </div>
 
-      {forgotOpen && <ForgotPasswordModal onClose={() => setForgotOpen(false)} />}
+      {forgotOpen && <PasswordRecoveryModal scope={scope} onClose={() => setForgotOpen(false)} />}
       {googleProfileSetupOpen && (
         <GoogleProfileSetupModal
           onComplete={() => {
@@ -455,138 +456,6 @@ function GoogleProfileSetupModal({ onComplete }: { onComplete: () => void }) {
           </button>
         </form>
       </section>
-    </div>
-  );
-}
-
-function ForgotPasswordModal({ onClose }: { onClose: () => void }) {
-  const [step, setStep] = useState<"email" | "code" | "password" | "done">("email");
-  const [email, setEmail] = useState("");
-  const [sentCode, setSentCode] = useState("");
-  const [codeInput, setCodeInput] = useState("");
-  const [error, setError] = useState("");
-  const [sending, setSending] = useState(false);
-  const [newPasswordVisible, setNewPasswordVisible] = useState(false);
-  const [confirmPasswordVisible, setConfirmPasswordVisible] = useState(false);
-
-  function handleEmailSubmit(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-    if (!isValidEmail(email)) {
-      setError(EMAIL_ERROR);
-      return;
-    }
-    setError("");
-    setSending(true);
-    const code = String(Math.floor(100000 + Math.random() * 900000));
-    setTimeout(() => {
-      setSentCode(code);
-      setSending(false);
-      setStep("code");
-    }, 900);
-  }
-
-  function handleCodeSubmit(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-    if (codeInput !== sentCode) {
-      setError("That code doesn't match. Please try again.");
-      return;
-    }
-    setError("");
-    setStep("password");
-  }
-
-  function handlePasswordSubmit(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-    const data = new FormData(event.currentTarget);
-    const password = String(data.get("newPassword") ?? "");
-    const confirm = String(data.get("confirmPassword") ?? "");
-    if (!isValidPassword(password)) {
-      setError(PASSWORD_ERROR);
-      return;
-    }
-    if (password !== confirm) {
-      setError("Passwords do not match.");
-      return;
-    }
-    setError("");
-    setStep("done");
-  }
-
-  return (
-    <div className="fixed inset-0 z-[60] grid place-items-center bg-black/60 px-5" role="dialog" aria-modal="true">
-      <div className="relative w-full max-w-md rounded-lg border border-navy/10 bg-cream p-6 text-navy shadow-2xl sm:p-8">
-        <button type="button" onClick={onClose} aria-label="Close" className="absolute right-4 top-4 text-navy/40 hover:text-navy">
-          <X className="size-5" />
-        </button>
-
-        <p className="text-xs font-black tracking-[.18em] text-coral">PASSWORD RECOVERY (DEMO)</p>
-        <h2 className="mt-2 text-2xl font-black uppercase">Forgot password?</h2>
-
-        {step === "email" && (
-          <form onSubmit={handleEmailSubmit} className="mt-6">
-            <p className="text-sm leading-relaxed text-navy/60">Enter your account email and we&apos;ll simulate sending a 6-digit recovery code.</p>
-            <label className="form-label mt-4">EMAIL
-              <input className="form-input" type="email" required value={email} onChange={(event) => setEmail(event.target.value)} placeholder="player@gmail.com" />
-            </label>
-            {error && <p role="alert" className="mt-3 text-sm font-bold text-coral">{error}</p>}
-            <button disabled={sending} type="submit" className="mt-5 inline-flex w-full items-center justify-center gap-2 rounded-md bg-navy px-5 py-3.5 text-sm font-black tracking-wider text-white transition hover:bg-coral disabled:cursor-wait disabled:opacity-70">
-              {sending ? <><LoaderCircle className="size-4 animate-spin" /> SENDING CODE</> : "SEND RECOVERY CODE"}
-            </button>
-          </form>
-        )}
-
-        {step === "code" && (
-          <form onSubmit={handleCodeSubmit} className="mt-6">
-            <p className="text-sm leading-relaxed text-navy/60">
-              A simulated 6-digit code was &quot;sent&quot; to <strong>{email}</strong>. For this demo, here it is: <strong className="text-coral">{sentCode}</strong>
-            </p>
-            <label className="form-label mt-4">RECOVERY CODE
-              <input className="form-input" required maxLength={6} value={codeInput} onChange={(event) => setCodeInput(event.target.value)} placeholder="123456" />
-            </label>
-            {error && <p role="alert" className="mt-3 text-sm font-bold text-coral">{error}</p>}
-            <button type="submit" className="mt-5 inline-flex w-full items-center justify-center gap-2 rounded-md bg-navy px-5 py-3.5 text-sm font-black tracking-wider text-white transition hover:bg-coral">
-              VERIFY CODE
-            </button>
-          </form>
-        )}
-
-        {step === "password" && (
-          <form onSubmit={handlePasswordSubmit} className="mt-6">
-            <p className="text-sm leading-relaxed text-navy/60">Code verified. Choose a new password.</p>
-            <label className="form-label mt-4">NEW PASSWORD
-              <span className="relative block">
-                <input className="form-input pr-12" name="newPassword" type={newPasswordVisible ? "text" : "password"} minLength={8} maxLength={64} pattern={PASSWORD_INPUT_PATTERN} title={PASSWORD_ERROR} required placeholder="8+ characters with upper/lowercase, number, and symbol" />
-                <button type="button" onClick={() => setNewPasswordVisible((visible) => !visible)} className="absolute right-1 top-[calc(50%+4px)] grid size-10 -translate-y-1/2 place-items-center rounded text-navy/40 transition hover:bg-navy/5 hover:text-navy" aria-label={newPasswordVisible ? "Hide new password" : "Show new password"}>
-                  {newPasswordVisible ? <Eye className="size-4" /> : <EyeOff className="size-4" />}
-                </button>
-              </span>
-            </label>
-            <label className="form-label mt-4">CONFIRM PASSWORD
-              <span className="relative block">
-                <input className="form-input pr-12" name="confirmPassword" type={confirmPasswordVisible ? "text" : "password"} minLength={8} maxLength={64} pattern={PASSWORD_INPUT_PATTERN} title={PASSWORD_ERROR} required placeholder="Repeat password" />
-                <button type="button" onClick={() => setConfirmPasswordVisible((visible) => !visible)} className="absolute right-1 top-[calc(50%+4px)] grid size-10 -translate-y-1/2 place-items-center rounded text-navy/40 transition hover:bg-navy/5 hover:text-navy" aria-label={confirmPasswordVisible ? "Hide confirm password" : "Show confirm password"}>
-                  {confirmPasswordVisible ? <Eye className="size-4" /> : <EyeOff className="size-4" />}
-                </button>
-              </span>
-            </label>
-            {error && <p role="alert" className="mt-3 text-sm font-bold text-coral">{error}</p>}
-            <button type="submit" className="mt-5 inline-flex w-full items-center justify-center gap-2 rounded-md bg-navy px-5 py-3.5 text-sm font-black tracking-wider text-white transition hover:bg-coral">
-              RESET PASSWORD
-            </button>
-          </form>
-        )}
-
-        {step === "done" && (
-          <div className="mt-6">
-            <p className="text-sm leading-relaxed text-navy/60">
-              Your password has been reset (simulated). You can now sign in with your new password.
-            </p>
-            <button type="button" onClick={onClose} className="mt-5 inline-flex w-full items-center justify-center gap-2 rounded-md bg-[#278b78] px-5 py-3.5 text-sm font-black tracking-wider text-white transition hover:bg-[#1f7464]">
-              BACK TO LOGIN
-            </button>
-          </div>
-        )}
-      </div>
     </div>
   );
 }

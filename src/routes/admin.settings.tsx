@@ -18,6 +18,7 @@ import { toast } from "sonner";
 import { adminAccountStore, socialLinksStore, uid, type AdminAccount, type SocialLink } from "@/lib/demo/store";
 import { EMAIL_ERROR, PASSWORD_ERROR, PASSWORD_INPUT_PATTERN, isValidEmail, isValidPassword } from "@/lib/validation";
 import { DisplayThemeSwitcher } from "@/components/theme/display-theme-switcher";
+import { PasswordRecoveryModal } from "@/components/password-recovery-modal";
 import { isMockMode } from "@/lib/playfab/config";
 import { useSession } from "@/lib/playfab/hooks";
 
@@ -353,6 +354,7 @@ function SettingsPage() {
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [passwordErrors, setPasswordErrors] = useState<{ current?: string; next?: string; confirm?: string }>({});
+  const [recoveryOpen, setRecoveryOpen] = useState(false);
 
   useEffect(() => {
     if (!mockMode && sessionQuery.data?.email) setEmail(sessionQuery.data.email);
@@ -386,12 +388,12 @@ function SettingsPage() {
     setEmail(normalizedEmail);
     toast.success("Email updated.");
   }
-  function savePassword(event: FormEvent<HTMLFormElement>) {
+  async function savePassword(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
     if (!mockMode) {
       setPasswordErrors({ next: "Real PlayFab passwords are changed through the account-recovery flow; this page never stores a local password." });
       return;
     }
-    event.preventDefault();
 
     const errors: { current?: string; next?: string; confirm?: string } = {};
 
@@ -407,6 +409,17 @@ function SettingsPage() {
 
     setPasswordErrors(errors);
     if (Object.keys(errors).length > 0) return;
+
+    const response = await fetch("/api/auth/password/change", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ currentPassword, newPassword }),
+    });
+    const result = (await response.json().catch(() => ({}))) as { success?: boolean; error?: string };
+    if (!response.ok || result.success === false) {
+      setPasswordErrors({ current: result.error ?? "Unable to update your password." });
+      return;
+    }
 
     setAccount([{ ...admin, password: newPassword }]);
     setCurrentPassword("");
@@ -505,9 +518,18 @@ function SettingsPage() {
             >
               Update Password
             </button>
+            <button
+              type="button"
+              onClick={() => setRecoveryOpen(true)}
+              className="w-fit text-left text-xs font-black uppercase tracking-wide text-coral hover:underline"
+            >
+              Forgot password?
+            </button>
           </form>
         </section>
       </div>
+
+      {recoveryOpen && <PasswordRecoveryModal scope="admin" dark onClose={() => setRecoveryOpen(false)} />}
 
       <SocialLinksSection />
 
