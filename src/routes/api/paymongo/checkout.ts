@@ -1,4 +1,5 @@
 import { createFileRoute } from '@tanstack/react-router';
+import { isPayMongoLedgerConfigured } from '@/lib/paymongo/ledger';
 import { coinPackages } from '@/lib/demo/portal-shop';
 import { isValidEmail } from '@/lib/validation';
 import { unauthorizedSessionResponse, validateSessionFromRequest } from '@/lib/playfab/session';
@@ -18,7 +19,7 @@ type PayMongoOrder = {
   amountInCentavos: number;
   currency: 'PHP';
   email: string;
-  status: 'pending' | 'active' | 'fulfilled' | 'failed';
+  status: 'pending' | 'active' | 'processing' | 'fulfilled' | 'failed';
   createdAt: string;
   updatedAt: string;
   paidAt?: string;
@@ -54,6 +55,12 @@ export const Route = createFileRoute('/api/paymongo/checkout')({
         if (!paymongoSecret || !playfabSecret) {
           return Response.json(
             { error: 'PayMongo checkout is not configured on this server yet.' },
+            { status: 503 },
+          );
+        }
+        if (!isPayMongoLedgerConfigured()) {
+          return Response.json(
+            { error: 'The payment ledger is not configured on this server yet.' },
             { status: 503 },
           );
         }
@@ -172,7 +179,9 @@ export const Route = createFileRoute('/api/paymongo/checkout')({
             (current) => ({
               ...current,
               checkoutSessionId,
-              status: current.status === 'fulfilled' ? 'fulfilled' : 'active',
+              status: current.status === 'fulfilled' || current.status === 'processing'
+                ? current.status
+                : 'active',
               updatedAt: new Date().toISOString(),
             }),
             playfabSecret,
