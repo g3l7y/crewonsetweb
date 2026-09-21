@@ -907,13 +907,7 @@ function SettingsPage() {
                       <Lock className="size-4" />
                       CHANGE PASSWORD
                     </button>
-                    <button
-                      type="button"
-                      onClick={() => setRecoveryOpen(true)}
-                      className="inline-flex items-center justify-center rounded-md border border-coral/50 px-4 py-2.5 text-xs font-black text-coral transition hover:bg-coral hover:text-white"
-                    >
-                      FORGOT PASSWORD?
-                    </button>
+
                   </div>
                 </div>
 
