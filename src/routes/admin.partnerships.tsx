@@ -189,7 +189,7 @@ function PartnershipsPage() {
   async function updateStatus(id: string, status: PartnershipStatus) {
     const app = applications.find((application) => application.id === id);
     if (!app || !canAdvancePartnershipStatus(app.status, status)) return;
-    if (status === 'Approved' && app.paymentStatus !== 'Paid') {
+    if (isMockMode() && status === 'Approved' && app.paymentStatus !== 'Paid') {
       showStatusMessage('Complete the brand payment before approving this application.');
       return;
     }
@@ -241,7 +241,7 @@ function PartnershipsPage() {
     if (savedApplication.status === 'Pending' && app.status === 'New') {
       showStatusMessage(
         isMockMode()
-          ? 'Mock payment email prepared for ' + app.email + '. Complete the simulated PayMongo payment from the application details.'
+          ? 'Mock payment email prepared for ' + app.email + '. Complete payment from the application details.'
           : 'Payment email sent to ' + app.email + ' with the PayMongo Hosted Checkout link.',
       );
     } else {
@@ -749,7 +749,7 @@ function PartnershipsPage() {
                         onClick={() => completeMockPayment(selected.id)}
                         className="rounded-md bg-[#d9a514] px-3 py-2 text-[10px] font-black uppercase text-[#101923]"
                       >
-                        Complete simulated payment
+                        Complete payment
                       </button>
                     )}
                   </div>

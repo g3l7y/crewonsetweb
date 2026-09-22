@@ -359,7 +359,8 @@ export function DashboardCharts({
   const salesData = useMemo(() => {
     const salesByMonth = new Map<number, number>();
     const realSales = realSalesQuery.data ?? [];
-    const realSaleYears = realSales
+    const completedRealSales = realSales.filter((sale) => sale.status === "Completed");
+    const realSaleYears = completedRealSales
       .map((sale) => new Date(sale.date).getUTCFullYear())
       .filter((year) => Number.isFinite(year));
     const latestSalesYear = realSaleYears.length > 0
@@ -382,10 +383,7 @@ export function DashboardCharts({
         }
       }
     } else {
-      // Real mode treats every PayMongo ledger row as a recorded money event,
-      // including simulated pending/failed states, so the admin's sales view
-      // reflects the complete financial ledger.
-      for (const sale of realSales) {
+      for (const sale of completedRealSales) {
         const date = new Date(sale.date);
         const amount = Number(sale.amount);
         if (Number.isNaN(date.getTime()) || !Number.isFinite(amount)) continue;
