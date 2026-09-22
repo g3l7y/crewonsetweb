@@ -251,7 +251,7 @@ function PlayerDashboardPage() {
     return (catalogQuery.data ?? [])
       .map((remote) => {
         const category = remote.category as CosmeticItem["category"];
-        if (!["Hair", "Tops", "Bottoms", "Eyeglasses"].includes(category)) return null;
+        if (!["Hair", "Tops", "Bottoms", "Shoe Wear", "Accessories"].includes(category)) return null;
         const rarityValue = String(remote.rarity ?? "").toLowerCase();
         const rarity = rarityValue === "rare"
           ? "Rare"

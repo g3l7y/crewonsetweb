@@ -29,6 +29,7 @@ export function createSessionCookies(session: SessionData): string[] {
     sessionTicket: session.sessionTicket,
     playFabId: session.playFabId,
     username: session.username,
+    playFabUsername: session.playFabUsername,
     displayName: session.displayName,
     email: session.email,
   });
@@ -76,6 +77,7 @@ export function parseSessionFromRequest(request: Request): SessionData | null {
       sessionTicket: session.sessionTicket,
       role: 'player',
       username: session.username,
+      playFabUsername: session.playFabUsername,
       displayName: session.displayName,
       email: session.email,
     };
@@ -87,6 +89,26 @@ export function parseSessionFromRequest(request: Request): SessionData | null {
 /**
  * Check if request has admin role.
  */
+export async function hasActivePlayFabBan(playFabId: string, secretKey: string): Promise<boolean> {
+  const response = await fetch(`${PLAYFAB_API_BASE}/Server/GetUserBans`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', 'X-SecretKey': secretKey },
+    body: JSON.stringify({ PlayFabId: playFabId }),
+  });
+  const result = await response.json().catch(() => ({})) as {
+    code?: number;
+    data?: { BanData?: Array<{ Active?: boolean; Expires?: string }> };
+  };
+  if (!response.ok || result.code !== 200) {
+    throw new Error('PlayFab ban status could not be verified.');
+  }
+  return (result.data?.BanData ?? []).some((ban) => {
+    if (!ban.Active) return false;
+    if (!ban.Expires) return true;
+    const expiresAt = Date.parse(ban.Expires);
+    return Number.isNaN(expiresAt) || expiresAt > Date.now();
+  });
+}
 export async function validateSessionFromRequest(
   request: Request,
   options: { requireAdmin?: boolean } = {},
@@ -140,8 +162,17 @@ export async function validateSessionFromRequest(
     const playFabId = account?.PlayFabId;
     if (!playFabId) return null;
 
-    let role: 'admin' | 'player' = 'player';
     const secretKey = process.env['PLAYFAB_SECRET_KEY'];
+    if (secretKey) {
+      try {
+        if (await hasActivePlayFabBan(playFabId, secretKey)) return null;
+      } catch {
+        // Real-mode moderation must fail closed when ban status cannot be verified.
+        return null;
+      }
+    }
+
+    let role: 'admin' | 'player' = 'player';
     if (options.requireAdmin && !secretKey) return null;
     if (secretKey) {
       const tagsResponse = await fetch(`${PLAYFAB_API_BASE}/Server/GetPlayerTags`, {
@@ -197,6 +228,7 @@ export async function validateSessionFromRequest(
       sessionTicket: parsed.sessionTicket,
       role,
       username: resolvedUsername,
+      playFabUsername: account?.Username || parsed.playFabUsername,
       displayName: resolvedUsername,
       email: account?.PrivateInfo?.Email || '',
     };

@@ -26,18 +26,15 @@ export const Route = createFileRoute("/api/admin/submission-attachments")({
             return Response.json({ error: "Attachment not found." }, { status: 404 });
           }
 
-          const download = await fetch(metadata.DownloadUrl);
-          if (!download.ok || !download.body) {
-            return Response.json({ error: "Attachment could not be downloaded." }, { status: 502 });
-          }
-
-          const contentType = download.headers.get("content-type") || "application/octet-stream";
-          const safeDownloadName = metadata.FileName.replace(/[^a-z0-9_.()-]/gi, "_");
-          return new Response(download.body, {
+          // PlayFab returns a short-lived signed download URL. Redirecting the
+          // browser to that URL keeps the file response stream on PlayFab's
+          // storage service, which is supported by both Node and edge runtimes
+          // and makes images, PDFs, and the Open Attached File action work.
+          return new Response(null, {
+            status: 302,
             headers: {
               "Cache-Control": "private, no-store",
-              "Content-Disposition": `inline; filename="${safeDownloadName}"`,
-              "Content-Type": contentType,
+              Location: metadata.DownloadUrl,
             },
           });
         } catch (error) {
@@ -48,4 +45,3 @@ export const Route = createFileRoute("/api/admin/submission-attachments")({
     },
   },
 });
-

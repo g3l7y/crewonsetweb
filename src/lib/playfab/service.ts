@@ -26,7 +26,7 @@ type SessionIdentity = {
   email?: string;
 };
 
-type CosmeticCatalogCategory = 'Hair' | 'Tops' | 'Bottoms' | 'Eyeglasses';
+type CosmeticCatalogCategory = 'Hair' | 'Tops' | 'Bottoms' | 'Shoe Wear' | 'Accessories';
 
 function parseCatalogCustomData(value: unknown): Record<string, string> {
   const parsed = typeof value === 'string'
@@ -43,7 +43,8 @@ function parseCatalogCustomData(value: unknown): Record<string, string> {
 
 function normalizeCosmeticCategory(value: unknown): CosmeticCatalogCategory | null {
   const normalized = String(value ?? '').trim().toLowerCase();
-  if (normalized.includes('eyeglass') || normalized.includes('glass')) return 'Eyeglasses';
+  if (normalized.includes('shoe') || normalized.includes('footwear') || normalized.includes('boot') || normalized.includes('sneaker')) return 'Shoe Wear';
+  if (normalized.includes('accessor') || normalized.includes('eyeglass') || normalized.includes('glass') || normalized.includes('frame')) return 'Accessories';
   if (normalized.includes('hair')) return 'Hair';
   if (normalized === 'top' || normalized === 'tops' || normalized.includes('shirt')) return 'Tops';
   if (normalized === 'bottom' || normalized === 'bottoms' || normalized.includes('pant') || normalized.includes('trouser')) return 'Bottoms';
@@ -59,9 +60,9 @@ function mapPlayFabCatalogItem(item: Record<string, unknown>): InventoryItem | n
     ? item.VirtualCurrencyPrices as Record<string, unknown>
     : {};
   const tags = Array.isArray(item.Tags) ? item.Tags : [];
-  const category = normalizeCosmeticCategory(
-    item.ItemClass ?? customData.category ?? customData.Category ?? tags.join(' '),
-  );
+  const category = [customData.category, customData.Category, item.ItemClass, tags.join(' ')]
+    .map(normalizeCosmeticCategory)
+    .find((value): value is CosmeticCatalogCategory => value !== null) ?? null;
   if (!category) return null;
 
   const rarityValue = String(item.ItemRarity ?? customData.rarity ?? '').trim().toLowerCase();
@@ -319,9 +320,9 @@ function createRealService(): PlayFabService {
         const ticket = await resolveSessionTicket();
         if (!ticket) return;
         if (updates.username) {
-          await updateDisplayName(ticket, updates.username);
+          if (!(await updateDisplayName(ticket, updates.username))) throw new Error('PlayFab could not update your username.');
         } else if (updates.displayName) {
-          await updateDisplayName(ticket, updates.displayName);
+          if (!(await updateDisplayName(ticket, updates.displayName))) throw new Error('PlayFab could not update your display name.');
         }
         if ('bio' in updates || 'socialLinks' in updates || 'showStatus' in updates) {
           const currentRaw = (await getUserData(ticket, [PLAYFAB_DATA_KEYS.profile_metadata]))[PLAYFAB_DATA_KEYS.profile_metadata];
@@ -329,7 +330,7 @@ function createRealService(): PlayFabService {
           if (currentRaw) {
             try { current = JSON.parse(currentRaw); } catch { /* replace malformed metadata */ }
           }
-          await updateUserData(ticket, {
+          const saved = await updateUserData(ticket, {
             [PLAYFAB_DATA_KEYS.profile_metadata]: JSON.stringify({
               username: 'username' in updates ? updates.username ?? current.username ?? '' : current.username ?? '',
               bio: 'bio' in updates ? updates.bio ?? '' : current.bio ?? '',
@@ -337,6 +338,7 @@ function createRealService(): PlayFabService {
               showStatus: 'showStatus' in updates ? updates.showStatus ?? true : current.showStatus ?? true,
             }),
           });
+          if (!saved) throw new Error('PlayFab could not save your profile metadata.');
         }
       },
 

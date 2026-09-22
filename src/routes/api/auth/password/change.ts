@@ -1,8 +1,9 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { isMockMode, PLAYFAB_API_BASE } from "@/lib/playfab/config";
+import { isMockMode } from "@/lib/playfab/config";
 import { updateMockAccountPassword, getMockAccountBySessionTicket } from "@/lib/playfab/mock-accounts";
 import { validateSessionFromRequest } from "@/lib/playfab/session";
 import { isValidPassword, PASSWORD_ERROR } from "@/lib/validation";
+import { verifyPlayFabCurrentPassword } from "@/lib/playfab/credential-verification";
 
 export const Route = createFileRoute("/api/auth/password/change")({
   server: {
@@ -22,7 +23,10 @@ export const Route = createFileRoute("/api/auth/password/change")({
           return Response.json({ success: true });
         }
 
-        return Response.json({ success: false, error: "Real PlayFab password changes use the secure Forgot Password recovery flow." }, { status: 400 });
+        if (!(await verifyPlayFabCurrentPassword(session, currentPassword))) {
+          return Response.json({ success: false, error: "Current password is incorrect." }, { status: 401 });
+        }
+        return Response.json({ success: false, error: "PlayFab password changes must be completed through the secure Forgot Password recovery link." }, { status: 400 });
       },
     },
   },

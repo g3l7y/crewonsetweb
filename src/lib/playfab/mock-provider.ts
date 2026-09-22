@@ -70,6 +70,29 @@ let MOCK_PLAYER_PROFILE: PlayerProfile = {
   lastLoginAt: new Date().toISOString(),
 };
 
+type StoredMockProfileMetadata = Pick<PlayerProfile, 'bio' | 'socialLinks' | 'showStatus'>;
+const MOCK_PROFILE_METADATA_KEY = 'cos.profile.metadata';
+
+function getStoredMockProfileMetadata(): StoredMockProfileMetadata {
+  if (typeof window === 'undefined') return {};
+  try {
+    const raw = window.localStorage.getItem(MOCK_PROFILE_METADATA_KEY);
+    if (!raw) return {};
+    const metadata = JSON.parse(raw) as StoredMockProfileMetadata;
+    return {
+      ...(typeof metadata.bio === 'string' ? { bio: metadata.bio } : {}),
+      ...(metadata.socialLinks ? { socialLinks: metadata.socialLinks } : {}),
+      ...(typeof metadata.showStatus === 'boolean' ? { showStatus: metadata.showStatus } : {}),
+    };
+  } catch {
+    return {};
+  }
+}
+
+function persistMockProfileMetadata(metadata: StoredMockProfileMetadata) {
+  if (typeof window === 'undefined') return;
+  window.localStorage.setItem(MOCK_PROFILE_METADATA_KEY, JSON.stringify(metadata));
+}
 function getStoredMockProfileAccount(): { username: string; email: string } | null {
   if (typeof window === 'undefined') return null;
   try {
@@ -123,7 +146,8 @@ const MOCK_INVENTORY: InventoryItem[] = [
 let MOCK_LOADOUT: Loadout = {
   Hair: 'hair-soft-crop',
   Tops: 'top-coral-tee',
-  Eyeglasses: 'glasses-round-ink',
+  ShoeWear: 'shoe-studio-boots',
+  Accessories: 'glasses-round-ink',
 };
 
 const MOCK_ACHIEVEMENTS: Achievement[] = [
@@ -550,7 +574,7 @@ const MOCK_ADMIN_NOTIFS: AdminNotification[] = [
 const MOCK_SHOP_CATALOG: InventoryItem[] = cosmeticCatalog.map((item) => ({
   itemId: item.id,
   displayName: item.name,
-  category: "costumes",
+  category: item.category,
   rarity: item.rarity.toLowerCase() as ItemRarity,
   price: item.price,
   currency: 'cCoins',
@@ -623,12 +647,15 @@ export function createMockService(): PlayFabService {
       async getProfile(): Promise<PlayerProfile> {
         await randomDelay();
         const account = getStoredMockProfileAccount();
-        if (!account) return { ...MOCK_PLAYER_PROFILE };
+        const metadata = getStoredMockProfileMetadata();
         return {
           ...MOCK_PLAYER_PROFILE,
-          displayName: account.username,
-          username: account.username,
-          email: account.email || MOCK_PLAYER_PROFILE.email,
+          ...metadata,
+          ...(account ? {
+            displayName: account.username,
+            username: account.username,
+            email: account.email || MOCK_PLAYER_PROFILE.email,
+          } : {}),
         };
       },
       async getProgression(): Promise<PlayerProgression> {
@@ -674,7 +701,16 @@ export function createMockService(): PlayFabService {
       async updateProfile(updates: Partial<PlayerProfile>): Promise<PlayerProfile> {
         await randomDelay();
         MOCK_PLAYER_PROFILE = { ...MOCK_PLAYER_PROFILE, ...updates };
-        return { ...MOCK_PLAYER_PROFILE };
+        if ('bio' in updates || 'socialLinks' in updates || 'showStatus' in updates) {
+          const current = getStoredMockProfileMetadata();
+          persistMockProfileMetadata({
+            ...current,
+            ...(updates.bio !== undefined ? { bio: updates.bio } : {}),
+            ...(updates.socialLinks !== undefined ? { socialLinks: updates.socialLinks } : {}),
+            ...(updates.showStatus !== undefined ? { showStatus: updates.showStatus } : {}),
+          });
+        }
+        return { ...MOCK_PLAYER_PROFILE, ...getStoredMockProfileMetadata() };
       },
       async updateLoadout(loadout: Loadout): Promise<Loadout> {
         await randomDelay();

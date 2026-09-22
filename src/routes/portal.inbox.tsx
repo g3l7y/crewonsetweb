@@ -441,7 +441,7 @@ function InboxPage() {
             {activeTab === "notifications" ? (
               <div className="min-h-0 flex-1 overflow-y-scroll divide-y divide-white/10">
                 {activityNotifications.length === 0 ? (
-                  <div className="px-6 py-16 text-center">
+                  <div className="inbox-empty-state flex min-h-full translate-y-3 flex-col items-center justify-center px-6 py-16 text-center">
                     <Bell className="mx-auto size-10 text-white/25" />
                     <p className="mt-4 text-sm font-bold text-white/50">You&apos;re all caught up.</p>
                   </div>

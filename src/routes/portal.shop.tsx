@@ -52,18 +52,7 @@ import {
 
 type Category = "All" | CosmeticCategory;
 type ViewMode = "shop" | "owned";
-const categories: Category[] = ["All", "Hair", "Tops", "Bottoms", "Eyeglasses"];
-
-const realCategoryPlaceholders: CosmeticItem[] = categories.slice(1).map((category) => ({
-  id: `real-placeholder-${category.toLowerCase()}`,
-  name: "",
-  category,
-  price: 0,
-  rarity: "Common",
-  description: "",
-  assetKey: "",
-  placeholder: true,
-}));
+const categories: Category[] = ["All", "Hair", "Tops", "Bottoms", "Shoe Wear", "Accessories"];
 
 const rarityStyles: Record<string, string> = {
   Common: "cos-rarity-common",
@@ -131,11 +120,7 @@ function ShopPage() {
         } satisfies CosmeticItem;
       })
       .filter((item): item is CosmeticItem => item !== null);
-    const liveCategories = new Set(liveItems.map((item) => item.category));
-    return [
-      ...liveItems,
-      ...realCategoryPlaceholders.filter((item) => !liveCategories.has(item.category)),
-    ];
+    return liveItems;
   }, [catalogQuery.data, mockMode]);
 
   const ownedIds = mockMode

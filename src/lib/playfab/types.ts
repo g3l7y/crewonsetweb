@@ -17,7 +17,7 @@ export type PlayerRole = 'director' | 'cameraman' | 'av_technician' | 'editor';
 /**
  * In-game shop and inventory item categories.
  */
-export type ItemCategory = 'costumes' | 'decorators' | 'equipment' | 'other';
+export type ItemCategory = 'costumes' | 'decorators' | 'equipment' | 'other' | 'Hair' | 'Tops' | 'Bottoms' | 'Shoe Wear' | 'Accessories';
 
 /**
  * Item rarity tiers determining visual styling and drop rates.
@@ -97,7 +97,56 @@ export interface PlayerProfile {
   lastLogin?: string | undefined;
   /** Legacy / convenience alias for joinedAt */
   createdAt?: string | undefined;
+
+  /** Admin-only moderation state supplied by the server-backed admin API. */
+  adminStatus?: 'Active' | 'Banned' | undefined;
+  /** Active PlayFab ban expiry, when the account is banned. */
+  bannedUntil?: string | null | undefined;
 }
+
+export interface AdminPlayerAccountInfo {
+  platform: string;
+  device: string;
+  loginMethod: string;
+  twoFactor: string;
+  lastLogin: string;
+  lastIp?: string | undefined;
+}
+
+export interface AdminPlayerActivity {
+  id: string;
+  label: string;
+  detail: string;
+  timestamp: string;
+}
+
+export interface AdminPlayerTransaction {
+  id: string;
+  type: string;
+  item: string;
+  amount: string;
+  status: string;
+  date: string;
+}
+
+export interface AdminPlayerDetails {
+  profile: PlayerProfile;
+  progression: PlayerProgression;
+  wallet: PlayerWallet;
+  inventory: InventoryItem[];
+  achievements: Achievement[];
+  statistics: RoleStatistics[];
+  productionLogs?: ProductionLog[] | undefined;
+  transactions?: AdminPlayerTransaction[] | undefined;
+  accountInfo?: AdminPlayerAccountInfo | undefined;
+  activity?: AdminPlayerActivity[] | undefined;
+  career?: {
+    productionScore: number;
+    gamesPlayed: number;
+    playtime: string;
+  } | undefined;
+}
+
 
 /**
  * Player career progression, level milestones, and unlocked modes.
@@ -190,6 +239,9 @@ export interface Loadout {
   Hair?: string | undefined;
   Tops?: string | undefined;
   Bottoms?: string | undefined;
+  "Shoe Wear"?: string | undefined;
+  ShoeWear?: string | undefined;
+  Accessories?: string | undefined;
   Eyeglasses?: string | undefined;
 
   /** Legacy slots retained so older PlayFab player data can still be read. */
@@ -492,6 +544,7 @@ export interface BugReport {
   createdAt?: string | undefined;
 }
 
+
 /**
  * Player code-of-conduct violation report.
  */
@@ -525,6 +578,7 @@ export interface PlayerReport {
   reason?: string | undefined;
   createdAt?: string | undefined;
 }
+
 
 /**
  * Brand partnership and sponsorship application.
@@ -769,6 +823,8 @@ export interface SessionData {
   role: 'admin' | 'player' | 'developer';
   /** Canonical username identifier */
   username?: string | undefined;
+  /** The immutable PlayFab username used for password authentication. */
+  playFabUsername?: string | undefined;
   /** User's display name */
   displayName?: string | undefined;
   /** User's email */
@@ -863,14 +919,7 @@ export interface ShopService {
  */
 export interface AdminService {
   getPlayers(): Promise<PlayerProfile[]>;
-  getPlayer(playFabId: string): Promise<{
-    profile: PlayerProfile;
-    progression: PlayerProgression;
-    wallet: PlayerWallet;
-    inventory: InventoryItem[];
-    achievements: Achievement[];
-    statistics: RoleStatistics[];
-  } | PlayerProfile | null>;
+  getPlayer(playFabId: string): Promise<AdminPlayerDetails | PlayerProfile | null>;
   getBugReports(): Promise<BugReport[]>;
   updateBugReport(id: string, updates: Partial<BugReport>): Promise<BugReport | void>;
   deleteBugReport(id: string): Promise<void>;

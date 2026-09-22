@@ -1092,9 +1092,9 @@ export const adminNotificationsStore = createStore<AdminNotification>(
 
 /* --------------------------------------------------------- equipped loadout */
 
-export type LoadoutSlot = "Hair" | "Tops" | "Bottoms" | "Eyeglasses";
+export type LoadoutSlot = "Hair" | "Tops" | "Bottoms" | "Shoe Wear" | "Accessories";
 
-export const loadoutSlots: LoadoutSlot[] = ["Hair", "Tops", "Bottoms", "Eyeglasses"];
+export const loadoutSlots: LoadoutSlot[] = ["Hair", "Tops", "Bottoms", "Shoe Wear", "Accessories"];
 
 export type LoadoutPiece = {
   slot: LoadoutSlot;
@@ -1113,7 +1113,7 @@ export const loadoutStore = createStore<LoadoutPiece>("cos.loadout", [
     gradient: "from-sky-400 to-blue-600",
   },
   {
-    slot: "Eyeglasses",
+    slot: "Accessories",
     itemName: "Round Ink Frames",
     initials: "RI",
     gradient: "from-slate-400 to-slate-600",

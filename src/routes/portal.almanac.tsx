@@ -1004,7 +1004,7 @@ function AlmanacPage() {
           height: 40px;
           margin: 0 auto;
           color: rgba(19, 27, 52, 0.2);
-          transform: translateY(-8px);
+          transform: translateY(-16px);
         }
 
         .empty-results h3 {
@@ -1012,14 +1012,14 @@ function AlmanacPage() {
           color: #131b34;
           font-weight: 900;
           text-transform: uppercase;
-          transform: translateY(-8px);
+          transform: translateY(-16px);
         }
 
         .empty-results p {
           margin: 8px 0 0;
           color: rgba(19, 27, 52, 0.45);
           font-size: 14px;
-          transform: translateY(-8px);
+          transform: translateY(-16px);
         }
 
         /* MODAL */

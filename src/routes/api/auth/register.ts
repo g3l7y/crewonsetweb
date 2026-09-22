@@ -1,8 +1,8 @@
 import { createFileRoute } from '@tanstack/react-router';
 import { isMockMode, PLAYFAB_TITLE_ID } from '@/lib/playfab/config';
 import { createSessionCookies } from '@/lib/playfab/session';
-import { isValidPassword, isValidUsername, PASSWORD_ERROR, USERNAME_ERROR } from '@/lib/validation';
-import { registerMockAccount } from '@/lib/playfab/mock-accounts';
+import { isValidEmail, isValidPassword, isValidUsername, EMAIL_ERROR, PASSWORD_ERROR, USERNAME_ERROR } from '@/lib/validation';
+import { isMockEmailTaken, isMockUsernameTaken, registerMockAccount } from '@/lib/playfab/mock-accounts';
 import { syncPlayFabContactEmail } from '@/lib/playfab/contact-email';
 import type { SessionData, AuthResponse } from '@/lib/playfab/types';
 
@@ -17,12 +17,19 @@ export const Route = createFileRoute('/api/auth/register')({
             username?: string;
           };
 
-          const normalizedEmail = email?.trim() ?? '';
+          const normalizedEmail = email?.trim().toLowerCase() ?? '';
           const normalizedUsername = username?.trim() ?? '';
 
           if (!normalizedEmail || !password || !normalizedUsername) {
             return Response.json(
               { success: false, error: 'Email, password, and username are required.' } satisfies AuthResponse,
+              { status: 400 },
+            );
+          }
+
+          if (!isValidEmail(normalizedEmail)) {
+            return Response.json(
+              { success: false, error: EMAIL_ERROR } satisfies AuthResponse,
               { status: 400 },
             );
           }
@@ -44,6 +51,18 @@ export const Route = createFileRoute('/api/auth/register')({
           let session: SessionData;
 
           if (isMockMode()) {
+            if (isMockUsernameTaken(normalizedUsername)) {
+              return Response.json(
+                { success: false, error: 'That username is already in use. Please choose another.' } satisfies AuthResponse,
+                { status: 409 },
+              );
+            }
+            if (isMockEmailTaken(normalizedEmail)) {
+              return Response.json(
+                { success: false, error: 'That email is already in use. Please choose another.' } satisfies AuthResponse,
+                { status: 409 },
+              );
+            }
             const account = registerMockAccount(normalizedEmail, password, normalizedUsername);
             if (!account) {
               return Response.json(
@@ -72,12 +91,14 @@ export const Route = createFileRoute('/api/auth/register')({
             const pfResult = await playfabResponse.json();
 
             if (!playfabResponse.ok || pfResult.code !== 200) {
+              const duplicate = /already|not available|username|email/i.test(String(pfResult.errorMessage ?? '')) ||
+                [1006, 1009].includes(Number(pfResult.errorCode));
               return Response.json(
                 {
                   success: false,
                   error: pfResult.errorMessage ?? 'PlayFab registration failed.',
                 } satisfies AuthResponse,
-                { status: 400 },
+                { status: duplicate ? 409 : 400 },
               );
             }
 
@@ -87,6 +108,7 @@ export const Route = createFileRoute('/api/auth/register')({
               sessionTicket: pfData.SessionTicket,
               role: 'player',
               displayName: normalizedUsername,
+              playFabUsername: normalizedUsername,
               email: normalizedEmail,
             };
 

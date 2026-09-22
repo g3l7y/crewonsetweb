@@ -93,7 +93,11 @@ export const Route = createFileRoute('/api/admin/partnerships')({
             brand: String(brand),
             productType: String(productType),
             exactModel: String(exactModel),
-            link: link ? String(link) : undefined,
+            link: link
+              ? (/^https?:\/\//i.test(String(link).trim())
+                  ? String(link).trim()
+                  : `https://${String(link).trim()}`)
+              : undefined,
             budget: budget ? Number(budget) : undefined,
             duration: duration ? Number(duration) : undefined,
             durationUnit: durationUnit ? String(durationUnit) : undefined,

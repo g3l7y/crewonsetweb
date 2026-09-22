@@ -26,7 +26,8 @@ export function PartnershipForm() {
     const brandName = String(data.get("brandName") ?? "").trim();
     const productType = String(data.get("productType") ?? "");
     const exactModel = String(data.get("exactModel") ?? "").trim();
-    const link = String(data.get("link") ?? "").trim();
+    const rawLink = String(data.get("link") ?? "").trim();
+    const link = rawLink && (/^https?:\/\//i.test(rawLink) ? rawLink : `https://${rawLink}`);
     const budget = Number(data.get("budget"));
     const duration = Number(data.get("duration"));
     const durationUnit = String(data.get("durationUnit") ?? "Days") as "Days" | "Months";
@@ -51,9 +52,8 @@ export function PartnershipForm() {
       return;
     }
     if (link) {
-      const normalizedLink = /^https?:\/\//i.test(link) ? link : `https://${link}`;
       try {
-        const parsed = new URL(normalizedLink);
+        const parsed = new URL(link);
         if (!parsed.hostname.includes(".") || !/^[a-z0-9.-]+$/i.test(parsed.hostname)) {
           throw new Error("Invalid hostname");
         }
@@ -122,7 +122,7 @@ export function PartnershipForm() {
     return (
       <div className="rounded-xl border border-navy/10 bg-white p-8 text-center shadow-xl shadow-navy/5">
         <CheckCircle2 className="mx-auto size-12 text-[#278b78]" />
-        <h2 className="mt-4 text-2xl font-black uppercase">Application submitted</h2>
+        <h2 className="mt-4 text-2xl font-black uppercase text-yellow">Application submitted</h2>
         <p className="mt-3 leading-relaxed text-navy/60">
           Thanks for applying to bring your brand onto the set. Your application status is now{" "}
           <strong>Pending</strong> and our production team will review it shortly.

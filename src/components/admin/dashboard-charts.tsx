@@ -34,6 +34,52 @@ type ChartConfig = {
 };
 
 const MONTH_LABELS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+const MOCK_CHART_YEAR = 2026;
+
+const phpCurrencyFormatter = new Intl.NumberFormat("en-PH", {
+  style: "currency",
+  currency: "PHP",
+  minimumFractionDigits: 2,
+  maximumFractionDigits: 2,
+});
+
+function createMonthDate(year: number, month: number) {
+  return [String(year), String(month + 1).padStart(2, "0"), "01T00:00:00.000Z"].join("-");
+}
+
+function formatFullDate(value: string | number) {
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return String(value);
+
+  return new Intl.DateTimeFormat("en-US", {
+    month: "long",
+    day: "numeric",
+    year: "numeric",
+    timeZone: "UTC",
+  }).format(date);
+}
+
+function formatMonthTick(value: string | number) {
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return String(value);
+
+  return new Intl.DateTimeFormat("en-US", {
+    month: "short",
+    timeZone: "UTC",
+  }).format(date);
+}
+
+function formatPhp(value: number) {
+  return phpCurrencyFormatter.format(Number(value) || 0);
+}
+
+function formatPhpAxis(value: number) {
+  const amount = Number(value) || 0;
+  if (Math.abs(amount) >= 1000) {
+    return "₱" + (amount / 1000).toLocaleString("en-PH", { maximumFractionDigits: 1 }) + "k";
+  }
+  return "₱" + amount.toLocaleString("en-PH", { maximumFractionDigits: 0 });
+}
 
 type AdminSalesRecord = {
   date: string;
@@ -113,6 +159,7 @@ function ChartVisualization({
             dataKey="date"
             axisLine={false}
             tickLine={false}
+            tickFormatter={formatMonthTick}
             tick={{
               fill: "var(--control-muted, rgba(255,255,255,0.55))",
               fontSize: 12,
@@ -129,7 +176,7 @@ function ChartVisualization({
             }}
             tickFormatter={(value) =>
               currency
-                ? `$${Number(value) / 1000}k`
+                ? formatPhpAxis(Number(value))
                 : Number(value).toLocaleString()
             }
           />
@@ -155,9 +202,10 @@ function ChartVisualization({
             itemStyle={{
               color: "var(--control-ink, #ffffff)",
             }}
+            labelFormatter={(label) => formatFullDate(String(label))}
             formatter={(value) =>
               currency
-                ? [`$${Number(value).toLocaleString()}`, "Sales"]
+                ? [formatPhp(Number(value)), "Sales"]
                 : [Number(value).toLocaleString(), "Players"]
             }
           />
@@ -280,9 +328,9 @@ export function DashboardCharts({
   const playerData = useMemo(() => {
     if (mockMode) {
       const seededByMonth = new Map(playerChartData.map((point) => [point.date, point.players]));
-      return MONTH_LABELS.map((date) => ({
-        date,
-        players: seededByMonth.get(date) ?? 0,
+      return MONTH_LABELS.map((label, index) => ({
+        date: createMonthDate(MOCK_CHART_YEAR, index),
+        players: seededByMonth.get(label) ?? 0,
       }));
     }
 
@@ -302,14 +350,21 @@ export function DashboardCharts({
     }
 
     let cumulative = 0;
-    return MONTH_LABELS.map((date, index) => {
+    return MONTH_LABELS.map((_, index) => {
       cumulative += registrationsByMonth.get(index) ?? 0;
-      return { date, players: cumulative };
+      return { date: createMonthDate(latestYear, index), players: cumulative };
     });
   }, [adminPlayersQuery.data, mockMode]);
 
   const salesData = useMemo(() => {
     const salesByMonth = new Map<number, number>();
+    const realSales = realSalesQuery.data ?? [];
+    const realSaleYears = realSales
+      .map((sale) => new Date(sale.date).getUTCFullYear())
+      .filter((year) => Number.isFinite(year));
+    const latestSalesYear = realSaleYears.length > 0
+      ? Math.max(...realSaleYears)
+      : new Date().getUTCFullYear();
 
     if (mockMode) {
       for (const topUp of topUps) {
@@ -327,18 +382,22 @@ export function DashboardCharts({
         }
       }
     } else {
-      for (const sale of realSalesQuery.data ?? []) {
-        if (sale.status !== "Completed") continue;
+      // Real mode treats every PayMongo ledger row as a recorded money event,
+      // including simulated pending/failed states, so the admin's sales view
+      // reflects the complete financial ledger.
+      for (const sale of realSales) {
         const date = new Date(sale.date);
         const amount = Number(sale.amount);
         if (Number.isNaN(date.getTime()) || !Number.isFinite(amount)) continue;
+        if (date.getUTCFullYear() !== latestSalesYear) continue;
         const month = date.getUTCMonth();
         salesByMonth.set(month, (salesByMonth.get(month) ?? 0) + amount);
       }
     }
 
-    return MONTH_LABELS.map((date, index) => ({
-      date,
+    const chartYear = mockMode ? MOCK_CHART_YEAR : latestSalesYear;
+    return MONTH_LABELS.map((_, index) => ({
+      date: createMonthDate(chartYear, index),
       sales: salesByMonth.get(index) ?? 0,
     }));
   }, [mockMode, realSalesQuery.data, topUps]);

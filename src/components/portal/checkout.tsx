@@ -15,7 +15,7 @@ import {
 import { topUpsStore } from "@/lib/admin-demo-data";
 import { walletStore, formatCoins, notificationsStore, uid } from "@/lib/demo/store";
 import { isMockMode } from "@/lib/playfab/config";
-import { usePlayerWallet, useSession } from "@/lib/playfab/hooks";
+import { usePlayerProfile, usePlayerWallet, useSession } from "@/lib/playfab/hooks";
 import { EMAIL_ERROR, isValidEmail } from "@/lib/validation";
 
 type CheckoutPageProps = {
@@ -35,6 +35,7 @@ type CheckoutResponse = {
 export default function CheckoutPage({ onBack }: CheckoutPageProps) {
   const mockMode = isMockMode();
   const { data: session } = useSession();
+  const profileQuery = usePlayerProfile();
   const walletQuery = usePlayerWallet();
   const [wallet, setWallet] = walletStore.useStore();
   const [notifications, setNotifications] = notificationsStore.useStore();
@@ -44,12 +45,17 @@ export default function CheckoutPage({ onBack }: CheckoutPageProps) {
   const [processing, setProcessing] = useState(false);
   const [submitted, setSubmitted] = useState(false);
 
+  const accountEmail = (profileQuery.data?.email || session?.email || "").trim();
   const balance = mockMode ? (wallet[0] ?? 0) : (walletQuery.data?.cCoins ?? 0);
 
   const pack = useMemo(
     () => (payload?.kind === "coins" ? coinPackages.find((item) => item.id === payload.packageId) : undefined),
     [payload],
   );
+
+  useEffect(() => {
+    if (accountEmail) setEmail(accountEmail);
+  }, [accountEmail]);
 
   function completeDemoPurchase(reference: string) {
     if (!pack) return;
@@ -195,8 +201,21 @@ export default function CheckoutPage({ onBack }: CheckoutPageProps) {
       return;
     }
 
+    const normalizedEmail = email.trim().toLowerCase();
+    const normalizedAccountEmail = accountEmail.toLowerCase();
+
     if (!isValidEmail(email)) {
       setError(EMAIL_ERROR);
+      return;
+    }
+
+    if (!normalizedAccountEmail) {
+      setError("We could not verify the email saved on your player account. Please refresh and try again.");
+      return;
+    }
+
+    if (normalizedEmail !== normalizedAccountEmail) {
+      setError("The checkout email must match the email saved on your player account.");
       return;
     }
 
@@ -206,7 +225,7 @@ export default function CheckoutPage({ onBack }: CheckoutPageProps) {
       const response = await fetch("/api/paymongo/checkout", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ packageId: pack.id, email: email.trim() }),
+        body: JSON.stringify({ packageId: pack.id, email: normalizedEmail }),
       });
       const result = (await response.json().catch(() => ({}))) as CheckoutResponse;
 
@@ -325,7 +344,7 @@ export default function CheckoutPage({ onBack }: CheckoutPageProps) {
                 type="email"
                 value={email}
                 onChange={(event) => setEmail(event.target.value)}
-                placeholder="you@example.com"
+                placeholder={accountEmail || "Loading your account email..."}
                 className="mt-2 w-full rounded-md border border-navy/15 px-3 py-3 text-sm outline-none focus:border-coral"
               />
             </div>

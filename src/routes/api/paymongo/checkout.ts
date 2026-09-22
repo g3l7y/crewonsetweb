@@ -103,6 +103,20 @@ export const Route = createFileRoute('/api/paymongo/checkout')({
             return Response.json({ error: 'Please enter a valid email address.' }, { status: 400 });
           }
 
+          const accountEmail = session.email?.trim().toLowerCase() || "";
+          if (!accountEmail) {
+            return Response.json(
+              { error: "Your player account does not have a saved email address. Add one before purchasing." },
+              { status: 400 },
+            );
+          }
+          if (email.toLowerCase() !== accountEmail) {
+            return Response.json(
+              { error: "The checkout email must match the email saved on your player account." },
+              { status: 400 },
+            );
+          }
+
           const orderId = createOrderId();
           const totalCoins = pack.coins;
           const amountInCentavos = Math.round(pack.pricePhp * 100);

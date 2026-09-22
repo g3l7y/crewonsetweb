@@ -1,7 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { PLAYFAB_TITLE_ID, isMockMode } from "@/lib/playfab/config";
 import { PLAYFAB_DATA_KEYS } from "@/lib/playfab/constants";
-import { createSessionCookies } from "@/lib/playfab/session";
+import { createSessionCookies, hasActivePlayFabBan } from "@/lib/playfab/session";
 import type { AuthResponse, SessionData } from "@/lib/playfab/types";
 import { getPlayFabContactEmail, syncPlayFabContactEmail } from "@/lib/playfab/contact-email";
 
@@ -54,6 +54,17 @@ export const Route = createFileRoute("/api/auth/google")({
           }
 
           const pfData = pfResult.data;
+          const banSecret = process.env['PLAYFAB_SECRET_KEY']?.trim();
+          if (banSecret) {
+            try {
+              if (await hasActivePlayFabBan(pfData.PlayFabId, banSecret)) {
+                return Response.json({ success: false, error: 'This player account is banned.' } satisfies AuthResponse, { status: 403 });
+              }
+            } catch (banError) {
+              console.error('[PlayFab] Could not verify account ban status:', banError);
+              return Response.json({ success: false, error: 'Unable to verify this account status. Please try again.' } satisfies AuthResponse, { status: 503 });
+            }
+          }
           const accountInfo = pfData.InfoResultPayload?.AccountInfo;
           const playerProfile = pfData.InfoResultPayload?.PlayerProfile;
           const email = accountInfo?.PrivateInfo?.Email ?? "";

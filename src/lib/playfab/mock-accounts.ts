@@ -77,6 +77,13 @@ export function isMockUsernameTaken(username: string) {
   );
 }
 
+export function isMockEmailTaken(email: string) {
+  const normalizedEmail = accountKey(email);
+  return Array.from(mockAccounts.values()).some(
+    (account) => accountKey(account.email) === normalizedEmail,
+  );
+}
+
 export function updateMockAccountUsername(sessionTicket: string, username: string) {
   const account = Array.from(mockAccounts.values()).find(
     (candidate) => candidate.sessionTicket === sessionTicket,
@@ -95,7 +102,7 @@ export function updateMockAccountUsername(sessionTicket: string, username: strin
 }
 
 export function registerMockAccount(email: string, password: string, username: string) {
-  if (isMockUsernameTaken(username)) return null;
+  if (isMockUsernameTaken(username) || isMockEmailTaken(email)) return null;
 
   const suffix = Date.now().toString(36) + "-" + Math.random().toString(36).slice(2, 7);
   const account: MockAccount = {

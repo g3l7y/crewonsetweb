@@ -38,6 +38,7 @@ import { CosmeticArt } from "@/components/portal/cosmetic-art";
 import { cosmeticCatalog, ownedItemsStore } from "@/lib/demo/portal-shop";
 import { getProfileArtwork } from "@/lib/demo/profile-art";
 import { isMockMode } from "@/lib/playfab/config";
+import { formatSocialUsername, getSocialProfileUrl, normalizeSocialUsername } from "@/lib/profile-socials";
 import { QUERY_KEYS, useCatalog, usePlayerInventory, usePlayerLoadout, usePlayerProfile, usePlayerProgression, useTransactions, useUpdateProfile } from "@/lib/playfab/hooks";
 import { Coins, Lock } from "lucide-react";
 
@@ -89,7 +90,7 @@ function CrewProfilePage() {
   const realCatalogItems = useMemo(() => (catalogQuery.data ?? [])
     .map((remote) => {
       const category = remote.category as (typeof cosmeticCatalog)[number]["category"];
-      if (!["Hair", "Tops", "Bottoms", "Eyeglasses"].includes(category)) return null;
+      if (!["Hair", "Tops", "Bottoms", "Shoe Wear", "Accessories"].includes(category)) return null;
       const rarityValue = String(remote.rarity ?? "").toLowerCase();
       const rarity = rarityValue === "rare"
         ? "Rare"
@@ -119,14 +120,16 @@ function CrewProfilePage() {
     Hair: demoOwnedItems.find((item) => item.category === "Hair"),
     Tops: demoOwnedItems.find((item) => item.category === "Tops"),
     Bottoms: demoOwnedItems.find((item) => item.category === "Bottoms"),
-    Eyeglasses: demoOwnedItems.find((item) => item.category === "Eyeglasses"),
+    "Shoe Wear": demoOwnedItems.find((item) => item.category === "Shoe Wear"),
+    Accessories: demoOwnedItems.find((item) => item.category === "Accessories"),
   };
   const realLoadout = loadoutQuery.data ?? {};
   const realEquippedBySlot = {
     Hair: realOwnedItems.find((item) => item.id === (realLoadout.Hair ?? realLoadout.hair)),
     Tops: realOwnedItems.find((item) => item.id === (realLoadout.Tops ?? realLoadout.tops ?? realLoadout.Shirt ?? realLoadout.shirt ?? realLoadout.costume)),
-    Bottoms: realOwnedItems.find((item) => item.id === (realLoadout.Bottoms ?? realLoadout.bottoms ?? realLoadout.Shoes ?? realLoadout.shoes ?? realLoadout.equipment)),
-    Eyeglasses: realOwnedItems.find((item) => item.id === (realLoadout.Eyeglasses ?? realLoadout.eyeglasses ?? realLoadout.Accessory ?? realLoadout.accessory ?? realLoadout.decorator)),
+    Bottoms: realOwnedItems.find((item) => item.id === (realLoadout.Bottoms ?? realLoadout.bottoms)),
+    "Shoe Wear": realOwnedItems.find((item) => item.id === (realLoadout["Shoe Wear"] ?? realLoadout.ShoeWear ?? realLoadout.Shoes ?? realLoadout.shoes ?? realLoadout.equipment)),
+    Accessories: realOwnedItems.find((item) => item.id === (realLoadout.Accessories ?? realLoadout.Accessory ?? realLoadout.accessory ?? realLoadout.Eyeglasses ?? realLoadout.eyeglasses ?? realLoadout.decorator)),
   };
   const equippedBySlot = mockMode ? demoEquippedBySlot : realEquippedBySlot;
 
@@ -196,12 +199,18 @@ function CrewProfilePage() {
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
+    const profile = profileQuery.data;
     if (mockMode) {
       setAccount(readProfileAccount());
+      if (!profile) return;
+      setBio(profile.bio || "");
+      setTwitter(normalizeSocialUsername(profile.socialLinks?.twitter, "twitter"));
+      setInstagram(normalizeSocialUsername(profile.socialLinks?.instagram, "instagram"));
+      setYoutube(normalizeSocialUsername(profile.socialLinks?.youtube, "youtube"));
+      setProfileImage(profile.avatarUrl || getProfileArtwork(profile.username || profile.displayName || "Player"));
       return;
     }
 
-    const profile = profileQuery.data;
     if (!profile) return;
 
     setAccount({
@@ -209,9 +218,9 @@ function CrewProfilePage() {
       email: profile.email || "",
     });
     setBio(profile.bio || "");
-    setTwitter(profile.socialLinks?.twitter || "");
-    setInstagram(profile.socialLinks?.instagram || "");
-    setYoutube(profile.socialLinks?.youtube || "");
+    setTwitter(normalizeSocialUsername(profile.socialLinks?.twitter, "twitter"));
+    setInstagram(normalizeSocialUsername(profile.socialLinks?.instagram, "instagram"));
+    setYoutube(normalizeSocialUsername(profile.socialLinks?.youtube, "youtube"));
     setProfileImage(profile.avatarUrl || getProfileArtwork(profile.username || profile.displayName || "Player"));
   }, [mockMode, profileQuery.data]);
 
@@ -264,17 +273,27 @@ function CrewProfilePage() {
       username: (draftUsername.trim() || account.username).toUpperCase(),
       email: draftEmail.trim() || account.email,
     };
+    const socialLinks = {
+      twitter: normalizeSocialUsername(draftTwitter, "twitter"),
+      instagram: normalizeSocialUsername(draftInstagram, "instagram"),
+      youtube: normalizeSocialUsername(draftYoutube, "youtube"),
+    };
+    const normalizedBio = draftBio.trim();
 
     if (!mockMode) {
       try {
+        const credentialsChanged =
+          nextAccount.username.toLowerCase() !== account.username.toLowerCase() ||
+          nextAccount.email.toLowerCase() !== account.email.toLowerCase();
         await updateProfileMutation.mutateAsync({
-          username: nextAccount.username,
-          bio: draftBio,
-          socialLinks: {
-            twitter: draftTwitter,
-            instagram: draftInstagram,
-            youtube: draftYoutube,
-          },
+          ...(credentialsChanged && nextAccount.username.toLowerCase() !== account.username.toLowerCase()
+            ? { username: nextAccount.username }
+            : {}),
+          ...(credentialsChanged && nextAccount.email.toLowerCase() !== account.email.toLowerCase()
+            ? { email: nextAccount.email }
+            : {}),
+          bio: normalizedBio,
+          socialLinks,
         });
       } catch {
         setFieldError("PlayFab could not save your profile changes. Please try again.");
@@ -293,9 +312,11 @@ function CrewProfilePage() {
             throw new Error(result.error ?? "That username is already in use. Please choose another.");
           }
         }
+
+        await updateProfileMutation.mutateAsync({ bio: normalizedBio, socialLinks });
         window.localStorage.setItem(
           PROFILE_ACCOUNT_KEY,
-          JSON.stringify(nextAccount)
+          JSON.stringify(nextAccount),
         );
         const existingPlayerAccount = window.localStorage.getItem("player-account");
         const playerAccount = existingPlayerAccount
@@ -303,21 +324,21 @@ function CrewProfilePage() {
           : {};
         window.localStorage.setItem(
           "player-account",
-          JSON.stringify({ ...playerAccount, ...nextAccount }),
+          JSON.stringify({ ...playerAccount, ...nextAccount, bio: normalizedBio, socialLinks }),
         );
         if (draftPassword) {
           window.localStorage.setItem("cos.profile.password", draftPassword);
         }
       } catch {
-        setFieldError("Unable to apply the username change. Please try again.");
+        setFieldError("Unable to save your profile changes. Please try again.");
         return;
       }
     }
 
-    setBio(draftBio);
-    setTwitter(draftTwitter);
-    setInstagram(draftInstagram);
-    setYoutube(draftYoutube);
+    setBio(normalizedBio);
+    setTwitter(socialLinks.twitter);
+    setInstagram(socialLinks.instagram);
+    setYoutube(socialLinks.youtube);
     setAccount(nextAccount);
     setDraftPassword("");
     setDraftPasswordConfirm("");
@@ -586,37 +607,37 @@ function CrewProfilePage() {
 
                 {twitter && (
                   <a
-                    href={twitter}
+                    href={getSocialProfileUrl("twitter", twitter)}
                     target="_blank"
                     rel="noreferrer"
                     className="inline-flex items-center gap-2 rounded-md border border-white/10 bg-white/[0.035] px-3.5 py-2.5 text-sm font-bold text-white/60 transition hover:border-white/20 hover:bg-white/[0.07] hover:text-white"
                   >
                     <Twitter className="size-4" />
-                    Twitter / X
+                    <span>Twitter / X <span className="text-white/35">{formatSocialUsername("twitter", twitter)}</span></span>
                   </a>
                 )}
 
                 {instagram && (
                   <a
-                    href={instagram}
+                    href={getSocialProfileUrl("instagram", instagram)}
                     target="_blank"
                     rel="noreferrer"
                     className="inline-flex items-center gap-2 rounded-md border border-white/10 bg-white/[0.035] px-3.5 py-2.5 text-sm font-bold text-white/60 transition hover:border-coral/40 hover:bg-coral/10 hover:text-coral"
                   >
                     <Instagram className="size-4" />
-                    Instagram
+                    <span>Instagram <span className="text-white/35">{formatSocialUsername("instagram", instagram)}</span></span>
                   </a>
                 )}
 
                 {youtube && (
                   <a
-                    href={youtube}
+                    href={getSocialProfileUrl("youtube", youtube)}
                     target="_blank"
                     rel="noreferrer"
                     className="inline-flex items-center gap-2 rounded-md border border-white/10 bg-white/[0.035] px-3.5 py-2.5 text-sm font-bold text-white/60 transition hover:border-red-400/40 hover:bg-red-400/10 hover:text-red-400"
                   >
                     <Youtube className="size-4" />
-                    YouTube
+                    <span>YouTube <span className="text-white/35">{formatSocialUsername("youtube", youtube)}</span></span>
                   </a>
                 )}
 
@@ -988,12 +1009,12 @@ function CrewProfilePage() {
                     <Twitter className="absolute left-4 top-1/2 size-4 -translate-y-1/2 text-white/30" />
 
                     <input
-                      type="url"
+                      type="text"
                       value={draftTwitter}
                       onChange={(event) =>
                         setDraftTwitter(event.target.value)
                       }
-                      placeholder="https://x.com/yourusername"
+                      placeholder="@yourusername"
                       className="w-full rounded-lg border border-white/10 bg-[#0d121c] py-3.5 pl-11 pr-4 text-sm text-white outline-none transition placeholder:text-white/20 focus:border-coral focus:ring-4 focus:ring-coral/10"
                     />
                   </div>
@@ -1004,12 +1025,12 @@ function CrewProfilePage() {
                     <Instagram className="absolute left-4 top-1/2 size-4 -translate-y-1/2 text-white/30" />
 
                     <input
-                      type="url"
+                      type="text"
                       value={draftInstagram}
                       onChange={(event) =>
                         setDraftInstagram(event.target.value)
                       }
-                      placeholder="https://instagram.com/yourusername"
+                      placeholder="@yourusername"
                       className="w-full rounded-lg border border-white/10 bg-[#0d121c] py-3.5 pl-11 pr-4 text-sm text-white outline-none transition placeholder:text-white/20 focus:border-coral focus:ring-4 focus:ring-coral/10"
                     />
                   </div>
@@ -1020,12 +1041,12 @@ function CrewProfilePage() {
                     <Youtube className="absolute left-4 top-1/2 size-4 -translate-y-1/2 text-white/30" />
 
                     <input
-                      type="url"
+                      type="text"
                       value={draftYoutube}
                       onChange={(event) =>
                         setDraftYoutube(event.target.value)
                       }
-                      placeholder="https://youtube.com/@yourchannel"
+                      placeholder="@yourchannel"
                       className="w-full rounded-lg border border-white/10 bg-[#0d121c] py-3.5 pl-11 pr-4 text-sm text-white outline-none transition placeholder:text-white/20 focus:border-coral focus:ring-4 focus:ring-coral/10"
                     />
                   </div>

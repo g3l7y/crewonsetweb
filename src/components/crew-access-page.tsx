@@ -413,7 +413,7 @@ function GoogleProfileSetupModal({ onComplete }: { onComplete: () => void }) {
     setSaving(true);
     setError("");
     try {
-      const response = await fetch("/api/auth/profile", {
+      const response = await fetch("/api/auth/profile/setup", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ username: normalized }),

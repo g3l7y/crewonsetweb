@@ -3,8 +3,9 @@ import { PLAYFAB_API_BASE, isMockMode } from "@/lib/playfab/config";
 import { syncPlayFabContactEmail } from "@/lib/playfab/contact-email";
 import { PLAYFAB_DATA_KEYS } from "@/lib/playfab/constants";
 import { createSessionCookies, validateSessionFromRequest } from "@/lib/playfab/session";
-import { getMockAccountBySessionTicket, updateMockAccountEmail, updateMockAccountUsername } from "@/lib/playfab/mock-accounts";
+import { getMockAccountBySessionTicket, isMockEmailTaken, isMockUsernameTaken, updateMockAccountEmail, updateMockAccountUsername } from "@/lib/playfab/mock-accounts";
 import { isValidEmail, isValidUsername, EMAIL_ERROR, USERNAME_ERROR } from "@/lib/validation";
+import { findPlayFabAccountByIdentifier, verifyPlayFabCurrentPassword } from "@/lib/playfab/credential-verification";
 
 type ProfileMetadata = {
   username?: string;
@@ -35,7 +36,7 @@ export const Route = createFileRoute("/api/auth/profile")({
           return Response.json({ success: false, error: "You must be signed in as a player." }, { status: 401 });
         }
 
-        const body = (await request.json()) as { username?: string; email?: string; bio?: string; socialLinks?: ProfileMetadata["socialLinks"] };
+        const body = (await request.json()) as { username?: string; email?: string; currentPassword?: string; bio?: string; socialLinks?: ProfileMetadata["socialLinks"] };
         const username = body.username?.trim() ?? "";
         const email = body.email?.trim().toLowerCase() ?? "";
         if (username && !isValidUsername(username)) return Response.json({ success: false, error: USERNAME_ERROR }, { status: 400 });
@@ -44,9 +45,23 @@ export const Route = createFileRoute("/api/auth/profile")({
           return Response.json({ success: false, error: "A profile field is required." }, { status: 400 });
         }
 
+        const credentialChange = Boolean(username || email);
+        if (credentialChange && !body.currentPassword) {
+          return Response.json({ success: false, error: "Enter your current password before changing account credentials." }, { status: 400 });
+        }
+
         if (isMockMode()) {
           const account = getMockAccountBySessionTicket(session.sessionTicket);
           if (!account) return Response.json({ success: false, error: "Session expired. Please sign in again." }, { status: 401 });
+          if (credentialChange && account.password !== body.currentPassword) {
+            return Response.json({ success: false, error: "Current password is incorrect." }, { status: 401 });
+          }
+          if (username && username.toLowerCase() !== account.username.toLowerCase() && isMockUsernameTaken(username)) {
+            return Response.json({ success: false, error: "That username is already in use. Please choose another." }, { status: 409 });
+          }
+          if (email && email.toLowerCase() !== account.email.toLowerCase() && isMockEmailTaken(email)) {
+            return Response.json({ success: false, error: "That email is already in use. Please choose another." }, { status: 409 });
+          }
           if (username) {
             const updatedUsername = updateMockAccountUsername(session.sessionTicket, username);
             if (!updatedUsername.success) return Response.json(updatedUsername, { status: 409 });
@@ -67,6 +82,17 @@ export const Route = createFileRoute("/api/auth/profile")({
         }
 
         try {
+          if (credentialChange && !(await verifyPlayFabCurrentPassword(session, body.currentPassword ?? ""))) {
+            return Response.json({ success: false, error: "Current password is incorrect." }, { status: 401 });
+          }
+
+          for (const candidate of [username, email].filter(Boolean)) {
+            const existing = await findPlayFabAccountByIdentifier(candidate);
+            if (existing && existing.playFabId !== session.playFabId) {
+              return Response.json({ success: false, error: candidate === email ? "That email is already in use. Please choose another." : "That username is already in use. Please choose another." }, { status: 409 });
+            }
+          }
+
           if (username) {
             await playFabClientRequest("/Client/UpdateUserTitleDisplayName", session.sessionTicket, { DisplayName: username });
           }

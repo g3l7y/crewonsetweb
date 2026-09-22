@@ -36,6 +36,7 @@ import {
   getVisiblePlayerStatus,
 } from "@/lib/demo/friends";
 import { getProfileArtwork } from "@/lib/demo/profile-art";
+import { formatSocialUsername, getSocialProfileUrl, type SocialPlatform } from "@/lib/profile-socials";
 import { isMockMode } from "@/lib/playfab/config";
 import {
   useAddFriend,
@@ -1698,7 +1699,7 @@ function FriendsPage() {
 ========================================================= */
 
 function PlayerProfile({
-  player,
+  player: initialPlayer,
   canViewStatus,
   relationship,
   onAdd,
@@ -1712,6 +1713,58 @@ function PlayerProfile({
   isAdding: boolean;
   onClose: () => void;
 }) {
+  const [livePlayer, setLivePlayer] = useState<Friend>(initialPlayer);
+
+  useEffect(() => {
+    let active = true;
+    setLivePlayer(initialPlayer);
+
+    if (isMockMode() || !initialPlayer.crewId) {
+      return () => {
+        active = false;
+      };
+    }
+
+    void fetch(`/api/auth/player-profile?playFabId=${encodeURIComponent(initialPlayer.crewId)}`, {
+      credentials: "include",
+    })
+      .then(async (response) => {
+        if (!response.ok) return null;
+        return await response.json() as {
+          success?: boolean;
+          profile?: {
+            username?: string;
+            avatarUrl?: string | null;
+            bio?: string;
+            socialLinks?: Socials;
+            joinedAt?: string | null;
+          };
+        };
+      })
+      .then((result) => {
+        if (!active || !result?.success || !result.profile) return;
+        const remote = result.profile;
+        setLivePlayer((current) => ({
+          ...current,
+          name: remote.username || current.name,
+          profileImage: remote.avatarUrl || current.profileImage,
+          bio: remote.bio ?? current.bio,
+          joinedDate: remote.joinedAt
+            ? new Date(remote.joinedAt).toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" })
+            : current.joinedDate,
+          socials: remote.socialLinks ?? {},
+        }));
+      })
+      .catch(() => {
+        // Keep the list data as a graceful fallback when the public profile is unavailable.
+      });
+
+    return () => {
+      active = false;
+    };
+  }, [initialPlayer]);
+
+  const player = livePlayer;
   const profileImage = player.profileImage ?? getProfileArtwork(player.name);
   const visibleStatus = getVisiblePlayerStatus(
     player.online,
@@ -2306,10 +2359,9 @@ function SocialLink({
 }) {
   return (
     <a
-      href="#"
-      onClick={(event) =>
-        event.preventDefault()
-      }
+      href={getSocialProfileUrl(label.toLowerCase() as SocialPlatform, username)}
+      target="_blank"
+      rel="noreferrer"
       className="group flex items-center gap-3 rounded-md border border-white/[0.07] bg-white/[0.025] px-4 py-3 transition hover:border-coral hover:bg-white/[0.04]"
     >
 
@@ -2324,7 +2376,7 @@ function SocialLink({
         </span>
 
         <span className="mt-0.5 block truncate text-xs font-black text-white/75">
-          @{username}
+          {formatSocialUsername(label.toLowerCase() as SocialPlatform, username)}
         </span>
 
       </span>
