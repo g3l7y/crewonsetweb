@@ -12,6 +12,7 @@ import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as AdminRouteImport } from './routes/admin'
 import { Route as AlmanacRouteImport } from './routes/almanac'
+import { Route as BrandPaymentResultRouteImport } from './routes/brand-payment-result'
 import { Route as ContactRouteImport } from './routes/contact'
 import { Route as DownloadRouteImport } from './routes/download'
 import { Route as FeaturesRouteImport } from './routes/features'
@@ -63,6 +64,7 @@ import { Route as ApiAuthPlayerProfileRouteImport } from './routes/api/auth/play
 import { Route as ApiAuthProfileRouteImport } from './routes/api/auth/profile'
 import { Route as ApiAuthRegisterRouteImport } from './routes/api/auth/register'
 import { Route as ApiAuthSessionRouteImport } from './routes/api/auth/session'
+import { Route as ApiPaymongoBrandStatusRouteImport } from './routes/api/paymongo/brand-status'
 import { Route as ApiPaymongoCheckoutRouteImport } from './routes/api/paymongo/checkout'
 import { Route as ApiPaymongoReturnRouteImport } from './routes/api/paymongo/return'
 import { Route as ApiPaymongoStatusRouteImport } from './routes/api/paymongo/status'
@@ -90,6 +92,11 @@ const AdminRoute = AdminRouteImport.update({
 const AlmanacRoute = AlmanacRouteImport.update({
   id: '/almanac',
   path: '/almanac',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const BrandPaymentResultRoute = BrandPaymentResultRouteImport.update({
+  id: '/brand-payment-result',
+  path: '/brand-payment-result',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ContactRoute = ContactRouteImport.update({
@@ -348,6 +355,11 @@ const ApiAuthSessionRoute = ApiAuthSessionRouteImport.update({
   path: '/api/auth/session',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiPaymongoBrandStatusRoute = ApiPaymongoBrandStatusRouteImport.update({
+  id: '/api/paymongo/brand-status',
+  path: '/api/paymongo/brand-status',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiPaymongoCheckoutRoute = ApiPaymongoCheckoutRouteImport.update({
   id: '/api/paymongo/checkout',
   path: '/api/paymongo/checkout',
@@ -421,6 +433,7 @@ export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/admin': typeof AdminRouteWithChildren
   '/almanac': typeof AlmanacRoute
+  '/brand-payment-result': typeof BrandPaymentResultRoute
   '/contact': typeof ContactRoute
   '/download': typeof DownloadRoute
   '/features': typeof FeaturesRoute
@@ -472,6 +485,7 @@ export interface FileRoutesByFullPath {
   '/api/auth/profile': typeof ApiAuthProfileRouteWithChildren
   '/api/auth/register': typeof ApiAuthRegisterRoute
   '/api/auth/session': typeof ApiAuthSessionRoute
+  '/api/paymongo/brand-status': typeof ApiPaymongoBrandStatusRoute
   '/api/paymongo/checkout': typeof ApiPaymongoCheckoutRoute
   '/api/paymongo/return': typeof ApiPaymongoReturnRoute
   '/api/paymongo/status': typeof ApiPaymongoStatusRoute
@@ -489,6 +503,7 @@ export interface FileRoutesByFullPath {
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/almanac': typeof AlmanacRoute
+  '/brand-payment-result': typeof BrandPaymentResultRoute
   '/contact': typeof ContactRoute
   '/download': typeof DownloadRoute
   '/features': typeof FeaturesRoute
@@ -539,6 +554,7 @@ export interface FileRoutesByTo {
   '/api/auth/profile': typeof ApiAuthProfileRouteWithChildren
   '/api/auth/register': typeof ApiAuthRegisterRoute
   '/api/auth/session': typeof ApiAuthSessionRoute
+  '/api/paymongo/brand-status': typeof ApiPaymongoBrandStatusRoute
   '/api/paymongo/checkout': typeof ApiPaymongoCheckoutRoute
   '/api/paymongo/return': typeof ApiPaymongoReturnRoute
   '/api/paymongo/status': typeof ApiPaymongoStatusRoute
@@ -558,6 +574,7 @@ export interface FileRoutesById {
   '/': typeof IndexRoute
   '/admin': typeof AdminRouteWithChildren
   '/almanac': typeof AlmanacRoute
+  '/brand-payment-result': typeof BrandPaymentResultRoute
   '/contact': typeof ContactRoute
   '/download': typeof DownloadRoute
   '/features': typeof FeaturesRoute
@@ -609,6 +626,7 @@ export interface FileRoutesById {
   '/api/auth/profile': typeof ApiAuthProfileRouteWithChildren
   '/api/auth/register': typeof ApiAuthRegisterRoute
   '/api/auth/session': typeof ApiAuthSessionRoute
+  '/api/paymongo/brand-status': typeof ApiPaymongoBrandStatusRoute
   '/api/paymongo/checkout': typeof ApiPaymongoCheckoutRoute
   '/api/paymongo/return': typeof ApiPaymongoReturnRoute
   '/api/paymongo/status': typeof ApiPaymongoStatusRoute
@@ -629,6 +647,7 @@ export interface FileRouteTypes {
     | '/'
     | '/admin'
     | '/almanac'
+    | '/brand-payment-result'
     | '/contact'
     | '/download'
     | '/features'
@@ -680,6 +699,7 @@ export interface FileRouteTypes {
     | '/api/auth/profile'
     | '/api/auth/register'
     | '/api/auth/session'
+    | '/api/paymongo/brand-status'
     | '/api/paymongo/checkout'
     | '/api/paymongo/return'
     | '/api/paymongo/status'
@@ -697,6 +717,7 @@ export interface FileRouteTypes {
   to:
     | '/'
     | '/almanac'
+    | '/brand-payment-result'
     | '/contact'
     | '/download'
     | '/features'
@@ -747,6 +768,7 @@ export interface FileRouteTypes {
     | '/api/auth/profile'
     | '/api/auth/register'
     | '/api/auth/session'
+    | '/api/paymongo/brand-status'
     | '/api/paymongo/checkout'
     | '/api/paymongo/return'
     | '/api/paymongo/status'
@@ -765,6 +787,7 @@ export interface FileRouteTypes {
     | '/'
     | '/admin'
     | '/almanac'
+    | '/brand-payment-result'
     | '/contact'
     | '/download'
     | '/features'
@@ -816,6 +839,7 @@ export interface FileRouteTypes {
     | '/api/auth/profile'
     | '/api/auth/register'
     | '/api/auth/session'
+    | '/api/paymongo/brand-status'
     | '/api/paymongo/checkout'
     | '/api/paymongo/return'
     | '/api/paymongo/status'
@@ -835,6 +859,7 @@ export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AdminRoute: typeof AdminRouteWithChildren
   AlmanacRoute: typeof AlmanacRoute
+  BrandPaymentResultRoute: typeof BrandPaymentResultRoute
   ContactRoute: typeof ContactRoute
   DownloadRoute: typeof DownloadRoute
   FeaturesRoute: typeof FeaturesRoute
@@ -866,6 +891,7 @@ export interface RootRouteChildren {
   ApiAuthProfileRoute: typeof ApiAuthProfileRouteWithChildren
   ApiAuthRegisterRoute: typeof ApiAuthRegisterRoute
   ApiAuthSessionRoute: typeof ApiAuthSessionRoute
+  ApiPaymongoBrandStatusRoute: typeof ApiPaymongoBrandStatusRoute
   ApiPaymongoCheckoutRoute: typeof ApiPaymongoCheckoutRoute
   ApiPaymongoReturnRoute: typeof ApiPaymongoReturnRoute
   ApiPaymongoStatusRoute: typeof ApiPaymongoStatusRoute
@@ -901,6 +927,13 @@ declare module '@tanstack/react-router' {
       path: '/almanac'
       fullPath: '/almanac'
       preLoaderRoute: typeof AlmanacRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/brand-payment-result': {
+      id: '/brand-payment-result'
+      path: '/brand-payment-result'
+      fullPath: '/brand-payment-result'
+      preLoaderRoute: typeof BrandPaymentResultRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/contact': {
@@ -1260,6 +1293,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiAuthSessionRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/paymongo/brand-status': {
+      id: '/api/paymongo/brand-status'
+      path: '/api/paymongo/brand-status'
+      fullPath: '/api/paymongo/brand-status'
+      preLoaderRoute: typeof ApiPaymongoBrandStatusRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/paymongo/checkout': {
       id: '/api/paymongo/checkout'
       path: '/api/paymongo/checkout'
@@ -1427,6 +1467,7 @@ const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AdminRoute: AdminRouteWithChildren,
   AlmanacRoute: AlmanacRoute,
+  BrandPaymentResultRoute: BrandPaymentResultRoute,
   ContactRoute: ContactRoute,
   DownloadRoute: DownloadRoute,
   FeaturesRoute: FeaturesRoute,
@@ -1458,6 +1499,7 @@ const rootRouteChildren: RootRouteChildren = {
   ApiAuthProfileRoute: ApiAuthProfileRouteWithChildren,
   ApiAuthRegisterRoute: ApiAuthRegisterRoute,
   ApiAuthSessionRoute: ApiAuthSessionRoute,
+  ApiPaymongoBrandStatusRoute: ApiPaymongoBrandStatusRoute,
   ApiPaymongoCheckoutRoute: ApiPaymongoCheckoutRoute,
   ApiPaymongoReturnRoute: ApiPaymongoReturnRoute,
   ApiPaymongoStatusRoute: ApiPaymongoStatusRoute,

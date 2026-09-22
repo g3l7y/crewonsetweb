@@ -108,7 +108,7 @@ function getSalesTrend(mockMode: boolean, topUps: Array<{ date: string; amount: 
       : new Date().getUTCFullYear();
 
   for (const topUp of topUps) {
-    if (mockMode && topUp.status !== "Completed") continue;
+    if (topUp.status !== "Completed") continue;
     const date = new Date(topUp.date);
     const amount = Number(topUp.amount);
     if (Number.isNaN(date.getTime()) || !Number.isFinite(amount)) continue;
@@ -130,10 +130,10 @@ function AnalyticsPage() {
 
   const revenue = useMemo(() => {
     const paymongoRevenue = topUps
-      .filter((topUp) => mockMode ? topUp.status === "Completed" : true)
+      .filter((topUp) => topUp.status === "Completed")
       .reduce((total, topUp) => total + topUp.amount, 0);
     const recognizedBrandBudgets = applications
-      .filter((application) => recognizedPartnershipStatuses.has(application.status))
+      .filter((application) => recognizedPartnershipStatuses.has(application.status) && application.paymentStatus !== "Paid")
       .reduce((total, application) => total + application.budget, 0);
 
     return {
@@ -169,7 +169,7 @@ function AnalyticsPage() {
         paymongo: revenue.paymongoRevenue,
         brandBudgets: revenue.recognizedBrandBudgets,
         total: revenue.total,
-        transactionCount: topUps.length,
+        transactionCount: topUps.filter((topUp) => topUp.status === "Completed").length,
         currentMonth: salesTrend.current,
         previousMonth: salesTrend.previous,
         trend: salesTrend.trend,

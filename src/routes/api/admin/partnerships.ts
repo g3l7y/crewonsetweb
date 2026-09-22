@@ -108,8 +108,8 @@ async function startPayMongoCheckout(
           description: 'Crew On Set brand partnership payment',
           show_description: true,
           show_line_items: true,
-          success_url: publicAppUrl + '/contact?payment=success&reference=' + encodeURIComponent(payment.id),
-          cancel_url: publicAppUrl + '/contact?payment=cancelled&reference=' + encodeURIComponent(payment.id),
+          success_url: publicAppUrl + '/brand-payment-result?payment=success&reference=' + encodeURIComponent(payment.id),
+          cancel_url: publicAppUrl + '/brand-payment-result?payment=cancelled&reference=' + encodeURIComponent(payment.id),
           reference_number: payment.id,
           send_email_receipt: true,
           metadata: {

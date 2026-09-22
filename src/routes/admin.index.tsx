@@ -121,10 +121,10 @@ function AdminDashboardPage() {
 
   const dashboardStats = useMemo(() => {
     const paymongoRevenue = topUps
-      .filter((topUp) => mockMode ? topUp.status === "Completed" : true)
+      .filter((topUp) => topUp.status === "Completed")
       .reduce((total, topUp) => total + topUp.amount, 0);
     const recognizedBrandBudgets = applications
-      .filter((application) => ["Approved", "On-going", "Done"].includes(application.status))
+      .filter((application) => ["Approved", "On-going", "Done"].includes(application.status) && application.paymentStatus !== "Paid")
       .reduce((total, application) => total + application.budget, 0);
 
     if (!mockMode) {
