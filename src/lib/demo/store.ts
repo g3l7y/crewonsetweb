@@ -130,18 +130,24 @@ export async function updateSharedRecord<T extends { id: string }>(key: string, 
 export async function updatePartnershipStatus(
   application: PartnershipApplication,
   status: PartnershipStatus,
-): Promise<{ success: boolean; error?: string; data?: PartnershipApplication }> {
+  completionReason?: string,
+): Promise<{ success: boolean; error?: string; data?: PartnershipApplication; emailWarning?: string }> {
   if (isMockMode()) return { success: true, data: { ...application, status } };
   const endpoint = sharedEndpoints['cos.applications'];
+  if (!endpoint) return { success: false, error: 'The status endpoint is unavailable.' };
   try {
     const response = await fetch(endpoint, {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ id: application.id, status }),
+      body: JSON.stringify({ id: application.id, status, ...(completionReason ? { completionReason } : {}) }),
     });
-    const body = (await response.json().catch(() => ({}))) as { error?: string; data?: PartnershipApplication };
+    const body = (await response.json().catch(() => ({}))) as { error?: string; emailWarning?: string; data?: PartnershipApplication };
     if (!response.ok) return { success: false, error: body.error || 'The status change could not be saved.' };
-    return { success: true, data: body.data };
+    return {
+      success: true,
+      ...(body.data ? { data: body.data } : {}),
+      ...(body.emailWarning ? { emailWarning: body.emailWarning } : {}),
+    };
   } catch {
     return { success: false, error: 'The status change could not be completed.' };
   }
@@ -238,17 +244,45 @@ function write<T>(key: string, value: T) {
 }
 
 function reconcileExpired<T>(key: string, items: T[], now = Date.now()) {
-  if (key !== "cos.ads" && key !== "cos.applications") return items;
+  if (!isMockMode() || (key !== "cos.ads" && key !== "cos.applications" && key !== "cos.revenue")) return items;
   let changed = false;
   const next = items.map((item) => {
-    const record = item as T & { status?: string; expiresAt?: string; endedAt?: string };
-    if (record.status !== "Done" && record.expiresAt && new Date(record.expiresAt).getTime() <= now) {
+    const record = item as T & {
+      status?: string;
+      expiresAt?: string;
+      endedAt?: string;
+      promotionEndsAt?: string;
+      promotionStartedAt?: string;
+      promotionEndedAt?: string;
+      paymentPaidAt?: string;
+      submittedAt?: string;
+      duration?: number;
+      durationUnit?: string;
+      promotionEndType?: string;
+    };
+    const isApplication = key === "cos.applications";
+    let expiresAt = record.expiresAt || record.promotionEndsAt;
+    if (!expiresAt && isApplication && record.status === "On-going") {
+      const end = new Date(record.promotionStartedAt || record.paymentPaidAt || record.submittedAt || now);
+      const amount = Math.max(1, Math.round(Number(record.duration || 1)));
+      if (String(record.durationUnit || "").toLowerCase().startsWith("month")) end.setUTCMonth(end.getUTCMonth() + amount);
+      else end.setUTCDate(end.getUTCDate() + amount);
+      expiresAt = end.toISOString();
+    }
+    if (record.status !== "Done" && (!isApplication || record.status === "On-going") && expiresAt && new Date(expiresAt).getTime() <= now) {
       changed = true;
-      return { ...record, status: "Done", endedAt: record.endedAt ?? new Date(record.expiresAt).toISOString() } as T;
+      const endedAt = isApplication ? new Date(expiresAt).toISOString() : record.endedAt ?? new Date(expiresAt).toISOString();
+      return {
+        ...record,
+        status: "Done",
+        endedAt,
+        ...(isApplication ? { promotionEndedAt: endedAt, promotionEndType: "expired" } : {}),
+      } as T;
     }
     return item;
   });
-  if (changed && isMockMode()) write(key, next);
+  if (!changed) return items;
+  if (isMockMode()) write(key, next);
   return next;
 }
 
@@ -296,8 +330,12 @@ export function createStore<T>(key: string, seed: T[]) {
       const sync = () => setItems(get());
       window.addEventListener(event, sync);
       window.addEventListener("storage", sync);
+      const expiryInterval = isMockMode() && (key === "cos.applications" || key === "cos.ads" || key === "cos.revenue")
+        ? window.setInterval(() => setItems((current) => reconcileExpired(key, current)), 1_000)
+        : undefined;
       return () => {
         active = false;
+        if (expiryInterval !== undefined) window.clearInterval(expiryInterval);
         window.removeEventListener(event, sync);
         window.removeEventListener("storage", sync);
       };
@@ -569,6 +607,10 @@ export type PartnershipApplication = {
   brandPromotionToken?: string;
   promotionStartedAt?: string;
   promotionEndsAt?: string;
+  promotionEndedAt?: string;
+  promotionEndType?: "expired" | "ended-early";
+  promotionEndReason?: string;
+  promotionCompletionEmailSentAt?: string;
   adminNotes?: string;
 };
 
@@ -665,7 +707,8 @@ export type ActiveAd = {
   expiresAt: string;
   status: "On-going" | "Expiring" | "Expired" | "Done";
   /** Set when an administrator finishes an advertisement early. */
-  endedAt?: string;
+  endedAt?: string | undefined;
+  endReason?: string | undefined;
   archived?: boolean;
   archivedAt?: string;
   revenue: number;
@@ -674,6 +717,8 @@ export type ActiveAd = {
   /** Ad displays / impressions served for this placement. */
   impressions: number;
   placement: string;
+  submittedLink?: string | undefined;
+  trackedLink?: string | undefined;
 };
 
 const seedAds: ActiveAd[] = [

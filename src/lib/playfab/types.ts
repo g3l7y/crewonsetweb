@@ -630,6 +630,14 @@ export interface PartnershipApplication {
   promotionStartedAt?: string | undefined;
   /** ISO timestamp when the promotion contract ends. */
   promotionEndsAt?: string | undefined;
+  /** Actual completion time; earlier than promotionEndsAt when ended early. */
+  promotionEndedAt?: string | undefined;
+  /** Why the campaign was completed. */
+  promotionEndType?: 'expired' | 'ended-early' | undefined;
+  /** Admin-provided reason for ending the campaign before its scheduled end. */
+  promotionEndReason?: string | undefined;
+  /** ISO timestamp when the completion email was delivered. */
+  promotionCompletionEmailSentAt?: string | undefined;
   adminNotes?: string | undefined;
   /** Whether archived from active admin view */
   archived?: boolean | undefined;
@@ -730,6 +738,11 @@ export interface AdEntry {
   visits?: number | undefined;
   /** ISO timestamp used by the live countdown. */
   expiresAt?: string | undefined;
+  /** Submitted destination URL and first-party tracked redirect. */
+  submittedLink?: string | undefined;
+  trackedLink?: string | undefined;
+  endedAt?: string | undefined;
+  endReason?: string | undefined;
 
   /** Legacy / mock compatibility aliases */
   title?: string | undefined;

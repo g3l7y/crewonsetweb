@@ -14,6 +14,7 @@ import {
 } from '@/lib/playfab/submission-attachments';
 import { createPartnershipPaymentId, findPartnershipPayment, updatePartnershipPayment } from '@/lib/partnership-payments';
 import { sendPartnershipStatusEmail } from '@/lib/partnership-email';
+import { getPromotionEndDate, processExpiredPromotions, sendPromotionCompletionEmail } from '@/lib/brand-promotion-lifecycle';
 
 function getSecretKey(): string {
   const key = process.env['PLAYFAB_SECRET_KEY'];
@@ -141,6 +142,7 @@ export const Route = createFileRoute('/api/admin/partnerships')({
           return unauthorizedSessionResponse();
         }
         try {
+          await processExpiredPromotions(getSecretKey());
           const applications = await getWebsiteRecords<PartnershipApplication>(
             WEBSITE_DATA_KEYS.partnerships,
             getSecretKey(),
@@ -222,7 +224,7 @@ export const Route = createFileRoute('/api/admin/partnerships')({
           return unauthorizedSessionResponse();
         }
         try {
-          const body = (await request.json()) as { id?: string; status?: unknown; adminNotes?: string };
+          const body = (await request.json()) as { id?: string; status?: unknown; adminNotes?: string; completionReason?: string };
           if (!body.id) return Response.json({ error: 'Application ID is required.' }, { status: 400 });
 
           const secretKey = getSecretKey();
@@ -253,7 +255,26 @@ export const Route = createFileRoute('/api/admin/partnerships')({
 
           let payment: PartnershipPayment | null = null;
           let nextApplication: PartnershipApplication = { ...application, status: nextStatus };
+          let completesPromotion = false;
           if (application.adminNotes !== undefined) nextApplication.adminNotes = application.adminNotes;
+
+          if (application.status === 'On-going' && nextStatus === 'Done') {
+            const scheduledEnd = new Date(getPromotionEndDate(application));
+            const now = new Date();
+            if (now.getTime() < scheduledEnd.getTime()) {
+              const reason = typeof body.completionReason === 'string' ? body.completionReason.trim().slice(0, 600) : '';
+              if (!reason) {
+                return Response.json({ error: 'A reason is required when ending a promotion before its contract end date.' }, { status: 400 });
+              }
+              nextApplication.promotionEndedAt = now.toISOString();
+              nextApplication.promotionEndType = 'ended-early';
+              nextApplication.promotionEndReason = reason;
+            } else {
+              nextApplication.promotionEndedAt = scheduledEnd.toISOString();
+              nextApplication.promotionEndType = 'expired';
+            }
+            completesPromotion = true;
+          }
 
           if (application.status === 'New' && nextStatus === 'Pending') {
             const amountInCentavos = Math.round(Number(application.budget || 0) * 100);
@@ -326,7 +347,7 @@ export const Route = createFileRoute('/api/admin/partnerships')({
               status: nextStatus,
               promotionUrl: getPromotionUrl(request, brandPromotionToken),
             });
-          } else {
+          } else if (!completesPromotion) {
             await sendPartnershipStatusEmail({ application, status: nextStatus });
           }
 
@@ -337,7 +358,16 @@ export const Route = createFileRoute('/api/admin/partnerships')({
             secretKey,
           );
           if (!saved) return Response.json({ error: 'Failed to update partnership application.' }, { status: 500 });
-          return Response.json({ success: true, data: nextApplication, payment });
+          let emailWarning: string | undefined;
+          if (completesPromotion) {
+            try {
+              await sendPromotionCompletionEmail(nextApplication, secretKey);
+            } catch (error) {
+              console.error('[API] Promotion completion email failed; it will be retried by the expiry job:', error);
+              emailWarning = 'The status was saved, but the completion email could not be delivered yet. It will be retried automatically.';
+            }
+          }
+          return Response.json({ success: true, data: nextApplication, payment, emailWarning });
         } catch (error) {
           console.error('[API] PATCH partnerships error:', error);
           const message = error instanceof Error ? error.message : 'Failed to update partnership application.';

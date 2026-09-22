@@ -64,6 +64,8 @@ import { Route as ApiAuthPlayerProfileRouteImport } from './routes/api/auth/play
 import { Route as ApiAuthProfileRouteImport } from './routes/api/auth/profile'
 import { Route as ApiAuthRegisterRouteImport } from './routes/api/auth/register'
 import { Route as ApiAuthSessionRouteImport } from './routes/api/auth/session'
+import { Route as ApiBrandPromotionsClickRouteImport } from './routes/api/brand-promotions.click'
+import { Route as ApiCronExpireBrandPromotionsRouteImport } from './routes/api/cron/expire-brand-promotions'
 import { Route as ApiPaymongoBrandStatusRouteImport } from './routes/api/paymongo/brand-status'
 import { Route as ApiPaymongoCheckoutRouteImport } from './routes/api/paymongo/checkout'
 import { Route as ApiPaymongoReturnRouteImport } from './routes/api/paymongo/return'
@@ -355,6 +357,17 @@ const ApiAuthSessionRoute = ApiAuthSessionRouteImport.update({
   path: '/api/auth/session',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiBrandPromotionsClickRoute = ApiBrandPromotionsClickRouteImport.update({
+  id: '/click',
+  path: '/click',
+  getParentRoute: () => ApiBrandPromotionsRoute,
+} as any)
+const ApiCronExpireBrandPromotionsRoute =
+  ApiCronExpireBrandPromotionsRouteImport.update({
+    id: '/api/cron/expire-brand-promotions',
+    path: '/api/cron/expire-brand-promotions',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 const ApiPaymongoBrandStatusRoute = ApiPaymongoBrandStatusRouteImport.update({
   id: '/api/paymongo/brand-status',
   path: '/api/paymongo/brand-status',
@@ -454,7 +467,7 @@ export interface FileRoutesByFullPath {
   '/admin/settings': typeof AdminSettingsRoute
   '/admin/transactions': typeof AdminTransactionsRoute
   '/admin/login': typeof AdminLoginRoute
-  '/api/brand-promotions': typeof ApiBrandPromotionsRoute
+  '/api/brand-promotions': typeof ApiBrandPromotionsRouteWithChildren
   '/api/mail': typeof ApiMailRoute
   '/api/notifications': typeof ApiNotificationsRoute
   '/brand-promotions/$token': typeof BrandPromotionsTokenRoute
@@ -485,6 +498,8 @@ export interface FileRoutesByFullPath {
   '/api/auth/profile': typeof ApiAuthProfileRouteWithChildren
   '/api/auth/register': typeof ApiAuthRegisterRoute
   '/api/auth/session': typeof ApiAuthSessionRoute
+  '/api/brand-promotions/click': typeof ApiBrandPromotionsClickRoute
+  '/api/cron/expire-brand-promotions': typeof ApiCronExpireBrandPromotionsRoute
   '/api/paymongo/brand-status': typeof ApiPaymongoBrandStatusRoute
   '/api/paymongo/checkout': typeof ApiPaymongoCheckoutRoute
   '/api/paymongo/return': typeof ApiPaymongoReturnRoute
@@ -523,7 +538,7 @@ export interface FileRoutesByTo {
   '/admin/settings': typeof AdminSettingsRoute
   '/admin/transactions': typeof AdminTransactionsRoute
   '/admin/login': typeof AdminLoginRoute
-  '/api/brand-promotions': typeof ApiBrandPromotionsRoute
+  '/api/brand-promotions': typeof ApiBrandPromotionsRouteWithChildren
   '/api/mail': typeof ApiMailRoute
   '/api/notifications': typeof ApiNotificationsRoute
   '/brand-promotions/$token': typeof BrandPromotionsTokenRoute
@@ -554,6 +569,8 @@ export interface FileRoutesByTo {
   '/api/auth/profile': typeof ApiAuthProfileRouteWithChildren
   '/api/auth/register': typeof ApiAuthRegisterRoute
   '/api/auth/session': typeof ApiAuthSessionRoute
+  '/api/brand-promotions/click': typeof ApiBrandPromotionsClickRoute
+  '/api/cron/expire-brand-promotions': typeof ApiCronExpireBrandPromotionsRoute
   '/api/paymongo/brand-status': typeof ApiPaymongoBrandStatusRoute
   '/api/paymongo/checkout': typeof ApiPaymongoCheckoutRoute
   '/api/paymongo/return': typeof ApiPaymongoReturnRoute
@@ -595,7 +612,7 @@ export interface FileRoutesById {
   '/admin/settings': typeof AdminSettingsRoute
   '/admin/transactions': typeof AdminTransactionsRoute
   '/admin_/login': typeof AdminLoginRoute
-  '/api/brand-promotions': typeof ApiBrandPromotionsRoute
+  '/api/brand-promotions': typeof ApiBrandPromotionsRouteWithChildren
   '/api/mail': typeof ApiMailRoute
   '/api/notifications': typeof ApiNotificationsRoute
   '/brand-promotions/$token': typeof BrandPromotionsTokenRoute
@@ -626,6 +643,8 @@ export interface FileRoutesById {
   '/api/auth/profile': typeof ApiAuthProfileRouteWithChildren
   '/api/auth/register': typeof ApiAuthRegisterRoute
   '/api/auth/session': typeof ApiAuthSessionRoute
+  '/api/brand-promotions/click': typeof ApiBrandPromotionsClickRoute
+  '/api/cron/expire-brand-promotions': typeof ApiCronExpireBrandPromotionsRoute
   '/api/paymongo/brand-status': typeof ApiPaymongoBrandStatusRoute
   '/api/paymongo/checkout': typeof ApiPaymongoCheckoutRoute
   '/api/paymongo/return': typeof ApiPaymongoReturnRoute
@@ -699,6 +718,8 @@ export interface FileRouteTypes {
     | '/api/auth/profile'
     | '/api/auth/register'
     | '/api/auth/session'
+    | '/api/brand-promotions/click'
+    | '/api/cron/expire-brand-promotions'
     | '/api/paymongo/brand-status'
     | '/api/paymongo/checkout'
     | '/api/paymongo/return'
@@ -768,6 +789,8 @@ export interface FileRouteTypes {
     | '/api/auth/profile'
     | '/api/auth/register'
     | '/api/auth/session'
+    | '/api/brand-promotions/click'
+    | '/api/cron/expire-brand-promotions'
     | '/api/paymongo/brand-status'
     | '/api/paymongo/checkout'
     | '/api/paymongo/return'
@@ -839,6 +862,8 @@ export interface FileRouteTypes {
     | '/api/auth/profile'
     | '/api/auth/register'
     | '/api/auth/session'
+    | '/api/brand-promotions/click'
+    | '/api/cron/expire-brand-promotions'
     | '/api/paymongo/brand-status'
     | '/api/paymongo/checkout'
     | '/api/paymongo/return'
@@ -870,7 +895,7 @@ export interface RootRouteChildren {
   StoryRoute: typeof StoryRoute
   TeamRoute: typeof TeamRoute
   AdminLoginRoute: typeof AdminLoginRoute
-  ApiBrandPromotionsRoute: typeof ApiBrandPromotionsRoute
+  ApiBrandPromotionsRoute: typeof ApiBrandPromotionsRouteWithChildren
   ApiMailRoute: typeof ApiMailRoute
   ApiNotificationsRoute: typeof ApiNotificationsRoute
   BrandPromotionsTokenRoute: typeof BrandPromotionsTokenRoute
@@ -891,6 +916,7 @@ export interface RootRouteChildren {
   ApiAuthProfileRoute: typeof ApiAuthProfileRouteWithChildren
   ApiAuthRegisterRoute: typeof ApiAuthRegisterRoute
   ApiAuthSessionRoute: typeof ApiAuthSessionRoute
+  ApiCronExpireBrandPromotionsRoute: typeof ApiCronExpireBrandPromotionsRoute
   ApiPaymongoBrandStatusRoute: typeof ApiPaymongoBrandStatusRoute
   ApiPaymongoCheckoutRoute: typeof ApiPaymongoCheckoutRoute
   ApiPaymongoReturnRoute: typeof ApiPaymongoReturnRoute
@@ -1293,6 +1319,20 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiAuthSessionRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/brand-promotions/click': {
+      id: '/api/brand-promotions/click'
+      path: '/click'
+      fullPath: '/api/brand-promotions/click'
+      preLoaderRoute: typeof ApiBrandPromotionsClickRouteImport
+      parentRoute: typeof ApiBrandPromotionsRoute
+    }
+    '/api/cron/expire-brand-promotions': {
+      id: '/api/cron/expire-brand-promotions'
+      path: '/api/cron/expire-brand-promotions'
+      fullPath: '/api/cron/expire-brand-promotions'
+      preLoaderRoute: typeof ApiCronExpireBrandPromotionsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/paymongo/brand-status': {
       id: '/api/paymongo/brand-status'
       path: '/api/paymongo/brand-status'
@@ -1451,6 +1491,17 @@ const PortalRouteChildren: PortalRouteChildren = {
 const PortalRouteWithChildren =
   PortalRoute._addFileChildren(PortalRouteChildren)
 
+interface ApiBrandPromotionsRouteChildren {
+  ApiBrandPromotionsClickRoute: typeof ApiBrandPromotionsClickRoute
+}
+
+const ApiBrandPromotionsRouteChildren: ApiBrandPromotionsRouteChildren = {
+  ApiBrandPromotionsClickRoute: ApiBrandPromotionsClickRoute,
+}
+
+const ApiBrandPromotionsRouteWithChildren =
+  ApiBrandPromotionsRoute._addFileChildren(ApiBrandPromotionsRouteChildren)
+
 interface ApiAuthProfileRouteChildren {
   ApiAuthProfileSetupRoute: typeof ApiAuthProfileSetupRoute
 }
@@ -1478,7 +1529,7 @@ const rootRouteChildren: RootRouteChildren = {
   StoryRoute: StoryRoute,
   TeamRoute: TeamRoute,
   AdminLoginRoute: AdminLoginRoute,
-  ApiBrandPromotionsRoute: ApiBrandPromotionsRoute,
+  ApiBrandPromotionsRoute: ApiBrandPromotionsRouteWithChildren,
   ApiMailRoute: ApiMailRoute,
   ApiNotificationsRoute: ApiNotificationsRoute,
   BrandPromotionsTokenRoute: BrandPromotionsTokenRoute,
@@ -1499,6 +1550,7 @@ const rootRouteChildren: RootRouteChildren = {
   ApiAuthProfileRoute: ApiAuthProfileRouteWithChildren,
   ApiAuthRegisterRoute: ApiAuthRegisterRoute,
   ApiAuthSessionRoute: ApiAuthSessionRoute,
+  ApiCronExpireBrandPromotionsRoute: ApiCronExpireBrandPromotionsRoute,
   ApiPaymongoBrandStatusRoute: ApiPaymongoBrandStatusRoute,
   ApiPaymongoCheckoutRoute: ApiPaymongoCheckoutRoute,
   ApiPaymongoReturnRoute: ApiPaymongoReturnRoute,

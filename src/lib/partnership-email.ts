@@ -5,8 +5,10 @@ import nodemailer from 'nodemailer';
 type PartnershipEmailOptions = {
   application: PartnershipApplication;
   status: PartnershipStatus;
-  paymentUrl?: string;
-  promotionUrl?: string;
+  paymentUrl?: string | undefined;
+  promotionUrl?: string | undefined;
+  completionType?: 'expired' | 'ended-early' | undefined;
+  completionReason?: string | undefined;
 };
 
 function escapeHtml(value: string): string {
@@ -18,7 +20,7 @@ function escapeHtml(value: string): string {
     .replaceAll("'", '&#039;');
 }
 
-function emailCopy({ application, status, paymentUrl, promotionUrl }: PartnershipEmailOptions): {
+function emailCopy({ application, status, paymentUrl, promotionUrl, completionType, completionReason }: PartnershipEmailOptions): {
   subject: string;
   heading: string;
   body: string;
@@ -48,16 +50,26 @@ function emailCopy({ application, status, paymentUrl, promotionUrl }: Partnershi
     return {
       subject: 'Your Crew On Set brand partnership is now live',
       heading: 'Your brand partnership is live',
-      body: 'Your ' + brand + ' partnership with Crew On Set is now live. Use the link below to review the campaign details, schedule, placement, and current performance information.',
+      body: 'Your ' + brand + ' partnership with Crew On Set is now live. Use the link below to review the campaign details, agreed dates, submitted brand link, and current performance information.',
       action: 'View Brand Promotion',
       actionUrl: promotionUrl,
     };
   }
   if (status === 'Done') {
+    if (completionType === 'ended-early') {
+      const suppliedReason = completionReason?.trim() || 'The campaign materials and approvals required from your team were not provided by the agreed deadline.';
+      const reason = suppliedReason.replace(/[.!?]+$/, '');
+      const reasonText = reason.charAt(0).toLowerCase() + reason.slice(1);
+      return {
+        subject: 'Update: your Crew On Set brand promotion has ended early',
+        heading: 'Your brand promotion has ended',
+        body: 'We are writing to let you know that the ' + brand + ' promotion ended before its scheduled completion date because ' + reasonText + '. This concludes the campaign placement under the agreed schedule. If you would like us to review any related details, please reply to this email.',
+      };
+    }
     return {
-      subject: 'Your Crew On Set brand partnership is complete',
-      heading: 'Partnership completed',
-      body: 'The ' + brand + ' partnership has completed its agreed contract with Crew On Set. Thank you for working with our team. We appreciate the opportunity to work with your brand.',
+      subject: 'Your Crew On Set brand promotion has concluded',
+      heading: 'Brand promotion completed',
+      body: 'The agreed promotion period for ' + brand + ' has ended. The campaign has now been marked complete in our records. Thank you for partnering with Crew On Set; we appreciate the opportunity to feature your brand.',
     };
   }
   return {

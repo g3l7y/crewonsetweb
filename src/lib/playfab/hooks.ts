@@ -269,6 +269,7 @@ export function useAdminPartnerships() {
     queryKey: QUERY_KEYS.adminPartnerships,
     queryFn: () => getPlayFabService().admin.getPartnerships(),
     enabled: !!session && (session.role === 'admin' || session.role === 'developer'),
+    refetchInterval: 30_000,
     staleTime: 2 * 60 * 1000,
   });
 }
@@ -279,6 +280,7 @@ export function useAdminAds() {
     queryKey: QUERY_KEYS.adminAds,
     queryFn: () => getPlayFabService().admin.getAds(),
     enabled: !!session && (session.role === 'admin' || session.role === 'developer'),
+    refetchInterval: 30_000,
     staleTime: 2 * 60 * 1000,
   });
 }
