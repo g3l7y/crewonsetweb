@@ -46,7 +46,7 @@ export function buildAlerts(
   const alerts: AdminAlert[] = [];
 
   applications
-    .filter((application) => application.status === "Pending")
+    .filter((application) => application.status === "New")
     .slice(0, 5)
     .forEach((application) => {
       alerts.push({
@@ -56,6 +56,20 @@ export function buildAlerts(
         kind: "application",
         href: "/admin/partnerships",
         createdAt: application.submittedAt,
+      });
+    });
+
+  applications
+    .filter((application) => application.paymentStatus === 'Paid')
+    .slice(0, 5)
+    .forEach((application) => {
+      alerts.push({
+        id: `brand-payment-${application.paymentId || application.id}`,
+        title: 'Brand payment received',
+        body: `${application.brand} completed the sponsorship payment.`,
+        kind: 'application',
+        href: '/admin/partnerships',
+        createdAt: application.paymentPaidAt || application.submittedAt,
       });
     });
 

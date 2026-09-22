@@ -6,9 +6,10 @@ import {
   type PartnershipStatus,
 } from "@/lib/demo/store";
 
-const statusOptions: PartnershipStatus[] = ["Pending", "Approved", "On-going", "Done", "Declined"];
+const statusOptions: PartnershipStatus[] = ["New", "Pending", "Approved", "On-going", "Done", "Declined"];
 
 const statusStyles: Record<PartnershipStatus, string> = {
+  New: "bg-white/10",
   Pending: "bg-[#c96a2d]/15",
   Approved: "bg-[#d9a514]/15",
   "On-going": "bg-[#3a7bd5]/15",
@@ -47,7 +48,7 @@ export function PartnershipStatusDropdown({
         type="button"
         className={`admin-partnership-status-select inline-flex min-w-[8.5rem] items-center justify-between gap-3 rounded px-2.5 py-1.5 text-[10px] font-black uppercase outline-none transition focus:ring-2 focus:ring-coral/40 ${statusStyles[value]}`}
         data-status={value}
-        style={{ color: partnershipStatusColors[value] }}
+        style={{ color: value === "New" ? "#fefaef" : partnershipStatusColors[value] }}
         aria-label={ariaLabel}
         aria-haspopup="listbox"
         aria-expanded={open}
@@ -79,7 +80,7 @@ export function PartnershipStatusDropdown({
                 disabled={disabled}
                 data-status={status}
                 className={`admin-partnership-status-option block w-full whitespace-nowrap rounded px-2.5 py-2 text-left text-[10px] font-black uppercase transition ${disabled ? "cursor-not-allowed opacity-40" : "hover:bg-white/10"}`}
-                style={{ color: partnershipStatusColors[status] }}
+                style={{ color: status === "New" ? "#fefaef" : partnershipStatusColors[status] }}
                 onClick={() => {
                   onChange(status);
                   setOpen(false);

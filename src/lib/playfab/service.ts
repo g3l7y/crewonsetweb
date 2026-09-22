@@ -446,7 +446,12 @@ function createRealService(): PlayFabService {
         const json = await res.json();
         return json.data ?? [];
       },
-      getAds: async () => [],
+      getAds: async () => {
+        const res = await fetch('/api/admin/ad-revenue');
+        if (!res.ok) throw new Error('Failed to fetch advertisement revenue');
+        const json = await res.json();
+        return json.data ?? [];
+      },
       getRevenue: async () => [],
       getGameBuilds: async () => [],
       getBuildHistory: async () => [],

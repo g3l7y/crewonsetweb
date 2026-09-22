@@ -49,13 +49,13 @@ function TransactionsPage() {
 
   const summaries = [
     {
-      label: "Total C-Coin Revenue",
+      label: "Total Payment Volume",
       value: formatMoney(total),
       icon: Coins,
       color: "bg-[#d9a514] text-[#101923]",
     },
     {
-      label: "Completed Top-Ups",
+      label: "Completed Payments",
       value: completed.toLocaleString(),
       icon: ReceiptText,
       color: "bg-[#243241] text-white",
@@ -72,7 +72,7 @@ function TransactionsPage() {
     <div className="admin-page h-full overflow-y-auto bg-[#101923] text-white">
       <header className="mb-8">
         <p className="text-xs font-black tracking-[.18em] !text-coral">ECONOMY</p>
-        <h1 className="admin-heading mt-2 !text-white">C-Coin Top-Up Ledger</h1>
+        <h1 className="admin-heading mt-2 !text-white">Payment Ledger</h1>
         <p className="admin-kicker !text-white/45">
           Monitor bank-funded C-Coin top-ups and search by player.
         </p>
@@ -101,7 +101,7 @@ function TransactionsPage() {
           <input
             value={query}
             onChange={(event) => setQuery(event.target.value)}
-            placeholder="Search by username"
+            placeholder="Search by player or brand"
             className="h-11 w-full rounded-md border border-white/10 bg-[#101923] pl-10 pr-3 text-sm font-bold !text-white outline-none transition placeholder:!text-white/25 focus:border-coral"
           />
         </label>

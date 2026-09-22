@@ -28,6 +28,7 @@ export const WEBSITE_DATA_KEYS = {
   notifications: 'website_admin_notifications',
   settings: 'website_settings',
   paymongoOrders: 'website_paymongo_orders',
+  partnershipPayments: 'website_partnership_payments',
 } as const;
 
 export type WebsiteDataKey = (typeof WEBSITE_DATA_KEYS)[keyof typeof WEBSITE_DATA_KEYS];

@@ -13,6 +13,9 @@ export const Route = createFileRoute("/admin/ad-revenue")({
 });
 
 import { useMemo, useState } from "react";
+import { isMockMode } from "@/lib/playfab/config";
+import { useAdminAds, useAdminPartnerships } from "@/lib/playfab/hooks";
+import type { AdEntry } from "@/lib/playfab/types";
 import Link from "@/components/next-compat/link";
 import { useRouter } from "@/components/next-compat/navigation";
 import {
@@ -54,9 +57,38 @@ function findAdForApplication(app: PartnershipApplication, ads: ActiveAd[]) {
     null;
 }
 
+function fromServiceAd(ad: AdEntry): ActiveAd {
+  const status = ad.status === 'Done' ? 'Done' : ad.status === 'Expiring' ? 'Expiring' : ad.status === 'Expired' ? 'Expired' : 'On-going';
+  const startDate = ad.startDate || new Date().toISOString();
+  return {
+    id: ad.id,
+    applicationId: ad.applicationId,
+    brand: ad.brand || 'Brand promotion',
+    exactModel: ad.exactModel || ad.product || '',
+    productType: ad.productType || 'Other',
+    contract: ad.contract || 'Crew On Set brand promotion placement.',
+    startDate,
+    expiresAt: ad.expiresAt || ad.endDate || startDate,
+    status,
+    revenue: ad.revenue || 0,
+    clicks: ad.clicks || 0,
+    visits: ad.visits || 0,
+    impressions: ad.impressions || 0,
+    placement: ad.placement || 'Crew On Set production placement',
+  };
+}
+
 function AdRevenuePage() {
-  const [applications] = applicationsStore.useStore();
-  const [revenue, setRevenue] = revenueStore.useStore();
+  const [localApplications] = applicationsStore.useStore();
+  const [localRevenue, setLocalRevenue] = revenueStore.useStore();
+  const realApplicationsQuery = useAdminPartnerships();
+  const realAdsQuery = useAdminAds();
+  const applications = isMockMode() ? localApplications : (realApplicationsQuery.data ?? []);
+  const revenue = useMemo(
+    () => isMockMode() ? localRevenue : (realAdsQuery.data ?? []).map(fromServiceAd),
+    [localRevenue, realAdsQuery.data],
+  );
+  const setRevenue = setLocalRevenue;
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const [deleteIds, setDeleteIds] = useState<string[] | null>(null);
   const [query, setQuery] = useState("");
@@ -102,7 +134,7 @@ function AdRevenuePage() {
   function deleteRevenue() {
     if (!deleteIds) return;
     const ids = new Set(deleteIds);
-    setRevenue(revenue.filter((record) => !ids.has(record.id)));
+    if (isMockMode()) setRevenue((current) => current.filter((record) => !ids.has(record.id)));
     setSelectedIds([]);
     setDeleteIds(null);
   }
@@ -288,7 +320,7 @@ function AdRevenuePage() {
                         <Wallet2 className="size-3" /> Revenue
                       </dt>
                       <dd className="mt-1 text-sm font-bold !text-white/85">
-                        {ad ? formatMoney(ad.revenue) : formatMoney(app.budget)}
+                        {ad ? formatMoney(ad.revenue) : formatMoney(app.budget ?? 0)}
                       </dd>
                     </div>
                   </dl>

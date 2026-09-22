@@ -33,8 +33,10 @@ import { Route as AdminPlayersRouteImport } from './routes/admin.players'
 import { Route as AdminSettingsRouteImport } from './routes/admin.settings'
 import { Route as AdminTransactionsRouteImport } from './routes/admin.transactions'
 import { Route as AdminLoginRouteImport } from './routes/admin_.login'
+import { Route as ApiBrandPromotionsRouteImport } from './routes/api/brand-promotions'
 import { Route as ApiMailRouteImport } from './routes/api/mail'
 import { Route as ApiNotificationsRouteImport } from './routes/api/notifications'
+import { Route as BrandPromotionsTokenRouteImport } from './routes/brand-promotions.$token'
 import { Route as PortalIndexRouteImport } from './routes/portal.index'
 import { Route as PortalAchievementsRouteImport } from './routes/portal.achievements'
 import { Route as PortalAlmanacRouteImport } from './routes/portal.almanac'
@@ -45,6 +47,7 @@ import { Route as PortalSettingsRouteImport } from './routes/portal.settings'
 import { Route as PortalShopRouteImport } from './routes/portal.shop'
 import { Route as AdminAdsIdRouteImport } from './routes/admin.ads.$id'
 import { Route as ApiAdminAccountRouteImport } from './routes/api/admin/account'
+import { Route as ApiAdminAdRevenueRouteImport } from './routes/api/admin/ad-revenue'
 import { Route as ApiAdminBugReportsRouteImport } from './routes/api/admin/bug-reports'
 import { Route as ApiAdminDataRouteImport } from './routes/api/admin/data'
 import { Route as ApiAdminPartnershipsRouteImport } from './routes/api/admin/partnerships'
@@ -194,6 +197,11 @@ const AdminLoginRoute = AdminLoginRouteImport.update({
   path: '/admin/login',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiBrandPromotionsRoute = ApiBrandPromotionsRouteImport.update({
+  id: '/api/brand-promotions',
+  path: '/api/brand-promotions',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiMailRoute = ApiMailRouteImport.update({
   id: '/api/mail',
   path: '/api/mail',
@@ -202,6 +210,11 @@ const ApiMailRoute = ApiMailRouteImport.update({
 const ApiNotificationsRoute = ApiNotificationsRouteImport.update({
   id: '/api/notifications',
   path: '/api/notifications',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const BrandPromotionsTokenRoute = BrandPromotionsTokenRouteImport.update({
+  id: '/brand-promotions/$token',
+  path: '/brand-promotions/$token',
   getParentRoute: () => rootRouteImport,
 } as any)
 const PortalIndexRoute = PortalIndexRouteImport.update({
@@ -252,6 +265,11 @@ const AdminAdsIdRoute = AdminAdsIdRouteImport.update({
 const ApiAdminAccountRoute = ApiAdminAccountRouteImport.update({
   id: '/api/admin/account',
   path: '/api/admin/account',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiAdminAdRevenueRoute = ApiAdminAdRevenueRouteImport.update({
+  id: '/api/admin/ad-revenue',
+  path: '/api/admin/ad-revenue',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ApiAdminBugReportsRoute = ApiAdminBugReportsRouteImport.update({
@@ -423,8 +441,10 @@ export interface FileRoutesByFullPath {
   '/admin/settings': typeof AdminSettingsRoute
   '/admin/transactions': typeof AdminTransactionsRoute
   '/admin/login': typeof AdminLoginRoute
+  '/api/brand-promotions': typeof ApiBrandPromotionsRoute
   '/api/mail': typeof ApiMailRoute
   '/api/notifications': typeof ApiNotificationsRoute
+  '/brand-promotions/$token': typeof BrandPromotionsTokenRoute
   '/portal/achievements': typeof PortalAchievementsRoute
   '/portal/almanac': typeof PortalAlmanacRoute
   '/portal/friends': typeof PortalFriendsRoute
@@ -436,6 +456,7 @@ export interface FileRoutesByFullPath {
   '/portal/': typeof PortalIndexRoute
   '/admin/ads/$id': typeof AdminAdsIdRoute
   '/api/admin/account': typeof ApiAdminAccountRoute
+  '/api/admin/ad-revenue': typeof ApiAdminAdRevenueRoute
   '/api/admin/bug-reports': typeof ApiAdminBugReportsRoute
   '/api/admin/data': typeof ApiAdminDataRoute
   '/api/admin/partnerships': typeof ApiAdminPartnershipsRoute
@@ -487,8 +508,10 @@ export interface FileRoutesByTo {
   '/admin/settings': typeof AdminSettingsRoute
   '/admin/transactions': typeof AdminTransactionsRoute
   '/admin/login': typeof AdminLoginRoute
+  '/api/brand-promotions': typeof ApiBrandPromotionsRoute
   '/api/mail': typeof ApiMailRoute
   '/api/notifications': typeof ApiNotificationsRoute
+  '/brand-promotions/$token': typeof BrandPromotionsTokenRoute
   '/portal/achievements': typeof PortalAchievementsRoute
   '/portal/almanac': typeof PortalAlmanacRoute
   '/portal/friends': typeof PortalFriendsRoute
@@ -500,6 +523,7 @@ export interface FileRoutesByTo {
   '/portal': typeof PortalIndexRoute
   '/admin/ads/$id': typeof AdminAdsIdRoute
   '/api/admin/account': typeof ApiAdminAccountRoute
+  '/api/admin/ad-revenue': typeof ApiAdminAdRevenueRoute
   '/api/admin/bug-reports': typeof ApiAdminBugReportsRoute
   '/api/admin/data': typeof ApiAdminDataRoute
   '/api/admin/partnerships': typeof ApiAdminPartnershipsRoute
@@ -554,8 +578,10 @@ export interface FileRoutesById {
   '/admin/settings': typeof AdminSettingsRoute
   '/admin/transactions': typeof AdminTransactionsRoute
   '/admin_/login': typeof AdminLoginRoute
+  '/api/brand-promotions': typeof ApiBrandPromotionsRoute
   '/api/mail': typeof ApiMailRoute
   '/api/notifications': typeof ApiNotificationsRoute
+  '/brand-promotions/$token': typeof BrandPromotionsTokenRoute
   '/portal/achievements': typeof PortalAchievementsRoute
   '/portal/almanac': typeof PortalAlmanacRoute
   '/portal/friends': typeof PortalFriendsRoute
@@ -567,6 +593,7 @@ export interface FileRoutesById {
   '/portal/': typeof PortalIndexRoute
   '/admin/ads/$id': typeof AdminAdsIdRoute
   '/api/admin/account': typeof ApiAdminAccountRoute
+  '/api/admin/ad-revenue': typeof ApiAdminAdRevenueRoute
   '/api/admin/bug-reports': typeof ApiAdminBugReportsRoute
   '/api/admin/data': typeof ApiAdminDataRoute
   '/api/admin/partnerships': typeof ApiAdminPartnershipsRoute
@@ -622,8 +649,10 @@ export interface FileRouteTypes {
     | '/admin/settings'
     | '/admin/transactions'
     | '/admin/login'
+    | '/api/brand-promotions'
     | '/api/mail'
     | '/api/notifications'
+    | '/brand-promotions/$token'
     | '/portal/achievements'
     | '/portal/almanac'
     | '/portal/friends'
@@ -635,6 +664,7 @@ export interface FileRouteTypes {
     | '/portal/'
     | '/admin/ads/$id'
     | '/api/admin/account'
+    | '/api/admin/ad-revenue'
     | '/api/admin/bug-reports'
     | '/api/admin/data'
     | '/api/admin/partnerships'
@@ -686,8 +716,10 @@ export interface FileRouteTypes {
     | '/admin/settings'
     | '/admin/transactions'
     | '/admin/login'
+    | '/api/brand-promotions'
     | '/api/mail'
     | '/api/notifications'
+    | '/brand-promotions/$token'
     | '/portal/achievements'
     | '/portal/almanac'
     | '/portal/friends'
@@ -699,6 +731,7 @@ export interface FileRouteTypes {
     | '/portal'
     | '/admin/ads/$id'
     | '/api/admin/account'
+    | '/api/admin/ad-revenue'
     | '/api/admin/bug-reports'
     | '/api/admin/data'
     | '/api/admin/partnerships'
@@ -752,8 +785,10 @@ export interface FileRouteTypes {
     | '/admin/settings'
     | '/admin/transactions'
     | '/admin_/login'
+    | '/api/brand-promotions'
     | '/api/mail'
     | '/api/notifications'
+    | '/brand-promotions/$token'
     | '/portal/achievements'
     | '/portal/almanac'
     | '/portal/friends'
@@ -765,6 +800,7 @@ export interface FileRouteTypes {
     | '/portal/'
     | '/admin/ads/$id'
     | '/api/admin/account'
+    | '/api/admin/ad-revenue'
     | '/api/admin/bug-reports'
     | '/api/admin/data'
     | '/api/admin/partnerships'
@@ -809,9 +845,12 @@ export interface RootRouteChildren {
   StoryRoute: typeof StoryRoute
   TeamRoute: typeof TeamRoute
   AdminLoginRoute: typeof AdminLoginRoute
+  ApiBrandPromotionsRoute: typeof ApiBrandPromotionsRoute
   ApiMailRoute: typeof ApiMailRoute
   ApiNotificationsRoute: typeof ApiNotificationsRoute
+  BrandPromotionsTokenRoute: typeof BrandPromotionsTokenRoute
   ApiAdminAccountRoute: typeof ApiAdminAccountRoute
+  ApiAdminAdRevenueRoute: typeof ApiAdminAdRevenueRoute
   ApiAdminBugReportsRoute: typeof ApiAdminBugReportsRoute
   ApiAdminDataRoute: typeof ApiAdminDataRoute
   ApiAdminPartnershipsRoute: typeof ApiAdminPartnershipsRoute
@@ -1011,6 +1050,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AdminLoginRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/brand-promotions': {
+      id: '/api/brand-promotions'
+      path: '/api/brand-promotions'
+      fullPath: '/api/brand-promotions'
+      preLoaderRoute: typeof ApiBrandPromotionsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/mail': {
       id: '/api/mail'
       path: '/api/mail'
@@ -1023,6 +1069,13 @@ declare module '@tanstack/react-router' {
       path: '/api/notifications'
       fullPath: '/api/notifications'
       preLoaderRoute: typeof ApiNotificationsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/brand-promotions/$token': {
+      id: '/brand-promotions/$token'
+      path: '/brand-promotions/$token'
+      fullPath: '/brand-promotions/$token'
+      preLoaderRoute: typeof BrandPromotionsTokenRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/portal/': {
@@ -1093,6 +1146,13 @@ declare module '@tanstack/react-router' {
       path: '/api/admin/account'
       fullPath: '/api/admin/account'
       preLoaderRoute: typeof ApiAdminAccountRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/admin/ad-revenue': {
+      id: '/api/admin/ad-revenue'
+      path: '/api/admin/ad-revenue'
+      fullPath: '/api/admin/ad-revenue'
+      preLoaderRoute: typeof ApiAdminAdRevenueRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/api/admin/bug-reports': {
@@ -1377,9 +1437,12 @@ const rootRouteChildren: RootRouteChildren = {
   StoryRoute: StoryRoute,
   TeamRoute: TeamRoute,
   AdminLoginRoute: AdminLoginRoute,
+  ApiBrandPromotionsRoute: ApiBrandPromotionsRoute,
   ApiMailRoute: ApiMailRoute,
   ApiNotificationsRoute: ApiNotificationsRoute,
+  BrandPromotionsTokenRoute: BrandPromotionsTokenRoute,
   ApiAdminAccountRoute: ApiAdminAccountRoute,
+  ApiAdminAdRevenueRoute: ApiAdminAdRevenueRoute,
   ApiAdminBugReportsRoute: ApiAdminBugReportsRoute,
   ApiAdminDataRoute: ApiAdminDataRoute,
   ApiAdminPartnershipsRoute: ApiAdminPartnershipsRoute,

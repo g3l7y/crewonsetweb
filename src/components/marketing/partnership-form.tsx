@@ -106,7 +106,7 @@ export function PartnershipForm() {
       email,
       description,
       submittedAt: new Date().toISOString(),
-      status: "Pending",
+      status: "New",
     };
 
     const persisted = await insertSharedRecord("cos.applications", application, (message) => setError(message), mockMode ? undefined : file);
@@ -125,7 +125,7 @@ export function PartnershipForm() {
         <h2 className="mt-4 text-2xl font-black uppercase text-yellow">Application submitted</h2>
         <p className="mt-3 leading-relaxed text-navy/60">
           Thanks for applying to bring your brand onto the set. Your application status is now{" "}
-          <strong>Pending</strong> and our production team will review it shortly.
+          <strong>New</strong> and our production team will review it shortly.
         </p>
         <button
           type="button"

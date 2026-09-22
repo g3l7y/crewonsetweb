@@ -33,12 +33,12 @@ const sharedEndpoints: Record<string, string> = {
 };
 
 export const reportStatusColors = {
-  New: "#F3C747",
   Investigating: "#F39A5A",
   Resolved: "#4BC4B4",
 } as const;
 
 export const partnershipStatusColors = {
+  New: "#FEFAEF",
   Pending: "#F39A5A",
   Approved: "#F3C747",
   "On-going": "#7CB0EE",
@@ -127,6 +127,25 @@ export async function updateSharedRecord<T extends { id: string }>(key: string, 
   }
 }
 
+export async function updatePartnershipStatus(
+  application: PartnershipApplication,
+  status: PartnershipStatus,
+): Promise<{ success: boolean; error?: string; data?: PartnershipApplication }> {
+  if (isMockMode()) return { success: true, data: { ...application, status } };
+  const endpoint = sharedEndpoints['cos.applications'];
+  try {
+    const response = await fetch(endpoint, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ id: application.id, status }),
+    });
+    const body = (await response.json().catch(() => ({}))) as { error?: string; data?: PartnershipApplication };
+    if (!response.ok) return { success: false, error: body.error || 'The status change could not be saved.' };
+    return { success: true, data: body.data };
+  } catch {
+    return { success: false, error: 'The status change could not be completed.' };
+  }
+}
 export async function deleteSharedRecord(key: string, id: string) {
   return deleteSharedRecords(key, [id]);
 }
@@ -506,11 +525,12 @@ export function addReportFeedback(args: {
 }
 /* --------------------------------------------------- partnership applications */
 
-export type PartnershipStatus = "Pending" | "Approved" | "On-going" | "Done" | "Declined";
+export type PartnershipStatus = "New" | "Pending" | "Approved" | "On-going" | "Done" | "Declined";
 
 const partnershipStatusTransitions: Record<PartnershipStatus, PartnershipStatus[]> = {
-  Pending: ["Pending", "Approved", "On-going", "Done", "Declined"],
-  Approved: ["Approved", "On-going", "Done"],
+  New: ["New", "Pending", "Declined"],
+  Pending: ["Pending", "Approved"],
+  Approved: ["Approved", "On-going"],
   "On-going": ["On-going", "Done"],
   Done: ["Done"],
   Declined: ["Declined"],
@@ -541,6 +561,15 @@ export type PartnershipApplication = {
   status: PartnershipStatus;
   archived?: boolean;
   archivedAt?: string;
+  paymentStatus?: "Pending" | "Paid";
+  paymentId?: string;
+  paymentCheckoutUrl?: string;
+  paymentAmount?: number;
+  paymentPaidAt?: string;
+  brandPromotionToken?: string;
+  promotionStartedAt?: string;
+  promotionEndsAt?: string;
+  adminNotes?: string;
 };
 
 const seedApplications: PartnershipApplication[] = [
@@ -556,7 +585,7 @@ const seedApplications: PartnershipApplication[] = [
     durationUnit: "Months",
     email: "partners@northlineoptics.example",
     submittedAt: "2026-08-24T10:22:00.000Z",
-    status: "Pending",
+    status: "New",
   },
   {
     id: "APP-4818",
@@ -626,7 +655,7 @@ export const applicationsStore = createStore<PartnershipApplication>(
 export type ActiveAd = {
   id: string;
   /** Stable source application relationship; avoids fragile brand matching. */
-  applicationId?: string;
+  applicationId?: string | undefined;
   brand: string;
   exactModel: string;
   productType: string;

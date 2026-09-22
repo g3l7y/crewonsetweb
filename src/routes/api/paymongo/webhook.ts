@@ -8,6 +8,8 @@ import {
 } from '@/lib/paymongo/ledger';
 import { addCurrency, getCcoinCurrencyCode } from '@/lib/playfab/economy';
 import { isMockMode } from '@/lib/playfab/config';
+import type { PartnershipPayment } from '@/lib/playfab/types';
+import { markPartnershipPaymentPaid } from '@/lib/partnership-payments';
 import {
   WEBSITE_DATA_KEYS,
   getWebsiteRecords,
@@ -95,7 +97,7 @@ export const Route = createFileRoute('/api/paymongo/webhook')({
         const mockMode = isMockMode();
         const webhookSecret = process.env['PAYMONGO_WEBHOOK_SECRET'];
         const playfabSecret = process.env['PLAYFAB_SECRET_KEY'];
-        if (!webhookSecret || (!mockMode && !playfabSecret) || !isPayMongoLedgerConfigured()) {
+        if (!webhookSecret || (!mockMode && !playfabSecret)) {
           return Response.json({ error: 'Webhook is not configured.' }, { status: 503 });
         }
 
@@ -121,6 +123,34 @@ export const Route = createFileRoute('/api/paymongo/webhook')({
           if (!referenceNumber) return Response.json({ received: true });
 
           let order: PayMongoOrder | null = null;
+          let brandPayment: PartnershipPayment | null = null;
+          if (playfabSecret) {
+            const partnershipPayments = await getWebsiteRecords<PartnershipPayment>(
+              WEBSITE_DATA_KEYS.partnershipPayments,
+              playfabSecret,
+            );
+            brandPayment = partnershipPayments.find(
+              (item) => item.id === referenceNumber || item.checkoutSessionId === String(eventData.id || ''),
+            ) ?? null;
+          }
+          if (brandPayment) {
+            if (brandPayment.status === 'fulfilled') return Response.json({ received: true });
+            const brandPayments = Array.isArray(attributes.payments) ? attributes.payments : [];
+            const hasPaidPayment = brandPayments.length > 0 && brandPayments.some((payment) => {
+              const paymentAttributes = asRecord(asRecord(payment).attributes);
+              const status = String(paymentAttributes.status || '').toLowerCase();
+              const currency = String(paymentAttributes.currency || 'PHP').toUpperCase();
+              const rawAmount = paymentAttributes.amount ?? paymentAttributes.net_amount;
+              const amount = rawAmount === undefined ? undefined : Number(rawAmount);
+              return status === 'paid' && currency === 'PHP' && amount === brandPayment?.amountInCentavos;
+            });
+            if (!hasPaidPayment) return Response.json({ received: true });
+            const result = await markPartnershipPaymentPaid(brandPayment, eventId, playfabSecret);
+            if (!result.updated && !result.alreadyPaid) {
+              return Response.json({ error: 'Brand payment could not be saved; webhook will be retried.' }, { status: 500 });
+            }
+            return Response.json({ received: true });
+          }
           if (mockMode) {
             const ledgerOrder = await getPayMongoOrder(referenceNumber);
             if (ledgerOrder) {
@@ -149,6 +179,9 @@ export const Route = createFileRoute('/api/paymongo/webhook')({
           }
 
           if (!order) {
+            if (!isPayMongoLedgerConfigured()) {
+              return Response.json({ error: 'Payment ledger is not configured.' }, { status: 503 });
+            }
             console.warn('[PayMongo] Paid checkout has no matching order:', referenceNumber);
             return Response.json({ received: true });
           }

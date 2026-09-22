@@ -4178,3 +4178,18 @@ html[data-display-theme="dark"] .display-theme-switcher button[aria-pressed="tru
   color: #0a0e19 !important;
   -webkit-text-fill-color: #0a0e19 !important;
 }
+
+/* Partnership applications: New is the initial, neutral state. */
+.admin-theme .admin-partnership-status-option[data-status="New"],
+.admin-theme .admin-partnership-status-select[data-status="New"],
+.admin-theme .admin-partnership-status-label[data-status="New"] {
+  color: #fefaef !important;
+  -webkit-text-fill-color: #fefaef !important;
+}
+
+.admin-theme.admin-light .admin-partnership-status-option[data-status="New"],
+.admin-theme.admin-light .admin-partnership-status-select[data-status="New"],
+.admin-theme.admin-light .admin-partnership-status-label[data-status="New"] {
+  color: #0a0e19 !important;
+  -webkit-text-fill-color: #0a0e19 !important;
+}
