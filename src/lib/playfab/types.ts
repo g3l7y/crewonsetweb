@@ -54,7 +54,7 @@ export type ReportStatus = 'New' | 'Investigating' | 'Resolved';
 /**
  * Brand partnership application workflow states.
  */
-export type PartnershipStatus = 'Pending' | 'Approved' | 'On-going' | 'Done' | 'Declined';
+export type PartnershipStatus = 'New' | 'Pending' | 'Approved' | 'On-going' | 'Done' | 'Declined';
 
 // ============================================================================
 // Player Data
@@ -616,6 +616,21 @@ export interface PartnershipApplication {
   submittedAt: string;
   /** Application review status */
   status: PartnershipStatus | string;
+  /** Payment lifecycle for sponsorship applications. */
+  paymentStatus?: "Pending" | "Paid" | undefined;
+  paymentId?: string | undefined;
+  paymentCheckoutUrl?: string | undefined;
+  paymentAmount?: number | undefined;
+  paymentPaidAt?: string | undefined;
+  paymentEmailSentAt?: string | undefined;
+  approvalEmailSentAt?: string | undefined;
+  /** Opaque token used by the applicant's live promotion status link. */
+  brandPromotionToken?: string | undefined;
+  /** ISO timestamp when the promotion became live. */
+  promotionStartedAt?: string | undefined;
+  /** ISO timestamp when the promotion contract ends. */
+  promotionEndsAt?: string | undefined;
+  adminNotes?: string | undefined;
   /** Whether archived from active admin view */
   archived?: boolean | undefined;
   /** ISO timestamp when archived */
@@ -627,8 +642,25 @@ export interface PartnershipApplication {
   proposal?: string | undefined;
 }
 
-/**
- * Administrator alert and notification.
+/** A brand sponsorship payment, kept independently from the application record. */
+export type PartnershipPaymentStatus = 'pending' | 'active' | 'fulfilled' | 'failed';
+
+export interface PartnershipPayment {
+  id: string;
+  applicationId: string;
+  brand: string;
+  email: string;
+  amountInCentavos: number;
+  currency: 'PHP';
+  checkoutSessionId: string;
+  checkoutUrl?: string | undefined;
+  status: PartnershipPaymentStatus;
+  createdAt: string;
+  updatedAt: string;
+  paidAt?: string | undefined;
+  eventId?: string | undefined;
+}
+/** Administrator alert and notification.
  */
 export interface AdminNotification {
   /** Unique alert identifier */
@@ -671,6 +703,11 @@ export interface AdEntry {
   clicks: number;
   /** Contract revenue generated */
   revenue?: number | undefined;
+  /** Optional tracked performance values for a live promotion. */
+  adClicks?: number | undefined;
+  adVisits?: number | undefined;
+  adImpressions?: number | undefined;
+  adRevenue?: number | undefined;
   /** ISO timestamp of placement campaign start */
   startDate?: string | undefined;
   /** ISO timestamp of campaign conclusion */
@@ -681,6 +718,18 @@ export interface AdEntry {
   imageUrl?: string | undefined;
   /** In-game set location (e.g. "Studio B — craft table props") */
   placement?: string | undefined;
+  /** Stable relationship to the source partnership application. */
+  applicationId?: string | undefined;
+  /** Product model shown in the admin promotion detail view. */
+  exactModel?: string | undefined;
+  /** Product category shown in the admin promotion detail view. */
+  productType?: string | undefined;
+  /** Contract/campaign description shown in the admin promotion detail view. */
+  contract?: string | undefined;
+  /** Unique-visitor count for the placement. */
+  visits?: number | undefined;
+  /** ISO timestamp used by the live countdown. */
+  expiresAt?: string | undefined;
 
   /** Legacy / mock compatibility aliases */
   title?: string | undefined;

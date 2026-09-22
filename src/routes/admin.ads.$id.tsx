@@ -11,6 +11,9 @@ export const Route = createFileRoute("/admin/ads/$id")({
 });
 
 import { useEffect, useRef, useState } from "react";
+import { isMockMode } from "@/lib/playfab/config";
+import { useAdminAds } from "@/lib/playfab/hooks";
+import type { AdEntry } from "@/lib/playfab/types";
 import Link from "@/components/next-compat/link";
 import {
   ArrowLeft,
@@ -54,9 +57,32 @@ function splitCountdown(ms: number) {
   };
 }
 
+function fromServiceAd(ad: AdEntry): ActiveAd {
+  const status = ad.status === 'Done' ? 'Done' : ad.status === 'Expiring' ? 'Expiring' : ad.status === 'Expired' ? 'Expired' : 'On-going';
+  const startDate = ad.startDate || new Date().toISOString();
+  return {
+    id: ad.id,
+    applicationId: ad.applicationId,
+    brand: ad.brand || 'Brand promotion',
+    exactModel: ad.exactModel || ad.product || '',
+    productType: ad.productType || 'Other',
+    contract: ad.contract || 'Crew On Set brand promotion placement.',
+    startDate,
+    expiresAt: ad.expiresAt || ad.endDate || startDate,
+    status,
+    revenue: ad.revenue || 0,
+    clicks: ad.clicks || 0,
+    visits: ad.visits || 0,
+    impressions: ad.impressions || 0,
+    placement: ad.placement || 'Crew On Set production placement',
+  };
+}
+
 function AdDetailPage() {
   const { id } = Route.useParams();
-  const [ads, setAds] = adsStore.useStore();
+  const [localAds, setAds] = adsStore.useStore();
+  const realAdsQuery = useAdminAds();
+  const ads = isMockMode() ? localAds : (realAdsQuery.data ?? []).map(fromServiceAd);
   const [notifications, setNotifications] = notificationsStore.useStore();
   const [now, setNow] = useState<number | null>(null);
   const [adminNotified, setAdminNotified] = useState(false);
@@ -71,7 +97,7 @@ function AdDetailPage() {
   }, []);
 
   useEffect(() => {
-    if (!ad || now === null || hasFiredExpiry.current) return;
+    if (!isMockMode() || !ad || now === null || hasFiredExpiry.current) return;
     const remaining = new Date(ad.expiresAt).getTime() - now;
     if (remaining <= 0 && ad.status !== "Done") {
       hasFiredExpiry.current = true;

@@ -68,7 +68,16 @@ export const topUps = [
   { id: "TOP-88017", playerName: "LightLeak", playerId: "COS-0003", date: "2026-07-22", time: "18:03", bank: "GCash •••• 8814", amount: 4.99, status: "Completed" },
 ] as const;
 
-export type TopUpRecord = (typeof topUps)[number];
+export type TopUpRecord = {
+  id: string;
+  playerName: string;
+  playerId: string;
+  date: string;
+  time: string;
+  bank: string;
+  amount: number;
+  status: 'Completed' | 'Pending' | 'Failed';
+};
 
 /** Shared demo ledger used by player checkout and admin sales views. */
 export const topUpsStore = createStore<TopUpRecord>("cos.topUps", [...topUps]);
