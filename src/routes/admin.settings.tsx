@@ -355,6 +355,10 @@ function SettingsPage() {
   const [confirmPassword, setConfirmPassword] = useState("");
   const [passwordErrors, setPasswordErrors] = useState<{ current?: string; next?: string; confirm?: string }>({});
   const [recoveryOpen, setRecoveryOpen] = useState(false);
+  const [emailConfirmOpen, setEmailConfirmOpen] = useState(false);
+  const [emailConfirmPassword, setEmailConfirmPassword] = useState("");
+  const [emailConfirmError, setEmailConfirmError] = useState("");
+  const [pendingEmail, setPendingEmail] = useState("");
 
   useEffect(() => {
     if (!mockMode && sessionQuery.data?.email) setEmail(sessionQuery.data.email);
@@ -363,41 +367,54 @@ function SettingsPage() {
   async function saveEmail(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setEmailError("");
-    const normalizedEmail = email.trim();
+    const normalizedEmail = email.trim().toLowerCase();
 
     if (!isValidEmail(normalizedEmail)) {
       setEmailError(EMAIL_ERROR);
       return;
     }
-
-    if (!mockMode) {
-      const response = await fetch("/api/admin/account", {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email: normalizedEmail }),
-      });
-      if (!response.ok) {
-        const body = (await response.json().catch(() => ({}))) as { error?: string };
-        setEmailError(body.error || "The real account email could not be updated.");
-        return;
-      }
-    } else {
-      setAccount([{ ...admin, email: normalizedEmail }]);
+    if (normalizedEmail === admin.email.trim().toLowerCase()) {
+      toast.success("Email is already up to date.");
+      return;
     }
 
-    setEmail(normalizedEmail);
+    setPendingEmail(normalizedEmail);
+    setEmailConfirmPassword("");
+    setEmailConfirmError("");
+    setEmailConfirmOpen(true);
+  }
+
+  async function confirmEmailChange() {
+    if (!pendingEmail) return;
+    if (!emailConfirmPassword) {
+      setEmailConfirmError("Enter your current password.");
+      return;
+    }
+
+    const response = await fetch("/api/admin/account", {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ email: pendingEmail, currentPassword: emailConfirmPassword }),
+    });
+    const result = (await response.json().catch(() => ({}))) as { success?: boolean; email?: string; error?: string };
+    if (!response.ok || result.success === false) {
+      setEmailConfirmError(result.error || "The current password was rejected or the email is already in use.");
+      return;
+    }
+
+    const updatedEmail = result.email || pendingEmail;
+    if (mockMode) setAccount([{ ...admin, email: updatedEmail }]);
+    setEmail(updatedEmail);
+    setEmailConfirmOpen(false);
+    setPendingEmail("");
+    setEmailConfirmPassword("");
     toast.success("Email updated.");
   }
   async function savePassword(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    if (!mockMode) {
-      setPasswordErrors({ next: "Real PlayFab passwords are changed through the account-recovery flow; this page never stores a local password." });
-      return;
-    }
-
     const errors: { current?: string; next?: string; confirm?: string } = {};
 
-    if (currentPassword !== admin.password) {
+    if (mockMode && currentPassword !== admin.password) {
       errors.current = "Current password is incorrect.";
     }
     if (!isValidPassword(newPassword)) {
@@ -528,6 +545,36 @@ function SettingsPage() {
           </form>
         </section>
       </div>
+
+      {emailConfirmOpen && (
+        <div className="fixed inset-0 z-[85] grid place-items-center bg-black/70 p-4 backdrop-blur-sm" role="dialog" aria-modal="true">
+          <section className="w-full max-w-md rounded-xl border border-white/10 bg-[#182330] p-6 text-white shadow-2xl">
+            <div className="flex items-start justify-between gap-4">
+              <div>
+                <p className="text-[10px] font-black uppercase tracking-[.18em] text-coral">ACCOUNT SECURITY</p>
+                <h2 className="mt-2 text-xl font-black uppercase">Confirm Email Change</h2>
+              </div>
+              <button type="button" onClick={() => setEmailConfirmOpen(false)} aria-label="Close" className="grid size-8 place-items-center rounded-md text-white/40 hover:text-white"><X className="size-4" /></button>
+            </div>
+            <p className="mt-4 text-sm text-white/55">Enter your current password before we update the administrator email.</p>
+            {emailConfirmError && <p className="mt-4 rounded-md border border-coral/30 bg-coral/10 px-3 py-2 text-xs font-bold text-coral">{emailConfirmError}</p>}
+            <input
+              type="password"
+              value={emailConfirmPassword}
+              onChange={(event) => setEmailConfirmPassword(event.target.value)}
+              onKeyDown={(event) => { if (event.key === "Enter") void confirmEmailChange(); }}
+              autoComplete="current-password"
+              placeholder="Current password"
+              className="mt-4 w-full rounded-md border border-white/10 bg-[#101923] px-3 py-2.5 text-sm font-bold text-white outline-none placeholder:text-white/25 focus:border-coral"
+              autoFocus
+            />
+            <div className="mt-5 flex justify-end gap-2">
+              <button type="button" onClick={() => setEmailConfirmOpen(false)} className="rounded-md border border-white/10 px-4 py-2.5 text-xs font-black uppercase text-white/50 hover:text-white">Cancel</button>
+              <button type="button" onClick={() => void confirmEmailChange()} className="rounded-md bg-coral px-5 py-2.5 text-xs font-black uppercase text-white hover:bg-coral-dark">Confirm</button>
+            </div>
+          </section>
+        </div>
+      )}
 
       {recoveryOpen && <PasswordRecoveryModal scope="admin" onClose={() => setRecoveryOpen(false)} />}
 

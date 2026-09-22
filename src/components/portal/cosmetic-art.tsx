@@ -59,6 +59,10 @@ function renderArt(assetKey: string) {
       return <g><path d="M88 44h64l7 29 25 74H56l25-74 7-29Z" fill={CORAL} {...common} /><path d="M91 61h58M83 83l-11 64M107 83l-3 64M133 83l3 64M157 83l11 64" fill="none" stroke={CREAM} strokeWidth="5" /></g>;
     case "indigo-trousers":
       return <g><path d="M77 45h86l-4 34-7 67h-27l-4-51-4 51H90l-6-67-7-34Z" fill={BLUE} {...common} /><path d="M77 45h86M107 59h26" fill="none" stroke={CREAM} strokeWidth="5" /></g>;
+    case "studio-boots":
+      return <g><path d="M74 45h47v70l33 12c19 7 30 17 30 31H60c0-12 7-22 20-29l-6-84Z" fill={INK} {...common} /><path d="M80 88h37M80 101h37" fill="none" stroke={CREAM} strokeWidth="5" /></g>;
+    case "coral-high-tops":
+      return <g><path d="M76 42h48v72l31 11c20 7 29 18 29 33H60c0-14 8-25 22-32l-6-84Z" fill={CORAL} {...common} /><path d="M85 72h30M85 87h30M85 102h30" fill="none" stroke={CREAM} strokeWidth="5" /></g>;
     case "round-ink":
       return <g fill="none" {...common}><circle cx="84" cy="95" r="30" /><circle cx="156" cy="95" r="30" /><path d="M114 94c8-8 18-8 26 0M54 94H38M186 94h16" /></g>;
     case "square-coral":

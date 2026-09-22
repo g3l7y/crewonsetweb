@@ -354,7 +354,7 @@ export function Leaderboards() {
         </table>
 
         {currentLeaders.length === 0 && (
-          <div className="p-10 text-center">
+          <div className="leaderboard-empty-state p-10 text-center">
 
             <Users className="mx-auto size-9 text-white/20" />
 

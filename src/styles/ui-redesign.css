@@ -3984,6 +3984,25 @@ html[data-display-theme="dark"] .display-theme-switcher button[aria-pressed="tru
   height: clamp(22rem, 68vh, 37rem);
   max-height: none;
 }
+/* LEADERBOARD EMPTY STATES: center the no-data message in the area below the table header. */
+.portal-theme .leaderboard-scroll-list {
+  position: relative;
+}
+
+.portal-theme .leaderboard-empty-state {
+  position: absolute;
+  top: 3.75rem;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 2rem 2.5rem;
+  transform: translateY(.75rem);
+}
+
 /* FRIENDS LISTS: use the Friends tab card as the shared viewport for every list tab. */
 .portal-theme .friends-list-scroll {
   height: clamp(20rem, 60vh, 34rem);

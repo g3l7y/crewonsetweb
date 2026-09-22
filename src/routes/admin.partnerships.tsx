@@ -15,6 +15,7 @@ export const Route = createFileRoute("/admin/partnerships")({
 
 import { useMemo, useState } from "react";
 import Link from "@/components/next-compat/link";
+import { normalizeExternalHttpUrl } from "@/lib/external-url";
 import { PartnershipStatusDropdown } from "@/components/admin/partnership-status-dropdown";
 import {
   Banknote,
@@ -588,9 +589,17 @@ function PartnershipsPage() {
                     <Link2 className="size-3.5" /> Link
                   </dt>
                   <dd className="mt-1.5 break-all text-sm font-bold !text-[#7cb0ee]">
-                    <a href={selected.link} target="_blank" rel="noreferrer">
-                    {selected.link || "Not provided"}
-                  </a>
+                    {selected.link ? (
+                      <a
+                        href={normalizeExternalHttpUrl(selected.link)}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                      >
+                        {selected.link}
+                      </a>
+                    ) : (
+                      "Not provided"
+                    )}
                   </dd>
                 </div>
                 <div className="sm:col-span-2">

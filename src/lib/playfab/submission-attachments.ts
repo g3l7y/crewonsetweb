@@ -171,11 +171,23 @@ export async function getSubmissionAttachment(
 ): Promise<PlayFabFileMetadata | null> {
   if (!/^[a-z0-9_.()-]+$/i.test(fileName)) return null;
   const entityContext = await getTitleEntityContext(secretKey);
-  const result = await playFabFileRequest<{ Metadata?: PlayFabFileMetadata[] }>(
+  const result = await playFabFileRequest<{
+    Metadata?: PlayFabFileMetadata[] | Record<string, PlayFabFileMetadata>;
+  }>(
     "/File/GetFiles",
     entityContext.token,
     {},
     entityContext.entity,
   );
-  return result.Metadata?.find((file) => file.FileName === fileName) ?? null;
+  const metadata = result.Metadata;
+  if (!metadata) return null;
+
+  // PlayFab has returned this collection as both an array and a filename-keyed
+  // object across API versions. Support both shapes so existing uploads remain
+  // viewable instead of failing while calling Array.prototype.find.
+  if (Array.isArray(metadata)) {
+    return metadata.find((file) => file.FileName === fileName) ?? null;
+  }
+
+  return metadata[fileName] ?? Object.values(metadata).find((file) => file.FileName === fileName) ?? null;
 }

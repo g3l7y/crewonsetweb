@@ -1,4 +1,5 @@
 import { createFileRoute } from '@tanstack/react-router';
+import { PLAYFAB_API_BASE, isMockMode } from '@/lib/playfab/config';
 import { unauthorizedSessionResponse, validateSessionFromRequest } from '@/lib/playfab/session';
 import {
   WEBSITE_DATA_KEYS,
@@ -23,6 +24,66 @@ function uid(prefix: string): string {
   return `${prefix}-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
 }
 
+type PlayFabAccountInfo = {
+  PlayFabId?: string;
+  Username?: string;
+  TitleInfo?: {
+    DisplayName?: string;
+  };
+};
+
+type ReportedPlayerLookup = {
+  player: { playFabId: string; username: string } | null;
+  providerUnavailable: boolean;
+};
+
+async function findRealReportedPlayer(
+  sessionTicket: string,
+  reporterId: string,
+  username: string,
+): Promise<ReportedPlayerLookup> {
+  let providerUnavailable = false;
+  const normalizedUsername = username.trim().toLowerCase();
+
+  for (const lookup of [{ TitleDisplayName: username }, { Username: username }]) {
+    try {
+      const playfabResponse = await fetch(`${PLAYFAB_API_BASE}/Client/GetAccountInfo`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-Authorization': sessionTicket,
+        },
+        body: JSON.stringify(lookup),
+      });
+      const result = await playfabResponse.json().catch(() => ({}));
+      const account = result?.data?.AccountInfo as PlayFabAccountInfo | undefined;
+      const playFabId = account?.PlayFabId?.trim() ?? '';
+      const displayName = account?.TitleInfo?.DisplayName?.trim() ?? '';
+      const playFabUsername = account?.Username?.trim() ?? '';
+
+      if (playfabResponse.status >= 500 || Number(result?.code) >= 500) {
+        providerUnavailable = true;
+        continue;
+      }
+
+      const matchesUsername = displayName.toLowerCase() === normalizedUsername ||
+        playFabUsername.toLowerCase() === normalizedUsername;
+      if (playfabResponse.ok && result?.code === 200 && playFabId && playFabId !== reporterId && matchesUsername) {
+        return {
+          player: {
+            playFabId,
+            username: displayName || playFabUsername || username.trim(),
+          },
+          providerUnavailable,
+        };
+      }
+    } catch {
+      providerUnavailable = true;
+    }
+  }
+
+  return { player: null, providerUnavailable };
+}
 export const Route = createFileRoute('/api/admin/player-reports')({
   server: {
     handlers: {
@@ -65,6 +126,27 @@ export const Route = createFileRoute('/api/admin/player-reports')({
             return Response.json({ error: 'Description is required.' }, { status: 400 });
           }
 
+          const normalizedReportedUsername = reportedUsername?.trim() ?? '';
+          if (!normalizedReportedUsername) {
+            return Response.json({ error: 'The reported username is required.' }, { status: 400 });
+          }
+
+          let resolvedReportedUsername = normalizedReportedUsername;
+          let resolvedReportedPlayerId = reportedPlayerId?.trim() || undefined;
+          if (!isMockMode()) {
+            const lookup = await findRealReportedPlayer(session.sessionTicket || '', session.playFabId, normalizedReportedUsername);
+            if (!lookup.player) {
+              return Response.json(
+                { error: lookup.providerUnavailable
+                    ? 'Player lookup is temporarily unavailable. Please try again.'
+                    : 'The reported username must match an existing player account.' },
+                { status: lookup.providerUnavailable ? 503 : 400 },
+              );
+            }
+            resolvedReportedUsername = lookup.player.username;
+            resolvedReportedPlayerId = lookup.player.playFabId;
+          }
+
           const id = uid('PR');
           let uploadedAttachment: { attachmentUrl: string; fileName: string } | undefined;
           if (attachment) {
@@ -84,8 +166,8 @@ export const Route = createFileRoute('/api/admin/player-reports')({
             id,
             reporterId: session.playFabId,
             reporterName: session.username || session.displayName || 'Player',
-            reportedUsername: reportedUsername || 'Unknown',
-            reportedPlayerId: reportedPlayerId || undefined,
+            reportedUsername: resolvedReportedUsername,
+            reportedPlayerId: resolvedReportedPlayerId,
             reportType: reportType || 'Other',
             description,
             attachmentName: attachment?.name || attachmentName || undefined,

@@ -120,8 +120,8 @@ function AdminDashboardPage() {
   }, [messages]);
 
   const dashboardStats = useMemo(() => {
-    const completedTopUpRevenue = topUps
-      .filter((topUp) => topUp.status === "Completed")
+    const paymongoRevenue = topUps
+      .filter((topUp) => mockMode ? topUp.status === "Completed" : true)
       .reduce((total, topUp) => total + topUp.amount, 0);
     const recognizedBrandBudgets = applications
       .filter((application) => ["Approved", "On-going", "Done"].includes(application.status))
@@ -140,13 +140,13 @@ function AdminDashboardPage() {
         }
         return {
           ...stat,
-          value: formatMoney(completedTopUpRevenue + recognizedBrandBudgets),
+          value: formatMoney(paymongoRevenue + recognizedBrandBudgets),
           change: "—",
         };
       });
     }
 
-    const syncedTopUpRevenue = Math.max(0, completedTopUpRevenue - seededCompletedTopUpRevenue);
+    const syncedTopUpRevenue = Math.max(0, paymongoRevenue - seededCompletedTopUpRevenue);
     return stats.map((stat) =>
       stat.label === "Total Revenue"
         ? { ...stat, value: formatMoney(dashboardBaseRevenue + syncedTopUpRevenue) }

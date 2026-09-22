@@ -196,6 +196,11 @@ function SettingsPage() {
 
   const [loaded, setLoaded] = useState(false);
 
+  const [credentialConfirmOpen, setCredentialConfirmOpen] = useState(false);
+  const [credentialConfirmPassword, setCredentialConfirmPassword] = useState("");
+  const [credentialConfirmError, setCredentialConfirmError] = useState("");
+  const [pendingAccount, setPendingAccount] = useState<AccountData | null>(null);
+
   const fileInput = useRef<HTMLInputElement>(null);
 
   /* =========================================================
@@ -307,15 +312,19 @@ function SettingsPage() {
     }
   };
 
-  const persistAccount = async (nextAccount: AccountData, successMessage: string) => {
+  const persistAccount = async (nextAccount: AccountData, successMessage: string, confirmationPassword = "") => {
     try {
-      if (!mockMode && (nextAccount.username !== savedAccount.username || nextAccount.email !== savedAccount.email)) {
+      const usernameChanged = nextAccount.username.toLowerCase() !== savedAccount.username.toLowerCase();
+      const emailChanged = nextAccount.email.toLowerCase() !== savedAccount.email.toLowerCase();
+
+      if (usernameChanged || emailChanged) {
         const response = await fetch("/api/auth/profile", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
-            ...(nextAccount.username !== savedAccount.username ? { username: nextAccount.username } : {}),
-            ...(nextAccount.email !== savedAccount.email ? { email: nextAccount.email } : {}),
+            ...(usernameChanged ? { username: nextAccount.username } : {}),
+            ...(emailChanged ? { email: nextAccount.email } : {}),
+            currentPassword: confirmationPassword,
           }),
         });
         const result = (await response.json().catch(() => ({}))) as { error?: string };
@@ -323,17 +332,6 @@ function SettingsPage() {
       }
 
       if (mockMode) {
-        if (nextAccount.username.toLowerCase() !== savedAccount.username.toLowerCase()) {
-          const response = await fetch("/api/auth/check-username", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ username: nextAccount.username }),
-          });
-          if (!response.ok) {
-            const result = (await response.json()) as { error?: string };
-            throw new Error(result.error ?? "That username is already in use. Please choose another.");
-          }
-        }
         window.localStorage.setItem("player-account", JSON.stringify(nextAccount));
         window.localStorage.setItem("cos.profile.account", JSON.stringify({ username: nextAccount.username, email: nextAccount.email }));
       }
@@ -370,11 +368,6 @@ function SettingsPage() {
       return;
     }
 
-    if (!mockMode && field === "Email") {
-      showMessage(field + " changes are managed by the PlayFab account service.", "error");
-      return;
-    }
-
     if (field === "Email" && !isValidEmail(value)) {
       showMessage(EMAIL_ERROR, "error");
       return;
@@ -402,11 +395,33 @@ function SettingsPage() {
     const nextAccount =
       field === "Username"
         ? { ...account, username: value.toUpperCase() }
-        : { ...account, email: value };
+        : { ...account, email: value.toLowerCase() };
 
-    const saved = await persistAccount(nextAccount, field + " updated.");
-    if (!saved) return;
+    setPendingAccount(nextAccount);
+    setCredentialConfirmPassword("");
+    setCredentialConfirmError("");
+    setCredentialConfirmOpen(true);
+  };
 
+  const confirmAccountCredentialChange = async () => {
+    if (!pendingAccount) return;
+    if (!credentialConfirmPassword) {
+      setCredentialConfirmError("Enter your current password.");
+      return;
+    }
+    setCredentialConfirmError("");
+    const saved = await persistAccount(
+      pendingAccount,
+      pendingAccount.username.toLowerCase() !== savedAccount.username.toLowerCase() ? "Username updated." : "Email updated.",
+      credentialConfirmPassword,
+    );
+    if (!saved) {
+      setCredentialConfirmError("The current password was rejected or the credential is already in use.");
+      return;
+    }
+    setCredentialConfirmOpen(false);
+    setPendingAccount(null);
+    setCredentialConfirmPassword("");
     setEditing(null);
     setDraftValue("");
   };
@@ -473,10 +488,6 @@ function SettingsPage() {
     }
     if (newPassword !== confirmPassword) {
       setPasswordError("New passwords do not match.");
-      return;
-    }
-    if (!mockMode) {
-      setPasswordError("Real PlayFab passwords use the secure Forgot Password recovery flow.");
       return;
     }
     const response = await fetch("/api/auth/password/change", {
@@ -690,8 +701,9 @@ function SettingsPage() {
       submittedAt,
       status: "New" as const,
     };
-    if (!(await insertSharedRecord("cos.playerReports", playerReport, undefined, mockMode ? undefined : playerReportAttachment))) {
-      setPlayerReportError("We could not submit your report. Please try again.");
+    let playerReportInsertError = "";
+    if (!(await insertSharedRecord("cos.playerReports", playerReport, (message) => { playerReportInsertError = message; }, mockMode ? undefined : playerReportAttachment))) {
+      setPlayerReportError(playerReportInsertError || "We could not submit your report. Please try again.");
       return;
     }
     playerReportsStore.set((current) => [playerReport, ...current.filter((item) => item.id !== playerReport.id)]);
@@ -1606,6 +1618,36 @@ function SettingsPage() {
                 </div>
               </>
             )}
+          </section>
+        </div>
+      )}
+
+      {credentialConfirmOpen && pendingAccount && (
+        <div className="fixed inset-0 z-[85] grid place-items-center bg-[#05080d]/85 p-5 backdrop-blur-md" role="dialog" aria-modal="true">
+          <section className="w-full max-w-md rounded-xl border border-white/[0.09] bg-[#151c29] p-6 text-white shadow-2xl shadow-black/50">
+            <div className="flex items-start justify-between gap-4">
+              <div>
+                <p className="text-[10px] font-black uppercase tracking-[.18em] text-coral">ACCOUNT SECURITY</p>
+                <h2 className="mt-2 text-2xl font-black uppercase tracking-tight">Confirm Credential Change</h2>
+              </div>
+              <button type="button" onClick={() => setCredentialConfirmOpen(false)} aria-label="Close" className="grid size-9 place-items-center rounded-md text-white/30 transition hover:bg-white/[0.05] hover:text-white"><X className="size-5" /></button>
+            </div>
+            <p className="mt-4 text-sm leading-relaxed text-white/55">Enter your current password before we update your username or email address.</p>
+            {credentialConfirmError && <p className="mt-4 rounded-md border border-coral/30 bg-coral/10 px-3 py-2 text-xs font-bold text-coral">{credentialConfirmError}</p>}
+            <input
+              type="password"
+              value={credentialConfirmPassword}
+              onChange={(event) => setCredentialConfirmPassword(event.target.value)}
+              onKeyDown={(event) => { if (event.key === "Enter") void confirmAccountCredentialChange(); }}
+              autoComplete="current-password"
+              placeholder="Current password"
+              className="mt-4 w-full rounded-lg border border-white/10 bg-[#0d121c] px-4 py-3 text-sm text-white outline-none placeholder:text-white/20 focus:border-coral focus:ring-4 focus:ring-coral/10"
+              autoFocus
+            />
+            <div className="mt-5 flex justify-end gap-2">
+              <button type="button" onClick={() => setCredentialConfirmOpen(false)} className="rounded-md border border-white/10 px-4 py-2.5 text-xs font-black uppercase text-white/50 hover:text-white">Cancel</button>
+              <button type="button" onClick={() => void confirmAccountCredentialChange()} className="rounded-md bg-coral px-5 py-2.5 text-xs font-black uppercase text-white hover:bg-coral/90">Confirm</button>
+            </div>
           </section>
         </div>
       )}

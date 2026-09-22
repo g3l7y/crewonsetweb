@@ -1,6 +1,7 @@
 import { PLAYFAB_SESSION_COOKIE, PLAYFAB_ROLE_COOKIE } from '@/lib/session.constants';
 import type { SessionData } from './types';
 import { isMockMode, PLAYFAB_API_BASE, PLAYFAB_TITLE_ID } from './config';
+import { PLAYFAB_DATA_KEYS } from './constants';
 import { getMockAccountBySessionTicket } from './mock-accounts';
 
 /**
@@ -23,9 +24,14 @@ function expireCookie(name: string): string {
  * Returns an array of Set-Cookie header values.
  */
 export function createSessionCookies(session: SessionData): string[] {
-  const maxAge = 60 * 60 * 8; // 8 hours
+  const maxAge = 60 * 60 * 8; // Keep the mock-preview browser session for 8 hours.
   const sessionValue = JSON.stringify({
     sessionTicket: session.sessionTicket,
+    playFabId: session.playFabId,
+    username: session.username,
+    playFabUsername: session.playFabUsername,
+    displayName: session.displayName,
+    email: session.email,
   });
   return [
     buildCookie(PLAYFAB_SESSION_COOKIE, sessionValue, maxAge),
@@ -44,9 +50,7 @@ export function clearSessionCookies(): string[] {
 }
 
 export function unauthorizedSessionResponse(status = 403): Response {
-  const headers = new Headers({ 'Content-Type': 'application/json' });
-  for (const cookie of clearSessionCookies()) headers.append('Set-Cookie', cookie);
-  return new Response(JSON.stringify({ error: 'Unauthorized' }), { status, headers });
+  return Response.json({ error: 'Unauthorized' }, { status });
 }
 
 /**
@@ -73,6 +77,7 @@ export function parseSessionFromRequest(request: Request): SessionData | null {
       sessionTicket: session.sessionTicket,
       role: 'player',
       username: session.username,
+      playFabUsername: session.playFabUsername,
       displayName: session.displayName,
       email: session.email,
     };
@@ -84,6 +89,26 @@ export function parseSessionFromRequest(request: Request): SessionData | null {
 /**
  * Check if request has admin role.
  */
+export async function hasActivePlayFabBan(playFabId: string, secretKey: string): Promise<boolean> {
+  const response = await fetch(`${PLAYFAB_API_BASE}/Server/GetUserBans`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', 'X-SecretKey': secretKey },
+    body: JSON.stringify({ PlayFabId: playFabId }),
+  });
+  const result = await response.json().catch(() => ({})) as {
+    code?: number;
+    data?: { BanData?: Array<{ Active?: boolean; Expires?: string }> };
+  };
+  if (!response.ok || result.code !== 200) {
+    throw new Error('PlayFab ban status could not be verified.');
+  }
+  return (result.data?.BanData ?? []).some((ban) => {
+    if (!ban.Active) return false;
+    if (!ban.Expires) return true;
+    const expiresAt = Date.parse(ban.Expires);
+    return Number.isNaN(expiresAt) || expiresAt > Date.now();
+  });
+}
 export async function validateSessionFromRequest(
   request: Request,
   options: { requireAdmin?: boolean } = {},
@@ -98,23 +123,56 @@ export async function validateSessionFromRequest(
   }
 
   try {
-    const accountResponse = await fetch(`${PLAYFAB_API_BASE}/Client/GetAccountInfo`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'X-Authorization': parsed.sessionTicket,
-      },
-      body: JSON.stringify({ TitleId: PLAYFAB_TITLE_ID }),
-    });
-    const accountResult = await accountResponse.json();
-    if (!accountResponse.ok || accountResult.code !== 200) return null;
+    let accountResponse: Response | null = null;
+    let accountResult: any = null;
+    for (let attempt = 0; attempt < 2; attempt += 1) {
+      try {
+        accountResponse = await fetch(`${PLAYFAB_API_BASE}/Client/GetAccountInfo`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'X-Authorization': parsed.sessionTicket,
+          },
+          body: JSON.stringify({}),
+        });
+        accountResult = await accountResponse.json();
+      } catch (error) {
+        if (attempt === 1) throw error;
+        continue;
+      }
+
+      const retryable = accountResponse.status === 429 || accountResponse.status >= 500 || accountResult?.code >= 500;
+      if (!retryable || attempt === 1) break;
+    }
+
+    if (!accountResponse) return null;
+    if (!accountResponse.ok || accountResult.code !== 200) {
+      // A temporary PlayFab/network failure must not erase a valid browser
+      // session. The ticket is still the credential used for every protected
+      // PlayFab request. Admin requests remain fail-closed because their role
+      // must be checked against the server-side tag on every request.
+      const errorText = String(accountResult?.error ?? accountResult?.errorMessage ?? '').toLowerCase();
+      const definitelyInvalid = accountResponse.status === 401 || accountResponse.status === 403 ||
+        /not.?authenticated|invalid.?session|session.?ticket/.test(errorText);
+      if (!options.requireAdmin && !definitelyInvalid) return parsed;
+      return null;
+    }
 
     const account = accountResult.data?.AccountInfo;
     const playFabId = account?.PlayFabId;
     if (!playFabId) return null;
 
-    let role: 'admin' | 'player' = 'player';
     const secretKey = process.env['PLAYFAB_SECRET_KEY'];
+    if (secretKey) {
+      try {
+        if (await hasActivePlayFabBan(playFabId, secretKey)) return null;
+      } catch {
+        // Real-mode moderation must fail closed when ban status cannot be verified.
+        return null;
+      }
+    }
+
+    let role: 'admin' | 'player' = 'player';
     if (options.requireAdmin && !secretKey) return null;
     if (secretKey) {
       const tagsResponse = await fetch(`${PLAYFAB_API_BASE}/Server/GetPlayerTags`, {
@@ -127,23 +185,57 @@ export async function validateSessionFromRequest(
         if (options.requireAdmin) return null;
       } else {
         const tags: unknown[] = tagsResult.data?.Tags ?? [];
-        if (tags.some((tag) => typeof tag === 'string' && tag.toLowerCase() === 'role:admin')) {
+        if (tags.some((tag) => {
+          if (typeof tag !== 'string') return false;
+          const normalizedTag = tag.toLowerCase();
+          return normalizedTag === 'role:admin' || normalizedTag.endsWith(':role:admin') || normalizedTag.endsWith('.role:admin');
+        })) {
           role = 'admin';
         }
       }
     }
 
     if (options.requireAdmin && role !== 'admin') return null;
+
+    let savedUsername = '';
+    const accountDisplayName = account?.TitleInfo?.DisplayName || account?.Username || '';
+    if (accountDisplayName === 'Player' || !accountDisplayName) {
+      try {
+        const userDataResponse = await fetch(`${PLAYFAB_API_BASE}/Client/GetUserData`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'X-Authorization': parsed.sessionTicket,
+          },
+          body: JSON.stringify({ Keys: [PLAYFAB_DATA_KEYS.profile_metadata] }),
+        });
+        const userDataResult = await userDataResponse.json();
+        const rawMetadata = userDataResult?.data?.Data?.[PLAYFAB_DATA_KEYS.profile_metadata]?.Value;
+        if (typeof rawMetadata === 'string' && rawMetadata) {
+          const metadata = JSON.parse(rawMetadata) as { username?: unknown };
+          if (typeof metadata.username === 'string' && metadata.username.trim()) {
+            savedUsername = metadata.username.trim();
+          }
+        }
+      } catch {
+        // Profile metadata is optional; keep the PlayFab account name if it is unavailable.
+      }
+    }
+
+    const resolvedUsername = savedUsername || accountDisplayName || 'Player';
     return {
       playFabId,
       sessionTicket: parsed.sessionTicket,
       role,
-      username: account?.TitleInfo?.DisplayName || account?.Username || 'Player',
-      displayName: account?.TitleInfo?.DisplayName || account?.Username || 'Player',
+      username: resolvedUsername,
+      playFabUsername: account?.Username || parsed.playFabUsername,
+      displayName: resolvedUsername,
       email: account?.PrivateInfo?.Email || '',
     };
   } catch {
-    return null;
+    // Do not turn a short PlayFab outage into an apparent logout for players.
+    // Admin authorization still fails closed when the role cannot be checked.
+    return options.requireAdmin ? null : parsed;
   }
 }
 

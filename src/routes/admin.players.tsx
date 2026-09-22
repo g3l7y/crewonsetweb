@@ -20,14 +20,13 @@ import {
   players as initialPlayers,
   getPlayerAccountInfo,
   getPlayerActivity,
-  getPlayerProductionStats,
   getPlayerTransactions,
   topUpsStore,
 } from "@/lib/admin-demo-data";
 import { notificationsStore, uid } from "@/lib/demo/store";
 import { isMockMode } from "@/lib/playfab/config";
-import { useAdminPlayers } from "@/lib/playfab/hooks";
-import type { PlayerProfile } from "@/lib/playfab/types";
+import { useAdminPlayer, useAdminPlayers } from "@/lib/playfab/hooks";
+import type { AdminPlayerDetails, PlayerProfile } from "@/lib/playfab/types";
 
 export const Route = createFileRoute("/admin/players")({
   head: () => ({
@@ -44,7 +43,7 @@ export const Route = createFileRoute("/admin/players")({
   component: PlayersPage,
 });
 
-type PlayerStatus = "Active" | "Inactive" | "Banned";
+type PlayerStatus = "Active" | "Banned";
 
 type Player = {
   id: string;
@@ -82,13 +81,11 @@ const filterOptions = ["Joined Date", "Level", "Production Score", "Playtime"];
 
 const statusStyles: Record<PlayerStatus, string> = {
   Active: "admin-player-status-active text-[#54c9b8]",
-  Inactive: "admin-player-status-inactive text-white/40",
   Banned: "admin-player-status-banned text-[#ff6248]",
 };
 
 const statusDotStyles: Record<PlayerStatus, string> = {
   Active: "bg-[#39b7a5]",
-  Inactive: "admin-player-status-dot-inactive bg-white/25",
   Banned: "bg-[#ff6248]",
 };
 
@@ -156,7 +153,7 @@ function mapPlayFabPlayer(player: PlayerProfile): Player {
     id,
     username,
     email: player.email || "—",
-    status: "Active",
+    status: player.adminStatus === "Banned" ? "Banned" : "Active",
     joined: formatJoinedDate(player.joinedAt),
     score: 0,
     role: player.primaryRole || player.role || "Player",
@@ -341,17 +338,31 @@ function PlayersPage() {
   const [selectedPlayers, setSelectedPlayers] = useState<string[]>([]);
 
   const [selectedPlayer, setSelectedPlayer] = useState<Player | null>(null);
+  const realPlayerDetailQuery = useAdminPlayer(!mockMode && selectedPlayer ? selectedPlayer.id : "");
   const [topUps] = topUpsStore.useStore();
   const selectedPlayerTransactions = useMemo(
     () => (selectedPlayer ? getPlayerTransactions(selectedPlayer.username) : []),
     [selectedPlayer, topUps],
   );
+  const livePlayerDetail = realPlayerDetailQuery.data && 'profile' in realPlayerDetailQuery.data
+    ? realPlayerDetailQuery.data as AdminPlayerDetails
+    : null;
+  const displayProfile = livePlayerDetail?.profile;
+  const displayScore = livePlayerDetail?.career?.productionScore ?? (mockMode ? selectedPlayer?.score ?? 0 : 0);
+  const displayGamesPlayed = livePlayerDetail?.career?.gamesPlayed ?? (mockMode && selectedPlayer ? getGamesPlayed(selectedPlayer.score) : 0);
+  const displayPlaytime = livePlayerDetail?.career?.playtime ?? (mockMode && selectedPlayer ? getPlaytime(selectedPlayer.score) : '0h 0m');
+  const displayLevel = livePlayerDetail?.progression.level ?? (mockMode && selectedPlayer ? getLevel(selectedPlayer.score) : 1);
+  const displayActivity = livePlayerDetail?.activity ?? (mockMode && selectedPlayer ? getPlayerActivity(selectedPlayer.id, selectedPlayer.username) : []);
+  const displayTransactions = livePlayerDetail?.transactions ?? (mockMode ? selectedPlayerTransactions : []);
+  const displayAccount = livePlayerDetail?.accountInfo ?? (mockMode && selectedPlayer ? getPlayerAccountInfo(selectedPlayer.id) : null);
 
   const [contactPlayer, setContactPlayer] = useState<Player | null>(null);
 
   const [contactSubject, setContactSubject] = useState("");
 
   const [contactMessage, setContactMessage] = useState("");
+  const [actionError, setActionError] = useState("");
+  const [isActionBusy, setIsActionBusy] = useState(false);
 
   /* =======================================================
      SORTING
@@ -404,6 +415,7 @@ function PlayersPage() {
           ({
             ...player,
             id: String(player.id),
+            status: player.status === "Banned" ? "Banned" : "Active",
           }) as Player,
       ),
     );
@@ -658,7 +670,11 @@ function PlayersPage() {
 
   const sortedPlayers = useMemo(() => {
     if (!sortKey) {
-      return filteredPlayers;
+      return [...filteredPlayers].sort((a, b) => {
+        const aTime = Date.parse(a.joined) || 0;
+        const bTime = Date.parse(b.joined) || 0;
+        return bTime - aTime;
+      });
     }
 
     return [...filteredPlayers].sort((a, b) => {
@@ -767,52 +783,94 @@ function PlayersPage() {
      PLAYER ACTIONS
      ========================================================= */
 
-  function deletePlayer(id: string) {
-    setPlayerList((current) => current.filter((player) => player.id !== id));
+  async function runPlayerAction(
+    action: "status" | "reset" | "delete",
+    ids: string[],
+    options: { status?: PlayerStatus; bannedUntil?: string | null } = {},
+  ): Promise<boolean> {
+    const targetIds = new Set(ids.filter(Boolean));
+    if (targetIds.size === 0) return false;
 
-    setSelectedPlayers((current) => current.filter((playerId) => playerId !== id));
+    setActionError("");
+    setIsActionBusy(true);
 
-    if (selectedPlayer?.id === id) {
-      setSelectedPlayer(null);
+    try {
+      if (mockMode) {
+        setPlayerList((current) => {
+          if (action === "delete") return current.filter((player) => !targetIds.has(player.id));
+          return current.map((player) => {
+            if (!targetIds.has(player.id)) return player;
+            if (action === "reset") return { ...player, score: 0, status: "Active", bannedUntil: null };
+            return {
+              ...player,
+              status: options.status ?? player.status,
+              bannedUntil: options.status === "Banned" ? options.bannedUntil ?? null : null,
+            };
+          });
+        });
+
+        if (action === "delete") {
+          setSelectedPlayers((current) => current.filter((id) => !targetIds.has(id)));
+          setSelectedPlayer((current) => (current && targetIds.has(current.id) ? null : current));
+        } else if (selectedPlayer && targetIds.has(selectedPlayer.id)) {
+          setSelectedPlayer((current) => {
+            if (!current) return current;
+            if (action === "reset") return { ...current, score: 0, status: "Active", bannedUntil: null };
+            return {
+              ...current,
+              status: options.status ?? current.status,
+              bannedUntil: options.status === "Banned" ? options.bannedUntil ?? null : null,
+            };
+          });
+        }
+        return true;
+      }
+
+      const response = await fetch("/api/admin/players", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          action,
+          ids: Array.from(targetIds),
+          ...(options.status ? { status: options.status } : {}),
+          ...(options.bannedUntil ? { bannedUntil: options.bannedUntil } : {}),
+        }),
+      });
+      const payload = await response.json().catch(() => null) as { success?: boolean; error?: string } | null;
+      if (!response.ok || payload?.success === false) {
+        throw new Error(payload?.error || "The player action could not be completed.");
+      }
+
+      await realPlayersQuery.refetch();
+      if (action === "delete") {
+        setSelectedPlayers((current) => current.filter((id) => !targetIds.has(id)));
+        setSelectedPlayer((current) => (current && targetIds.has(current.id) ? null : current));
+      } else if (selectedPlayer && targetIds.has(selectedPlayer.id)) {
+        await realPlayerDetailQuery.refetch();
+      }
+      return true;
+    } catch (error) {
+      setActionError(error instanceof Error ? error.message : "The player action could not be completed.");
+      return false;
+    } finally {
+      setIsActionBusy(false);
     }
   }
 
+  function deletePlayer(id: string) {
+    return runPlayerAction("delete", [id]);
+  }
+
   function resetPlayer(id: string) {
-    setPlayerList((current) =>
-      current.map((player) =>
-        player.id === id
-          ? {
-              ...player,
-              score: 0,
-              status: "Active",
-              bannedUntil: null,
-            }
-          : player,
-      ),
-    );
+    return runPlayerAction("reset", [id]);
   }
 
-  function deleteSelectedPlayers() {
-    setPlayerList((current) => current.filter((player) => !selectedPlayers.includes(player.id)));
-
-    setSelectedPlayers([]);
-
-    setSelectedPlayer(null);
+  function deleteSelectedPlayers(ids = selectedPlayers) {
+    return runPlayerAction("delete", ids);
   }
 
-  function resetSelectedPlayers() {
-    setPlayerList((current) =>
-      current.map((player) =>
-        selectedPlayers.includes(player.id)
-          ? {
-              ...player,
-              score: 0,
-              status: "Active",
-              bannedUntil: null,
-            }
-          : player,
-      ),
-    );
+  function resetSelectedPlayers(ids = selectedPlayers) {
+    return runPlayerAction("reset", ids);
   }
 
   function submitContactPlayer(event: FormEvent<HTMLFormElement>) {
@@ -854,19 +912,12 @@ function PlayersPage() {
      ========================================================= */
 
   function applyBulkStatus() {
-    setPlayerList((current) =>
-      current.map((player) =>
-        selectedPlayers.includes(player.id)
-          ? {
-              ...player,
-              status: bulkStatus,
-              bannedUntil: bulkStatus === "Banned" ? bulkBanUntil : null,
-            }
-          : player,
-      ),
-    );
-
-    setShowBulkStatus(false);
+    void runPlayerAction("status", selectedPlayers, {
+      status: bulkStatus,
+      bannedUntil: bulkStatus === "Banned" ? bulkBanUntil : null,
+    }).then((success) => {
+      if (success) setShowBulkStatus(false);
+    });
   }
 
   /* =========================================================
@@ -1117,8 +1168,6 @@ function PlayersPage() {
                         <option>All Statuses</option>
 
                         <option>Active</option>
-
-                        <option>Inactive</option>
 
                         <option>Banned</option>
                       </select>
@@ -1482,6 +1531,7 @@ function PlayersPage() {
           ===================================================== */}
 
       <section className="shrink-0 border-t border-white/[.07] bg-[#171f23] px-4 py-3">
+        {actionError && <p className="mb-2 text-xs font-bold text-[#ff6248]">{actionError}</p>}
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div className="flex items-center gap-3">
             <span className="text-xs font-bold text-white/50">
@@ -1514,20 +1564,20 @@ function PlayersPage() {
                 </button>
 
                 {showBulkStatus && (
-                  <div className="absolute bottom-11 right-0 z-50 w-52 rounded-lg border border-white/10 bg-[#151c21] p-3 shadow-2xl">
+                  <div className="absolute bottom-11 right-0 z-50 w-56 rounded-lg border border-white/10 bg-[#151c21] p-3 shadow-2xl">
                     <p className="mb-2 text-[9px] font-black uppercase tracking-wider text-white/30">
                       Set status
                     </p>
 
-                    {(["Active", "Inactive", "Banned"] as PlayerStatus[]).map((option) => (
+                    {(["Active", "Banned"] as PlayerStatus[]).map((option) => (
                       <button
                         key={option}
                         onClick={() => setBulkStatus(option)}
-                        className="flex w-full items-center gap-3 rounded-md px-3 py-2 text-left hover:bg-white/[.04]"
+                        className="flex w-full min-w-0 items-center gap-3 rounded-md px-3 py-2 text-left hover:bg-white/[.04]"
                       >
                         <span className={`size-2 rounded-full ${statusDotStyles[option]}`} />
 
-                        <span className={`text-xs font-bold ${statusStyles[option]}`}>
+                        <span className={`whitespace-nowrap text-xs font-bold ${statusStyles[option]}`}>
                           {option}
                         </span>
 
@@ -1568,6 +1618,7 @@ function PlayersPage() {
 
                     <button
                       onClick={applyBulkStatus}
+                      disabled={isActionBusy}
                       className="mt-2 w-full rounded-md bg-[#ff6248] py-2 text-[10px] font-black uppercase text-white"
                     >
                       Apply
@@ -1660,11 +1711,11 @@ function PlayersPage() {
                   </div>
 
                   <p className="mt-2 text-xs font-black uppercase tracking-wide text-[#f5c431]">
-                    {selectedPlayer.role || "Player"}
+                    {displayProfile?.role || selectedPlayer.role || "Player"}
                   </p>
 
                   <div className="mt-3 flex gap-3 text-[10px] font-black uppercase text-white/25">
-                    <span>LEVEL {getLevel(selectedPlayer.score)}</span>
+                    <span>LEVEL {displayLevel}</span>
 
                     <span>•</span>
 
@@ -1689,8 +1740,8 @@ function PlayersPage() {
 
                     <h3 className="mt-3 text-2xl font-black uppercase text-white">BIO</h3>
 
-                    <p className="mt-4 text-sm leading-7 text-white/40">
-                      This player has not added a biography yet.
+                    <p className="mt-4 whitespace-pre-wrap text-sm leading-7 text-white/40">
+                      {displayProfile?.bio?.trim() || "This player has not added a biography yet."}
                     </p>
                   </section>
 
@@ -1705,7 +1756,7 @@ function PlayersPage() {
                     <div className="mt-5 grid gap-4 sm:grid-cols-2">
                       <div className="rounded-xl border border-white/[.07] bg-[#1c2636] p-5">
                         <p className="text-3xl font-black text-white">
-                          {selectedPlayer.score.toLocaleString()}
+                          {displayScore.toLocaleString()}
                         </p>
 
                         <p className="mt-1 text-[9px] font-black uppercase tracking-wide text-white/30">
@@ -1715,7 +1766,7 @@ function PlayersPage() {
 
                       <div className="rounded-xl border border-white/[.07] bg-[#1c2636] p-5">
                         <p className="text-3xl font-black text-white">
-                          {getGamesPlayed(selectedPlayer.score)}
+                          {displayGamesPlayed}
                         </p>
 
                         <p className="mt-1 text-[9px] font-black uppercase tracking-wide text-white/30">
@@ -1730,7 +1781,7 @@ function PlayersPage() {
                       </p>
 
                       <p className="mt-2 text-lg font-black text-white/75">
-                        {getPlaytime(selectedPlayer.score)}
+                        {displayPlaytime}
                       </p>
                     </div>
                   </section>
@@ -1798,7 +1849,7 @@ function PlayersPage() {
                     </h3>
 
                     <div className="mt-5 space-y-3">
-                      {getPlayerActivity(selectedPlayer.id, selectedPlayer.username).map(
+                      {displayActivity.map(
                         (entry) => (
                           <div
                             key={entry.id}
@@ -1830,7 +1881,7 @@ function PlayersPage() {
                     </h3>
 
                     <div className="mt-5 space-y-3">
-                      {selectedPlayerTransactions.map((tx) => (
+                      {displayTransactions.map((tx) => (
                         <div
                           key={tx.id}
                           className="rounded-xl border border-white/[.07] bg-[#1c2636] p-4"
@@ -1874,10 +1925,10 @@ function PlayersPage() {
                   <div className="admin-player-profile-info-card mt-6 overflow-hidden rounded-xl border border-white/[.07]">
                     {[
                       ["Name", selectedPlayer.username],
-                      ["Email", selectedPlayer.email],
-                      ["Joined", selectedPlayer.joined],
-                      ["Current Role", selectedPlayer.role || "Player"],
-                      ["Level", `Level ${getLevel(selectedPlayer.score)}`],
+                      ["Email", displayProfile?.email || selectedPlayer.email],
+                      ["Joined", displayProfile?.joinedAt ? formatJoinedDate(displayProfile.joinedAt) : selectedPlayer.joined],
+                      ["Current Role", displayProfile?.role || selectedPlayer.role || "Player"],
+                      ["Level", `Level ${displayLevel}`],
                     ].map(([label, value], index, rows) => (
                       <div
                         key={label}
@@ -1919,68 +1970,27 @@ function PlayersPage() {
                   </div>
 
                   <div className="admin-player-profile-info-card mt-6 overflow-hidden rounded-xl border border-white/[.07]">
-                    {(() => {
-                      const account = getPlayerAccountInfo(selectedPlayer.id);
-
-                      const rows = [
-                        ["Platform", account.platform],
-                        ["Device", account.device],
-                        ["Login Method", account.loginMethod],
-                        ["Two-Factor Auth", account.twoFactor],
-                        ["Last Login", account.lastLogin],
-                      ];
-
-                      return rows.map(([label, value], index) => (
+                    {displayAccount ? (
+                      [
+                        ["Platform", displayAccount.platform],
+                        ["Device", displayAccount.device],
+                        ["Login Method", displayAccount.loginMethod],
+                        ["Two-Factor Auth", displayAccount.twoFactor],
+                        ["Last Login", displayAccount.lastLogin],
+                      ].map(([label, value], index, rows) => (
                         <div
                           key={label}
-                          className={`p-4 ${
-                            index < rows.length - 1 ? "border-b border-white/[.07]" : ""
-                          }`}
+                          className={`p-4 ${index < rows.length - 1 ? "border-b border-white/[.07]" : ""}`}
                         >
                           <p className="text-[8px] font-black uppercase text-white/25">{label}</p>
-
                           <p className="mt-2 text-xs font-bold text-white/60">{value}</p>
                         </div>
-                      ));
-                    })()}
+                      ))
+                    ) : (
+                      <p className="p-4 text-xs text-white/40">Account information is loading.</p>
+                    )}
                   </div>
 
-                  {/* PRODUCTION STATISTICS */}
-
-                  <div className="admin-player-profile-section-heading mt-8 flex items-center gap-3">
-                    <span className="h-6 w-1 rounded-full bg-[#ff6248]" />
-
-                    <h3 className="text-[9px] font-black uppercase tracking-[.18em] text-[#ff6248]">
-                      Production Statistics
-                    </h3>
-                  </div>
-
-                  <div className="admin-player-profile-info-card mt-6 overflow-hidden rounded-xl border border-white/[.07]">
-                    {(() => {
-                      const stats = getPlayerProductionStats(selectedPlayer.score);
-
-                      const rows = [
-                        ["Productions Completed", stats.productionsCompleted.toLocaleString()],
-                        ["Average Crew Rating", `${stats.averageRating.toFixed(1)} / 5`],
-                        ["On-Time Wrap Rate", `${stats.onTimeWrapRate}%`],
-                        ["Favorite Role", stats.favoriteRole],
-                        ["Best Set", stats.bestSet],
-                      ];
-
-                      return rows.map(([label, value], index) => (
-                        <div
-                          key={label}
-                          className={`p-4 ${
-                            index < rows.length - 1 ? "border-b border-white/[.07]" : ""
-                          }`}
-                        >
-                          <p className="text-[8px] font-black uppercase text-white/25">{label}</p>
-
-                          <p className="mt-2 text-xs font-bold text-white/60">{value}</p>
-                        </div>
-                      ));
-                    })()}
-                  </div>
                 </aside>
               </div>
             </div>
@@ -2118,13 +2128,13 @@ function PlayersPage() {
                 "This permanently removes the player from the roster."}
 
               {confirmAction.type === "reset" &&
-                "This resets the player's production score and restores their status to Active."}
+                "This permanently clears the player's progression, statistics, inventory, currencies, production history, achievements, and C-Coin payment records."}
 
               {confirmAction.type === "mass-delete" &&
                 "This permanently removes all selected players from the roster."}
 
               {confirmAction.type === "mass-reset" &&
-                "This resets the production score and status for all selected players."}
+                "This permanently clears all stored progression, statistics, inventory, currencies, history, achievements, and C-Coin payment records for the selected players."}
             </p>
 
             <div className="mt-6 flex justify-end gap-2">
@@ -2136,24 +2146,19 @@ function PlayersPage() {
               </button>
 
               <button
+                disabled={isActionBusy}
                 onClick={() => {
-                  if (confirmAction.type === "delete") {
-                    deletePlayer(confirmAction.id);
-                  }
-
-                  if (confirmAction.type === "reset") {
-                    resetPlayer(confirmAction.id);
-                  }
-
-                  if (confirmAction.type === "mass-delete") {
-                    deleteSelectedPlayers();
-                  }
-
-                  if (confirmAction.type === "mass-reset") {
-                    resetSelectedPlayers();
-                  }
-
-                  setConfirmAction(null);
+                  const action = confirmAction;
+                  void (async () => {
+                    const success = action.type === "delete"
+                      ? await deletePlayer(action.id)
+                      : action.type === "reset"
+                        ? await resetPlayer(action.id)
+                        : action.type === "mass-delete"
+                          ? await deleteSelectedPlayers(action.ids)
+                          : await resetSelectedPlayers(action.ids);
+                    if (success) setConfirmAction(null);
+                  })();
                 }}
                 className={`rounded-md px-4 py-2 text-xs font-black uppercase ${
                   confirmAction.type === "delete" || confirmAction.type === "mass-delete"
