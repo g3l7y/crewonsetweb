@@ -19,10 +19,13 @@ type Promotion = {
   productType?: string;
   description?: string;
   link?: string;
+  trackedLink?: string;
+  submittedLink?: string;
   status: string;
   startDate: string;
   endDate: string;
-  placement: string;
+  endedAt?: string;
+  endReason?: string;
   performance: { clicks: number; visits: number; impressions: number; revenue: number };
 };
 
@@ -37,23 +40,44 @@ function formatMoney(value: number) {
   return new Intl.NumberFormat('en-PH', { style: 'currency', currency: 'PHP', maximumFractionDigits: 2 }).format(value);
 }
 
+function splitCountdown(ms: number) {
+  const totalSeconds = Math.floor(Math.max(0, ms) / 1000);
+  return {
+    days: Math.floor(totalSeconds / 86400),
+    hours: Math.floor((totalSeconds % 86400) / 3600),
+    minutes: Math.floor((totalSeconds % 3600) / 60),
+    seconds: totalSeconds % 60,
+  };
+}
+
 function BrandPromotionPage() {
   const { token } = Route.useParams();
   const [promotion, setPromotion] = useState<Promotion | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [now, setNow] = useState<number | null>(null);
 
   useEffect(() => {
     let active = true;
-    void fetch('/api/brand-promotions?token=' + encodeURIComponent(token), { cache: 'no-store' })
-      .then(async (response) => {
+    let loaded = false;
+    const load = async () => {
+      try {
+        const response = await fetch('/api/brand-promotions?token=' + encodeURIComponent(token), { cache: 'no-store' });
         const body = await response.json().catch(() => ({})) as { data?: Promotion; error?: string };
         if (!response.ok || !body.data) throw new Error(body.error || 'Promotion information is unavailable.');
-        if (active) setPromotion(body.data);
-      })
-      .catch((reason: unknown) => {
-        if (active) setError(reason instanceof Error ? reason.message : 'Promotion information is unavailable.');
-      });
-    return () => { active = false; };
+        if (active) {
+          loaded = true;
+          setPromotion(body.data);
+          setError(null);
+        }
+      } catch (reason) {
+        if (active && !loaded) setError(reason instanceof Error ? reason.message : 'Promotion information is unavailable.');
+      }
+    };
+    void load();
+    const refresh = window.setInterval(() => { void load(); }, 30_000);
+    setNow(Date.now());
+    const tick = window.setInterval(() => setNow(Date.now()), 1_000);
+    return () => { active = false; window.clearInterval(refresh); window.clearInterval(tick); };
   }, [token]);
 
   if (error || !promotion) {
@@ -68,6 +92,9 @@ function BrandPromotionPage() {
     );
   }
 
+  const isDone = promotion.status === 'Done';
+  const remainingMs = isDone || now === null ? 0 : new Date(promotion.endDate).getTime() - now;
+  const countdown = splitCountdown(remainingMs);
   const metrics = [
     { label: 'Ad clicks', value: promotion.performance.clicks.toLocaleString(), icon: MousePointerClick },
     { label: 'Visits', value: promotion.performance.visits.toLocaleString(), icon: Users },
@@ -90,12 +117,29 @@ function BrandPromotionPage() {
         <section className="mt-8 rounded-xl border border-white/10 bg-[#101923] p-6 shadow-2xl">
           <div className="flex items-center gap-2 text-sm font-black uppercase"><Megaphone className="size-4 text-[#ff6248]" /> Promotion details</div>
           <p className="mt-4 max-w-3xl text-sm leading-7 text-white/70">{promotion.description || 'Your Crew On Set brand promotion is active.'}</p>
-          <div className="mt-6 grid gap-5 sm:grid-cols-3">
+          <div className="mt-6 grid gap-5 sm:grid-cols-2">
             <div><p className="text-[10px] font-black uppercase tracking-wide text-white/35">Live from</p><p className="mt-1 text-sm font-bold">{formatDate(promotion.startDate)}</p></div>
-            <div><p className="text-[10px] font-black uppercase tracking-wide text-white/35">Contract ends</p><p className="mt-1 text-sm font-bold">{formatDate(promotion.endDate)}</p></div>
-            <div><p className="text-[10px] font-black uppercase tracking-wide text-white/35">Placement</p><p className="mt-1 text-sm font-bold">{promotion.placement}</p></div>
+            <div><p className="text-[10px] font-black uppercase tracking-wide text-white/35">{isDone ? 'Ended' : 'Contract ends'}</p><p className="mt-1 text-sm font-bold">{formatDate(promotion.endedAt || promotion.endDate)}</p></div>
           </div>
-          {promotion.link && <a href={promotion.link} target="_blank" rel="noreferrer" className="mt-6 inline-flex items-center gap-2 text-sm font-bold text-[#f3c747] hover:underline"><ExternalLink className="size-4" /> Visit submitted brand link</a>}
+          {promotion.endReason && <p className="mt-5 rounded-lg border border-white/10 bg-white/[.03] p-3 text-sm text-white/65">Completion note: {promotion.endReason}</p>}
+          {(promotion.trackedLink || promotion.link) && <a href={promotion.trackedLink || promotion.link} target="_blank" rel="noreferrer" className="mt-6 inline-flex items-center gap-2 text-sm font-bold text-[#f3c747] hover:underline"><ExternalLink className="size-4" /> Visit submitted brand link</a>}
+        </section>
+
+        <section className="mt-5 rounded-xl border border-white/10 bg-[#101923] p-6 shadow-2xl" aria-live="polite">
+          <div className="flex items-center gap-2 text-sm font-black uppercase"><CalendarClock className="size-4 text-[#ff6248]" /> Live expiration countdown</div>
+          {now === null ? <p className="mt-5 text-sm text-white/55">Loading countdown.</p> : (
+            <>
+              <div className="mt-5 grid grid-cols-2 gap-3 text-center sm:grid-cols-4">
+                {[
+                  { value: countdown.days, label: 'Days' },
+                  { value: countdown.hours, label: 'Hrs' },
+                  { value: countdown.minutes, label: 'Min' },
+                  { value: countdown.seconds, label: 'Sec' },
+                ].map((unit) => <div key={unit.label} className="rounded-lg border border-white/10 bg-[#182330] py-3"><p className="text-2xl font-black">{String(unit.value).padStart(2, '0')}</p><p className="mt-1 text-[10px] font-bold uppercase tracking-wide text-white/40">{unit.label}</p></div>)}
+              </div>
+              <p className="mt-4 text-center text-xs font-bold uppercase tracking-wide text-white/45">{isDone ? 'Promotion completed - countdown stopped' : remainingMs <= 0 ? 'Contract ended - updating campaign status' : 'Time remaining in the agreed promotion period'}</p>
+            </>
+          )}
         </section>
 
         <section className="mt-5 grid gap-4 sm:grid-cols-2 xl:grid-cols-4">

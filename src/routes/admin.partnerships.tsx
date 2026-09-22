@@ -13,7 +13,7 @@ export const Route = createFileRoute("/admin/partnerships")({
   component: PartnershipsPage,
 });
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import Link from "@/components/next-compat/link";
 import { normalizeExternalHttpUrl } from "@/lib/external-url";
 import { PartnershipStatusDropdown } from "@/components/admin/partnership-status-dropdown";
@@ -100,6 +100,7 @@ function buildMockAd(application: PartnershipApplication, status: ActiveAd['stat
     contract: application.description || 'Crew On Set brand promotion placement.',
     startDate,
     expiresAt: application.promotionEndsAt || buildMockPromotionEnd(startDate, application.duration, application.durationUnit),
+    submittedLink: application.link,
     status,
     revenue: application.budget,
     clicks: 0,
@@ -123,6 +124,70 @@ function PartnershipsPage() {
 
   const [ads, setAds] = adsStore.useStore();
   const [revenue, setRevenue] = revenueStore.useStore();
+
+  useEffect(() => {
+    if (!isMockMode()) {
+      let active = true;
+      const refresh = async () => {
+        try {
+          const response = await fetch("/api/admin/partnerships", { cache: "no-store" });
+          if (!response.ok) return;
+          const body = await response.json() as { data?: PartnershipApplication[] };
+          if (!active || !Array.isArray(body.data)) return;
+          setApplications(body.data);
+          setSelected((current) => current
+            ? body.data?.find((application) => application.id === current.id) ?? current
+            : current);
+        } catch {
+          // Keep the current admin view usable when a background refresh fails.
+        }
+      };
+      void refresh();
+      const interval = window.setInterval(() => void refresh(), 30_000);
+      return () => {
+        active = false;
+        window.clearInterval(interval);
+      };
+    }
+
+    const expireMockPromotions = () => {
+      const now = Date.now();
+      setApplications((current) => {
+        let changed = false;
+        const next = current.map((application) => {
+          const endDate = application.promotionEndsAt || buildMockPromotionEnd(
+            application.promotionStartedAt || application.paymentPaidAt || application.submittedAt,
+            application.duration,
+            application.durationUnit,
+          );
+          if (application.status !== "On-going" || new Date(endDate).getTime() > now) return application;
+          changed = true;
+          return {
+            ...application,
+            status: "Done" as const,
+            promotionEndedAt: endDate,
+            promotionEndType: "expired" as const,
+          };
+        });
+        return changed ? next : current;
+      });
+      const expireAd = <T extends ActiveAd>(item: T): T =>
+        item.status !== "Done" && new Date(item.expiresAt).getTime() <= now
+          ? { ...item, status: "Done" as const, endedAt: item.endedAt || item.expiresAt } as T
+          : item;
+      setAds((current) => {
+        const next = current.map((item) => expireAd(item));
+        return next.some((item, index) => item !== current[index]) ? next : current;
+      });
+      setRevenue((current) => {
+        const next = current.map((item) => expireAd(item));
+        return next.some((item, index) => item !== current[index]) ? next : current;
+      });
+    };
+    expireMockPromotions();
+    const interval = window.setInterval(expireMockPromotions, 1_000);
+    return () => window.clearInterval(interval);
+  }, [setApplications, setAds, setRevenue]);
 
   const [adStatusFilter, setAdStatusFilter] = useState<ActiveAd["status"]>("On-going");
   const adStatusOptions: ActiveAd["status"][] = ["On-going", "Expiring", "Expired", "Done"];
@@ -189,12 +254,37 @@ function PartnershipsPage() {
   async function updateStatus(id: string, status: PartnershipStatus) {
     const app = applications.find((application) => application.id === id);
     if (!app || !canAdvancePartnershipStatus(app.status, status)) return;
+    let completionReason: string | undefined;
+    let completionAt: string | undefined;
+    let endedEarly = false;
+    if (status === 'Done' && app.status === 'On-going') {
+      const promotionEnd = new Date(app.promotionEndsAt || buildMockPromotionEnd(
+        app.promotionStartedAt || app.submittedAt,
+        app.duration,
+        app.durationUnit,
+      ));
+      endedEarly = Date.now() < promotionEnd.getTime();
+      completionAt = endedEarly ? new Date().toISOString() : promotionEnd.toISOString();
+      if (endedEarly) {
+        const reason = window.prompt(
+          'This promotion is ending before its contract date. Enter the brand-side reason that will be included in the email.',
+          'The campaign materials and approvals required from your team were not provided by the agreed deadline.',
+        );
+        if (reason === null) return;
+        completionReason = reason.trim();
+        if (!completionReason) {
+          showStatusMessage('Enter a reason before ending the promotion early.');
+          return;
+        }
+      }
+    }
     if (isMockMode() && status === 'Approved' && app.paymentStatus !== 'Paid') {
       showStatusMessage('Complete the brand payment before approving this application.');
       return;
     }
 
     let savedApplication: PartnershipApplication;
+    let emailWarning: string | undefined;
     if (isMockMode()) {
       const mockPaymentRequested = app.status === 'New' && status === 'Pending';
       const promotionStartedAt = status === 'On-going'
@@ -203,6 +293,11 @@ function PartnershipsPage() {
       savedApplication = {
         ...app,
         status,
+        ...(completionAt ? {
+          promotionEndedAt: completionAt,
+          promotionEndType: endedEarly ? 'ended-early' as const : 'expired' as const,
+          ...(completionReason ? { promotionEndReason: completionReason } : {}),
+        } : {}),
         ...(mockPaymentRequested
           ? {
               paymentStatus: 'Pending' as const,
@@ -220,12 +315,13 @@ function PartnershipsPage() {
           : {}),
       };
     } else {
-      const result = await updatePartnershipStatus(app, status);
+      const result = await updatePartnershipStatus(app, status, completionReason);
       if (!result.success || !result.data) {
         showStatusMessage(result.error || 'The status change could not be saved.');
         return;
       }
       savedApplication = result.data;
+      emailWarning = result.emailWarning;
     }
 
     setApplications((current) => current.map((item) => item.id === id ? savedApplication : item));
@@ -234,10 +330,14 @@ function PartnershipsPage() {
       setAds((current) => [nextAd, ...current.filter((item) => item.id !== nextAd.id)]);
       setRevenue((current) => [nextAd, ...current.filter((item) => item.id !== nextAd.id)]);
     } else if (isMockMode() && status === 'Done') {
-      setAds((current) => current.map((item) => item.applicationId === id ? { ...item, status: 'Done', endedAt: new Date().toISOString() } : item));
-      setRevenue((current) => current.map((item) => item.applicationId === id ? { ...item, status: 'Done', endedAt: new Date().toISOString() } : item));
+      setAds((current) => current.map((item) => item.applicationId === id ? { ...item, status: 'Done', endedAt: completionAt, endReason: completionReason } : item));
+      setRevenue((current) => current.map((item) => item.applicationId === id ? { ...item, status: 'Done', endedAt: completionAt, endReason: completionReason } : item));
     }
     if (selected?.id === id) setSelected(savedApplication);
+    if (emailWarning) {
+      showStatusMessage(emailWarning);
+      return;
+    }
     if (savedApplication.status === 'Pending' && app.status === 'New') {
       showStatusMessage(
         isMockMode()

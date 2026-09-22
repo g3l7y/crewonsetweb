@@ -75,6 +75,10 @@ function fromServiceAd(ad: AdEntry): ActiveAd {
     visits: ad.visits || 0,
     impressions: ad.impressions || 0,
     placement: ad.placement || 'Crew On Set production placement',
+    submittedLink: ad.submittedLink,
+    trackedLink: ad.trackedLink,
+    endedAt: ad.endedAt,
+    endReason: ad.endReason,
   };
 }
 
