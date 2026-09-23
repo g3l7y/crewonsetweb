@@ -15,6 +15,8 @@ import {
 import { createPartnershipPaymentId, findPartnershipPayment, updatePartnershipPayment } from '@/lib/partnership-payments';
 import { sendPartnershipStatusEmail } from '@/lib/partnership-email';
 import { getPromotionEndDate, processExpiredPromotions, sendPromotionCompletionEmail } from '@/lib/brand-promotion-lifecycle';
+import { ensureBrandPromotionExpiryWorkflow } from '@/lib/brand-promotion-scheduler';
+import { isMockMode } from '@/lib/playfab/config';
 
 function getSecretKey(): string {
   const key = process.env['PLAYFAB_SECRET_KEY'];
@@ -142,12 +144,22 @@ export const Route = createFileRoute('/api/admin/partnerships')({
           return unauthorizedSessionResponse();
         }
         try {
-          await processExpiredPromotions(getSecretKey());
+          const secretKey = getSecretKey();
+          await processExpiredPromotions(secretKey);
           const applications = await getWebsiteRecords<PartnershipApplication>(
             WEBSITE_DATA_KEYS.partnerships,
-            getSecretKey(),
+            secretKey,
           );
-          return Response.json({ success: true, data: applications });
+          const scheduledApplications = await Promise.all(applications.map(async (application) => {
+            if (application.status !== 'On-going' || isMockMode()) return application;
+            try {
+              return await ensureBrandPromotionExpiryWorkflow(application, secretKey);
+            } catch (error) {
+              console.error('[API] Could not schedule promotion expiry workflow:', application.id, error);
+              return application;
+            }
+          }));
+          return Response.json({ success: true, data: scheduledApplications });
         } catch (error) {
           console.error('[API] GET partnerships error:', error);
           return Response.json({ error: 'Failed to fetch partnership applications.' }, { status: 500 });
@@ -359,6 +371,15 @@ export const Route = createFileRoute('/api/admin/partnerships')({
           );
           if (!saved) return Response.json({ error: 'Failed to update partnership application.' }, { status: 500 });
           let emailWarning: string | undefined;
+          let responseApplication = nextApplication;
+          if (nextStatus === 'On-going' && !isMockMode()) {
+            try {
+              responseApplication = await ensureBrandPromotionExpiryWorkflow(nextApplication, secretKey);
+            } catch (error) {
+              console.error('[API] Promotion is live but its expiry workflow could not be scheduled:', application.id, error);
+              emailWarning = 'The promotion is live, but its automatic expiry could not be scheduled. Please retry by refreshing the applications page or contact support.';
+            }
+          }
           if (completesPromotion) {
             try {
               await sendPromotionCompletionEmail(nextApplication, secretKey);
@@ -367,7 +388,7 @@ export const Route = createFileRoute('/api/admin/partnerships')({
               emailWarning = 'The status was saved, but the completion email could not be delivered yet. It will be retried automatically.';
             }
           }
-          return Response.json({ success: true, data: nextApplication, payment, emailWarning });
+          return Response.json({ success: true, data: responseApplication, payment, emailWarning });
         } catch (error) {
           console.error('[API] PATCH partnerships error:', error);
           const message = error instanceof Error ? error.message : 'Failed to update partnership application.';
