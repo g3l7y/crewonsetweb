@@ -26,6 +26,7 @@ export const WEBSITE_DATA_KEYS = {
   playerReports: 'website_player_reports',
   partnerships: 'website_partnerships',
   notifications: 'website_admin_notifications',
+  playerMail: 'website_player_mail',
   settings: 'website_settings',
   paymongoOrders: 'website_paymongo_orders',
   partnershipPayments: 'website_partnership_payments',

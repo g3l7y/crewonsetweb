@@ -16,6 +16,7 @@ import { useMemo, useState } from "react";
 import { Bug, Eye, Search, Trash2, X } from "lucide-react";
 import { ReportStatusDropdown } from "@/components/admin/report-status-dropdown";
 import { isMockMode } from "@/lib/playfab/config";
+import { buildReportInvestigationMessage } from "@/lib/report-investigation-message";
 import {
   bugCategories,
   addReportFeedback,
@@ -54,6 +55,7 @@ function BugReportsPage() {
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const [bulkDeleteTarget, setBulkDeleteTarget] = useState<BugReport[] | null>(null);
   const [databaseError, setDatabaseError] = useState(false);
+  const [statusError, setStatusError] = useState("");
 
   const filtered = useMemo(() => {
     const search = query.trim().toLowerCase();
@@ -71,15 +73,22 @@ function BugReportsPage() {
 
   async function updateStatus(bug: BugReport, next: BugStatus) {
     if (!canAdvanceReportStatus(bug.status, next)) return;
+    setStatusError("");
     const updated = { ...bug, status: next };
-    if (!(await updateSharedRecord("cos.bugReports", updated))) return;
+    if (!(await updateSharedRecord("cos.bugReports", updated, setStatusError))) return;
     setBugs((current) => current.map((b) => (b.id === bug.id ? updated : b)));
-    if (bug.status !== next) {
+    if (mockMode && bug.status === "New" && next === "Investigating") {
+      const message = buildReportInvestigationMessage({
+        kind: "bug",
+        reportId: bug.id,
+        category: bug.category,
+      });
       addReportFeedback({
         recipientUsername: bug.playerName,
+        recipientPlayerId: bug.playerId,
         reportId: bug.id,
-        status: next,
-        body: "Your bug report was reviewed and is now marked " + next + ".",
+        subject: message.subject,
+        body: message.body,
       });
     }
     logAdminActivity({
@@ -134,6 +143,11 @@ function BugReportsPage() {
         <div role="alert" className="mb-4 rounded-lg border border-[#ff6248]/40 bg-[#ff6248]/10 px-4 py-3 text-xs font-bold text-[#ff9a8a]">
           <span className="font-black uppercase tracking-wide">Database error</span>
           <span className="ml-2">Could not delete this report. Please check the database permissions or connection. See the browser console for details.</span>
+        </div>
+      )}
+      {statusError && (
+        <div role="alert" className="mb-4 rounded-lg border border-[#ff6248]/40 bg-[#ff6248]/10 px-4 py-3 text-xs font-bold text-[#ff9a8a]">
+          {statusError}
         </div>
       )}
 

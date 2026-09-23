@@ -216,7 +216,7 @@ function GamePage() {
     setMailBody("");
   }
 
-  function submitMail(event: FormEvent<HTMLFormElement>) {
+  async function submitMail(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     if (!mailTo.trim() || !mailBody.trim()) return;
 
@@ -228,23 +228,66 @@ function GamePage() {
     );
 
     if (matchedPlayer) {
-      notificationsStore.set([
-        {
-          id: uid("ntf"),
-          title: mailSubject.trim(),
-          body: mailBody.trim(),
-          createdAt: new Date().toISOString(),
-          kind: "system",
-          channel: "mail",
-          read: false,
-          href: "/portal/inbox?tab=mail",
-          recipientUsername: matchedPlayer.username,
-          recipientEmail: matchedPlayer.email,
-          target: { kind: "players", playerIds: [String(matchedPlayer.id)] },
-        },
-        ...notificationsStore.get(),
-      ]);
-      setComposerMessage(`In-app message sent to ${matchedPlayer.username}.`);
+      const subject = mailSubject.trim();
+      const body = mailBody.trim();
+      const id = uid("admin-mail");
+      const createdAt = new Date().toISOString();
+      const target = { kind: "players" as const, playerIds: [String(matchedPlayer.id)] };
+      const href = "/portal/inbox?tab=mail&contact=admin";
+
+      if (isMockMode()) {
+        notificationsStore.set([
+          {
+            id: id + "-notice",
+            title: "New message from Administrator",
+            body: "The admin team sent you a message: " + subject + ". Open your Inbox to read it.",
+            createdAt,
+            kind: "system",
+            channel: "notification",
+            read: false,
+            href,
+            recipientUsername: matchedPlayer.username,
+            target,
+          },
+          {
+            id,
+            title: subject,
+            body,
+            createdAt,
+            kind: "system",
+            channel: "mail",
+            read: false,
+            href,
+            senderUsername: "ADMINISTRATOR",
+            recipientUsername: matchedPlayer.username,
+            target,
+          },
+          ...notificationsStore.get(),
+        ]);
+      } else {
+        try {
+          const response = await fetch("/api/admin/player-mail", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            credentials: "include",
+            body: JSON.stringify({
+              recipientPlayerId: String(matchedPlayer.id),
+              subject,
+              body,
+            }),
+          });
+          const result = (await response.json().catch(() => ({}))) as { error?: string };
+          if (!response.ok) {
+            setComposerMessage(result.error || "The in-app message could not be sent.");
+            return;
+          }
+        } catch {
+          setComposerMessage("The in-app message could not be sent. Please try again.");
+          return;
+        }
+      }
+
+      setComposerMessage("In-app message sent to " + matchedPlayer.username + ".");
       resetMailForm();
       window.setTimeout(() => setComposerMessage(""), 3000);
       return;

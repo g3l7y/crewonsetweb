@@ -14,6 +14,7 @@ import { useMemo, useState } from "react";
 import { Eye, FileText, Search, Trash2, UserRound, X } from "lucide-react";
 import { ReportStatusDropdown } from "@/components/admin/report-status-dropdown";
 import { isMockMode } from "@/lib/playfab/config";
+import { buildReportInvestigationMessage } from "@/lib/report-investigation-message";
 import {
   canAdvanceReportStatus,
   addReportFeedback,
@@ -51,6 +52,7 @@ function PlayerReportsRouteComponent() {
   const [deleteTarget, setDeleteTarget] = useState<PlayerReport | null>(null);
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const [bulkDeleteTarget, setBulkDeleteTarget] = useState<PlayerReport[] | null>(null);
+  const [statusError, setStatusError] = useState("");
   const filtered = useMemo(() => {
     const search = query.trim().toLowerCase();
     return reports.filter(
@@ -66,17 +68,23 @@ function PlayerReportsRouteComponent() {
 
   async function updateStatus(report: PlayerReport, next: PlayerReportStatus) {
     if (!canAdvanceReportStatus(report.status, next)) return;
+    setStatusError("");
     const updated = { ...report, status: next };
-    if (!(await updateSharedRecord("cos.playerReports", updated))) return;
+    if (!(await updateSharedRecord("cos.playerReports", updated, setStatusError))) return;
     setReports((current) => current.map((item) => (item.id === report.id ? updated : item)));
     if (selected?.id === report.id) setSelected(updated);
-    if (report.status !== next) {
+    if (mockMode && report.status === "New" && next === "Investigating") {
+      const message = buildReportInvestigationMessage({
+        kind: "player",
+        reportId: report.id,
+        category: report.reportType,
+      });
       addReportFeedback({
         recipientUsername: report.reporterName,
         recipientPlayerId: report.reporterId,
         reportId: report.id,
-        status: next,
-        body: "Your " + report.reportType.toLowerCase() + " report was reviewed and is now marked " + next + ".",
+        subject: message.subject,
+        body: message.body,
       });
     }
   }
@@ -114,6 +122,11 @@ function PlayerReportsRouteComponent() {
           Review every player-submitted report and its supporting evidence.
         </p>
       </header>
+      {statusError && (
+        <div role="alert" className="mb-4 rounded-lg border border-[#ff6248]/40 bg-[#ff6248]/10 px-4 py-3 text-xs font-bold text-[#ff9a8a]">
+          {statusError}
+        </div>
+      )}
       <section className="admin-card mb-4 flex flex-col gap-3 rounded-lg border border-white/[0.06] bg-[#182330] p-4 shadow-xl sm:flex-row">
         <label className="relative block flex-1">
           <Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 !text-white/30" />
