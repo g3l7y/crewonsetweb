@@ -6,10 +6,13 @@
 // Pin production builds to Vercel. Lovable's own preview sandbox may still use its internal runtime.
 import { defineConfig } from "@lovable.dev/vite-tanstack-config";
 import { loadEnv } from "vite";
+import { workflow } from "workflow/vite";
 
 export default defineConfig(({ mode }) => {
   const env = loadEnv(mode, process.cwd(), "");
   return {
+    // Durable per-promotion expiry timers run on Vercel instead of daily cron polling.
+    plugins: [workflow()],
     nitro: { preset: "vercel" },
     define: {
       ...(

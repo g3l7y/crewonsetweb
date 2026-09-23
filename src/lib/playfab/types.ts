@@ -630,6 +630,10 @@ export interface PartnershipApplication {
   promotionStartedAt?: string | undefined;
   /** ISO timestamp when the promotion contract ends. */
   promotionEndsAt?: string | undefined;
+  /** Vercel Workflow run responsible for expiring this live promotion. */
+  promotionExpiryWorkflowRunId?: string | undefined;
+  /** Contract end timestamp associated with the scheduled expiry workflow. */
+  promotionExpiryWorkflowFor?: string | undefined;
   /** Actual completion time; earlier than promotionEndsAt when ended early. */
   promotionEndedAt?: string | undefined;
   /** Why the campaign was completed. */
