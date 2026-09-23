@@ -1,7 +1,14 @@
 import { FormEvent, useState } from "react";
-import { LoaderCircle, X } from "lucide-react";
+import Link from "@/components/next-compat/link";
+import { Eye, EyeOff, LoaderCircle, X } from "lucide-react";
 import { isMockMode } from "@/lib/playfab/config";
-import { EMAIL_ERROR, PASSWORD_ERROR, PASSWORD_INPUT_PATTERN, isValidEmail, isValidPassword } from "@/lib/validation";
+import {
+  EMAIL_ERROR,
+  PASSWORD_ERROR,
+  PASSWORD_INPUT_PATTERN,
+  isValidEmail,
+  isValidPassword,
+} from "@/lib/validation";
 import { useDisplayTheme } from "@/components/theme/display-theme-switcher";
 
 type RecoveryScope = "player" | "admin";
@@ -26,7 +33,9 @@ export function PasswordRecoveryModal({ scope, onClose }: PasswordRecoveryModalP
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
 
-  const shellClass = dark ? "border-white/10 bg-[#151c29] text-white" : "border-navy/10 bg-cream text-navy";
+  const shellClass = dark
+    ? "border-white/10 bg-[#151c29] text-white"
+    : "border-navy/10 bg-cream text-navy";
   const mutedClass = dark ? "text-white/55" : "text-navy/60";
   const labelClass = dark ? "!text-white/60" : "";
   const inputClass = dark
@@ -34,7 +43,7 @@ export function PasswordRecoveryModal({ scope, onClose }: PasswordRecoveryModalP
     : "form-input";
   const emailLabelClass = `${dark ? labelClass : "!text-[#0a0e19]"} admin-recovery-email-label`;
   const emailInputClass = `${dark ? inputClass : "form-input !bg-[#f0ede4] !text-[#0a0e19]"} admin-recovery-email-input`;
-  const buttonClass = "bg-coral text-white hover:bg-coral-dark";
+  const buttonClass = "bg-yellow text-navy hover:brightness-95";
   const title = scope === "admin" ? "Admin password recovery" : "Password recovery";
 
   async function submitEmail(event: FormEvent<HTMLFormElement>) {
@@ -53,8 +62,14 @@ export function PasswordRecoveryModal({ scope, onClose }: PasswordRecoveryModalP
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ email: normalizedEmail, scope }),
       });
-      const result = (await response.json()) as { success?: boolean; error?: string; mode?: string; demoCode?: string };
-      if (!response.ok || result.success === false) throw new Error(result.error ?? "Unable to start password recovery.");
+      const result = (await response.json()) as {
+        success?: boolean;
+        error?: string;
+        mode?: string;
+        demoCode?: string;
+      };
+      if (!response.ok || result.success === false)
+        throw new Error(result.error ?? "Unable to start password recovery.");
       setEmail(normalizedEmail);
       if (result.mode === "mock") {
         setDemoCode(result.demoCode ?? "");
@@ -63,7 +78,9 @@ export function PasswordRecoveryModal({ scope, onClose }: PasswordRecoveryModalP
         setStep("sent");
       }
     } catch (requestError) {
-      setError(requestError instanceof Error ? requestError.message : "Unable to start password recovery.");
+      setError(
+        requestError instanceof Error ? requestError.message : "Unable to start password recovery.",
+      );
     } finally {
       setBusy(false);
     }
@@ -79,12 +96,21 @@ export function PasswordRecoveryModal({ scope, onClose }: PasswordRecoveryModalP
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ email, scope, code }),
       });
-      const result = (await response.json()) as { success?: boolean; error?: string; recoveryToken?: string };
-      if (!response.ok || result.success === false || !result.recoveryToken) throw new Error(result.error ?? "That code is invalid or expired.");
+      const result = (await response.json()) as {
+        success?: boolean;
+        error?: string;
+        recoveryToken?: string;
+      };
+      if (!response.ok || result.success === false || !result.recoveryToken)
+        throw new Error(result.error ?? "That code is invalid or expired.");
       setRecoveryToken(result.recoveryToken);
       setStep("password");
     } catch (verificationError) {
-      setError(verificationError instanceof Error ? verificationError.message : "That code is invalid or expired.");
+      setError(
+        verificationError instanceof Error
+          ? verificationError.message
+          : "That code is invalid or expired.",
+      );
     } finally {
       setBusy(false);
     }
@@ -110,7 +136,8 @@ export function PasswordRecoveryModal({ scope, onClose }: PasswordRecoveryModalP
         body: JSON.stringify({ recoveryToken, password: newPassword }),
       });
       const result = (await response.json()) as { success?: boolean; error?: string };
-      if (!response.ok || result.success === false) throw new Error(result.error ?? "Unable to reset the password.");
+      if (!response.ok || result.success === false)
+        throw new Error(result.error ?? "Unable to reset the password.");
       setStep("done");
     } catch (resetError) {
       setError(resetError instanceof Error ? resetError.message : "Unable to reset the password.");
@@ -120,26 +147,66 @@ export function PasswordRecoveryModal({ scope, onClose }: PasswordRecoveryModalP
   }
 
   return (
-    <div className="fixed inset-0 z-[90] grid place-items-center bg-black/70 p-4 backdrop-blur-sm" role="dialog" aria-modal="true" aria-labelledby="password-recovery-title">
-      <section className={`relative w-full max-w-md rounded-2xl border p-6 shadow-2xl sm:p-8 ${shellClass} ${dark ? "admin-recovery-modal" : ""} recovery-modal-shell`}>
-        <button type="button" onClick={onClose} aria-label="Close" className={`absolute right-4 top-4 ${dark ? "text-white/45 hover:text-white" : "text-navy/40 hover:text-navy"}`}>
+    <div
+      className="fixed inset-0 z-[90] grid place-items-center bg-black/70 p-4 backdrop-blur-sm"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="password-recovery-title"
+    >
+      <section
+        className={`relative w-full max-w-md rounded-2xl border p-6 shadow-2xl sm:p-8 ${shellClass} ${dark ? "admin-recovery-modal" : ""} recovery-modal-shell`}
+      >
+        <button
+          type="button"
+          onClick={onClose}
+          aria-label="Close"
+          className={`absolute right-4 top-4 ${dark ? "text-white/45 hover:text-white" : "text-navy/40 hover:text-navy"}`}
+        >
           <X className="size-5" />
         </button>
 
-        <p className="text-xs font-black tracking-[.18em] text-coral">{mockMode ? "PASSWORD RECOVERY (DEMO)" : "PASSWORD RECOVERY"}</p>
-        <h2 id="password-recovery-title" className="mt-2 text-2xl font-black uppercase">{title}</h2>
+        <p className="text-xs font-black tracking-[.18em] text-coral">
+          {mockMode ? "PASSWORD RECOVERY (DEMO)" : "PASSWORD RECOVERY"}
+        </p>
+        <h2 id="password-recovery-title" className="mt-2 text-2xl font-black uppercase">
+          {title}
+        </h2>
 
         {step === "email" && (
           <form onSubmit={submitEmail} className="mt-6">
             <p className={`text-sm leading-relaxed ${mutedClass}`}>
               Enter the email used by the account.
             </p>
-            <label className={`form-label mt-4 ${emailLabelClass}`}>EMAIL
-              <input className={emailInputClass} type="email" required value={email} onChange={(event) => setEmail(event.target.value)} placeholder="player@example.com" />
+            <label className={`form-label mt-4 ${emailLabelClass}`}>
+              EMAIL
+              <input
+                className={emailInputClass}
+                type="email"
+                required
+                value={email}
+                onChange={(event) => setEmail(event.target.value)}
+                placeholder="player@example.com"
+              />
             </label>
-            {error && <p role="alert" className="mt-3 text-sm font-bold text-coral">{error}</p>}
-            <button disabled={busy} type="submit" className={`mt-5 inline-flex w-full items-center justify-center gap-2 rounded-md px-5 py-3.5 text-sm font-black tracking-wider transition disabled:cursor-wait disabled:opacity-70 ${buttonClass}`}>
-              {busy ? <><LoaderCircle className="size-4 animate-spin" /> SENDING RECOVERY</> : mockMode ? "SEND DEMO RECOVERY EMAIL" : "SEND RECOVERY EMAIL"}
+            {error && (
+              <p role="alert" className="mt-3 text-sm font-bold text-coral">
+                {error}
+              </p>
+            )}
+            <button
+              disabled={busy}
+              type="submit"
+              className={`mt-5 inline-flex w-full items-center justify-center gap-2 rounded-md px-5 py-3.5 text-sm font-black tracking-wider transition disabled:cursor-wait disabled:opacity-70 ${buttonClass}`}
+            >
+              {busy ? (
+                <>
+                  <LoaderCircle className="size-4 animate-spin" /> SENDING RECOVERY
+                </>
+              ) : mockMode ? (
+                "SEND DEMO RECOVERY EMAIL"
+              ) : (
+                "SEND RECOVERY EMAIL"
+              )}
             </button>
           </form>
         )}
@@ -149,28 +216,120 @@ export function PasswordRecoveryModal({ scope, onClose }: PasswordRecoveryModalP
             <p className={`text-sm leading-relaxed ${mutedClass}`}>
               Enter the demo recovery code to continue.
             </p>
-            <label className={`form-label mt-4 ${labelClass}`}>RECOVERY CODE
-              <input className={inputClass} inputMode="numeric" pattern="[0-9]{6}" maxLength={6} required value={code} onChange={(event) => setCode(event.target.value.replace(/\D/g, "").slice(0, 6))} placeholder="123456" />
+            <label className={`form-label mt-4 ${labelClass}`}>
+              RECOVERY CODE
+              <input
+                className={inputClass}
+                inputMode="numeric"
+                pattern="[0-9]{6}"
+                maxLength={6}
+                required
+                value={code}
+                onChange={(event) => setCode(event.target.value.replace(/\D/g, "").slice(0, 6))}
+                placeholder="123456"
+              />
             </label>
-            {error && <p role="alert" className="mt-3 text-sm font-bold text-coral">{error}</p>}
-            <button disabled={busy} type="submit" className={`mt-5 inline-flex w-full items-center justify-center gap-2 rounded-md px-5 py-3.5 text-sm font-black tracking-wider transition disabled:cursor-wait disabled:opacity-70 ${buttonClass}`}>
-              {busy ? <><LoaderCircle className="size-4 animate-spin" /> VERIFYING CODE</> : "VERIFY CODE"}
+            {error && (
+              <p role="alert" className="mt-3 text-sm font-bold text-coral">
+                {error}
+              </p>
+            )}
+            <button
+              disabled={busy}
+              type="submit"
+              className={`mt-5 inline-flex w-full items-center justify-center gap-2 rounded-md px-5 py-3.5 text-sm font-black tracking-wider transition disabled:cursor-wait disabled:opacity-70 ${buttonClass}`}
+            >
+              {busy ? (
+                <>
+                  <LoaderCircle className="size-4 animate-spin" /> VERIFYING CODE
+                </>
+              ) : (
+                "VERIFY CODE"
+              )}
             </button>
           </form>
         )}
 
         {step === "password" && (
           <form onSubmit={resetPassword} className="mt-6">
-            <p className={`text-sm leading-relaxed ${mutedClass}`}>Code verified. Choose a new password.</p>
-            <label className={`form-label mt-4 ${labelClass}`}>NEW PASSWORD
-              <input className={inputClass} name="newPassword" type="password" minLength={8} maxLength={64} pattern={PASSWORD_INPUT_PATTERN} title={PASSWORD_ERROR} required value={newPassword} onChange={(event) => setNewPassword(event.target.value)} autoComplete="new-password" placeholder="8+ characters with upper/lowercase, number, and symbol" />
+            <p className={`text-sm leading-relaxed ${mutedClass}`}>
+              Code verified. Choose a new password.
+            </p>
+            <label className={`form-label mt-4 ${labelClass}`}>
+              NEW PASSWORD
+              <span className="relative block">
+                <input
+                  className={`${inputClass} pr-12`}
+                  name="newPassword"
+                  type={passwordVisible ? "text" : "password"}
+                  minLength={8}
+                  maxLength={64}
+                  pattern={PASSWORD_INPUT_PATTERN}
+                  title={PASSWORD_ERROR}
+                  required
+                  value={newPassword}
+                  onChange={(event) => setNewPassword(event.target.value)}
+                  autoComplete="new-password"
+                  placeholder="8+ characters with upper/lowercase, number, and symbol"
+                />
+                <button
+                  type="button"
+                  onClick={() => setPasswordVisible((visible) => !visible)}
+                  className={`absolute right-1 top-[calc(50%+4px)] grid size-10 -translate-y-1/2 place-items-center rounded transition ${dark ? "text-white/45 hover:bg-white/5 hover:text-white" : "text-navy/40 hover:bg-navy/5 hover:text-navy"}`}
+                  aria-label={passwordVisible ? "Hide new password" : "Show new password"}
+                >
+                  {passwordVisible ? <Eye className="size-4" /> : <EyeOff className="size-4" />}
+                </button>
+              </span>
             </label>
-            <label className={`form-label mt-4 ${labelClass}`}>CONFIRM PASSWORD
-              <input className={inputClass} name="confirmPassword" type="password" minLength={8} maxLength={64} pattern={PASSWORD_INPUT_PATTERN} title={PASSWORD_ERROR} required value={confirmPassword} onChange={(event) => setConfirmPassword(event.target.value)} autoComplete="new-password" placeholder="Repeat password" />
+            <label className={`form-label mt-4 ${labelClass}`}>
+              CONFIRM PASSWORD
+              <span className="relative block">
+                <input
+                  className={`${inputClass} pr-12`}
+                  name="confirmPassword"
+                  type={confirmationVisible ? "text" : "password"}
+                  minLength={8}
+                  maxLength={64}
+                  pattern={PASSWORD_INPUT_PATTERN}
+                  title={PASSWORD_ERROR}
+                  required
+                  value={confirmPassword}
+                  onChange={(event) => setConfirmPassword(event.target.value)}
+                  autoComplete="new-password"
+                  placeholder="Repeat password"
+                />
+                <button
+                  type="button"
+                  onClick={() => setConfirmationVisible((visible) => !visible)}
+                  className={`absolute right-1 top-[calc(50%+4px)] grid size-10 -translate-y-1/2 place-items-center rounded transition ${dark ? "text-white/45 hover:bg-white/5 hover:text-white" : "text-navy/40 hover:bg-navy/5 hover:text-navy"}`}
+                  aria-label={
+                    confirmationVisible
+                      ? "Hide password confirmation"
+                      : "Show password confirmation"
+                  }
+                >
+                  {confirmationVisible ? <Eye className="size-4" /> : <EyeOff className="size-4" />}
+                </button>
+              </span>
             </label>
-            {error && <p role="alert" className="mt-3 text-sm font-bold text-coral">{error}</p>}
-            <button disabled={busy} type="submit" className={`mt-5 inline-flex w-full items-center justify-center gap-2 rounded-md px-5 py-3.5 text-sm font-black tracking-wider transition disabled:cursor-wait disabled:opacity-70 ${buttonClass}`}>
-              {busy ? <><LoaderCircle className="size-4 animate-spin" /> SAVING PASSWORD</> : "RESET PASSWORD"}
+            {error && (
+              <p role="alert" className="mt-3 text-sm font-bold text-coral">
+                {error}
+              </p>
+            )}
+            <button
+              disabled={busy}
+              type="submit"
+              className={`mt-5 inline-flex w-full items-center justify-center gap-2 rounded-md px-5 py-3.5 text-sm font-black tracking-wider transition disabled:cursor-wait disabled:opacity-70 ${buttonClass}`}
+            >
+              {busy ? (
+                <>
+                  <LoaderCircle className="size-4 animate-spin" /> SAVING PASSWORD
+                </>
+              ) : (
+                "RESET PASSWORD"
+              )}
             </button>
           </form>
         )}
@@ -182,19 +341,37 @@ export function PasswordRecoveryModal({ scope, onClose }: PasswordRecoveryModalP
                 <p className={`text-sm leading-relaxed ${mutedClass}`}>
                   A demo recovery code was prepared for your email address.
                 </p>
-                <div className={`mt-4 rounded-md border px-4 py-3 text-sm ${dark ? "border-white/10 bg-white/5" : "border-navy/10 bg-navy/5"}`}>
-                  <p className={`text-xs font-black tracking-[.16em] ${mutedClass}`}>DEMO RECOVERY CODE</p>
+                <div
+                  className={`mt-4 rounded-md border px-4 py-3 text-sm ${dark ? "border-white/10 bg-white/5" : "border-navy/10 bg-navy/5"}`}
+                >
+                  <p className={`text-xs font-black tracking-[.16em] ${mutedClass}`}>
+                    DEMO RECOVERY CODE
+                  </p>
                   <p className="mt-1 text-xl font-black tracking-[.2em] text-coral">{demoCode}</p>
-                  <p className={`mt-1 text-xs ${mutedClass}`}>Use this code once and never share it.</p>
+                  <p className={`mt-1 text-xs ${mutedClass}`}>
+                    Use this code once and never share it.
+                  </p>
                 </div>
-                <button type="button" onClick={() => setStep("code")} className={`mt-5 inline-flex w-full items-center justify-center rounded-md px-5 py-3.5 text-sm font-black tracking-wider transition ${buttonClass}`}>CONTINUE TO CODE</button>
+                <button
+                  type="button"
+                  onClick={() => setStep("code")}
+                  className={`mt-5 inline-flex w-full items-center justify-center rounded-md px-5 py-3.5 text-sm font-black tracking-wider transition ${buttonClass}`}
+                >
+                  CONTINUE TO CODE
+                </button>
               </>
             ) : (
               <>
                 <p className={`text-sm leading-relaxed ${mutedClass}`}>
                   A recovery link was sent to your email address.
                 </p>
-                <button type="button" onClick={onClose} className={`mt-5 inline-flex w-full items-center justify-center rounded-md px-5 py-3.5 text-sm font-black tracking-wider transition ${buttonClass}`}>BACK TO LOGIN</button>
+                <button
+                  type="button"
+                  onClick={onClose}
+                  className={`mt-5 inline-flex w-full items-center justify-center rounded-md px-5 py-3.5 text-sm font-black tracking-wider transition ${buttonClass}`}
+                >
+                  BACK TO LOGIN
+                </button>
               </>
             )}
           </div>
@@ -202,8 +379,15 @@ export function PasswordRecoveryModal({ scope, onClose }: PasswordRecoveryModalP
 
         {step === "done" && (
           <div className="mt-6">
-            <p className={`text-sm leading-relaxed ${mutedClass}`}>Your password has been reset. You can now sign in with the new password.</p>
-            <button type="button" onClick={onClose} className="mt-5 inline-flex w-full items-center justify-center rounded-md bg-[#278b78] px-5 py-3.5 text-sm font-black tracking-wider text-white transition hover:bg-[#1f7464]">BACK TO LOGIN</button>
+            <p className={`text-sm leading-relaxed ${mutedClass}`}>
+              Your password has been reset. You can now sign in with the new password.
+            </p>
+            <Link
+              href={scope === "admin" ? "/admin/login" : "/login"}
+              className="mt-5 inline-flex w-full items-center justify-center rounded-md bg-yellow px-5 py-3.5 text-sm font-black tracking-wider text-navy transition hover:brightness-95"
+            >
+              {scope === "admin" ? "ADMIN LOGIN" : "PLAYER LOGIN"}
+            </Link>
           </div>
         )}
       </section>
