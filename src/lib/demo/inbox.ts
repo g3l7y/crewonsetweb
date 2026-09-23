@@ -29,10 +29,11 @@ const hrefByKind: Record<string, string> = {
 export function notificationHref(
   notification: NotificationLike,
 ) {
+  if (notification.href) return notification.href;
   if (notification.channel === "mail" || notification.kind === "report") {
     return "/portal/inbox?tab=mail";
   }
-  return notification.href ?? hrefByKind[notification.kind ?? "system"] ?? "/portal/inbox";
+  return hrefByKind[notification.kind ?? "system"] ?? "/portal/inbox";
 }
 
 export function isActivityNotification(notification: NotificationLike) {

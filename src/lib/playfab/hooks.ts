@@ -190,7 +190,9 @@ export function useNotifications() {
     queryKey: QUERY_KEYS.notifications,
     queryFn: () => getPlayFabService().player.getNotifications(),
     enabled: !!session,
-    staleTime: 2 * 60 * 1000,
+    staleTime: 15_000,
+    refetchInterval: 30_000,
+    refetchIntervalInBackground: false,
   });
 }
 

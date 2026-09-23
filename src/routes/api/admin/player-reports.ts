@@ -9,6 +9,8 @@ import {
   deleteWebsiteRecords,
 } from '@/lib/playfab/websiteData';
 import type { PlayerReport } from '@/lib/playfab/types';
+import { persistAdminPlayerMessage } from '@/lib/playfab/admin-player-message';
+import { buildReportInvestigationMessage } from '@/lib/report-investigation-message';
 import {
   parseSubmissionRequest,
   uploadSubmissionAttachment,
@@ -210,6 +212,46 @@ export const Route = createFileRoute('/api/admin/player-reports')({
             return Response.json({ error: 'Report ID is required.' }, { status: 400 });
           }
 
+          const allowedStatuses = ['New', 'Investigating', 'Resolved'];
+          if (status !== undefined && !allowedStatuses.includes(status)) {
+            return Response.json({ error: 'Invalid player report status.' }, { status: 400 });
+          }
+          const secretKey = getSecretKey();
+          const reports = await getWebsiteRecords<PlayerReport>(WEBSITE_DATA_KEYS.playerReports, secretKey);
+          const current = reports.find((report) => report.id === id);
+          if (!current) return Response.json({ error: 'Report not found.' }, { status: 404 });
+
+          if (status !== undefined) {
+            const order: Record<string, number> = { New: 0, Investigating: 1, Resolved: 2 };
+            if ((order[status] ?? -1) < (order[current.status] ?? -1)) {
+              return Response.json({ error: 'Player report statuses can only move forward.' }, { status: 409 });
+            }
+            if (current.status === 'New' && status === 'Investigating') {
+              const playerId = current.reporterId?.trim();
+              if (!playerId || playerId === 'anonymous') {
+                return Response.json(
+                  { error: 'This report is not linked to a player account, so an Inbox update cannot be delivered.' },
+                  { status: 409 },
+                );
+              }
+              const message = buildReportInvestigationMessage({
+                kind: 'player',
+                reportId: current.id,
+                category: current.reportType || 'Other',
+              });
+              const saved = await persistAdminPlayerMessage({
+                id: 'report-' + current.id + '-investigating',
+                subject: message.subject,
+                body: message.body,
+                recipientPlayerId: playerId,
+                recipientUsername: current.reporterName || 'Player',
+                kind: 'report',
+                secretKey,
+              });
+              if (!saved) return Response.json({ error: 'Could not save the player Inbox update. The report status was not changed.' }, { status: 500 });
+            }
+          }
+
           const success = await updateWebsiteRecord<PlayerReport>(
             WEBSITE_DATA_KEYS.playerReports,
             id,
@@ -218,7 +260,7 @@ export const Route = createFileRoute('/api/admin/player-reports')({
               ...(status !== undefined ? { status } : {}),
               ...(adminNotes !== undefined ? { adminNotes } : {}),
             }),
-            getSecretKey(),
+            secretKey,
           );
 
           if (!success) {

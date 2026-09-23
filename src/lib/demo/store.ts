@@ -102,7 +102,11 @@ export async function insertSharedRecord<T extends { id: string }>(
   }
 }
 
-export async function updateSharedRecord<T extends { id: string }>(key: string, item: T) {
+export async function updateSharedRecord<T extends { id: string }>(
+  key: string,
+  item: T,
+  onError?: (message: string) => void,
+) {
   const endpoint = sharedEndpoints[key];
   if (!endpoint) return false;
   if (isMockMode()) return true;
@@ -114,15 +118,18 @@ export async function updateSharedRecord<T extends { id: string }>(key: string, 
       body: JSON.stringify(item),
     });
     if (!response.ok) {
+      const message = await responseError(response);
       console.error("[Crew On Set] Failed to update shared record.", {
         endpoint,
-        message: await responseError(response),
+        message,
       });
+      onError?.(message);
       return false;
     }
     return true;
   } catch (error) {
     console.error("[Crew On Set] Failed to update shared record.", { endpoint, error });
+    onError?.("The request could not be completed.");
     return false;
   }
 }
@@ -374,6 +381,7 @@ export type PlayerNotification = {
   read: boolean;
   /** In-app destination this notification links to when clicked. */
   href?: string;
+  senderUsername?: string | undefined;
   /** Optional mock recipient identity for player-specific in-app messages. */
   recipientUsername?: string | undefined;
   recipientEmail?: string | undefined;
@@ -502,63 +510,48 @@ export function addReportFeedback(args: {
   recipientUsername: string;
   recipientPlayerId?: string;
   reportId: string;
-  status: string;
-  body?: string;
+  subject: string;
+  body: string;
 }) {
+  if (!isMockMode()) return;
   const createdAt = new Date().toISOString();
-  const threadId = "thread-" + args.reportId;
-  const body = args.body ?? "Your report " + args.reportId + " is now marked " + args.status + ".";
+  const threadId = "admin-" + (args.recipientPlayerId ?? args.recipientUsername);
+  const messageId = "mock-report-" + args.reportId + "-investigating";
+  const noticeId = messageId + "-notice";
   const target = {
     kind: "players" as const,
-    playerIds: args.recipientPlayerId ? [args.recipientPlayerId] : [],
+    playerIds: [args.recipientPlayerId ?? args.recipientUsername],
   };
   const feedbackNotification: PlayerNotification = {
-    id: uid("ntf"),
-    title: "Report feedback: " + args.reportId,
-    body: "Your report was updated. Open Mail to read the admin feedback.",
+    id: noticeId,
+    title: "New message from Administrator",
+    body: "The admin team sent you a message: " + args.subject + ". Open your Inbox to read it.",
     createdAt,
     kind: "report",
     channel: "notification",
     read: false,
-    href: "/portal/inbox?tab=mail",
+    href: "/portal/inbox?tab=mail&contact=admin",
     recipientUsername: args.recipientUsername,
     target,
   };
 
-  if (isMockMode()) {
-    notificationsStore.set([feedbackNotification, ...notificationsStore.get()]);
-    playerMailStore.set([
-      {
-        id: uid("mail"),
-        threadId,
-        subject: "Report feedback: " + args.reportId,
-        body,
-        senderUsername: "ADMINISTRATOR",
-        recipientUsername: args.recipientUsername,
-        createdAt,
-        read: false,
-        kind: "admin",
-      },
-      ...playerMailStore.get(),
-    ]);
-    return;
-  }
-
   notificationsStore.set([
     feedbackNotification,
+    ...notificationsStore.get().filter((item) => item.id !== noticeId),
+  ]);
+  playerMailStore.set([
     {
-      id: uid("mail"),
-      title: "Report feedback: " + args.reportId,
-      body,
-      createdAt,
-      kind: "report",
-      channel: "mail",
-      read: false,
-      href: "/portal/inbox?tab=mail",
+      id: messageId,
+      threadId,
+      subject: args.subject,
+      body: args.body,
+      senderUsername: "ADMINISTRATOR",
       recipientUsername: args.recipientUsername,
-      target,
+      createdAt,
+      read: false,
+      kind: "admin",
     },
-    ...notificationsStore.get(),
+    ...playerMailStore.get().filter((item) => item.id !== messageId),
   ]);
 }
 /* --------------------------------------------------- partnership applications */

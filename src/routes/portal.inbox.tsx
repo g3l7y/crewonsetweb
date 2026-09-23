@@ -204,13 +204,17 @@ function InboxPage() {
     [currentUsername, visibleNotifications],
   );
 
-  const friendMail = mockMode
-    ? demoMail.filter(
+  const friendMail = useMemo(
+    () =>
+      mockMode
+        ? demoMail.filter(
         (mail) =>
           mail.recipientUsername.toLowerCase() === currentUsername.toLowerCase() ||
           mail.senderUsername.toLowerCase() === currentUsername.toLowerCase(),
-      )
-    : [];
+        )
+        : [],
+    [currentUsername, demoMail, mockMode],
+  );
   const mailRows = useMemo(
     () => sortNewest([...friendMail, ...directMail]),
     [directMail, friendMail],
@@ -263,6 +267,40 @@ function InboxPage() {
     : selectedAdminMail
       ? mailRows.filter((mail) => mail.kind === "admin")
       : [];
+
+  useEffect(() => {
+    if (requestedTab !== "mail" || searchParams.get("contact") !== "admin") return;
+    setRecipient("ADMINISTRATOR");
+    const unreadIds = new Set(
+      mailRows.filter((mail) => mail.kind === "admin" && !mail.read).map((mail) => mail.id),
+    );
+    if (unreadIds.size === 0) return;
+    if (mockMode) {
+      setDemoNotifications((current) =>
+        current.map((item) => (unreadIds.has(item.id) ? { ...item, read: true } : item)),
+      );
+      setDemoMail((current) =>
+        current.map((item) => (unreadIds.has(item.id) ? { ...item, read: true } : item)),
+      );
+    } else {
+      setRealNotifications((current) =>
+        current.map((item) => (unreadIds.has(item.id) ? { ...item, read: true } : item)),
+      );
+      void fetch("/api/notifications", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ ids: [...unreadIds] }),
+      });
+    }
+  }, [
+    mailRows,
+    mockMode,
+    requestedTab,
+    searchParams,
+    setDemoMail,
+    setDemoNotifications,
+    setRealNotifications,
+  ]);
 
   function selectTab(tab: "notifications" | "mail") {
     setActiveTab(tab);
@@ -516,7 +554,7 @@ function InboxPage() {
                         </button>
                       );
                     })}
-                    {directMail.length > 0 && (
+                    {mailRows.some((mail) => mail.kind === "admin") && (
                       <button
                         type="button"
                         aria-pressed={selectedAdminMail}
@@ -530,7 +568,7 @@ function InboxPage() {
                           <span className="block truncate text-sm font-black text-white">Administrator</span>
                           <span className="mt-1 block text-[10px] font-bold uppercase tracking-wide text-white/40">Inbox messages</span>
                         </span>
-                        {directMail.some((mail) => !mail.read) && <span className="size-2 shrink-0 rounded-full bg-coral" />}
+                        {mailRows.some((mail) => mail.kind === "admin" && !mail.read) && <span className="size-2 shrink-0 rounded-full bg-coral" />}
                       </button>
                     )}
                   </div>
@@ -629,7 +667,7 @@ function InboxPage() {
                           {composerMessage && <p className="mt-2 px-4 text-xs font-bold text-coral">{composerMessage}</p>}
                         </form>
                       ) : (
-                        <p className="border-t border-white/10 px-5 py-4 text-center text-xs font-bold text-white/35">Admin messages cannot be replied to here. Message a friend from the list.</p>
+                        <p className="border-t border-white/10 px-5 py-4 text-center text-xs font-bold text-white/35">This is a one-way support inbox. Replies to Administrator messages are disabled.</p>
                       )}
                     </>
                   )}
