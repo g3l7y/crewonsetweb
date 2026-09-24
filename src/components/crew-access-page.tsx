@@ -917,7 +917,7 @@ function SignupPolicyDialog({ kind, onClose }: { kind: PolicyKind; onClose: () =
         </button>
         <p className="text-xs font-black tracking-[.18em]">
           <span className="text-[var(--cos-gold)]">CREW</span>{" "}
-          <span className="text-coral">ON</span>{" "}
+          <span className="text-[var(--cos-gold)]">ON</span>{" "}
           <span className="text-[var(--cos-gold)]">SET</span>
         </p>
         <h2
@@ -926,7 +926,6 @@ function SignupPolicyDialog({ kind, onClose }: { kind: PolicyKind; onClose: () =
         >
           {kind === "terms" ? "Terms & Conditions" : "Privacy Policy"}
         </h2>
-        <p className="mt-2 text-xs text-navy/50">Last updated September 24, 2026</p>
         <div className="mt-5 min-h-0 overflow-y-auto rounded-lg border-2 border-navy bg-cream p-4 text-sm leading-relaxed text-navy/75 shadow-[4px_4px_0_#0a0e19] sm:p-5">
           <div className="space-y-5">
             {sections.map((section) => (

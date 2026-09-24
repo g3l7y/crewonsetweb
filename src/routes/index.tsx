@@ -14,6 +14,7 @@ export const Route = createFileRoute("/")({
 
 import Image from "@/components/next-compat/image";
 import Link from "@/components/next-compat/link";
+import { useEffect, useRef } from "react";
 import {
   ArrowDown,
   ArrowRight,
@@ -85,6 +86,38 @@ const roles = [
 ];
 
 function HomePage() {
+  const loreVideoRef = useRef<HTMLVideoElement>(null);
+
+  useEffect(() => {
+    const video = loreVideoRef.current;
+    if (!video) return;
+
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        if (!entry) return;
+
+        if (entry.isIntersecting && entry.intersectionRatio >= 0.35) {
+          void video.play().catch(() => {
+            // Autoplay can still be blocked by browser settings; controls remain available.
+          });
+          return;
+        }
+
+        video.pause();
+        if (video.readyState >= 1 && video.currentTime !== 0) {
+          video.currentTime = 0;
+        }
+      },
+      { threshold: [0, 0.35] },
+    );
+
+    observer.observe(video);
+    return () => {
+      observer.disconnect();
+      video.pause();
+    };
+  }, []);
+
   return (
     <MarketingShell>
       {/* HOME */}
@@ -200,11 +233,13 @@ function HomePage() {
           <div className="image-frame rotate-1">
             <div className="group relative aspect-video w-full overflow-hidden bg-black">
               <video
+                ref={loreVideoRef}
                 className="absolute inset-0 h-full w-full object-cover"
                 src="/videos/crew-on-set-game-lore.mp4"
                 poster="/videos/crew-on-set-game-lore-poster.jpg"
                 title="The Story of Crew On Set!"
                 controls
+                muted
                 preload="metadata"
                 playsInline
               />
