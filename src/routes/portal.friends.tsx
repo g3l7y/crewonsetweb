@@ -31,7 +31,11 @@ import {
   Twitter,
   X,
 } from "lucide-react";
-import { friendRosterStore, getVisiblePlayerStatus } from "@/lib/demo/friends";
+import {
+  friendRequestsStore,
+  friendRosterStore,
+  getVisiblePlayerStatus,
+} from "@/lib/demo/friends";
 import { notificationsStore, uid } from "@/lib/demo/store";
 import { getProfileArtwork } from "@/lib/demo/profile-art";
 import {
@@ -42,10 +46,12 @@ import {
 import { isMockMode } from "@/lib/playfab/config";
 import {
   useAddFriend,
+  useFriendRequests,
   useFriends,
   usePlayerProfile,
   useNotifications,
   useRemoveFriend,
+  useRespondToFriendRequest,
   useSearchPlayers,
   type PlayerSearchResult,
 } from "@/lib/playfab/hooks";
@@ -78,6 +84,7 @@ type Friend = {
 };
 
 type FriendRequest = {
+  id: string;
   name: string;
   level: number;
   role: string;
@@ -85,6 +92,7 @@ type FriendRequest = {
 };
 
 type SentRequest = {
+  id: string;
   name: string;
   level: number;
   role: string;
@@ -201,45 +209,6 @@ const initialFriends: Friend[] = [
       yearsExperience: 7,
       specialties: ["Props", "Set Dressing", "Production Design"],
     },
-  },
-];
-
-const initialRequests: FriendRequest[] = [
-  {
-    name: "FRAMEHUNTER",
-    level: 27,
-    role: "Director",
-    crewId: "COS-3812-FH",
-  },
-  {
-    name: "CUTMASTER",
-    level: 22,
-    role: "Editor",
-    crewId: "COS-7291-CM",
-  },
-];
-
-const initialSentRequests: SentRequest[] = [
-  {
-    name: "GAFFER_GEM",
-    level: 24,
-    role: "Gaffer",
-    crewId: "COS-8873-GG",
-    sentDate: "August 20, 2026",
-  },
-  {
-    name: "SLATEQUEEN",
-    level: 19,
-    role: "Script Supervisor",
-    crewId: "COS-2295-SQ",
-    sentDate: "August 17, 2026",
-  },
-  {
-    name: "TRACKSHOT",
-    level: 45,
-    role: "Dolly Grip",
-    crewId: "COS-6604-TS",
-    sentDate: "August 9, 2026",
   },
 ];
 
@@ -380,6 +349,7 @@ function FriendsPage() {
 
   const mockMode = isMockMode();
   const [demoFriends, setDemoFriends] = friendRosterStore.useStore();
+  const [storedFriendRequests, setStoredFriendRequests] = friendRequestsStore.useStore();
   const [search, setSearch] = useState("");
   const [addSearch, setAddSearch] = useState("");
   const friendsQuery = useFriends();
@@ -387,6 +357,8 @@ function FriendsPage() {
   const globalPlayersQuery = useSearchPlayers(search, !mockMode);
   const addPlayersQuery = useSearchPlayers(addSearch, !mockMode);
   const addFriendMutation = useAddFriend();
+  const friendRequestsQuery = useFriendRequests();
+  const respondToFriendRequestMutation = useRespondToFriendRequest();
   const removeFriendMutation = useRemoveFriend();
   const realNotificationsQuery = useNotifications();
   const realFriends = useMemo<Friend[]>(
@@ -425,12 +397,6 @@ function FriendsPage() {
     }
   };
 
-  const [requests, setRequests] = useState<FriendRequest[]>(mockMode ? initialRequests : []);
-
-  const [sentRequests, setSentRequests] = useState<SentRequest[]>(
-    mockMode ? initialSentRequests : [],
-  );
-
   const [blocked, setBlocked] = useState<Player[]>([]);
 
   const [blockedFriends, setBlockedFriends] = useState<Record<string, Friend>>({});
@@ -439,12 +405,65 @@ function FriendsPage() {
     profileQuery.data?.username ||
     profileQuery.data?.displayName ||
     (mockMode ? "CAMERA_PRO" : "PLAYER");
+  const currentPlayerId =
+    profileQuery.data?.playFabId || (mockMode ? "MOCK-PLAYER-001" : "");
+  const currentRequestKey = mockMode
+    ? "mock:" + currentUsername.trim().toLowerCase()
+    : currentPlayerId;
+  const requests = useMemo<FriendRequest[]>(() => {
+    const shared = mockMode
+      ? storedFriendRequests
+          .filter(
+            (request) =>
+              request.status === "pending" && request.recipientPlayFabId === currentRequestKey,
+          )
+          .map((request) => ({
+            id: request.id,
+            name: request.senderUsername,
+            level: request.senderLevel,
+            role: request.senderRole,
+            crewId: request.senderPlayFabId,
+          }))
+      : (friendRequestsQuery.data?.incoming ?? []).map((request) => ({
+          id: request.id,
+          name: request.senderUsername,
+          level: request.senderLevel,
+          role: request.senderRole,
+          crewId: request.senderPlayFabId,
+        }));
+    return shared;
+  }, [currentRequestKey, friendRequestsQuery.data?.incoming, mockMode, storedFriendRequests]);
+  const sentRequests = useMemo<SentRequest[]>(() => {
+    const shared = mockMode
+      ? storedFriendRequests
+          .filter(
+            (request) =>
+              request.status === "pending" && request.senderPlayFabId === currentRequestKey,
+          )
+          .map((request) => ({
+            id: request.id,
+            name: request.recipientUsername,
+            level: request.recipientLevel,
+            role: request.recipientRole,
+            crewId: request.recipientPlayFabId,
+            sentDate: new Date(request.createdAt).toLocaleDateString(),
+          }))
+      : (friendRequestsQuery.data?.outgoing ?? []).map((request) => ({
+          id: request.id,
+          name: request.recipientUsername,
+          level: request.recipientLevel,
+          role: request.recipientRole,
+          crewId: request.recipientPlayFabId,
+          sentDate: new Date(request.createdAt).toLocaleDateString(),
+        }));
+    return shared;
+  }, [currentRequestKey, friendRequestsQuery.data?.outgoing, mockMode, storedFriendRequests]);
 
   function recordFriendActivity(
     title: string,
     body: string,
     recipientUsername = currentUsername,
-    recipientPlayerId = profileQuery.data?.playFabId,
+    recipientPlayerId: string | null | undefined = profileQuery.data?.playFabId,
   ) {
     if (mockMode) {
       notificationsStore.set([
@@ -672,28 +691,41 @@ function FriendsPage() {
 
     if (!mockMode) {
       void addFriendMutation
-        .mutateAsync(player.crewId)
+        .mutateAsync({
+          friendPlayFabId: player.crewId,
+          username: player.name,
+          level: player.level,
+          role: player.role,
+        })
         .then(() => {
-          setFriends((current) => [...current, player]);
           void realNotificationsQuery.refetch();
-          setMessage(player.name + " has been added to your friends.");
+          setMessage("Friend request sent to " + player.name + ".");
           setAddSearch("");
         })
-        .catch(() => {
-          setMessage("PlayFab could not add this friend.");
+        .catch((error: Error) => {
+          setMessage(error.message || "Could not send a friend request to " + player.name + ".");
         });
       return;
     }
 
-    setSentRequests((current) => [
-      ...current,
+    const requestId = uid("friend-request");
+    const senderKey = "mock:" + currentUsername.trim().toLowerCase();
+    const recipientKey = "mock:" + player.name.trim().toLowerCase();
+    setStoredFriendRequests((current) => [
       {
-        name: player.name,
-        level: player.level,
-        role: player.role,
-        crewId: player.crewId,
-        sentDate: "Just now",
+        id: requestId,
+        senderPlayFabId: senderKey,
+        senderUsername: currentUsername,
+        senderLevel: 1,
+        senderRole: String(profileQuery.data?.primaryRole ?? "Crew Member"),
+        recipientPlayFabId: recipientKey,
+        recipientUsername: player.name,
+        recipientLevel: player.level,
+        recipientRole: player.role,
+        createdAt: new Date().toISOString(),
+        status: "pending",
       },
+      ...current,
     ]);
 
     recordFriendActivity(
@@ -704,7 +736,7 @@ function FriendsPage() {
       "New friend request",
       currentUsername + " sent you a friend request.",
       player.name,
-      player.crewId,
+      null,
     );
 
     setMessage(`Friend request sent to ${player.name}.`);
@@ -712,10 +744,21 @@ function FriendsPage() {
     setAddSearch("");
   }
 
-  function cancelSentRequest(name: string) {
-    setSentRequests((current) => current.filter((request) => request.name !== name));
+  function cancelSentRequest(request: SentRequest) {
+    if (!mockMode) {
+      void respondToFriendRequestMutation
+        .mutateAsync({ requestId: request.id, action: "cancel" })
+        .then(() => setMessage("Friend request to " + request.name + " was cancelled."))
+        .catch((error: Error) => setMessage(error.message));
+      return;
+    }
 
-    setMessage(`Friend request to ${name} was cancelled.`);
+    setStoredFriendRequests((current) =>
+      current.map((item) =>
+        item.id === request.id ? { ...item, status: "cancelled" } : item,
+      ),
+    );
+    setMessage("Friend request to " + request.name + " was cancelled.");
   }
 
   function requestRemoveFriend(friend: Friend) {
@@ -805,6 +848,17 @@ function FriendsPage() {
   }
 
   function acceptRequest(request: FriendRequest) {
+    if (!mockMode) {
+      void respondToFriendRequestMutation
+        .mutateAsync({ requestId: request.id, action: "accept" })
+        .then(() => {
+          void realNotificationsQuery.refetch();
+          setMessage(request.name + " is now your friend.");
+        })
+        .catch((error: Error) => setMessage(error.message));
+      return;
+    }
+
     const player = searchablePlayers.find((item) => item.name === request.name);
 
     const friend: Friend = player ?? {
@@ -828,7 +882,11 @@ function FriendsPage() {
       return [...current, friend];
     });
 
-    setRequests((current) => current.filter((item) => item.name !== request.name));
+    setStoredFriendRequests((current) =>
+      current.map((item) =>
+        item.id === request.id ? { ...item, status: "accepted" } : item,
+      ),
+    );
 
     recordFriendActivity(
       "Friend request accepted",
@@ -838,16 +896,30 @@ function FriendsPage() {
       "Friend request accepted",
       currentUsername + " accepted your friend request.",
       request.name,
-      request.crewId,
+      null,
     );
 
     setMessage(`${request.name} is now your friend.`);
   }
 
   function declineRequest(name: string) {
-    setRequests((current) => current.filter((request) => request.name !== name));
+    const request = requests.find((item) => item.name === name);
+    if (!request) return;
 
-    setMessage(`Friend request from ${name} declined.`);
+    if (!mockMode) {
+      void respondToFriendRequestMutation
+        .mutateAsync({ requestId: request.id, action: "decline" })
+        .then(() => setMessage("Friend request from " + name + " declined."))
+        .catch((error: Error) => setMessage(error.message));
+      return;
+    }
+
+    setStoredFriendRequests((current) =>
+      current.map((item) =>
+        item.id === request.id ? { ...item, status: "declined" } : item,
+      ),
+    );
+    setMessage("Friend request from " + name + " declined.");
   }
 
   function changeTab(nextTab: string) {
@@ -1212,7 +1284,7 @@ function FriendsPage() {
                         type="button"
                         onClick={(event) => {
                           event.stopPropagation();
-                          cancelSentRequest(request.name);
+                          cancelSentRequest(request);
                         }}
                         className="inline-flex items-center gap-1.5 rounded-md border border-white/10 px-3 py-2 text-[11px] font-black uppercase tracking-wide text-white/50 transition hover:border-coral hover:text-coral"
                       >

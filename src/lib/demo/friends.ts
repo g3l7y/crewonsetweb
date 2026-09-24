@@ -1,4 +1,5 @@
 import { createStore } from "@/lib/demo/store";
+import type { PlayerFriendRequest } from "@/lib/playfab/types";
 
 export type FriendSocials = {
   instagram?: string;
@@ -97,4 +98,76 @@ const seedFriends: FriendProfile[] = [
   },
 ];
 
+const seedFriendRequests: PlayerFriendRequest[] = [
+  {
+    id: "seed-incoming-framehunter",
+    senderPlayFabId: "mock:framehunter",
+    senderUsername: "FRAMEHUNTER",
+    senderLevel: 27,
+    senderRole: "Director",
+    recipientPlayFabId: "mock:camera_pro",
+    recipientUsername: "CAMERA_PRO",
+    recipientLevel: 1,
+    recipientRole: "Crew Member",
+    createdAt: "2026-08-21T10:00:00.000Z",
+    status: "pending",
+  },
+  {
+    id: "seed-incoming-cutmaster",
+    senderPlayFabId: "mock:cutmaster",
+    senderUsername: "CUTMASTER",
+    senderLevel: 22,
+    senderRole: "Editor",
+    recipientPlayFabId: "mock:camera_pro",
+    recipientUsername: "CAMERA_PRO",
+    recipientLevel: 1,
+    recipientRole: "Crew Member",
+    createdAt: "2026-08-19T10:00:00.000Z",
+    status: "pending",
+  },
+  {
+    id: "seed-outgoing-gaffer-gem",
+    senderPlayFabId: "mock:camera_pro",
+    senderUsername: "CAMERA_PRO",
+    senderLevel: 1,
+    senderRole: "Crew Member",
+    recipientPlayFabId: "mock:gaffer_gem",
+    recipientUsername: "GAFFER_GEM",
+    recipientLevel: 24,
+    recipientRole: "Gaffer",
+    createdAt: "2026-08-20T10:00:00.000Z",
+    status: "pending",
+  },
+  {
+    id: "seed-outgoing-slatequeen",
+    senderPlayFabId: "mock:camera_pro",
+    senderUsername: "CAMERA_PRO",
+    senderLevel: 1,
+    senderRole: "Crew Member",
+    recipientPlayFabId: "mock:slatequeen",
+    recipientUsername: "SLATEQUEEN",
+    recipientLevel: 19,
+    recipientRole: "Script Supervisor",
+    createdAt: "2026-08-17T10:00:00.000Z",
+    status: "pending",
+  },
+  {
+    id: "seed-outgoing-trackshot",
+    senderPlayFabId: "mock:camera_pro",
+    senderUsername: "CAMERA_PRO",
+    senderLevel: 1,
+    senderRole: "Crew Member",
+    recipientPlayFabId: "mock:trackshot",
+    recipientUsername: "TRACKSHOT",
+    recipientLevel: 45,
+    recipientRole: "Dolly Grip",
+    createdAt: "2026-08-09T10:00:00.000Z",
+    status: "pending",
+  },
+];
+
 export const friendRosterStore = createStore<FriendProfile>("cos.friendRoster", seedFriends);
+export const friendRequestsStore = createStore<PlayerFriendRequest>(
+  "cos.friendRequests",
+  seedFriendRequests,
+);

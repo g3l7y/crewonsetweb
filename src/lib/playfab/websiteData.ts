@@ -28,6 +28,7 @@ export const WEBSITE_DATA_KEYS = {
   notifications: "website_admin_notifications",
   playerNotifications: "website_player_notifications",
   playerMail: "website_player_mail",
+  playerFriendRequests: "website_player_friend_requests",
   settings: "website_settings",
   paymongoOrders: "website_paymongo_orders",
   partnershipPayments: "website_partnership_payments",

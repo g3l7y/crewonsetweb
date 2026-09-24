@@ -80,6 +80,7 @@ import { Route as ApiAuthPasswordChangeRouteImport } from './routes/api/auth/pas
 import { Route as ApiAuthProfileSetupRouteImport } from './routes/api/auth/profile/setup'
 import { Route as ApiPlayfabFriendsAddRouteImport } from './routes/api/playfab/friends/add'
 import { Route as ApiPlayfabFriendsRemoveRouteImport } from './routes/api/playfab/friends/remove'
+import { Route as ApiPlayfabFriendsRequestsRouteImport } from './routes/api/playfab/friends/requests'
 import { Route as ApiPlayfabPlayersSearchRouteImport } from './routes/api/playfab/players/search'
 
 const IndexRoute = IndexRouteImport.update({
@@ -442,6 +443,12 @@ const ApiPlayfabFriendsRemoveRoute = ApiPlayfabFriendsRemoveRouteImport.update({
   path: '/api/playfab/friends/remove',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiPlayfabFriendsRequestsRoute =
+  ApiPlayfabFriendsRequestsRouteImport.update({
+    id: '/api/playfab/friends/requests',
+    path: '/api/playfab/friends/requests',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 const ApiPlayfabPlayersSearchRoute = ApiPlayfabPlayersSearchRouteImport.update({
   id: '/api/playfab/players/search',
   path: '/api/playfab/players/search',
@@ -520,6 +527,7 @@ export interface FileRoutesByFullPath {
   '/api/auth/profile/setup': typeof ApiAuthProfileSetupRoute
   '/api/playfab/friends/add': typeof ApiPlayfabFriendsAddRoute
   '/api/playfab/friends/remove': typeof ApiPlayfabFriendsRemoveRoute
+  '/api/playfab/friends/requests': typeof ApiPlayfabFriendsRequestsRoute
   '/api/playfab/players/search': typeof ApiPlayfabPlayersSearchRoute
 }
 export interface FileRoutesByTo {
@@ -592,6 +600,7 @@ export interface FileRoutesByTo {
   '/api/auth/profile/setup': typeof ApiAuthProfileSetupRoute
   '/api/playfab/friends/add': typeof ApiPlayfabFriendsAddRoute
   '/api/playfab/friends/remove': typeof ApiPlayfabFriendsRemoveRoute
+  '/api/playfab/friends/requests': typeof ApiPlayfabFriendsRequestsRoute
   '/api/playfab/players/search': typeof ApiPlayfabPlayersSearchRoute
 }
 export interface FileRoutesById {
@@ -667,6 +676,7 @@ export interface FileRoutesById {
   '/api/auth/profile/setup': typeof ApiAuthProfileSetupRoute
   '/api/playfab/friends/add': typeof ApiPlayfabFriendsAddRoute
   '/api/playfab/friends/remove': typeof ApiPlayfabFriendsRemoveRoute
+  '/api/playfab/friends/requests': typeof ApiPlayfabFriendsRequestsRoute
   '/api/playfab/players/search': typeof ApiPlayfabPlayersSearchRoute
 }
 export interface FileRouteTypes {
@@ -743,6 +753,7 @@ export interface FileRouteTypes {
     | '/api/auth/profile/setup'
     | '/api/playfab/friends/add'
     | '/api/playfab/friends/remove'
+    | '/api/playfab/friends/requests'
     | '/api/playfab/players/search'
   fileRoutesByTo: FileRoutesByTo
   to:
@@ -815,6 +826,7 @@ export interface FileRouteTypes {
     | '/api/auth/profile/setup'
     | '/api/playfab/friends/add'
     | '/api/playfab/friends/remove'
+    | '/api/playfab/friends/requests'
     | '/api/playfab/players/search'
   id:
     | '__root__'
@@ -889,6 +901,7 @@ export interface FileRouteTypes {
     | '/api/auth/profile/setup'
     | '/api/playfab/friends/add'
     | '/api/playfab/friends/remove'
+    | '/api/playfab/friends/requests'
     | '/api/playfab/players/search'
   fileRoutesById: FileRoutesById
 }
@@ -942,6 +955,7 @@ export interface RootRouteChildren {
   ApiAuthPasswordChangeRoute: typeof ApiAuthPasswordChangeRoute
   ApiPlayfabFriendsAddRoute: typeof ApiPlayfabFriendsAddRoute
   ApiPlayfabFriendsRemoveRoute: typeof ApiPlayfabFriendsRemoveRoute
+  ApiPlayfabFriendsRequestsRoute: typeof ApiPlayfabFriendsRequestsRoute
   ApiPlayfabPlayersSearchRoute: typeof ApiPlayfabPlayersSearchRoute
 }
 
@@ -1444,6 +1458,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiPlayfabFriendsRemoveRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/playfab/friends/requests': {
+      id: '/api/playfab/friends/requests'
+      path: '/api/playfab/friends/requests'
+      fullPath: '/api/playfab/friends/requests'
+      preLoaderRoute: typeof ApiPlayfabFriendsRequestsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/playfab/players/search': {
       id: '/api/playfab/players/search'
       path: '/api/playfab/players/search'
@@ -1584,6 +1605,7 @@ const rootRouteChildren: RootRouteChildren = {
   ApiAuthPasswordChangeRoute: ApiAuthPasswordChangeRoute,
   ApiPlayfabFriendsAddRoute: ApiPlayfabFriendsAddRoute,
   ApiPlayfabFriendsRemoveRoute: ApiPlayfabFriendsRemoveRoute,
+  ApiPlayfabFriendsRequestsRoute: ApiPlayfabFriendsRequestsRoute,
   ApiPlayfabPlayersSearchRoute: ApiPlayfabPlayersSearchRoute,
 }
 export const routeTree = rootRouteImport
