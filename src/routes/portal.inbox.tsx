@@ -460,10 +460,7 @@ function InboxPage() {
     <div className="portal-page portal-title-page min-h-screen bg-[#0b1426] px-4 py-8 text-white sm:px-6 sm:py-10 lg:px-8">
       <div className="portal-title-container mx-auto max-w-[1500px]">
         <header className="portal-title-header">
-          <p className="portal-title-eyebrow text-xs font-black tracking-[.18em] text-coral">
-            COMMUNICATION
-          </p>
-          <h1 className="portal-title-heading mt-2 text-4xl font-black uppercase tracking-tight text-white sm:text-5xl">
+          <h1 className="portal-title-heading text-4xl font-black uppercase tracking-tight text-white sm:text-5xl">
             Inbox
           </h1>
           <p className="portal-title-subtitle mt-3 max-w-2xl text-base text-white/60 sm:text-lg">

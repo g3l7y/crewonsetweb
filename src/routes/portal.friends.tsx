@@ -925,11 +925,7 @@ function FriendsPage() {
 
             <div>
 
-              <p className="portal-title-eyebrow text-xs font-black tracking-[.18em] text-coral">
-                SOCIAL HUB
-              </p>
-
-              <h1 className="portal-title-heading mt-2 text-4xl font-black uppercase tracking-tight text-white sm:text-5xl">
+              <h1 className="portal-title-heading text-4xl font-black uppercase tracking-tight text-white sm:text-5xl">
                 Friends
               </h1>
 

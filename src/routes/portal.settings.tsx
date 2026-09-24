@@ -817,11 +817,7 @@ function SettingsPage() {
 
         <header className="portal-title-header flex flex-col justify-between gap-5 sm:flex-row sm:items-end">
           <div>
-            <p className="portal-title-eyebrow text-xs font-black uppercase tracking-[.18em] text-coral">
-              ACCOUNT CONTROL
-            </p>
-
-            <h1 className="portal-title-heading mt-2 text-4xl font-black uppercase tracking-tight text-white sm:text-5xl">
+            <h1 className="portal-title-heading text-4xl font-black uppercase tracking-tight text-white sm:text-5xl">
               Settings
             </h1>
           </div>
@@ -893,11 +889,7 @@ function SettingsPage() {
               <section className="overflow-hidden rounded-xl border border-white/[0.07] bg-[#151c29]">
                 <div className="flex flex-col justify-between gap-4 border-b border-white/[0.07] p-6 sm:flex-row sm:items-center">
                   <div>
-                    <p className="text-[10px] font-black uppercase tracking-[.18em] text-coral">
-                      ACCOUNT
-                    </p>
-
-                    <h2 className="mt-2 text-2xl font-black uppercase tracking-tight text-white">
+                    <h2 className="text-2xl font-black uppercase tracking-tight text-white">
                       Account Details
                     </h2>
 
@@ -1067,11 +1059,7 @@ function SettingsPage() {
             {section === "Display" && (
               <section className="overflow-hidden rounded-xl border border-white/[0.07] bg-[#151c29]">
                 <div className="border-b border-white/[0.07] p-7">
-                  <p className="text-[10px] font-black uppercase tracking-[.18em] text-coral">
-                    DISPLAY CONTROL
-                  </p>
-
-                  <h2 className="mt-2 text-2xl font-black uppercase tracking-tight text-white">
+                  <h2 className="text-2xl font-black uppercase tracking-tight text-white">
                     Display
                   </h2>
 
@@ -1121,11 +1109,7 @@ function SettingsPage() {
             {section === "Privacy" && (
               <section className="overflow-hidden rounded-xl border border-white/[0.07] bg-[#151c29]">
                 <div className="border-b border-white/[0.07] p-7">
-                  <p className="text-[10px] font-black uppercase tracking-[.18em] text-coral">
-                    PRIVACY CONTROL
-                  </p>
-
-                  <h2 className="mt-2 text-2xl font-black uppercase tracking-tight text-white">
+                  <h2 className="text-2xl font-black uppercase tracking-tight text-white">
                     Privacy
                   </h2>
 
@@ -1173,11 +1157,7 @@ function SettingsPage() {
             {section === "Notifications" && (
               <section className="overflow-hidden rounded-xl border border-white/[0.07] bg-[#151c29]">
                 <div className="border-b border-white/[0.07] p-7">
-                  <p className="text-[10px] font-black uppercase tracking-[.18em] text-coral">
-                    NOTIFICATION CONTROL
-                  </p>
-
-                  <h2 className="mt-2 text-2xl font-black uppercase tracking-tight text-white">
+                  <h2 className="text-2xl font-black uppercase tracking-tight text-white">
                     Notifications
                   </h2>
 
@@ -1229,11 +1209,7 @@ function SettingsPage() {
                 <section className="report-card overflow-hidden rounded-xl border border-white/[0.07] bg-[#151c29]">
                   <div className="flex flex-col justify-between gap-4 border-b border-white/[0.07] p-7 sm:flex-row sm:items-center">
                     <div>
-                      <p className="text-[10px] font-black uppercase tracking-[.18em] text-coral">
-                        SUPPORT
-                      </p>
-
-                      <h2 className="mt-2 text-2xl font-black uppercase tracking-tight text-white">
+                      <h2 className="text-2xl font-black uppercase tracking-tight text-white">
                         Report a Bug
                       </h2>
 
@@ -1265,11 +1241,7 @@ function SettingsPage() {
                 <section className="report-card overflow-hidden rounded-xl border border-white/[0.07] bg-[#151c29]">
                   <div className="flex flex-col justify-between gap-4 border-b border-white/[0.07] p-7 sm:flex-row sm:items-center">
                     <div>
-                      <p className="text-[10px] font-black uppercase tracking-[.18em] text-coral">
-                        SAFETY
-                      </p>
-
-                      <h2 className="mt-2 text-2xl font-black uppercase tracking-tight text-white">
+                      <h2 className="text-2xl font-black uppercase tracking-tight text-white">
                         Report a Player
                       </h2>
 

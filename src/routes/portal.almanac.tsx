@@ -219,7 +219,6 @@ function AlmanacPage() {
       <div className="almanac-container portal-title-container">
         <header className="almanac-header portal-title-header">
           <div className="header-title-area">
-            <p className="page-eyebrow portal-title-eyebrow">PRODUCTION ARCHIVE</p>
             <h1 className="almanac-title portal-title-heading">ALMANAC</h1>
           </div>
         </header>
