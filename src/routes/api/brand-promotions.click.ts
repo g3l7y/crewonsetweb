@@ -14,6 +14,12 @@ export const Route = createFileRoute('/api/brand-promotions/click')({
         const token = url.searchParams.get('token')?.trim();
         if (!token) return new Response('Promotion link is invalid.', { status: 400 });
         if (isMockMode()) return new Response('Tracked promotion links are available in real mode only.', { status: 404 });
+        if (!isBrandPromotionTrackingConfigured()) {
+          return new Response('Promotion click tracking is not configured. Please try again later.', {
+            status: 503,
+            headers: { 'content-type': 'text/plain; charset=utf-8', 'Cache-Control': 'no-store' },
+          });
+        }
 
         const secretKey = process.env['PLAYFAB_SECRET_KEY']?.trim();
         if (!secretKey) return new Response('Promotion link is temporarily unavailable.', { status: 503 });
@@ -48,14 +54,10 @@ export const Route = createFileRoute('/api/brand-promotions/click')({
           }
           const hasValidVisitor = /^[0-9a-f-]{36}$/i.test(visitorId);
           if (!hasValidVisitor) visitorId = crypto.randomUUID();
-          if (isBrandPromotionTrackingConfigured()) {
-            try {
-              await recordBrandPromotionClick(application.id, visitorId);
-            } catch (error) {
-              // Never strand a player on a broken tracking service; keep the submitted destination reachable.
-              console.error('[Brand promotion tracking] Could not record click:', error);
-            }
-          }
+          // Persist the event before redirecting. If storage is unavailable, return
+          // an explicit error rather than silently losing a click while claiming it
+          // was tracked.
+          await recordBrandPromotionClick(application.id, visitorId);
           const headers = new Headers({ 'Cache-Control': 'no-store, private', 'Referrer-Policy': 'no-referrer' });
           if (!hasValidVisitor) {
             headers.append('Set-Cookie', cookieName + '=' + encodeURIComponent(visitorId) + '; Path=/; Max-Age=31536000; HttpOnly; Secure; SameSite=Lax');

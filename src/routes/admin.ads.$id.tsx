@@ -82,6 +82,7 @@ function fromServiceAd(ad: AdEntry): ActiveAd {
     placement: ad.placement || 'Crew On Set production placement',
     submittedLink: ad.submittedLink,
     trackedLink: ad.trackedLink,
+    trackingEnabled: ad.trackingEnabled,
   };
 }
 
@@ -218,6 +219,7 @@ function AdDetailPage() {
           {ad.trackedLink && (
             <div className="mt-5 border-t border-white/[0.06] pt-4">
               <p className="text-[9px] font-black uppercase tracking-wide !text-white/30">Game Click-Tracking URL</p>
+              <p className="mt-1 text-xs leading-relaxed !text-white/50">Set this as the click-through destination for the promotion image or button in the game. The click is recorded before the player is redirected to the submitted brand link.</p>
               <div className="mt-2 flex flex-wrap items-center gap-3">
                 <code className="min-w-0 flex-1 break-all rounded-md bg-[#101923] p-3 text-xs !text-white/70">{ad.trackedLink}</code>
                 <button type="button" onClick={async () => {
@@ -233,6 +235,16 @@ function AdDetailPage() {
                   {trackingLinkCopied ? "Copied" : "Copy tracking URL"}
                 </button>
               </div>
+            </div>
+          )}
+          {!isMockMode() && !ad.trackingEnabled && (
+            <div className="mt-5 rounded-md border border-[#d9a514]/30 bg-[#d9a514]/10 p-3 text-xs leading-relaxed !text-white/70">
+              Click tracking is not configured, so a tracked game link is not available. Add the <code className="font-bold">DATABASE_URL</code> Neon connection string to the Vercel environment and redeploy to enable durable click counts.
+            </div>
+          )}
+          {!isMockMode() && ad.status === "On-going" && ad.trackingEnabled && !ad.trackedLink && (
+            <div className="mt-5 rounded-md border border-[#d9a514]/30 bg-[#d9a514]/10 p-3 text-xs leading-relaxed !text-white/70">
+              This live promotion has no tracking token yet. A tracking link must be generated for the application before its popup ad can be enabled.
             </div>
           )}
           {ad.endReason && <p className="mt-4 rounded-md border border-white/10 bg-white/[.03] p-3 text-xs leading-relaxed !text-white/65">Completion reason: {ad.endReason}</p>}

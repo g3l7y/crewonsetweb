@@ -756,6 +756,7 @@ export type ActiveAd = {
   placement: string;
   submittedLink?: string | undefined;
   trackedLink?: string | undefined;
+  trackingEnabled?: boolean | undefined;
 };
 
 const seedAds: ActiveAd[] = [
