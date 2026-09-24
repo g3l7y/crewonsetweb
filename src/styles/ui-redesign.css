@@ -2974,7 +2974,7 @@ html[data-display-theme="dark"] .display-theme-switcher button[aria-pressed="tru
 }
 
 .portal-theme .portal-title-heading {
-  margin-top: .5rem !important;
+  margin-top: 0 !important;
   color: #0a0e19 !important;
   font-family: var(--font-display) !important;
   font-size: clamp(3rem, 5vw, 4rem) !important;
@@ -3117,6 +3117,16 @@ html[data-display-theme="dark"] .display-theme-switcher button[aria-pressed="tru
   background-color: #0f1626 !important;
   color: #fefdf8 !important;
   box-shadow: 7px 7px 0 #fbbf24 !important;
+}
+
+/* Some portal cards are identified by their Tailwind background utility
+   rather than a card class. Keep their corners as softly rounded in dark mode
+   as the shared light-mode card treatment. */
+.portal-theme.portal-dark [class*="bg-[#151c29"],
+.portal-theme.portal-dark [class*="bg-[#121d32"],
+.portal-theme.portal-dark [class*="bg-[#1b2433"],
+.portal-theme.portal-dark [class*="bg-[#111c30"] {
+  border-radius: 14px !important;
 }
 
 .portal-theme.portal-dark .portal-page > div > section:not([class*="p-"]) {

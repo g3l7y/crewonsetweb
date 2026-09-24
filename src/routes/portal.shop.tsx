@@ -456,9 +456,6 @@ function ShopPage() {
       <div className="portal-shop-inner portal-title-container">
         <header className="shop-heading portal-title-header">
           <div>
-            <p className="portal-kicker portal-title-eyebrow">
-              PLAYER MARKETPLACE / COSMETICS ONLY
-            </p>
             <h1 className="portal-title-heading">Studio Shop</h1>
             <p className="shop-subtitle">
               Style the crew. Keep the stats honest. Every item here is cosmetic-only.

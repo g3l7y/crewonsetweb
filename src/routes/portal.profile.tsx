@@ -473,11 +473,7 @@ function CrewProfilePage() {
 
         <header className="portal-title-header flex flex-col gap-5 sm:flex-row sm:items-end sm:justify-between">
           <div>
-            <p className="portal-title-eyebrow text-xs font-black tracking-[.18em] text-coral">
-              IDENTITY CARD
-            </p>
-
-            <h1 className="portal-title-heading mt-2 text-4xl font-black uppercase tracking-tight text-white sm:text-5xl">
+            <h1 className="portal-title-heading text-4xl font-black uppercase tracking-tight text-white sm:text-5xl">
               Crew Profile
             </h1>
           </div>
