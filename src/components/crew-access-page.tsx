@@ -915,7 +915,11 @@ function SignupPolicyDialog({ kind, onClose }: { kind: PolicyKind; onClose: () =
         >
           <X className="size-5" />
         </button>
-        <p className="text-xs font-black tracking-[.18em] text-coral">CREW ON SET</p>
+        <p className="text-xs font-black tracking-[.18em]">
+          <span className="text-[var(--cos-gold)]">CREW</span>{" "}
+          <span className="text-coral">ON</span>{" "}
+          <span className="text-[var(--cos-gold)]">SET</span>
+        </p>
         <h2
           id="signup-policy-title"
           className="mt-2 pr-10 text-3xl font-black uppercase text-coral"
@@ -923,13 +927,15 @@ function SignupPolicyDialog({ kind, onClose }: { kind: PolicyKind; onClose: () =
           {kind === "terms" ? "Terms & Conditions" : "Privacy Policy"}
         </h2>
         <p className="mt-2 text-xs text-navy/50">Last updated September 24, 2026</p>
-        <div className="mt-5 space-y-5 overflow-y-auto pr-2 text-sm leading-relaxed text-navy/75">
-          {sections.map((section) => (
-            <section key={section.title}>
-              <h3 className="font-black uppercase tracking-wide text-navy">{section.title}</h3>
-              <p className="mt-1">{section.body}</p>
-            </section>
-          ))}
+        <div className="mt-5 min-h-0 overflow-y-auto rounded-lg border-2 border-navy bg-cream p-4 text-sm leading-relaxed text-navy/75 shadow-[4px_4px_0_#0a0e19] sm:p-5">
+          <div className="space-y-5">
+            {sections.map((section) => (
+              <article key={section.title}>
+                <h3 className="font-black uppercase tracking-wide text-navy">{section.title}</h3>
+                <p className="mt-1">{section.body}</p>
+              </article>
+            ))}
+          </div>
         </div>
         <button
           type="button"
