@@ -279,13 +279,11 @@ export function CrewAccessPage({ mode, scope = "player" }: CrewAccessPageProps) 
     setGoogleLoading(true);
     try {
       const googleResult = isMockMode()
-        ? await (async () => {
-            await new Promise((resolve) => setTimeout(resolve, 1200));
-            return {
-              destination: await loginWithCredentials("player@crewonset.com", "player", "player"),
-              needsProfileSetup: !isLogin,
-            };
-          })()
+        ? await loginWithGoogleAccessToken(
+            "mock-google-account",
+            isLogin ? "login" : "signup",
+            acceptedPolicies,
+          )
         : await loginWithGoogleAccessToken(
             await requestGoogleAccessToken(),
             isLogin ? "login" : "signup",

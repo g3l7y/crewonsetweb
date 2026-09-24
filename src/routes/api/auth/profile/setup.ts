@@ -5,6 +5,7 @@ import { findPlayFabAccountByIdentifier } from "@/lib/playfab/credential-verific
 import { createSessionCookies, validateSessionFromRequest } from "@/lib/playfab/session";
 import {
   getMockAccountBySessionTicket,
+  markMockGoogleProfileSetup,
   updateMockAccountPassword,
   updateMockAccountUsername,
 } from "@/lib/playfab/mock-accounts";
@@ -54,11 +55,16 @@ export const Route = createFileRoute("/api/auth/profile/setup")({
 
         if (isMockMode()) {
           const account = getMockAccountBySessionTicket(session.sessionTicket);
-          if (!account || account.role !== "player") {
+          if (
+            !account ||
+            account.role !== "player" ||
+            account.googleProfileSetupPending !== true ||
+            account.googleProfileSetup === true
+          ) {
             return Response.json(
               {
                 success: false,
-                error: "This mock account cannot be configured for Google sign-in.",
+                error: "Profile setup is only available for a new Google account.",
               },
               { status: 403 },
             );
@@ -67,6 +73,7 @@ export const Route = createFileRoute("/api/auth/profile/setup")({
           if (!updatedUsername.success) return Response.json(updatedUsername, { status: 409 });
           const updatedPassword = updateMockAccountPassword(session.sessionTicket, password);
           if (!updatedPassword.success) return Response.json(updatedPassword, { status: 400 });
+          markMockGoogleProfileSetup(session.sessionTicket);
 
           const headers = new Headers({ "Content-Type": "application/json" });
           for (const cookie of createSessionCookies({
@@ -95,6 +102,15 @@ export const Route = createFileRoute("/api/auth/profile/setup")({
             } catch {
               metadata = {};
             }
+          }
+          if (metadata.googleProfileSetupPending !== true || metadata.googleProfileSetup === true) {
+            return Response.json(
+              {
+                success: false,
+                error: "Profile setup is only available for a new Google account.",
+              },
+              { status: 403 },
+            );
           }
           const existing = await findPlayFabAccountByIdentifier(username);
           if (existing && existing.playFabId !== session.playFabId) {
@@ -155,6 +171,7 @@ export const Route = createFileRoute("/api/auth/profile/setup")({
                 ...metadata,
                 username,
                 googleProfileSetup: true,
+                googleProfileSetupPending: false,
                 credentialsSetup: true,
               }),
             },

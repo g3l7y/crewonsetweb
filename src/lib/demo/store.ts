@@ -46,7 +46,14 @@ export const partnershipStatusColors = {
   Declined: "#FF6248",
 } as const;
 
-export const partnershipProductTypes = ["Camera", "Lens", "Lights", "Audio", "Software", "Other"] as const;
+export const partnershipProductTypes = [
+  "Camera",
+  "Lens",
+  "Lights",
+  "Audio",
+  "Software",
+  "Other",
+] as const;
 
 async function responseError(response: Response): Promise<string> {
   try {
@@ -138,25 +145,39 @@ export async function updatePartnershipStatus(
   application: PartnershipApplication,
   status: PartnershipStatus,
   completionReason?: string,
-): Promise<{ success: boolean; error?: string; data?: PartnershipApplication; emailWarning?: string }> {
+): Promise<{
+  success: boolean;
+  error?: string;
+  data?: PartnershipApplication;
+  emailWarning?: string;
+}> {
   if (isMockMode()) return { success: true, data: { ...application, status } };
-  const endpoint = sharedEndpoints['cos.applications'];
-  if (!endpoint) return { success: false, error: 'The status endpoint is unavailable.' };
+  const endpoint = sharedEndpoints["cos.applications"];
+  if (!endpoint) return { success: false, error: "The status endpoint is unavailable." };
   try {
     const response = await fetch(endpoint, {
-      method: 'PATCH',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ id: application.id, status, ...(completionReason ? { completionReason } : {}) }),
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        id: application.id,
+        status,
+        ...(completionReason ? { completionReason } : {}),
+      }),
     });
-    const body = (await response.json().catch(() => ({}))) as { error?: string; emailWarning?: string; data?: PartnershipApplication };
-    if (!response.ok) return { success: false, error: body.error || 'The status change could not be saved.' };
+    const body = (await response.json().catch(() => ({}))) as {
+      error?: string;
+      emailWarning?: string;
+      data?: PartnershipApplication;
+    };
+    if (!response.ok)
+      return { success: false, error: body.error || "The status change could not be saved." };
     return {
       success: true,
       ...(body.data ? { data: body.data } : {}),
       ...(body.emailWarning ? { emailWarning: body.emailWarning } : {}),
     };
   } catch {
-    return { success: false, error: 'The status change could not be completed.' };
+    return { success: false, error: "The status change could not be completed." };
   }
 }
 export async function deleteSharedRecord(key: string, id: string) {
@@ -193,7 +214,7 @@ async function loadSharedTable<T>(key: string) {
   if (!endpoint || isMockMode()) return null;
 
   try {
-    const response = await fetch(endpoint);
+    const response = await fetch(endpoint, { cache: "no-store" });
     if (!response.ok) {
       console.error("[Crew On Set] Failed to load shared records.", {
         endpoint,
@@ -251,7 +272,8 @@ function write<T>(key: string, value: T) {
 }
 
 function reconcileExpired<T>(key: string, items: T[], now = Date.now()) {
-  if (!isMockMode() || (key !== "cos.ads" && key !== "cos.applications" && key !== "cos.revenue")) return items;
+  if (!isMockMode() || (key !== "cos.ads" && key !== "cos.applications" && key !== "cos.revenue"))
+    return items;
   let changed = false;
   const next = items.map((item) => {
     const record = item as T & {
@@ -270,15 +292,29 @@ function reconcileExpired<T>(key: string, items: T[], now = Date.now()) {
     const isApplication = key === "cos.applications";
     let expiresAt = record.expiresAt || record.promotionEndsAt;
     if (!expiresAt && isApplication && record.status === "On-going") {
-      const end = new Date(record.promotionStartedAt || record.paymentPaidAt || record.submittedAt || now);
+      const end = new Date(
+        record.promotionStartedAt || record.paymentPaidAt || record.submittedAt || now,
+      );
       const amount = Math.max(1, Math.round(Number(record.duration || 1)));
-      if (String(record.durationUnit || "").toLowerCase().startsWith("month")) end.setUTCMonth(end.getUTCMonth() + amount);
+      if (
+        String(record.durationUnit || "")
+          .toLowerCase()
+          .startsWith("month")
+      )
+        end.setUTCMonth(end.getUTCMonth() + amount);
       else end.setUTCDate(end.getUTCDate() + amount);
       expiresAt = end.toISOString();
     }
-    if (record.status !== "Done" && (!isApplication || record.status === "On-going") && expiresAt && new Date(expiresAt).getTime() <= now) {
+    if (
+      record.status !== "Done" &&
+      (!isApplication || record.status === "On-going") &&
+      expiresAt &&
+      new Date(expiresAt).getTime() <= now
+    ) {
       changed = true;
-      const endedAt = isApplication ? new Date(expiresAt).toISOString() : record.endedAt ?? new Date(expiresAt).toISOString();
+      const endedAt = isApplication
+        ? new Date(expiresAt).toISOString()
+        : (record.endedAt ?? new Date(expiresAt).toISOString());
       return {
         ...record,
         status: "Done",
@@ -313,6 +349,7 @@ export function createStore<T>(key: string, seed: T[]) {
     const resolved = typeof next === "function" ? next(current) : next;
     if (usesServerApi) {
       serverItems = resolved;
+      if (key === "cos.admin.alerts.read") void persistServerTable(key, resolved);
       if (isBrowser()) window.dispatchEvent(new CustomEvent(event));
       return;
     }
@@ -326,23 +363,30 @@ export function createStore<T>(key: string, seed: T[]) {
     useEffect(() => {
       let active = true;
       setItems(reconcileExpired(key, get()));
-      if (usesServerApi) {
+      const refresh = () => {
         void loadSharedTable<T>(key).then((remoteItems) => {
           if (active && !localWriteRef.current && remoteItems) {
             serverItems = reconcileExpired(key, remoteItems);
             setItems(serverItems);
           }
         });
+      };
+      if (usesServerApi) {
+        refresh();
       }
       const sync = () => setItems(get());
       window.addEventListener(event, sync);
       window.addEventListener("storage", sync);
-      const expiryInterval = isMockMode() && (key === "cos.applications" || key === "cos.ads" || key === "cos.revenue")
-        ? window.setInterval(() => setItems((current) => reconcileExpired(key, current)), 1_000)
-        : undefined;
+      const expiryInterval =
+        isMockMode() && (key === "cos.applications" || key === "cos.ads" || key === "cos.revenue")
+          ? window.setInterval(() => setItems((current) => reconcileExpired(key, current)), 1_000)
+          : undefined;
+      const sharedRefreshInterval =
+        usesServerApi && key === "cos.topUps" ? window.setInterval(refresh, 15_000) : undefined;
       return () => {
         active = false;
         if (expiryInterval !== undefined) window.clearInterval(expiryInterval);
+        if (sharedRefreshInterval !== undefined) window.clearInterval(sharedRefreshInterval);
         window.removeEventListener(event, sync);
         window.removeEventListener("storage", sync);
       };
@@ -1152,10 +1196,7 @@ export type AdminNotification = {
   createdAt: string;
 };
 
-export const adminNotificationsStore = createStore<AdminNotification>(
-  "cos.adminNotifications",
-  [],
-);
+export const adminNotificationsStore = createStore<AdminNotification>("cos.adminNotifications", []);
 
 /* --------------------------------------------------------- equipped loadout */
 

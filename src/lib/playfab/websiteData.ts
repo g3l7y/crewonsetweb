@@ -1,4 +1,4 @@
-import { PLAYFAB_API_BASE, PLAYFAB_TITLE_ID } from './config';
+import { PLAYFAB_API_BASE, PLAYFAB_TITLE_ID } from "./config";
 
 /**
  * PlayFab-backed website operational data storage.
@@ -22,14 +22,15 @@ const MAX_VALUE_BYTES = 9500; // Leave headroom for encoding overhead
 
 /** Well-known collection keys for website operational data. */
 export const WEBSITE_DATA_KEYS = {
-  bugReports: 'website_bug_reports',
-  playerReports: 'website_player_reports',
-  partnerships: 'website_partnerships',
-  notifications: 'website_admin_notifications',
-  playerMail: 'website_player_mail',
-  settings: 'website_settings',
-  paymongoOrders: 'website_paymongo_orders',
-  partnershipPayments: 'website_partnership_payments',
+  bugReports: "website_bug_reports",
+  playerReports: "website_player_reports",
+  partnerships: "website_partnerships",
+  notifications: "website_admin_notifications",
+  playerNotifications: "website_player_notifications",
+  playerMail: "website_player_mail",
+  settings: "website_settings",
+  paymongoOrders: "website_paymongo_orders",
+  partnershipPayments: "website_partnership_payments",
 } as const;
 
 export type WebsiteDataKey = (typeof WEBSITE_DATA_KEYS)[keyof typeof WEBSITE_DATA_KEYS];
@@ -44,10 +45,10 @@ async function callPlayFabServer<T = unknown>(
   secretKey: string,
 ): Promise<T> {
   const response = await fetch(`${PLAYFAB_API_BASE}${path}`, {
-    method: 'POST',
+    method: "POST",
     headers: {
-      'Content-Type': 'application/json',
-      'X-SecretKey': secretKey,
+      "Content-Type": "application/json",
+      "X-SecretKey": secretKey,
     },
     body: JSON.stringify({ ...body, TitleId: PLAYFAB_TITLE_ID }),
   });
@@ -55,7 +56,7 @@ async function callPlayFabServer<T = unknown>(
   const json = await response.json();
 
   if (!response.ok || json.code !== 200) {
-    const msg = json.errorMessage ?? json.status ?? 'PlayFab Server API error';
+    const msg = json.errorMessage ?? json.status ?? "PlayFab Server API error";
     throw new Error(`[PlayFab] ${path} failed: ${msg}`);
   }
 
@@ -68,7 +69,7 @@ async function getTitleInternalData(
   secretKey: string,
 ): Promise<Record<string, string>> {
   const data = await callPlayFabServer<{ Data: Record<string, string> }>(
-    '/Server/GetTitleInternalData',
+    "/Server/GetTitleInternalData",
     { Keys: keys },
     secretKey,
   );
@@ -76,12 +77,8 @@ async function getTitleInternalData(
 }
 
 /** Write a single Title Internal Data key. */
-async function setTitleInternalData(
-  key: string,
-  value: string,
-  secretKey: string,
-): Promise<void> {
-  await callPlayFabServer('/Server/SetTitleInternalData', { Key: key, Value: value }, secretKey);
+async function setTitleInternalData(key: string, value: string, secretKey: string): Promise<void> {
+  await callPlayFabServer("/Server/SetTitleInternalData", { Key: key, Value: value }, secretKey);
 }
 
 // ============================================================================
@@ -102,7 +99,11 @@ export async function getWebsiteValue<T>(key: string, secretKey: string): Promis
 }
 
 /** Write one JSON value to Title Internal Data (server-only). */
-export async function setWebsiteValue<T>(key: string, value: T, secretKey: string): Promise<boolean> {
+export async function setWebsiteValue<T>(
+  key: string,
+  value: T,
+  secretKey: string,
+): Promise<boolean> {
   try {
     await setTitleInternalData(key, JSON.stringify(value), secretKey);
     return true;
@@ -144,9 +145,9 @@ export async function getWebsiteRecords<T extends Identifiable>(
     // Check if it's a paginated container
     if (
       parsed &&
-      typeof parsed === 'object' &&
-      'pages' in parsed &&
-      typeof (parsed as Record<string, unknown>)['pages'] === 'number'
+      typeof parsed === "object" &&
+      "pages" in parsed &&
+      typeof (parsed as Record<string, unknown>)["pages"] === "number"
     ) {
       const meta = parsed as { pages: number; total: number };
       const pageKeys = Array.from({ length: meta.pages }, (_, i) => `${collectionKey}_p${i}`);
@@ -291,13 +292,13 @@ export async function getTitleData(
 ): Promise<Record<string, string>> {
   try {
     const data = await callPlayFabServer<{ Data: Record<string, string> }>(
-      '/Server/GetTitleData',
+      "/Server/GetTitleData",
       { Keys: keys },
       secretKey,
     );
     return data.Data || {};
   } catch (error) {
-    console.error('Error fetching title data:', error);
+    console.error("Error fetching title data:", error);
     return {};
   }
 }
@@ -311,10 +312,10 @@ export async function setTitleData(
   secretKey: string,
 ): Promise<boolean> {
   try {
-    await callPlayFabServer('/Server/SetTitleData', { Key: key, Value: value }, secretKey);
+    await callPlayFabServer("/Server/SetTitleData", { Key: key, Value: value }, secretKey);
     return true;
   } catch (error) {
-    console.error('Error setting title data:', error);
+    console.error("Error setting title data:", error);
     return false;
   }
 }

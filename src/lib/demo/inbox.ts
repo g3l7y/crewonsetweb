@@ -26,9 +26,7 @@ const hrefByKind: Record<string, string> = {
   system: "/portal",
 };
 
-export function notificationHref(
-  notification: NotificationLike,
-) {
+export function notificationHref(notification: NotificationLike) {
   if (notification.href) return notification.href;
   if (notification.channel === "mail" || notification.kind === "report") {
     return "/portal/inbox?tab=mail";
@@ -38,6 +36,29 @@ export function notificationHref(
 
 export function isActivityNotification(notification: NotificationLike) {
   return (notification.channel ?? "notification") === "notification";
+}
+
+const playerNotificationKinds = new Set([
+  "achievement",
+  "activity",
+  "friend",
+  "production",
+  "production_log",
+  "report",
+  "shop",
+  "transaction",
+]);
+
+/** Exclude broadcasts and admin-only events from a player's activity feed. */
+export function isPlayerAccountNotification(notification: NotificationLike) {
+  if (!isActivityNotification(notification) || notification.target?.kind === "all") return false;
+  const kind = notification.kind ?? "";
+  if (playerNotificationKinds.has(kind)) return true;
+  const explicitlyTargeted =
+    notification.target?.kind === "players" ||
+    Boolean(notification.recipientUsername) ||
+    Boolean(notification.recipientEmail);
+  return kind === "system" && explicitlyTargeted;
 }
 
 export function isMailNotification(notification: NotificationLike) {

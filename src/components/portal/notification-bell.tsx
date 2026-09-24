@@ -1,21 +1,10 @@
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "@/components/next-compat/navigation";
-import {
-  Bell,
-  Megaphone,
-  Trophy,
-  Users,
-  ShoppingBag,
-  Settings2,
-  CheckCheck,
-} from "lucide-react";
-import {
-  notificationsStore,
-
-} from "@/lib/demo/store";
+import { Bell, Megaphone, Trophy, Users, ShoppingBag, Settings2, CheckCheck } from "lucide-react";
+import { notificationsStore } from "@/lib/demo/store";
 import {
   NOTIFICATION_BELL_LIMIT,
-  isActivityNotification,
+  isPlayerAccountNotification,
   matchesPlayerRecipient,
   notificationHref as inboxNotificationHref,
   relativeTime as inboxRelativeTime,
@@ -59,7 +48,8 @@ export function NotificationBell({ dark = true }: { dark?: boolean }) {
     if (!mockMode) setRealNotifications(realNotificationsQuery.data ?? []);
   }, [mockMode, realNotificationsQuery.data]);
 
-  const mockPlayerUsername = profileQuery.data?.username ?? profileQuery.data?.displayName ?? "CAMERA_PRO";
+  const mockPlayerUsername =
+    profileQuery.data?.username ?? profileQuery.data?.displayName ?? "CAMERA_PRO";
   const mockPlayerEmail = profileQuery.data?.email ?? "player@crewonset.com";
   const mockPlayerId = profileQuery.data?.playFabId ?? "MOCK-PLAYER-001";
   const notifications: BellNotification[] = mockMode
@@ -75,11 +65,13 @@ export function NotificationBell({ dark = true }: { dark?: boolean }) {
           href: notification.href,
           recipientUsername: notification.recipientUsername,
           recipientEmail: notification.recipientEmail,
-          target: notification.target ? { kind: notification.target.kind, playerIds: notification.target.playerIds } : undefined,
+          target: notification.target
+            ? { kind: notification.target.kind, playerIds: notification.target.playerIds }
+            : undefined,
         }))
         .filter(
           (notification) =>
-            isActivityNotification(notification) &&
+            isPlayerAccountNotification(notification) &&
             matchesPlayerRecipient(notification, mockPlayerUsername, mockPlayerEmail, mockPlayerId),
         )
     : realNotifications
@@ -96,7 +88,7 @@ export function NotificationBell({ dark = true }: { dark?: boolean }) {
           recipientEmail: undefined,
           target: notification.target,
         }))
-        .filter(isActivityNotification);
+        .filter(isPlayerAccountNotification);
   const ref = useRef<HTMLDivElement>(null);
   const router = useRouter();
 
@@ -115,14 +107,14 @@ export function NotificationBell({ dark = true }: { dark?: boolean }) {
   const unreadCount = notifications.filter((n) => !n.read).length;
 
   function markRead(id: string) {
-    const next = notifications.map((n) => (n.id === id ? { ...n, read: true } : n));
     if (mockMode) {
       setDemoNotifications((current) =>
-        current.map((item) => item.id === id ? { ...item, read: true } : item),
+        current.map((item) => (item.id === id ? { ...item, read: true } : item)),
       );
-    }
-    else {
-      setRealNotifications((current) => current.map((item) => item.id === id ? { ...item, read: true } : item));
+    } else {
+      setRealNotifications((current) =>
+        current.map((item) => (item.id === id ? { ...item, read: true } : item)),
+      );
       void fetch("/api/notifications", {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
@@ -133,18 +125,16 @@ export function NotificationBell({ dark = true }: { dark?: boolean }) {
   }
 
   function markAllRead() {
-    const next = notifications.map((n) => ({ ...n, read: true }));
     if (mockMode) {
       setDemoNotifications((current) =>
         current.map((item) =>
-          isActivityNotification(item) &&
+          isPlayerAccountNotification(item) &&
           matchesPlayerRecipient(item, mockPlayerUsername, mockPlayerEmail, mockPlayerId)
             ? { ...item, read: true }
             : item,
         ),
       );
-    }
-    else {
+    } else {
       setRealNotifications((current) => current.map((item) => ({ ...item, read: true })));
       void fetch("/api/notifications", {
         method: "PATCH",
@@ -177,12 +167,16 @@ export function NotificationBell({ dark = true }: { dark?: boolean }) {
       </button>
 
       {open && (
-        <div className={dark ? "player-notification-dropdown absolute right-0 top-12 z-[90] w-[min(360px,88vw)] overflow-hidden rounded-xl border border-white/15 bg-[#0f1626] text-white shadow-2xl" : "player-notification-dropdown absolute right-0 top-12 z-[90] w-[min(360px,88vw)] overflow-hidden rounded-xl border border-navy/10 bg-white text-navy shadow-2xl"}>
+        <div
+          className={
+            dark
+              ? "player-notification-dropdown absolute right-0 top-12 z-[90] w-[min(360px,88vw)] overflow-hidden rounded-xl border border-white/15 bg-[#0f1626] text-white shadow-2xl"
+              : "player-notification-dropdown absolute right-0 top-12 z-[90] w-[min(360px,88vw)] overflow-hidden rounded-xl border border-navy/10 bg-white text-navy shadow-2xl"
+          }
+        >
           <div className="flex items-center justify-between border-b border-navy/10 px-4 py-3">
             <div>
-              <h3 className="text-sm font-black uppercase tracking-wide">
-                Notifications
-              </h3>
+              <h3 className="text-sm font-black uppercase tracking-wide">Notifications</h3>
               <p className="text-xs text-navy/45">
                 {unreadCount > 0 ? `${unreadCount} unread` : "You're all caught up"}
               </p>
@@ -199,9 +193,7 @@ export function NotificationBell({ dark = true }: { dark?: boolean }) {
 
           <div className="max-h-[380px] overflow-y-auto">
             {sorted.length === 0 && (
-              <p className="px-4 py-8 text-center text-sm text-navy/40">
-                No notifications yet.
-              </p>
+              <p className="px-4 py-8 text-center text-sm text-navy/40">No notifications yet.</p>
             )}
             {sorted.map((notification) => {
               const Icon = iconByKind[notification.kind ?? "system"] ?? Settings2;
@@ -223,9 +215,7 @@ export function NotificationBell({ dark = true }: { dark?: boolean }) {
                   </span>
                   <span className="min-w-0 flex-1">
                     <span className="flex items-center gap-2">
-                      <span className="truncate text-sm font-bold">
-                        {notification.title}
-                      </span>
+                      <span className="truncate text-sm font-bold">{notification.title}</span>
                       {!notification.read && (
                         <span className="size-1.5 shrink-0 rounded-full bg-coral" />
                       )}
