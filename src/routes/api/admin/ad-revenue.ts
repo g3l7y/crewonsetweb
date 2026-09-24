@@ -37,9 +37,10 @@ function toAdEntry(application: PartnershipApplication, request: Request, metric
     endDate: expiresAt,
     expiresAt,
     submittedLink: application.link,
-    trackedLink: application.brandPromotionToken
+    trackedLink: isBrandPromotionTrackingConfigured() && application.status === 'On-going' && application.brandPromotionToken
       ? baseUrl + '/api/brand-promotions/click?token=' + encodeURIComponent(application.brandPromotionToken)
       : undefined,
+    trackingEnabled: isBrandPromotionTrackingConfigured(),
     endedAt: application.promotionEndedAt,
     endReason: application.promotionEndReason,
     status: application.status === 'Done' ? 'Done' : 'On-going',

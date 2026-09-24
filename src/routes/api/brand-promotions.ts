@@ -48,6 +48,10 @@ export const Route = createFileRoute('/api/brand-promotions')({
               description: application.description,
               link: application.link,
               submittedLink: application.link,
+              trackedLink: application.status === 'On-going' && isBrandPromotionTrackingConfigured()
+                ? trackedLink
+                : undefined,
+              trackingEnabled: isBrandPromotionTrackingConfigured(),
               status: application.status,
               startDate,
               endDate,
