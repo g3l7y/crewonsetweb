@@ -459,6 +459,23 @@ export interface FriendInfo {
   tags?: string[] | undefined;
 }
 
+export type PlayerFriendRequestStatus = "pending" | "accepted" | "declined" | "cancelled";
+
+/** A player-to-player friend request stored by the website until accepted. */
+export interface PlayerFriendRequest {
+  id: string;
+  senderPlayFabId: string;
+  senderUsername: string;
+  senderLevel: number;
+  senderRole: string;
+  recipientPlayFabId: string;
+  recipientUsername: string;
+  recipientLevel: number;
+  recipientRole: string;
+  createdAt: string;
+  status: PlayerFriendRequestStatus;
+}
+
 /**
  * Transaction history ledger entry.
  */

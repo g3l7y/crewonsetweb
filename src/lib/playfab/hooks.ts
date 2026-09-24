@@ -12,6 +12,7 @@ import type {
   ProductionLog,
   LeaderboardEntry,
   FriendInfo,
+  PlayerFriendRequest,
   Transaction,
   PlayerNotification,
   PlayerMailMessage,
@@ -43,6 +44,7 @@ export const QUERY_KEYS = {
   productionLogs: ["playfab", "player", "productionLogs"] as const,
   transactions: ["playfab", "player", "transactions"] as const,
   friends: ["playfab", "player", "friends"] as const,
+  friendRequests: ["playfab", "player", "friendRequests"] as const,
   playerSearch: (query: string) => ["playfab", "player", "search", query] as const,
   notifications: ["playfab", "player", "notifications"] as const,
   mail: ["playfab", "player", "mail"] as const,
@@ -648,20 +650,73 @@ export function useUpdateSocialLinks() {
 }
 
 // Friends
+export function useFriendRequests() {
+  const { data: session } = useSession();
+  return useQuery<{ incoming: PlayerFriendRequest[]; outgoing: PlayerFriendRequest[] }>({
+    queryKey: QUERY_KEYS.friendRequests,
+    queryFn: async () => {
+      const response = await fetch("/api/playfab/friends/requests", {
+        credentials: "same-origin",
+        cache: "no-store",
+      });
+      const result = await response.json();
+      if (!response.ok) throw new Error(result?.error ?? "Failed to load friend requests");
+      return {
+        incoming: (result?.incoming ?? []) as PlayerFriendRequest[],
+        outgoing: (result?.outgoing ?? []) as PlayerFriendRequest[],
+      };
+    },
+    enabled: !!session && !isMockMode(),
+    refetchInterval: 30_000,
+    refetchOnWindowFocus: true,
+    staleTime: 10_000,
+  });
+}
+
 export function useAddFriend() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: async (friendPlayFabId: string) => {
+    mutationFn: async (request: {
+      friendPlayFabId: string;
+      username: string;
+      level: number;
+      role: string;
+    }) => {
       const response = await fetch("/api/playfab/friends/add", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ friendPlayFabId }),
+        credentials: "same-origin",
+        body: JSON.stringify(request),
       });
-      if (!response.ok) throw new Error("Failed to add friend");
-      return response.json();
+      const result = await response.json();
+      if (!response.ok) throw new Error(result?.error ?? "Failed to send friend request");
+      return result;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: QUERY_KEYS.friendRequests });
+      queryClient.invalidateQueries({ queryKey: QUERY_KEYS.notifications });
+    },
+  });
+}
+
+export function useRespondToFriendRequest() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (request: { requestId: string; action: "accept" | "decline" | "cancel" }) => {
+      const response = await fetch("/api/playfab/friends/requests", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "same-origin",
+        body: JSON.stringify(request),
+      });
+      const result = await response.json();
+      if (!response.ok) throw new Error(result?.error ?? "Failed to update friend request");
+      return result;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: QUERY_KEYS.friends });
+      queryClient.invalidateQueries({ queryKey: QUERY_KEYS.friendRequests });
+      queryClient.invalidateQueries({ queryKey: QUERY_KEYS.notifications });
     },
   });
 }
