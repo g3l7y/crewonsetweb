@@ -1,51 +1,71 @@
 import { createFileRoute } from "@tanstack/react-router";
 
 import { isMockMode } from "@/lib/playfab/config";
+import { useQuery } from "@tanstack/react-query";
 
 export const Route = createFileRoute("/admin/notifications")({
   head: () => ({
     meta: [
       { title: "Notifications — Crew On Set! Admin" },
-      { name: "description", content: "Review studio alerts, pending applications, and ad status changes." },
+      {
+        name: "description",
+        content: "Review studio alerts, pending applications, and ad status changes.",
+      },
       { property: "og:title", content: "Notifications — Crew On Set! Admin" },
-      { property: "og:description", content: "Review studio alerts, pending applications, and ad status changes." },
+      {
+        property: "og:description",
+        content: "Review studio alerts, pending applications, and ad status changes.",
+      },
     ],
   }),
   component: NotificationsPage,
 });
 
 import { useMemo } from "react";
-import { Activity, Bell, CheckCheck, ChevronRight, FileText, Megaphone, ServerCog } from "lucide-react";
+import { Bell, Bug, CheckCheck, ChevronRight, CircleDollarSign, Flag } from "lucide-react";
 import { useRouter } from "@/components/next-compat/navigation";
-import {
-  adsStore,
-  adminActivityStore,
-  alertReadStore,
-  applicationsStore,
-  bugReportsStore,
-  playerReportsStore,
-} from "@/lib/demo/store";
+import { alertReadStore, bugReportsStore, playerReportsStore } from "@/lib/demo/store";
 import { buildAlerts, type AdminAlert } from "@/components/admin/admin-alerts";
+import { topUpsStore, type TopUpRecord } from "@/lib/admin-demo-data";
+import { useSession } from "@/lib/playfab/hooks";
 
-const iconByKind: Record<AdminAlert["kind"], typeof FileText> = {
-  application: FileText,
-  ad: Megaphone,
-  system: ServerCog,
-  activity: Activity,
+const iconByKind: Record<AdminAlert["kind"], typeof Bug> = {
+  bug: Bug,
+  "player-report": Flag,
+  transaction: CircleDollarSign,
 };
 
 function NotificationsPage() {
-  const [applications] = applicationsStore.useStore();
-  const [ads] = adsStore.useStore();
-  const [activity] = adminActivityStore.useStore();
+  const mockMode = isMockMode();
+  const sessionQuery = useSession();
+  const [demoTransactions] = topUpsStore.useStore();
+  const liveTransactionsQuery = useQuery({
+    queryKey: ["admin", "paymongo-orders", "notifications"],
+    queryFn: async (): Promise<TopUpRecord[]> => {
+      const response = await fetch("/api/admin/paymongo-orders", {
+        credentials: "include",
+        cache: "no-store",
+      });
+      if (!response.ok) return [];
+      const result = (await response.json().catch(() => ({}))) as { data?: unknown };
+      return Array.isArray(result.data) ? (result.data as TopUpRecord[]) : [];
+    },
+    enabled: !mockMode && Boolean(sessionQuery.data),
+    staleTime: 0,
+    refetchInterval: mockMode ? false : 15 * 1000,
+  });
+  const transactions = useMemo(
+    () => (mockMode ? demoTransactions : (liveTransactionsQuery.data ?? [])),
+    [demoTransactions, liveTransactionsQuery.data, mockMode],
+  );
   const [bugs] = bugReportsStore.useStore();
   const [playerReports] = playerReportsStore.useStore();
   const [readIds, setReadIds] = alertReadStore.useStore();
   const router = useRouter();
 
   const alerts = useMemo(
-    () => buildAlerts(applications, ads, bugs, playerReports, activity, isMockMode()),
-    [applications, ads, bugs, playerReports, activity],
+    () => buildAlerts(bugs, playerReports, transactions),
+    [bugs, playerReports, transactions],
   );
   const unreadCount = alerts.filter((alert) => !readIds.includes(alert.id)).length;
 
@@ -87,68 +107,71 @@ function NotificationsPage() {
       <section aria-labelledby="notification-list-title">
         <div className="mb-3 flex items-center gap-2">
           <Bell className="size-4 !text-coral" />
-          <h2 id="notification-list-title" className="text-sm font-black uppercase tracking-wider !text-white/60">
+          <h2
+            id="notification-list-title"
+            className="text-sm font-black uppercase tracking-wider !text-white/60"
+          >
             All Notifications
           </h2>
         </div>
         <div className="space-y-3">
-        {alerts.length === 0 && (
-          <p className="rounded-lg border border-white/[0.06] bg-[#182330] p-6 text-center text-sm !text-white/35">
-            No alerts right now.
-          </p>
-        )}
+          {alerts.length === 0 && (
+            <p className="rounded-lg border border-white/[0.06] bg-[#182330] p-6 text-center text-sm !text-white/35">
+              No alerts right now.
+            </p>
+          )}
 
-        {alerts.map((alert) => {
-          const Icon = iconByKind[alert.kind];
-          const unread = !readIds.includes(alert.id);
-          return (
-            <article
-              key={alert.id}
-              role="button"
-              tabIndex={0}
-              onClick={() => openAlert(alert)}
-              onKeyDown={(e) => {
-                if (e.key === "Enter" || e.key === " ") {
-                  e.preventDefault();
-                  openAlert(alert);
-                }
-              }}
-              className={`group flex cursor-pointer items-start gap-4 rounded-lg border bg-[#182330] p-5 shadow-xl transition hover:bg-[#1c2836] focus:outline-none focus:ring-2 focus:ring-coral/50 ${
-                unread ? "border-coral/30" : "border-white/[0.06]"
-              }`}
-            >
-              <div className="grid size-10 shrink-0 place-items-center rounded-md bg-coral/15 text-coral">
-                <Icon className="size-5" />
-              </div>
-              <div className="min-w-0 flex-1">
-                <div className="flex flex-wrap items-center gap-2">
-                  <p className="font-black !text-white">{alert.title}</p>
-                  {unread && (
-                    <span className="rounded-full bg-coral/20 px-2 py-0.5 text-[9px] font-black uppercase tracking-wide !text-coral">
-                      New
-                    </span>
-                  )}
+          {alerts.map((alert) => {
+            const Icon = iconByKind[alert.kind];
+            const unread = !readIds.includes(alert.id);
+            return (
+              <article
+                key={alert.id}
+                role="button"
+                tabIndex={0}
+                onClick={() => openAlert(alert)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" || e.key === " ") {
+                    e.preventDefault();
+                    openAlert(alert);
+                  }
+                }}
+                className={`group flex cursor-pointer items-start gap-4 rounded-lg border bg-[#182330] p-5 shadow-xl transition hover:bg-[#1c2836] focus:outline-none focus:ring-2 focus:ring-coral/50 ${
+                  unread ? "border-coral/30" : "border-white/[0.06]"
+                }`}
+              >
+                <div className="grid size-10 shrink-0 place-items-center rounded-md bg-coral/15 text-coral">
+                  <Icon className="size-5" />
                 </div>
-                <p className="mt-1 text-sm leading-relaxed !text-white/50">{alert.body}</p>
-              </div>
-              <div className="flex shrink-0 items-center gap-3">
-                {unread && (
-                  <button
-                    type="button"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      setReadIds([...readIds, alert.id]);
-                    }}
-                    className="text-[10px] font-black uppercase tracking-wide !text-white/40 transition hover:!text-coral"
-                  >
-                    Mark read
-                  </button>
-                )}
-                <ChevronRight className="size-4 !text-white/25 transition group-hover:!text-coral" />
-              </div>
-            </article>
-          );
-        })}
+                <div className="min-w-0 flex-1">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <p className="font-black !text-white">{alert.title}</p>
+                    {unread && (
+                      <span className="rounded-full bg-coral/20 px-2 py-0.5 text-[9px] font-black uppercase tracking-wide !text-coral">
+                        New
+                      </span>
+                    )}
+                  </div>
+                  <p className="mt-1 text-sm leading-relaxed !text-white/50">{alert.body}</p>
+                </div>
+                <div className="flex shrink-0 items-center gap-3">
+                  {unread && (
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setReadIds([...readIds, alert.id]);
+                      }}
+                      className="text-[10px] font-black uppercase tracking-wide !text-white/40 transition hover:!text-coral"
+                    >
+                      Mark read
+                    </button>
+                  )}
+                  <ChevronRight className="size-4 !text-white/25 transition group-hover:!text-coral" />
+                </div>
+              </article>
+            );
+          })}
         </div>
       </section>
     </div>

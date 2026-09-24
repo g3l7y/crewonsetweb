@@ -5,22 +5,13 @@ import { createSessionCookies, hasActivePlayFabBan } from "@/lib/playfab/session
 import type { AuthResponse, SessionData } from "@/lib/playfab/types";
 import { getPlayFabContactEmail, syncPlayFabContactEmail } from "@/lib/playfab/contact-email";
 import { createPolicyAcceptanceRecord } from "@/lib/legal-consent";
+import { getMockAccountByPlayFabId } from "@/lib/playfab/mock-accounts";
 
 export const Route = createFileRoute("/api/auth/google")({
   server: {
     handlers: {
       POST: async ({ request }) => {
         try {
-          if (isMockMode()) {
-            return Response.json(
-              {
-                success: false,
-                error: "Google sign-in is only available in real mode.",
-              } satisfies AuthResponse,
-              { status: 400 },
-            );
-          }
-
           const { accessToken, intent, acceptedPolicies } = (await request.json()) as {
             accessToken?: string;
             intent?: "login" | "signup";
@@ -36,6 +27,52 @@ export const Route = createFileRoute("/api/auth/google")({
               { status: 400 },
             );
           }
+
+          if (isMockMode()) {
+            const account = getMockAccountByPlayFabId("MOCK-PLAYER-001");
+            if (!account) {
+              return Response.json(
+                {
+                  success: false,
+                  error: "The mock Google player account is unavailable.",
+                } satisfies AuthResponse,
+                { status: 503 },
+              );
+            }
+            if (intent === "signup" && account.googleProfileSetup !== true) {
+              account.googleProfileSetupPending = true;
+            }
+            const session: SessionData = {
+              playFabId: account.playFabId,
+              sessionTicket: account.sessionTicket,
+              role: "player",
+              username: account.username,
+              playFabUsername: account.username,
+              displayName: account.displayName,
+              email: account.email,
+            };
+            const headers = new Headers({ "Content-Type": "application/json" });
+            for (const cookie of createSessionCookies(session)) {
+              headers.append("Set-Cookie", cookie);
+            }
+            return new Response(
+              JSON.stringify({
+                success: true,
+                session: {
+                  playFabId: session.playFabId,
+                  role: session.role,
+                  username: session.username,
+                  displayName: session.displayName,
+                  email: session.email,
+                },
+                destination: "/portal",
+                needsProfileSetup:
+                  account.googleProfileSetupPending === true && account.googleProfileSetup !== true,
+              }),
+              { headers },
+            );
+          }
+
           if (!accessToken?.trim()) {
             return Response.json(
               { success: false, error: "Google access token is required." } satisfies AuthResponse,
@@ -110,6 +147,7 @@ export const Route = createFileRoute("/api/auth/google")({
           let metadata: {
             username?: string;
             googleProfileSetup?: boolean;
+            googleProfileSetupPending?: boolean;
             credentialsSetup?: boolean;
           } = {};
           try {
@@ -149,6 +187,44 @@ export const Route = createFileRoute("/api/auth/google")({
               } satisfies AuthResponse,
               { status: 400 },
             );
+          }
+
+          if (intent === "signup" && pfData.NewlyCreated === true && !credentialsAlreadyLinked) {
+            const pendingMetadata = {
+              ...metadata,
+              googleProfileSetupPending: true,
+            };
+            const pendingResponse = await fetch(
+              `https://${PLAYFAB_TITLE_ID}.playfabapi.com/Client/UpdateUserData`,
+              {
+                method: "POST",
+                headers: {
+                  "Content-Type": "application/json",
+                  "X-Authorization": pfData.SessionTicket,
+                },
+                body: JSON.stringify({
+                  Data: {
+                    [PLAYFAB_DATA_KEYS.profile_metadata]: JSON.stringify(pendingMetadata),
+                  },
+                }),
+              },
+            );
+            const pendingResult = await pendingResponse.json().catch(() => ({}));
+            if (!pendingResponse.ok || pendingResult.code !== 200) {
+              console.error(
+                "[PlayFab] Could not persist Google profile setup state:",
+                pendingResult,
+              );
+              return Response.json(
+                {
+                  success: false,
+                  error:
+                    "We could not save your account setup state. Please try Google sign-up again.",
+                } satisfies AuthResponse,
+                { status: 503 },
+              );
+            }
+            metadata.googleProfileSetupPending = true;
           }
 
           if (intent === "signup") {
@@ -191,9 +267,10 @@ export const Route = createFileRoute("/api/auth/google")({
               sessionEmail = existingContactEmail;
             } else {
               try {
+                const secretKey = process.env["PLAYFAB_SECRET_KEY"]?.trim();
                 await syncPlayFabContactEmail(pfData.SessionTicket, email, {
                   playFabId: pfData.PlayFabId,
-                  secretKey: process.env["PLAYFAB_SECRET_KEY"]?.trim(),
+                  ...(secretKey ? { secretKey } : {}),
                 });
               } catch (contactEmailError) {
                 console.error("[PlayFab] Could not sync Google contact email:", contactEmailError);
@@ -226,7 +303,8 @@ export const Route = createFileRoute("/api/auth/google")({
               email: session.email,
             },
             destination: "/portal",
-            needsProfileSetup: !credentialsAlreadyLinked,
+            needsProfileSetup:
+              metadata.googleProfileSetupPending === true && metadata.googleProfileSetup !== true,
           };
 
           return new Response(JSON.stringify(response), { headers });

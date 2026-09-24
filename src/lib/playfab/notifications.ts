@@ -1,6 +1,7 @@
-import { getUserData } from './player';
-import { PLAYFAB_DATA_KEYS } from './constants';
-import type { PlayerNotification } from './types';
+import { getUserData } from "./player";
+import { PLAYFAB_DATA_KEYS } from "./constants";
+import type { PlayerNotification } from "./types";
+import { isPlayerAccountNotification } from "@/lib/demo/inbox";
 
 function normalizeNotification(item: Record<string, unknown>): PlayerNotification | null {
   const id = item["id"];
@@ -25,7 +26,8 @@ function normalizeNotification(item: Record<string, unknown>): PlayerNotificatio
     read: Boolean(item["read"]),
     createdAt: typeof createdAt === "string" ? createdAt : new Date().toISOString(),
     href: typeof href === "string" ? href : undefined,
-    target: target && typeof target === "object" ? target as PlayerNotification["target"] : undefined,
+    target:
+      target && typeof target === "object" ? (target as PlayerNotification["target"]) : undefined,
     senderUsername: typeof senderUsername === "string" ? senderUsername : undefined,
     recipientUsername: typeof recipientUsername === "string" ? recipientUsername : undefined,
   };
@@ -39,19 +41,23 @@ export async function getNotifications(sessionTicket: string): Promise<PlayerNot
     const personal = raw ? JSON.parse(raw) : [];
     const personalNotifications = Array.isArray(personal)
       ? personal
-          .filter((item): item is Record<string, unknown> => Boolean(item) && typeof item === 'object')
+          .filter(
+            (item): item is Record<string, unknown> => Boolean(item) && typeof item === "object",
+          )
           .map(normalizeNotification)
           .filter((item): item is PlayerNotification => Boolean(item))
       : [];
 
     let broadcasts: PlayerNotification[] = [];
-    if (typeof window !== 'undefined') {
+    if (typeof window !== "undefined") {
       try {
-        const response = await fetch('/api/notifications', { credentials: 'include' });
+        const response = await fetch("/api/notifications", { credentials: "include" });
         if (response.ok) {
           const body = (await response.json()) as { data?: unknown[] };
           broadcasts = (body.data ?? [])
-            .filter((item): item is Record<string, unknown> => Boolean(item) && typeof item === 'object')
+            .filter(
+              (item): item is Record<string, unknown> => Boolean(item) && typeof item === "object",
+            )
             .map(normalizeNotification)
             .filter((item): item is PlayerNotification => Boolean(item));
         }
@@ -64,9 +70,9 @@ export async function getNotifications(sessionTicket: string): Promise<PlayerNot
     for (const notification of [...personalNotifications, ...broadcasts]) {
       byId.set(notification.id, notification);
     }
-    return [...byId.values()].sort(
-      (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime(),
-    );
+    return [...byId.values()]
+      .filter(isPlayerAccountNotification)
+      .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
   } catch {
     return [];
   }

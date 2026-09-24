@@ -1,84 +1,44 @@
-import type {
-  ActiveAd,
-  AdminActivity,
-  BugReport,
-  PartnershipApplication,
-  PlayerReport,
-} from "@/lib/demo/store";
-import { sortNewestFirst } from "@/lib/validation";
+import type { BugReport, PlayerReport } from "@/lib/demo/store";
+import type { TopUpRecord } from "@/lib/admin-demo-data";
 
 export type AdminAlert = {
   id: string;
   title: string;
   body: string;
-  kind: "application" | "ad" | "system" | "activity";
+  kind: "bug" | "player-report" | "transaction";
   /** In-app destination this alert links to when clicked. */
   href: string;
   /** Used to keep the bell and the full Notifications page in newest-first order. */
-  createdAt?: string;
+  createdAt: string;
 };
 
-function activityHref(kind: AdminActivity["kind"]) {
-  switch (kind) {
-    case "player":
-      return "/admin/players";
-    case "bug":
-      return "/admin/bugs";
-    case "almanac":
-      return "/admin";
-    case "game":
-    case "announcement":
-    case "news":
-    case "gallery":
-    default:
-      return "/admin/game";
+const phpFormatter = new Intl.NumberFormat("en-PH", {
+  style: "currency",
+  currency: "PHP",
+  minimumFractionDigits: 2,
+});
+
+function transactionTimestamp(transaction: TopUpRecord) {
+  if (transaction.timestamp) return transaction.timestamp;
+  if (transaction.date && transaction.time) {
+    return transaction.date + "T" + transaction.time + ":00.000Z";
   }
+  return transaction.date ? transaction.date + "T00:00:00.000Z" : "";
 }
 
 export function buildAlerts(
-  applications: PartnershipApplication[],
-  ads: ActiveAd[],
   bugs: BugReport[] = [],
   playerReports: PlayerReport[] = [],
-  activity: AdminActivity[] = [],
-  includeServerStatus = true,
+  transactions: TopUpRecord[] = [],
 ): AdminAlert[] {
   const alerts: AdminAlert[] = [];
 
-  applications
-    .filter((application) => application.status === "New")
-    .slice(0, 5)
-    .forEach((application) => {
-      alerts.push({
-        id: `app-${application.id}`,
-        title: "New partnership application",
-        body: `${application.brand} submitted a proposal awaiting review.`,
-        kind: "application",
-        href: "/admin/partnerships",
-        createdAt: application.submittedAt,
-      });
-    });
-
-  applications
-    .filter((application) => application.paymentStatus === 'Paid')
-    .slice(0, 5)
-    .forEach((application) => {
-      alerts.push({
-        id: `brand-payment-${application.paymentId || application.id}`,
-        title: 'Brand payment received',
-        body: `${application.brand} completed the sponsorship payment.`,
-        kind: 'application',
-        href: '/admin/partnerships',
-        createdAt: application.paymentPaidAt || application.submittedAt,
-      });
-    });
-
   bugs.forEach((bug) => {
     alerts.push({
-      id: `bug-${bug.id}`,
+      id: "bug-" + bug.id,
       title: "New bug report submitted",
-      body: `${bug.id} from ${bug.playerName}: ${bug.description}`,
-      kind: "system",
+      body: bug.id + " from " + bug.playerName + ": " + bug.description,
+      kind: "bug",
       href: "/admin/bugs",
       createdAt: bug.submittedAt,
     });
@@ -86,49 +46,34 @@ export function buildAlerts(
 
   playerReports.forEach((report) => {
     alerts.push({
-      id: `player-report-${report.id}`,
+      id: "player-report-" + report.id,
       title: "New player report submitted",
-      body: `${report.id}: ${report.reporterName} reported ${report.reportedUsername}.`,
-      kind: "system",
+      body: report.id + ": " + report.reporterName + " reported " + report.reportedUsername + ".",
+      kind: "player-report",
       href: "/admin/player-reports",
       createdAt: report.submittedAt,
     });
   });
 
-  ads
-    .filter((ad) => ad.status === "Expiring" || ad.status === "Expired")
-    .forEach((ad) => {
+  transactions
+    .filter((transaction) => transaction.status === "Completed")
+    .forEach((transaction) => {
+      const brandPayment = transaction.bank.toLowerCase().includes("brand partnership");
       alerts.push({
-        id: `ad-${ad.id}`,
-        title: ad.status === "Expired" ? "Advertisement expired" : "Advertisement expiring soon",
-        body: `${ad.brand} — ${ad.exactModel} (${ad.status}).`,
-        kind: "ad",
-        href: `/admin/ads/${ad.id}`,
-        createdAt: ad.endedAt ?? ad.expiresAt,
+        id: "transaction-" + transaction.id,
+        title: brandPayment ? "Brand payment received" : "Player C-Coin top-up received",
+        body:
+          transaction.playerName +
+          " completed a " +
+          phpFormatter.format(transaction.amount) +
+          " payment.",
+        kind: "transaction",
+        href: brandPayment ? "/admin/partnerships" : "/admin/transactions",
+        createdAt: transactionTimestamp(transaction),
       });
     });
 
-  activity.forEach((entry) => {
-    alerts.push({
-      id: `activity-${entry.id}`,
-      title: entry.label,
-      body: entry.detail,
-      kind: "activity",
-      href: activityHref(entry.kind),
-      createdAt: entry.createdAt,
-    });
-  });
-
-  if (includeServerStatus) {
-    alerts.push({
-      id: "sys-1",
-      title: "Server status: Operational",
-      body: "All studio servers reporting healthy uptime — 99.98% (30d).",
-      kind: "system",
-      href: "/admin",
-      createdAt: "2026-08-30T15:00:00.000Z",
-    });
-  }
-
-  return activity.length > 0 ? sortNewestFirst(alerts, (alert) => alert.createdAt) : alerts;
+  return alerts.sort(
+    (left, right) => new Date(right.createdAt).getTime() - new Date(left.createdAt).getTime(),
+  );
 }

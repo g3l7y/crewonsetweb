@@ -8,6 +8,8 @@ export type MockAccount = {
   displayName: string;
   email: string;
   password: string;
+  googleProfileSetup?: boolean;
+  googleProfileSetupPending?: boolean;
 };
 
 function accountKey(value: string) {
@@ -91,7 +93,10 @@ export function updateMockAccountUsername(sessionTicket: string, username: strin
   if (!account) return { success: false as const, error: "Session expired. Please sign in again." };
 
   if (accountKey(account.username) !== accountKey(username) && isMockUsernameTaken(username)) {
-    return { success: false as const, error: "That username is already in use. Please choose another." };
+    return {
+      success: false as const,
+      error: "That username is already in use. Please choose another.",
+    };
   }
 
   mockAccounts.delete(accountKey(account.username));
@@ -123,9 +128,15 @@ export function updateMockAccountEmail(sessionTicket: string, email: string) {
   const account = getMockAccountBySessionTicket(sessionTicket);
   if (!account) return { success: false as const, error: "Session expired. Please sign in again." };
   const conflict = Array.from(mockAccounts.values()).some(
-    (candidate) => candidate.sessionTicket !== sessionTicket && accountKey(candidate.email) === accountKey(email),
+    (candidate) =>
+      candidate.sessionTicket !== sessionTicket &&
+      accountKey(candidate.email) === accountKey(email),
   );
-  if (conflict) return { success: false as const, error: "That email is already in use. Please choose another." };
+  if (conflict)
+    return {
+      success: false as const,
+      error: "That email is already in use. Please choose another.",
+    };
   account.email = email;
   return { success: true as const };
 }
@@ -138,13 +149,22 @@ export function updateMockAccountPassword(sessionTicket: string, password: strin
 }
 
 export function getMockAccountBySessionTicket(sessionTicket: string) {
-  return Array.from(mockAccounts.values()).find(
-    (account) => account.sessionTicket === sessionTicket,
-  ) ?? null;
+  return (
+    Array.from(mockAccounts.values()).find((account) => account.sessionTicket === sessionTicket) ??
+    null
+  );
 }
 
 export function getMockAccountByPlayFabId(playFabId: string) {
-  return Array.from(mockAccounts.values()).find(
-    (account) => account.playFabId === playFabId,
-  ) ?? null;
+  return (
+    Array.from(mockAccounts.values()).find((account) => account.playFabId === playFabId) ?? null
+  );
+}
+
+export function markMockGoogleProfileSetup(sessionTicket: string) {
+  const account = getMockAccountBySessionTicket(sessionTicket);
+  if (!account || account.role !== "player") return false;
+  account.googleProfileSetup = true;
+  account.googleProfileSetupPending = false;
+  return true;
 }

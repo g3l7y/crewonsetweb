@@ -13,16 +13,7 @@ export const Route = createFileRoute("/portal/shop")({
 });
 
 import { useEffect, useMemo, useState } from "react";
-import {
-  Check,
-  Coins,
-  Package,
-  Search,
-  ShoppingBag,
-  ShoppingCart,
-  Trash2,
-  X,
-} from "lucide-react";
+import { Check, Coins, Package, Search, ShoppingBag, ShoppingCart, Trash2, X } from "lucide-react";
 import CheckoutPage from "@/components/portal/checkout";
 import { useSearchParams } from "@/components/next-compat/navigation";
 import { CosmeticArt } from "@/components/portal/cosmetic-art";
@@ -35,6 +26,7 @@ import {
   type CosmeticCategory,
   type CosmeticItem,
 } from "@/lib/demo/portal-shop";
+import { topUpsStore } from "@/lib/admin-demo-data";
 import {
   walletStore,
   formatCoins,
@@ -47,6 +39,8 @@ import {
   useCatalog,
   usePlayerInventory,
   usePlayerWallet,
+  usePlayerProfile,
+  useSession,
   usePurchaseItem,
 } from "@/lib/playfab/hooks";
 
@@ -80,6 +74,12 @@ function ShopPage() {
 
   const catalogQuery = useCatalog();
   const walletQuery = usePlayerWallet();
+  const profileQuery = usePlayerProfile();
+  const sessionQuery = useSession();
+  const refreshPlayerWallet = walletQuery.refetch;
+  const mockPlayerId =
+    profileQuery.data?.playFabId || sessionQuery.data?.playFabId || "MOCK-PLAYER-001";
+  const mockPlayerName = profileQuery.data?.username || sessionQuery.data?.username || "CAMERA_PRO";
   const inventoryQuery = usePlayerInventory();
   const purchaseItem = usePurchaseItem();
 
@@ -88,6 +88,14 @@ function ShopPage() {
   const [demoWallet, setDemoWallet] = walletStore.useStore();
   const [notifications, setNotifications] = notificationsStore.useStore();
   const [transactions, setTransactions] = transactionsStore.useStore();
+  const paymentResult = searchParams.get("payment");
+  const paymentReference = searchParams.get("reference");
+  const [paymentBusy, setPaymentBusy] = useState(false);
+  const [paymentNotice, setPaymentNotice] = useState<{
+    status: "success" | "failure" | "pending";
+    coins: number;
+    message: string;
+  } | null>(null);
 
   const catalog = useMemo(() => {
     if (mockMode) return cosmeticCatalog;
@@ -100,13 +108,14 @@ function ShopPage() {
         const assetKey = remote.customData?.assetKey ?? "";
         const imageUrl = remote.customData?.imageUrl ?? "";
         const rarityValue = String(remote.rarity ?? "").toLowerCase();
-        const rarity = rarityValue === "rare"
-          ? "Rare"
-          : rarityValue === "epic"
-            ? "Epic"
-            : rarityValue === "legendary"
-              ? "Legendary"
-              : "Common";
+        const rarity =
+          rarityValue === "rare"
+            ? "Rare"
+            : rarityValue === "epic"
+              ? "Epic"
+              : rarityValue === "legendary"
+                ? "Legendary"
+                : "Common";
         return {
           id: remote.itemId,
           name,
@@ -123,11 +132,10 @@ function ShopPage() {
     return liveItems;
   }, [catalogQuery.data, mockMode]);
 
-  const ownedIds = mockMode
-    ? demoOwnedIds
-    : (inventoryQuery.data ?? []).map((item) => item.itemId);
+  const ownedIds = mockMode ? demoOwnedIds : (inventoryQuery.data ?? []).map((item) => item.itemId);
   const balance = mockMode ? (demoWallet[0] ?? 0) : (walletQuery.data?.cCoins ?? 0);
-  const loading = !mockMode && (catalogQuery.isLoading || walletQuery.isLoading || inventoryQuery.isLoading);
+  const loading =
+    !mockMode && (catalogQuery.isLoading || walletQuery.isLoading || inventoryQuery.isLoading);
 
   const filteredItems = useMemo(() => {
     const normalizedSearch = search.trim().toLowerCase();
@@ -146,7 +154,9 @@ function ShopPage() {
     () =>
       cart
         .map((line) => ({ line, item: catalog.find((item) => item.id === line.itemId) }))
-        .filter((entry): entry is { line: (typeof cart)[number]; item: CosmeticItem } => !!entry.item),
+        .filter(
+          (entry): entry is { line: (typeof cart)[number]; item: CosmeticItem } => !!entry.item,
+        ),
     [cart, catalog],
   );
 
@@ -173,13 +183,181 @@ function ShopPage() {
     setCheckoutOpen(true);
   }
 
-  const [checkoutOpen, setCheckoutOpen] = useState(
-    () => searchParams.get("payment") === "success" && Boolean(searchParams.get("reference")),
-  );
+  const [checkoutOpen, setCheckoutOpen] = useState(false);
   const [cartOpen, setCartOpen] = useState(false);
   const [confirmTarget, setConfirmTarget] = useState<ConfirmTarget | null>(null);
-  const [purchaseSuccess, setPurchaseSuccess] = useState<{ names: string[]; spent: number; remaining: number } | null>(null);
+  const [purchaseSuccess, setPurchaseSuccess] = useState<{
+    names: string[];
+    spent: number;
+    remaining: number;
+  } | null>(null);
   const [clearCartOpen, setClearCartOpen] = useState(false);
+
+  useEffect(() => {
+    const resultKind = paymentResult;
+    if (!resultKind || !paymentReference) return;
+    const reference = paymentReference;
+    let cancelled = false;
+    setCheckoutOpen(false);
+    setPaymentNotice(null);
+    setPaymentBusy(true);
+
+    const cleanReturnUrl = () => {
+      const url = new URL(window.location.href);
+      url.searchParams.delete("payment");
+      url.searchParams.delete("reference");
+      window.history.replaceState({}, "", url.pathname + url.search + url.hash);
+    };
+
+    async function reconcileReturn() {
+      const maxAttempts = resultKind === "cancelled" ? 1 : 20;
+      let lastResult: {
+        status?: string;
+        coins?: number;
+        amountInCentavos?: number;
+        timestamp?: string;
+      } | null = null;
+
+      for (let attempt = 0; attempt < maxAttempts; attempt += 1) {
+        const response = await fetch(
+          "/api/paymongo/status?orderId=" + encodeURIComponent(reference),
+          { credentials: "include", cache: "no-store" },
+        );
+        const result = (await response.json().catch(() => ({}))) as {
+          status?: string;
+          coins?: number;
+          amountInCentavos?: number;
+          timestamp?: string;
+          error?: string;
+        };
+        if (!response.ok)
+          throw new Error(result.error || "Payment confirmation is temporarily unavailable.");
+        lastResult = result;
+        if (result.status === "fulfilled") break;
+        if (result.status === "failed") break;
+        if (resultKind === "cancelled" || attempt === maxAttempts - 1) break;
+        await new Promise((resolve) => window.setTimeout(resolve, 1_000));
+      }
+      if (cancelled) return;
+
+      const confirmedCoins = Number(lastResult?.coins) || 0;
+      if (lastResult?.status === "fulfilled" && confirmedCoins > 0) {
+        if (mockMode) {
+          const alreadyCredited =
+            window.localStorage.getItem("cos.paymongo.demo.credited." + reference) === "1" ||
+            window.localStorage.getItem("cos.paymongo.fulfilled." + reference) === "1";
+          if (!alreadyCredited) {
+            const completedAt = lastResult.timestamp || new Date().toISOString();
+            const completedDate = new Date(completedAt);
+            const playerId = mockPlayerId;
+            const playerName = mockPlayerName;
+            const transactionId = reference;
+            const paymentAmount = (Number(lastResult.amountInCentavos) || 0) / 100;
+            walletStore.set((current) => [(current[0] ?? 0) + confirmedCoins]);
+            topUpsStore.set((current) =>
+              current.some((item) => item.id === transactionId)
+                ? current
+                : [
+                    {
+                      id: transactionId,
+                      playerName,
+                      playerId,
+                      date: Number.isNaN(completedDate.getTime())
+                        ? completedAt.slice(0, 10)
+                        : completedDate.toISOString().slice(0, 10),
+                      time: Number.isNaN(completedDate.getTime())
+                        ? "--:--"
+                        : completedDate.toLocaleTimeString("en-US", {
+                            hour: "2-digit",
+                            minute: "2-digit",
+                            hour12: false,
+                            timeZone: "UTC",
+                          }),
+                      timestamp: completedAt,
+                      bank: "PayMongo Test Checkout",
+                      amount: paymentAmount,
+                      status: "Completed",
+                    },
+                    ...current,
+                  ],
+            );
+            notificationsStore.set((current) => [
+              {
+                id: "topup-" + transactionId,
+                title: "C-Coin top-up confirmed",
+                body:
+                  confirmedCoins.toLocaleString("en-PH") +
+                  " C-Coins have been added to your wallet.",
+                createdAt: completedAt,
+                kind: "transaction",
+                channel: "notification",
+                read: false,
+                href: "/portal/shop",
+                recipientUsername: playerName,
+                target: { kind: "players", playerIds: [playerId] },
+              },
+              ...current,
+            ]);
+            window.localStorage.setItem("cos.paymongo.demo.credited." + reference, "1");
+            window.localStorage.setItem("cos.paymongo.fulfilled." + reference, "1");
+          }
+        } else {
+          await refreshPlayerWallet();
+        }
+        setCheckoutPayload(null);
+        setPaymentNotice({
+          status: "success",
+          coins: confirmedCoins,
+          message:
+            "Payment received. " +
+            confirmedCoins.toLocaleString("en-PH") +
+            " C-Coins have been delivered to your wallet.",
+        });
+      } else if (lastResult?.status === "failed" || resultKind === "cancelled") {
+        setCheckoutPayload(null);
+        setPaymentNotice({
+          status: "failure",
+          coins: 0,
+          message:
+            "The payment was not completed, so no C-Coins were added. If your payment provider shows a charge, please contact support.",
+        });
+      } else {
+        setPaymentNotice({
+          status: "pending",
+          coins: 0,
+          message:
+            "We are still confirming your payment. C-Coins have not been delivered yet; please check back shortly.",
+        });
+      }
+      cleanReturnUrl();
+      setPaymentBusy(false);
+    }
+
+    void reconcileReturn().catch((error) => {
+      if (cancelled) return;
+      setPaymentNotice({
+        status: "pending",
+        coins: 0,
+        message:
+          error instanceof Error
+            ? error.message + " C-Coins have not been marked as delivered."
+            : "We could not confirm the payment yet. C-Coins have not been marked as delivered.",
+      });
+      cleanReturnUrl();
+      setPaymentBusy(false);
+    });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [
+    mockMode,
+    mockPlayerId,
+    mockPlayerName,
+    paymentReference,
+    paymentResult,
+    refreshPlayerWallet,
+  ]);
 
   const confirmLines = useMemo(() => {
     if (!confirmTarget) return [];
@@ -208,7 +386,11 @@ function ShopPage() {
             currency: "cCoins",
           });
           if (typeof result === "boolean" ? !result : !result.success) {
-            throw new Error(typeof result === "boolean" ? "PlayFab rejected the purchase." : result.error || "PlayFab rejected the purchase.");
+            throw new Error(
+              typeof result === "boolean"
+                ? "PlayFab rejected the purchase."
+                : result.error || "PlayFab rejected the purchase.",
+            );
           }
         }
         const refreshedWallet = await walletQuery.refetch();
@@ -274,27 +456,62 @@ function ShopPage() {
       <div className="portal-shop-inner portal-title-container">
         <header className="shop-heading portal-title-header">
           <div>
-            <p className="portal-kicker portal-title-eyebrow">PLAYER MARKETPLACE / COSMETICS ONLY</p>
+            <p className="portal-kicker portal-title-eyebrow">
+              PLAYER MARKETPLACE / COSMETICS ONLY
+            </p>
             <h1 className="portal-title-heading">Studio Shop</h1>
-            <p className="shop-subtitle">Style the crew. Keep the stats honest. Every item here is cosmetic-only.</p>
+            <p className="shop-subtitle">
+              Style the crew. Keep the stats honest. Every item here is cosmetic-only.
+            </p>
           </div>
           <div className="shop-toolbar">
             <div className="coin-balance">
               <Coins aria-hidden="true" />
-              <span><small>C-COIN BALANCE</small><strong>{loading ? "—" : formatCoins(balance)}</strong></span>
+              <span>
+                <small>C-COIN BALANCE</small>
+                <strong>{loading ? "—" : formatCoins(balance)}</strong>
+              </span>
             </div>
-            <button type="button" className="shop-cart-button" onClick={() => setCartOpen(true)} aria-label={`Open cart, ${cartCount} items`}>
+            <button
+              type="button"
+              className="shop-cart-button"
+              onClick={() => setCartOpen(true)}
+              aria-label={`Open cart, ${cartCount} items`}
+            >
               <ShoppingCart aria-hidden="true" /> Cart
               {cartCount > 0 && <b>{cartCount}</b>}
             </button>
           </div>
         </header>
 
-        {shopError && <div className="shop-alert" role="alert">{shopError}<button type="button" onClick={() => setShopError("")} aria-label="Dismiss message"><X /></button></div>}
+        {shopError && (
+          <div className="shop-alert" role="alert">
+            {shopError}
+            <button type="button" onClick={() => setShopError("")} aria-label="Dismiss message">
+              <X />
+            </button>
+          </div>
+        )}
 
         <div className="shop-tabs" role="tablist" aria-label="Shop views">
-          <button type="button" role="tab" aria-selected={view === "shop"} onClick={() => setView("shop")} className={view === "shop" ? "active" : ""}><ShoppingBag /> Shop</button>
-          <button type="button" role="tab" aria-selected={view === "owned"} onClick={() => setView("owned")} className={view === "owned" ? "active" : ""}><Package /> Owned items</button>
+          <button
+            type="button"
+            role="tab"
+            aria-selected={view === "shop"}
+            onClick={() => setView("shop")}
+            className={view === "shop" ? "active" : ""}
+          >
+            <ShoppingBag /> Shop
+          </button>
+          <button
+            type="button"
+            role="tab"
+            aria-selected={view === "owned"}
+            onClick={() => setView("owned")}
+            className={view === "owned" ? "active" : ""}
+          >
+            <Package /> Owned items
+          </button>
         </div>
 
         {view === "shop" ? (
@@ -302,10 +519,25 @@ function ShopPage() {
             <div className="shop-filters">
               <div className="shop-category-list" role="list">
                 {categories.map((category) => (
-                  <button key={category} type="button" onClick={() => setActiveCategory(category)} className={activeCategory === category ? "active" : ""}>{category}</button>
+                  <button
+                    key={category}
+                    type="button"
+                    onClick={() => setActiveCategory(category)}
+                    className={activeCategory === category ? "active" : ""}
+                  >
+                    {category}
+                  </button>
                 ))}
               </div>
-              <label className="shop-search"><Search aria-hidden="true" /><span className="sr-only">Search cosmetics</span><input value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Search cosmetics" /></label>
+              <label className="shop-search">
+                <Search aria-hidden="true" />
+                <span className="sr-only">Search cosmetics</span>
+                <input
+                  value={search}
+                  onChange={(event) => setSearch(event.target.value)}
+                  placeholder="Search cosmetics"
+                />
+              </label>
             </div>
 
             {loading ? (
@@ -318,31 +550,76 @@ function ShopPage() {
                   const hasArtwork = mockMode || Boolean(item.assetKey || item.imageUrl);
                   const hasDetails = mockMode || !item.placeholder;
                   return (
-                    <article key={item.id} className={`shop-card${item.placeholder ? " real-placeholder-card" : ""}`}>
+                    <article
+                      key={item.id}
+                      className={`shop-card${item.placeholder ? " real-placeholder-card" : ""}`}
+                    >
                       {hasDetails && hasArtwork ? (
-                        <button type="button" className="shop-art-button" onClick={() => setSelectedItem(item)} aria-label={`View ${item.name || item.category} details`}>
-                          {item.imageUrl ? <img className="shop-live-image" src={item.imageUrl} alt="" /> : <CosmeticArt item={item} />}
-                          <span className={`cos-rarity ${rarityStyles[item.rarity]}`}>{item.rarity}</span>
-                          {owned && <span className="owned-mark"><Check /></span>}
+                        <button
+                          type="button"
+                          className="shop-art-button"
+                          onClick={() => setSelectedItem(item)}
+                          aria-label={`View ${item.name || item.category} details`}
+                        >
+                          {item.imageUrl ? (
+                            <img className="shop-live-image" src={item.imageUrl} alt="" />
+                          ) : (
+                            <CosmeticArt item={item} />
+                          )}
+                          <span className={`cos-rarity ${rarityStyles[item.rarity]}`}>
+                            {item.rarity}
+                          </span>
+                          {owned && (
+                            <span className="owned-mark">
+                              <Check />
+                            </span>
+                          )}
                         </button>
                       ) : (
                         <div className="shop-art-button shop-art-placeholder" aria-hidden="true" />
                       )}
                       <div className="shop-card-copy">
                         <p className="shop-category">{item.category}</p>
-                        {hasDetails && <>
-                          {item.name && <h2>{item.name}</h2>}
-                          {item.description && <p className="shop-description">{item.description}</p>}
-                          <div className="shop-card-bottom"><span className="shop-price"><Coins /> {formatCoins(item.price)}</span><span className="shop-status">{owned ? "Owned" : inCart ? "In cart" : "Available"}</span></div>
-                          {owned ? (
-                            <button type="button" className="shop-secondary-button" disabled>Owned</button>
-                          ) : (
-                            <div className="shop-card-actions">
-                              <button type="button" className="shop-secondary-button" onClick={() => addToCart(item.id)}>{inCart ? "In cart" : "Add to cart"}</button>
-                              <button type="button" className="shop-primary-button" onClick={() => setConfirmTarget({ mode: "single", itemId: item.id })}>Buy now</button>
+                        {hasDetails && (
+                          <>
+                            {item.name && <h2>{item.name}</h2>}
+                            {item.description && (
+                              <p className="shop-description">{item.description}</p>
+                            )}
+                            <div className="shop-card-bottom">
+                              <span className="shop-price">
+                                <Coins /> {formatCoins(item.price)}
+                              </span>
+                              <span className="shop-status">
+                                {owned ? "Owned" : inCart ? "In cart" : "Available"}
+                              </span>
                             </div>
-                          )}
-                        </>}
+                            {owned ? (
+                              <button type="button" className="shop-secondary-button" disabled>
+                                Owned
+                              </button>
+                            ) : (
+                              <div className="shop-card-actions">
+                                <button
+                                  type="button"
+                                  className="shop-secondary-button"
+                                  onClick={() => addToCart(item.id)}
+                                >
+                                  {inCart ? "In cart" : "Add to cart"}
+                                </button>
+                                <button
+                                  type="button"
+                                  className="shop-primary-button"
+                                  onClick={() =>
+                                    setConfirmTarget({ mode: "single", itemId: item.id })
+                                  }
+                                >
+                                  Buy now
+                                </button>
+                              </div>
+                            )}
+                          </>
+                        )}
                       </div>
                     </article>
                   );
@@ -350,17 +627,34 @@ function ShopPage() {
               </section>
             )}
 
-            {!loading && filteredItems.length === 0 && <div className="shop-empty">No cosmetics match your search.</div>}
+            {!loading && filteredItems.length === 0 && (
+              <div className="shop-empty">No cosmetics match your search.</div>
+            )}
 
             <section className="coin-pack-section" aria-labelledby="coin-pack-title">
               <div>
-                <p className="portal-kicker">{mockMode ? "PAYMONGO TEST TOP-UP" : "PAYMONGO WALLET TOP-UP"}</p>
+                <p className="portal-kicker">
+                  {mockMode ? "PAYMONGO TEST TOP-UP" : "PAYMONGO WALLET TOP-UP"}
+                </p>
                 <h2 id="coin-pack-title">More C-Coins, when the set needs them.</h2>
-                <p>{mockMode ? "Demo accounts use PayMongo test checkout when configured, with a local fallback when test keys are unavailable." : "Pay securely through PayMongo. Available payment methods are shown on PayMongo's hosted checkout."}</p>
+                <p>
+                  {mockMode
+                    ? "Demo accounts use PayMongo test checkout when configured, with a local fallback when test keys are unavailable."
+                    : "Pay securely through PayMongo. Available payment methods are shown on PayMongo's hosted checkout."}
+                </p>
               </div>
               <div className="coin-pack-grid">
                 {coinPackages.map((pack) => (
-                  <article key={pack.id} className="coin-pack-card"><Coins /><strong>{formatCoins(pack.coins)} <small>C-COINS</small></strong><p>{pack.priceLabel}</p><button type="button" onClick={() => startPackageCheckout(pack.id)}>{mockMode ? "Buy demo pack" : "Buy with PayMongo"}</button></article>
+                  <article key={pack.id} className="coin-pack-card">
+                    <Coins />
+                    <strong>
+                      {formatCoins(pack.coins)} <small>C-COINS</small>
+                    </strong>
+                    <p>{pack.priceLabel}</p>
+                    <button type="button" onClick={() => startPackageCheckout(pack.id)}>
+                      {mockMode ? "Buy demo pack" : "Buy with PayMongo"}
+                    </button>
+                  </article>
                 ))}
               </div>
             </section>
@@ -368,54 +662,380 @@ function ShopPage() {
         ) : (
           <section className="shop-grid" aria-label="Owned cosmetics">
             {ownedCatalogItems.map((item) => (
-              <article key={item.id} className="shop-card owned-card"><button type="button" className="shop-art-button" onClick={() => setSelectedItem(item)} aria-label={`View ${item.name} details`}><CosmeticArt item={item} /><span className="owned-mark"><Check /></span></button><div className="shop-card-copy"><p className="shop-category">{item.category}</p><h2>{item.name}</h2><span className="shop-owned-label">Owned</span></div></article>
+              <article key={item.id} className="shop-card owned-card">
+                <button
+                  type="button"
+                  className="shop-art-button"
+                  onClick={() => setSelectedItem(item)}
+                  aria-label={`View ${item.name} details`}
+                >
+                  <CosmeticArt item={item} />
+                  <span className="owned-mark">
+                    <Check />
+                  </span>
+                </button>
+                <div className="shop-card-copy">
+                  <p className="shop-category">{item.category}</p>
+                  <h2>{item.name}</h2>
+                  <span className="shop-owned-label">Owned</span>
+                </div>
+              </article>
             ))}
-            {ownedCatalogItems.length === 0 && <div className="shop-empty">No synced cosmetics yet. Purchase a cosmetic to start your collection.</div>}
+            {ownedCatalogItems.length === 0 && (
+              <div className="shop-empty">
+                No synced cosmetics yet. Purchase a cosmetic to start your collection.
+              </div>
+            )}
           </section>
         )}
       </div>
 
       {selectedItem && (
-        <div className="shop-modal-backdrop" role="presentation" onMouseDown={() => setSelectedItem(null)}>
-          <section className="shop-modal" role="dialog" aria-modal="true" aria-labelledby="cosmetic-modal-title" onMouseDown={(event) => event.stopPropagation()}>
-            <button type="button" className="modal-close" onClick={() => setSelectedItem(null)} aria-label="Close product details"><X /></button>
-            <div className="modal-art">{selectedItem.imageUrl ? <img className="shop-live-image" src={selectedItem.imageUrl} alt="" /> : selectedItem.assetKey ? <CosmeticArt item={selectedItem} /> : <div className="shop-art-placeholder" aria-hidden="true" />}</div>
-            <div className="modal-copy"><p className="shop-category">{selectedItem.category}</p><h2 id="cosmetic-modal-title">{selectedItem.name}</h2><p>{selectedItem.description}</p><strong className="modal-price"><Coins /> {formatCoins(selectedItem.price)} C-Coins</strong><div className="modal-meta"><span>{ownedIds.includes(selectedItem.id) ? "Owned" : "Not owned"}</span><span>{cart.some((line) => line.itemId === selectedItem.id) ? "In cart" : "Not in cart"}</span></div><div className="modal-actions"><button type="button" className="shop-secondary-button" disabled={ownedIds.includes(selectedItem.id) || cart.some((line) => line.itemId === selectedItem.id)} onClick={() => addToCart(selectedItem.id)}>{ownedIds.includes(selectedItem.id) ? "Owned" : cart.some((line) => line.itemId === selectedItem.id) ? "In cart" : "Add to cart"}</button><button type="button" className="shop-primary-button" disabled={ownedIds.includes(selectedItem.id)} onClick={() => { setSelectedItem(null); setConfirmTarget({ mode: "single", itemId: selectedItem.id }); }}>Buy now</button></div></div>
+        <div
+          className="shop-modal-backdrop"
+          role="presentation"
+          onMouseDown={() => setSelectedItem(null)}
+        >
+          <section
+            className="shop-modal"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="cosmetic-modal-title"
+            onMouseDown={(event) => event.stopPropagation()}
+          >
+            <button
+              type="button"
+              className="modal-close"
+              onClick={() => setSelectedItem(null)}
+              aria-label="Close product details"
+            >
+              <X />
+            </button>
+            <div className="modal-art">
+              {selectedItem.imageUrl ? (
+                <img className="shop-live-image" src={selectedItem.imageUrl} alt="" />
+              ) : selectedItem.assetKey ? (
+                <CosmeticArt item={selectedItem} />
+              ) : (
+                <div className="shop-art-placeholder" aria-hidden="true" />
+              )}
+            </div>
+            <div className="modal-copy">
+              <p className="shop-category">{selectedItem.category}</p>
+              <h2 id="cosmetic-modal-title">{selectedItem.name}</h2>
+              <p>{selectedItem.description}</p>
+              <strong className="modal-price">
+                <Coins /> {formatCoins(selectedItem.price)} C-Coins
+              </strong>
+              <div className="modal-meta">
+                <span>{ownedIds.includes(selectedItem.id) ? "Owned" : "Not owned"}</span>
+                <span>
+                  {cart.some((line) => line.itemId === selectedItem.id) ? "In cart" : "Not in cart"}
+                </span>
+              </div>
+              <div className="modal-actions">
+                <button
+                  type="button"
+                  className="shop-secondary-button"
+                  disabled={
+                    ownedIds.includes(selectedItem.id) ||
+                    cart.some((line) => line.itemId === selectedItem.id)
+                  }
+                  onClick={() => addToCart(selectedItem.id)}
+                >
+                  {ownedIds.includes(selectedItem.id)
+                    ? "Owned"
+                    : cart.some((line) => line.itemId === selectedItem.id)
+                      ? "In cart"
+                      : "Add to cart"}
+                </button>
+                <button
+                  type="button"
+                  className="shop-primary-button"
+                  disabled={ownedIds.includes(selectedItem.id)}
+                  onClick={() => {
+                    setSelectedItem(null);
+                    setConfirmTarget({ mode: "single", itemId: selectedItem.id });
+                  }}
+                >
+                  Buy now
+                </button>
+              </div>
+            </div>
           </section>
         </div>
       )}
 
       {cartOpen && (
-        <div className="shop-modal-backdrop" role="presentation" onMouseDown={() => setCartOpen(false)}>
-          <aside className="shop-cart-drawer" role="dialog" aria-modal="true" aria-labelledby="cart-title" onMouseDown={(event) => event.stopPropagation()}>
-            <header><div><p className="portal-kicker">YOUR CURRENT PICKS</p><h2 id="cart-title">Cart <span>({cartCount})</span></h2></div><button type="button" className="modal-close" onClick={() => setCartOpen(false)} aria-label="Close cart"><X /></button></header>
-            <div className="cart-lines">{cartLines.length === 0 ? <p className="shop-empty">Your cart is empty.</p> : cartLines.map(({ item }) => <div className="cart-line" key={item.id}><CosmeticArt item={item} className="cart-art" /><div><strong>{item.name}</strong><span>{item.category}</span><b><Coins /> {formatCoins(item.price)}</b></div><button type="button" onClick={() => removeFromCart(item.id)} aria-label={`Remove ${item.name} from cart`}><Trash2 /></button></div>)}</div>
-            {cartLines.length > 0 && <footer><div><span>Total</span><strong><Coins /> {formatCoins(cartTotal)}</strong></div><button type="button" className="shop-primary-button" onClick={() => { setCartOpen(false); setConfirmTarget({ mode: "cart" }); }}>Buy cart</button><button type="button" className="shop-secondary-button" onClick={() => setClearCartOpen(true)}>Clear cart</button></footer>}
+        <div
+          className="shop-modal-backdrop"
+          role="presentation"
+          onMouseDown={() => setCartOpen(false)}
+        >
+          <aside
+            className="shop-cart-drawer"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="cart-title"
+            onMouseDown={(event) => event.stopPropagation()}
+          >
+            <header>
+              <div>
+                <p className="portal-kicker">YOUR CURRENT PICKS</p>
+                <h2 id="cart-title">
+                  Cart <span>({cartCount})</span>
+                </h2>
+              </div>
+              <button
+                type="button"
+                className="modal-close"
+                onClick={() => setCartOpen(false)}
+                aria-label="Close cart"
+              >
+                <X />
+              </button>
+            </header>
+            <div className="cart-lines">
+              {cartLines.length === 0 ? (
+                <p className="shop-empty">Your cart is empty.</p>
+              ) : (
+                cartLines.map(({ item }) => (
+                  <div className="cart-line" key={item.id}>
+                    <CosmeticArt item={item} className="cart-art" />
+                    <div>
+                      <strong>{item.name}</strong>
+                      <span>{item.category}</span>
+                      <b>
+                        <Coins /> {formatCoins(item.price)}
+                      </b>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => removeFromCart(item.id)}
+                      aria-label={`Remove ${item.name} from cart`}
+                    >
+                      <Trash2 />
+                    </button>
+                  </div>
+                ))
+              )}
+            </div>
+            {cartLines.length > 0 && (
+              <footer>
+                <div>
+                  <span>Total</span>
+                  <strong>
+                    <Coins /> {formatCoins(cartTotal)}
+                  </strong>
+                </div>
+                <button
+                  type="button"
+                  className="shop-primary-button"
+                  onClick={() => {
+                    setCartOpen(false);
+                    setConfirmTarget({ mode: "cart" });
+                  }}
+                >
+                  Buy cart
+                </button>
+                <button
+                  type="button"
+                  className="shop-secondary-button"
+                  onClick={() => setClearCartOpen(true)}
+                >
+                  Clear cart
+                </button>
+              </footer>
+            )}
           </aside>
         </div>
       )}
 
       {confirmTarget && confirmLines.length > 0 && (
         <div className="shop-modal-backdrop">
-          <section className="purchase-modal" role="dialog" aria-modal="true" aria-labelledby="purchase-title">
-            <p className="portal-kicker">C-COIN CHECK</p><h2 id="purchase-title">Confirm purchase</h2>
-            <div className="confirm-list">{confirmLines.map(({ item }) => <div key={item.id}><CosmeticArt item={item} className="confirm-art" /><span>{item.name}</span><b><Coins /> {formatCoins(item.price)}</b></div>)}</div>
-            <div className="purchase-summary"><span>Total cost</span><strong>{formatCoins(confirmTotal)} C-Coins</strong><span>Current balance</span><strong>{formatCoins(balance)} C-Coins</strong><span>Remaining balance</span><strong className={canAffordConfirm ? "is-good" : "is-bad"}>{formatCoins(Math.max(0, balance - confirmTotal))} C-Coins</strong></div>
-            {!canAffordConfirm && <p className="shop-alert compact" role="alert">Insufficient C-Coins. No charge will be made.</p>}
-            <div className="modal-actions"><button type="button" className="shop-secondary-button" onClick={() => setConfirmTarget(null)}>Cancel</button><button type="button" className="shop-primary-button" disabled={!canAffordConfirm || purchaseBusy} onClick={() => void confirmPurchase()}>{purchaseBusy ? "Processing…" : "Confirm purchase"}</button></div>
+          <section
+            className="purchase-modal"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="purchase-title"
+          >
+            <p className="portal-kicker">C-COIN CHECK</p>
+            <h2 id="purchase-title">Confirm purchase</h2>
+            <div className="confirm-list">
+              {confirmLines.map(({ item }) => (
+                <div key={item.id}>
+                  <CosmeticArt item={item} className="confirm-art" />
+                  <span>{item.name}</span>
+                  <b>
+                    <Coins /> {formatCoins(item.price)}
+                  </b>
+                </div>
+              ))}
+            </div>
+            <div className="purchase-summary">
+              <span>Total cost</span>
+              <strong>{formatCoins(confirmTotal)} C-Coins</strong>
+              <span>Current balance</span>
+              <strong>{formatCoins(balance)} C-Coins</strong>
+              <span>Remaining balance</span>
+              <strong className={canAffordConfirm ? "is-good" : "is-bad"}>
+                {formatCoins(Math.max(0, balance - confirmTotal))} C-Coins
+              </strong>
+            </div>
+            {!canAffordConfirm && (
+              <p className="shop-alert compact" role="alert">
+                Insufficient C-Coins. No charge will be made.
+              </p>
+            )}
+            <div className="modal-actions">
+              <button
+                type="button"
+                className="shop-secondary-button"
+                onClick={() => setConfirmTarget(null)}
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                className="shop-primary-button"
+                disabled={!canAffordConfirm || purchaseBusy}
+                onClick={() => void confirmPurchase()}
+              >
+                {purchaseBusy ? "Processing…" : "Confirm purchase"}
+              </button>
+            </div>
           </section>
         </div>
       )}
 
       {purchaseSuccess && (
         <div className="shop-modal-backdrop">
-          <section className="purchase-modal success-modal" role="dialog" aria-modal="true" aria-labelledby="success-title"><div className="success-icon"><Check /></div><p className="portal-kicker">PURCHASE COMPLETE</p><h2 id="success-title">{purchaseSuccess.names.length > 1 ? `${purchaseSuccess.names.length} cosmetics added` : purchaseSuccess.names[0]}</h2><p>{formatCoins(purchaseSuccess.spent)} C-Coins spent. Your new balance is <strong>{formatCoins(purchaseSuccess.remaining)} C-Coins</strong>.</p><button type="button" className="shop-primary-button" onClick={() => setPurchaseSuccess(null)}>Done</button></section>
+          <section
+            className="purchase-modal success-modal"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="success-title"
+          >
+            <div className="success-icon">
+              <Check />
+            </div>
+            <p className="portal-kicker">PURCHASE COMPLETE</p>
+            <h2 id="success-title">
+              {purchaseSuccess.names.length > 1
+                ? `${purchaseSuccess.names.length} cosmetics added`
+                : purchaseSuccess.names[0]}
+            </h2>
+            <p>
+              {formatCoins(purchaseSuccess.spent)} C-Coins spent. Your new balance is{" "}
+              <strong>{formatCoins(purchaseSuccess.remaining)} C-Coins</strong>.
+            </p>
+            <button
+              type="button"
+              className="shop-primary-button"
+              onClick={() => setPurchaseSuccess(null)}
+            >
+              Done
+            </button>
+          </section>
+        </div>
+      )}
+
+      {(paymentBusy || paymentNotice) && (
+        <div className="shop-modal-backdrop">
+          <section
+            className={
+              "purchase-modal success-modal" +
+              (paymentNotice?.status === "failure" ? " payment-failure" : "")
+            }
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="payment-return-title"
+            aria-live="polite"
+          >
+            <div
+              className={"success-icon" + (paymentNotice?.status === "failure" ? " warning" : "")}
+            >
+              {paymentNotice?.status === "failure" ? (
+                <X />
+              ) : paymentNotice?.status === "success" ? (
+                <Check />
+              ) : (
+                <Coins />
+              )}
+            </div>
+            <p className="portal-kicker">
+              {paymentBusy
+                ? "PAYMENT CONFIRMATION"
+                : paymentNotice?.status === "success"
+                  ? "PAYMENT RECEIVED"
+                  : paymentNotice?.status === "failure"
+                    ? "PAYMENT NOT COMPLETED"
+                    : "PAYMENT PENDING"}
+            </p>
+            <h2 id="payment-return-title">
+              {paymentBusy
+                ? "Confirming your payment"
+                : paymentNotice?.status === "success"
+                  ? "C-Coins delivered"
+                  : paymentNotice?.status === "failure"
+                    ? "No C-Coins were added"
+                    : "Confirmation in progress"}
+            </h2>
+            <p>
+              {paymentBusy
+                ? "We are securely checking your payment. Your wallet will update only after confirmation."
+                : paymentNotice?.message}
+            </p>
+            {!paymentBusy && (
+              <button
+                type="button"
+                className="shop-primary-button"
+                onClick={() => setPaymentNotice(null)}
+              >
+                Return to Shop
+              </button>
+            )}
+          </section>
         </div>
       )}
 
       {clearCartOpen && (
         <div className="shop-modal-backdrop">
-          <section className="purchase-modal" role="dialog" aria-modal="true" aria-labelledby="clear-cart-title"><div className="success-icon warning"><Trash2 /></div><p className="portal-kicker">CART MANAGEMENT</p><h2 id="clear-cart-title">Clear cart?</h2><p>Remove all {cartCount} cosmetic{cartCount === 1 ? "" : "s"} without spending any C-Coins?</p><div className="modal-actions"><button type="button" className="shop-secondary-button" onClick={() => setClearCartOpen(false)}>Keep cart</button><button type="button" className="shop-primary-button" onClick={() => { setCart([]); setClearCartOpen(false); }}>Clear cart</button></div></section>
+          <section
+            className="purchase-modal"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="clear-cart-title"
+          >
+            <div className="success-icon warning">
+              <Trash2 />
+            </div>
+            <p className="portal-kicker">CART MANAGEMENT</p>
+            <h2 id="clear-cart-title">Clear cart?</h2>
+            <p>
+              Remove all {cartCount} cosmetic{cartCount === 1 ? "" : "s"} without spending any
+              C-Coins?
+            </p>
+            <div className="modal-actions">
+              <button
+                type="button"
+                className="shop-secondary-button"
+                onClick={() => setClearCartOpen(false)}
+              >
+                Keep cart
+              </button>
+              <button
+                type="button"
+                className="shop-primary-button"
+                onClick={() => {
+                  setCart([]);
+                  setClearCartOpen(false);
+                }}
+              >
+                Clear cart
+              </button>
+            </div>
+          </section>
         </div>
       )}
     </div>

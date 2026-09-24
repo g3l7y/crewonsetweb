@@ -1,6 +1,6 @@
-import { neon } from '@neondatabase/serverless';
+import { neon } from "@neondatabase/serverless";
 
-type PayMongoLedgerStatus = 'pending' | 'active' | 'processing' | 'fulfilled' | 'failed';
+type PayMongoLedgerStatus = "pending" | "active" | "processing" | "fulfilled" | "failed";
 
 type PayMongoOrderInput = {
   orderId: string;
@@ -13,8 +13,7 @@ type PayMongoOrderInput = {
 };
 
 export type PayMongoClaimResult =
-  | { status: 'claimed' }
-  | { status: Exclude<PayMongoLedgerStatus, 'pending' | 'active'> };
+  { status: "claimed" } | { status: Exclude<PayMongoLedgerStatus, "pending" | "active"> };
 
 export type PayMongoLedgerOrder = {
   orderId: string;
@@ -24,19 +23,21 @@ export type PayMongoLedgerOrder = {
   coins: number;
   amountInCentavos: number;
   status: PayMongoLedgerStatus;
+  createdAt: string;
+  fulfilledAt?: string;
 };
 
 let schemaPromise: Promise<void> | null = null;
 
 function getDatabaseUrl(): string | null {
-  const value = process.env['DATABASE_URL']?.trim();
+  const value = process.env["DATABASE_URL"]?.trim();
   return value || null;
 }
 
 function getSql() {
   const databaseUrl = getDatabaseUrl();
   if (!databaseUrl) {
-    throw new Error('DATABASE_URL is required for the PayMongo payment ledger.');
+    throw new Error("DATABASE_URL is required for the PayMongo payment ledger.");
   }
   return neon(databaseUrl);
 }
@@ -126,7 +127,7 @@ export async function getPayMongoOrder(
   await ensureSchema(sql);
   const rows = await sql`
     SELECT order_id, checkout_session_id, playfab_id, package_id,
-           coins, amount_in_centavos, status
+           coins, amount_in_centavos, status, claimed_at, fulfilled_at
     FROM paymongo_payment_ledger
     WHERE order_id = ${orderIdOrCheckoutSessionId}
        OR checkout_session_id = ${orderIdOrCheckoutSessionId}
@@ -143,6 +144,8 @@ export async function getPayMongoOrder(
     coins: Number(row.coins),
     amountInCentavos: Number(row.amount_in_centavos),
     status: String(row.status) as PayMongoLedgerStatus,
+    createdAt: new Date(String(row.claimed_at)).toISOString(),
+    ...(row.fulfilled_at ? { fulfilledAt: new Date(String(row.fulfilled_at)).toISOString() } : {}),
   };
 }
 
@@ -150,9 +153,7 @@ export async function getPayMongoOrder(
  * Atomically claims an order for fulfillment. The order ID is the idempotency
  * key: only the first webhook delivery can receive `claimed`.
  */
-export async function claimPayMongoOrder(
-  input: PayMongoOrderInput,
-): Promise<PayMongoClaimResult> {
+export async function claimPayMongoOrder(input: PayMongoOrderInput): Promise<PayMongoClaimResult> {
   const sql = getSql();
   await ensureSchema(sql);
 
@@ -180,7 +181,7 @@ export async function claimPayMongoOrder(
     RETURNING order_id
   `;
 
-  if (inserted.length > 0) return { status: 'claimed' };
+  if (inserted.length > 0) return { status: "claimed" };
 
   const activated = await sql`
     UPDATE paymongo_payment_ledger
@@ -190,7 +191,7 @@ export async function claimPayMongoOrder(
       AND status IN ('pending', 'active')
     RETURNING order_id
   `;
-  if (activated.length > 0) return { status: 'claimed' };
+  if (activated.length > 0) return { status: "claimed" };
 
   const existing = await sql`
     SELECT status
@@ -198,11 +199,11 @@ export async function claimPayMongoOrder(
     WHERE order_id = ${input.orderId}
     LIMIT 1
   `;
-  const status = String(existing[0]?.status || 'processing') as PayMongoLedgerStatus;
-  if (!['pending', 'active', 'processing', 'fulfilled', 'failed'].includes(status)) {
+  const status = String(existing[0]?.status || "processing") as PayMongoLedgerStatus;
+  if (!["pending", "active", "processing", "fulfilled", "failed"].includes(status)) {
     throw new Error(`Unknown PayMongo ledger status for ${input.orderId}: ${status}`);
   }
-  if (status === 'pending' || status === 'active') return { status: 'processing' };
+  if (status === "pending" || status === "active") return { status: "processing" };
   return { status };
 }
 
@@ -224,10 +225,7 @@ export async function markPayMongoOrderFulfilled(
   return updated.length > 0;
 }
 
-export async function markPayMongoOrderFailed(
-  orderId: string,
-  reason: string,
-): Promise<boolean> {
+export async function markPayMongoOrderFailed(orderId: string, reason: string): Promise<boolean> {
   const sql = getSql();
   await ensureSchema(sql);
   const updated = await sql`
