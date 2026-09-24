@@ -636,7 +636,7 @@
 .crew-profile-info > p {
   max-width: 520px;
   margin: 0;
-  color: rgba(255, 255, 255, 0.5);
+  color: #fefdf8;
   font-size: 15px;
   line-height: 1.9;
 }
@@ -719,12 +719,22 @@
 
 .crew-arrow:hover {
   background: var(--team-red);
-  color: #fff;
+  color: #0a0e19 !important;
+}
+
+.crew-arrow:focus-visible,
+.crew-arrow:active {
+  background: var(--team-red);
+  color: #0a0e19 !important;
 }
 
 .crew-arrow svg {
   width: 20px;
   height: 20px;
+}
+
+.crew-arrow-icon-left {
+  transform: rotate(180deg);
 }
 
 .crew-arrow-left {
@@ -1024,7 +1034,7 @@
 
 .tools-list {
   display: grid;
-  grid-template-columns: repeat(6, 1fr);
+  grid-template-columns: repeat(5, 1fr);
   gap: 12px;
 }
 
@@ -1059,21 +1069,6 @@
   color: rgba(255, 255, 255, 0.4);
   font-size: 8px;
   font-weight: 900;
-}
-
-.tool-more {
-  border-style: dashed;
-  background: transparent;
-}
-
-.tool-more strong {
-  color: rgba(255, 255, 255, 0.2);
-  font-size: 30px;
-  font-weight: 300;
-}
-
-.tool-more span {
-  margin-top: 4px;
 }
 
 /* =========================================================
@@ -1225,13 +1220,16 @@
     color: rgba(255, 255, 255, 0.5);
   }
 
+  .mobile-crew-arrows button:hover,
+  .mobile-crew-arrows button:focus-visible,
+  .mobile-crew-arrows button:active {
+    background: var(--team-red);
+    color: #0a0e19 !important;
+  }
+
   .mobile-crew-arrows button svg {
     width: 16px;
     height: 16px;
-  }
-
-  .mobile-crew-arrows button:first-child svg {
-    transform: rotate(180deg);
   }
 
   .crew-thumbnails {

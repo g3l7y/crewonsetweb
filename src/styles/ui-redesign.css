@@ -511,6 +511,7 @@ body { min-width: 320px; }
 
 .marketing-theme .team-page .crew-profile :where(h2, h3, p, span),
 .marketing-theme .team-page .tools-box :where(h2, h3, p, span) { color: var(--cos-light) !important; }
+.marketing-theme .team-page .crew-profile-info > p { color: #fefdf8 !important; }
 
 .marketing-theme .team-page .hero-photo,
 .marketing-theme .team-page .behind-photo {
