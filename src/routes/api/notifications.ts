@@ -46,6 +46,58 @@ function belongsToSession(item: NotificationRecord, session: SessionData): boole
 export const Route = createFileRoute("/api/notifications")({
   server: {
     handlers: {
+      POST: async ({ request }) => {
+        const session = await validateSessionFromRequest(request);
+        const secretKey = getSecretKey();
+        if (!session || session.role !== "player" || !secretKey) {
+          return Response.json({ error: "Unauthorized" }, { status: 403 });
+        }
+        try {
+          const body = (await request.json()) as {
+            kind?: unknown;
+            title?: unknown;
+            body?: unknown;
+          };
+          const kind = typeof body.kind === "string" ? body.kind.toLowerCase() : "";
+          if (!["friend", "shop", "transaction"].includes(kind)) {
+            return Response.json({ error: "Unsupported player activity." }, { status: 400 });
+          }
+          const title = typeof body.title === "string" ? body.title.trim().slice(0, 120) : "";
+          const message = typeof body.body === "string" ? body.body.trim().slice(0, 1000) : "";
+          if (!title || !message) {
+            return Response.json({ error: "A title and message are required." }, { status: 400 });
+          }
+
+          const username = session.username || session.displayName || "Player";
+          const record: NotificationRecord & Record<string, unknown> = {
+            id: `player-${kind}-${session.playFabId}-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+            title,
+            body: message,
+            kind,
+            channel: "notification",
+            read: false,
+            createdAt: new Date().toISOString(),
+            recipientUsername: username,
+            target: { kind: "players", playerIds: [session.playFabId] },
+            href: kind === "shop" || kind === "transaction" ? "/portal/shop" : "/portal/friends",
+          };
+          const records = await getWebsiteRecords<NotificationRecord>(
+            WEBSITE_DATA_KEYS.playerNotifications,
+            secretKey,
+          );
+          const success = await setWebsiteRecords(
+            WEBSITE_DATA_KEYS.playerNotifications,
+            [record, ...records.filter((item) => item.id !== record.id)],
+            secretKey,
+          );
+          return success
+            ? Response.json({ success: true, data: record }, { status: 201 })
+            : Response.json({ error: "Failed to save activity." }, { status: 500 });
+        } catch (error) {
+          console.error("[API] POST notifications error:", error);
+          return Response.json({ error: "Failed to save activity." }, { status: 500 });
+        }
+      },
       GET: async ({ request }) => {
         const session = await validateSessionFromRequest(request);
         const secretKey = getSecretKey();

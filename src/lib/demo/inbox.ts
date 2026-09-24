@@ -1,7 +1,13 @@
 export type NotificationLike = {
+  id?: string | undefined;
+  title?: string | undefined;
+  body?: string | undefined;
   kind?: string | undefined;
   href?: string | undefined;
   channel?: "notification" | "mail" | undefined;
+  senderUsername?: string | undefined;
+  adminMessage?: boolean | undefined;
+  createdAt?: string | undefined;
   recipientUsername?: string | undefined;
   recipientEmail?: string | undefined;
   target?: { kind: "all" | "players"; playerIds?: string[] | undefined } | undefined;
@@ -27,6 +33,9 @@ const hrefByKind: Record<string, string> = {
 };
 
 export function notificationHref(notification: NotificationLike) {
+  if (isAdminAuthoredNotification(notification)) {
+    return "/portal/inbox?tab=mail&contact=admin";
+  }
   if (notification.href) return notification.href;
   if (notification.channel === "mail" || notification.kind === "report") {
     return "/portal/inbox?tab=mail";
@@ -36,6 +45,44 @@ export function notificationHref(notification: NotificationLike) {
 
 export function isActivityNotification(notification: NotificationLike) {
   return (notification.channel ?? "notification") === "notification";
+}
+
+/** Admin-authored mail alerts belong in the bell and Inbox, not player activity. */
+export function isAdminAuthoredNotification(notification: NotificationLike) {
+  return (
+    notification.adminMessage === true ||
+    notification.senderUsername?.trim().toLowerCase() === "administrator" ||
+    notification.href?.toLowerCase().includes("contact=admin") === true ||
+    notification.title?.trim().toLowerCase() === "new message from administrator"
+  );
+}
+
+/** Dashboard activity is intentionally limited to player social and commerce events. */
+export function isRecentPlayerActivity(notification: NotificationLike) {
+  if (!isActivityNotification(notification) || isAdminAuthoredNotification(notification)) {
+    return false;
+  }
+  return ["friend", "shop", "transaction"].includes(notification.kind?.toLowerCase() ?? "");
+}
+
+/** Remove duplicate records when the same event arrives through multiple feeds. */
+export function dedupeNotifications<T extends NotificationLike>(notifications: T[]) {
+  const ids = new Set<string>();
+  const fingerprints = new Set<string>();
+  return notifications.filter((notification) => {
+    if (notification.id && ids.has(notification.id)) return false;
+    if (notification.id) ids.add(notification.id);
+
+    const fingerprint = [
+      notification.kind?.toLowerCase() ?? "",
+      notification.title?.trim().toLowerCase() ?? "",
+      notification.body?.trim().toLowerCase() ?? "",
+      notification.createdAt ?? "",
+    ].join("|");
+    if (fingerprints.has(fingerprint)) return false;
+    fingerprints.add(fingerprint);
+    return true;
+  });
 }
 
 const playerNotificationKinds = new Set([
@@ -71,10 +118,12 @@ export function matchesPlayerRecipient(
   email: string,
   playerId: string,
 ) {
+  const explicitlyTargeted = notification.target?.kind === "players";
   if (notification.target?.kind === "players") {
-    return (notification.target.playerIds ?? []).some(
+    const targetMatches = (notification.target.playerIds ?? []).some(
       (id) => id === playerId || id.toLowerCase() === username.toLowerCase(),
     );
+    if (targetMatches) return true;
   }
   if (notification.recipientUsername) {
     return notification.recipientUsername.toLowerCase() === username.toLowerCase();
@@ -82,7 +131,7 @@ export function matchesPlayerRecipient(
   if (notification.recipientEmail) {
     return notification.recipientEmail.toLowerCase() === email.toLowerCase();
   }
-  return true;
+  return !explicitlyTargeted;
 }
 
 export function relativeTime(iso: string) {

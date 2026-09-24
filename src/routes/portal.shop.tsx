@@ -41,6 +41,7 @@ import {
   usePlayerWallet,
   usePlayerProfile,
   useSession,
+  useNotifications,
   usePurchaseItem,
 } from "@/lib/playfab/hooks";
 
@@ -82,6 +83,7 @@ function ShopPage() {
   const mockPlayerName = profileQuery.data?.username || sessionQuery.data?.username || "CAMERA_PRO";
   const inventoryQuery = usePlayerInventory();
   const purchaseItem = usePurchaseItem();
+  const realNotificationsQuery = useNotifications();
 
   const [demoOwnedIds, setDemoOwnedIds] = ownedItemsStore.useStore();
   const [cart, setCart] = cartStore.useStore();
@@ -396,6 +398,16 @@ function ShopPage() {
         const refreshedWallet = await walletQuery.refetch();
         await inventoryQuery.refetch();
         const remaining = refreshedWallet.data?.cCoins ?? Math.max(balance - confirmTotal, 0);
+        void fetch("/api/notifications", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          credentials: "include",
+          body: JSON.stringify({
+            kind: "shop",
+            title: "Purchased " + names.join(", "),
+            body: formatCoins(confirmTotal) + " C-Coins were spent in the Studio Shop.",
+          }),
+        }).then(() => realNotificationsQuery.refetch());
         setCart(cart.filter((line) => !purchasedIds.includes(line.itemId)));
         setConfirmTarget(null);
         setPurchaseSuccess({ names, spent: confirmTotal, remaining });
@@ -421,6 +433,8 @@ function ShopPage() {
         createdAt: new Date().toISOString(),
         kind: "shop",
         read: false,
+        recipientUsername: mockPlayerName,
+        target: { kind: "players", playerIds: [mockPlayerId] },
       },
       ...notifications,
     ]);
