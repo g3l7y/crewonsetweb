@@ -40,6 +40,8 @@ import {
   type PlayerNotification,
 } from "@/lib/demo/store";
 import {
+  dedupeNotifications,
+  isAdminAuthoredNotification,
   isActivityNotification,
   isPlayerAccountNotification,
   isMailNotification,
@@ -49,7 +51,13 @@ import {
 } from "@/lib/demo/inbox";
 import { getProfileArtwork } from "@/lib/demo/profile-art";
 import { isMockMode } from "@/lib/playfab/config";
-import { useFriends, useNotifications, usePlayerProfile, useSession } from "@/lib/playfab/hooks";
+import {
+  useFriends,
+  useNotifications,
+  usePlayerMail,
+  usePlayerProfile,
+  useSession,
+} from "@/lib/playfab/hooks";
 
 type InboxNotification = {
   id: string;
@@ -64,6 +72,7 @@ type InboxNotification = {
   recipientEmail?: string | undefined;
   target?: { kind: "all" | "players"; playerIds?: string[] | undefined } | undefined;
   senderUsername?: string | undefined;
+  adminMessage?: boolean | undefined;
 };
 
 type MailRow =
@@ -85,6 +94,22 @@ type InboxFriend = {
   profileImage?: string | undefined;
   playFabId?: string;
 };
+
+type ChatContact =
+  | {
+      key: string;
+      kind: "friend";
+      friend: InboxFriend;
+      latestIncoming: number;
+      friendshipTime: number;
+    }
+  | {
+      key: "ADMINISTRATOR";
+      kind: "admin";
+      friend: null;
+      latestIncoming: number;
+      friendshipTime: number;
+    };
 
 const iconByKind: Record<string, typeof Bell> = {
   announcement: Megaphone,
@@ -109,6 +134,7 @@ type RawInboxNotification = {
   recipientEmail?: string | undefined;
   target?: InboxNotification["target"];
   senderUsername?: string | undefined;
+  adminMessage?: boolean | undefined;
 };
 
 function normalizeNotification(notification: RawInboxNotification): InboxNotification {
@@ -125,6 +151,7 @@ function normalizeNotification(notification: RawInboxNotification): InboxNotific
     recipientEmail: notification.recipientEmail,
     target: notification.target,
     senderUsername: notification.senderUsername,
+    adminMessage: notification.adminMessage,
   };
 }
 
@@ -155,6 +182,7 @@ function InboxPage() {
   const sessionQuery = useSession();
   const realFriendsQuery = useFriends();
   const realNotificationsQuery = useNotifications();
+  const realMailQuery = usePlayerMail();
   const [demoNotifications, setDemoNotifications] = notificationsStore.useStore();
   const [demoMail, setDemoMail] = playerMailStore.useStore();
   const [demoFriends] = friendRosterStore.useStore();
@@ -162,6 +190,7 @@ function InboxPage() {
   const [recipient, setRecipient] = useState("");
   const [message, setMessage] = useState("");
   const [composerMessage, setComposerMessage] = useState("");
+  const [friendshipDates, setFriendshipDates] = useState<Record<string, string>>({});
 
   const currentUsername =
     profileQuery.data?.username ??
@@ -204,20 +233,29 @@ function InboxPage() {
   );
 
   const activityNotifications = useMemo(
-    () => sortNewest(visibleNotifications.filter(isActivityNotification)),
+    () => dedupeNotifications(sortNewest(visibleNotifications.filter(isActivityNotification))),
     [visibleNotifications],
   );
 
   const directMail = useMemo(
     () =>
-      visibleNotifications.filter(isMailNotification).map<MailRow>((notification) => ({
-        ...notification,
-        subject: notification.title,
-        senderUsername: notification.senderUsername ?? "ADMINISTRATOR",
-        recipientUsername: notification.recipientUsername ?? currentUsername,
-        kind: notification.kind === "friend" ? "friend" : "admin",
-      })),
-    [currentUsername, visibleNotifications],
+      (mockMode ? sourceNotifications : [])
+        .filter(
+          (notification) =>
+            isMailNotification(notification) &&
+            matchesPlayerRecipient(notification, currentUsername, currentEmail, currentPlayerId),
+        )
+        .map<MailRow>((notification) => ({
+          ...notification,
+          subject: notification.title,
+          senderUsername:
+            notification.senderUsername ??
+            (isAdminAuthoredNotification(notification) ? "ADMINISTRATOR" : "Crew Member"),
+          recipientUsername: notification.recipientUsername ?? currentUsername,
+          kind: notification.kind === "friend" ? "friend" : "admin",
+          adminMessage: isAdminAuthoredNotification(notification),
+        })),
+    [currentEmail, currentPlayerId, currentUsername, mockMode, sourceNotifications],
   );
 
   const friendMail = useMemo(
@@ -228,28 +266,109 @@ function InboxPage() {
               mail.recipientUsername.toLowerCase() === currentUsername.toLowerCase() ||
               mail.senderUsername.toLowerCase() === currentUsername.toLowerCase(),
           )
-        : [],
-    [currentUsername, demoMail, mockMode],
+        : (realMailQuery.data ?? []),
+    [currentUsername, demoMail, mockMode, realMailQuery.data],
   );
   const mailRows = useMemo(
-    () => sortNewest([...friendMail, ...directMail]),
+    () =>
+      sortNewest([
+        ...new Map([...friendMail, ...directMail].map((mail) => [mail.id, mail])).values(),
+      ]),
     [directMail, friendMail],
   );
 
-  const allFriends: InboxFriend[] = mockMode
-    ? demoFriends
-    : (realFriendsQuery.data ?? [])
-        .filter((friend) => friend.status === "confirmed")
-        .map((friend) => ({
-          name: friend.username?.trim() || friend.displayName.trim() || "Crew Member",
-          level: friend.level ?? 1,
-          role: friend.role ?? "Crew Member",
-          online: Boolean(friend.online),
-          showStatus: friend.showStatus,
-          crewId: friend.playFabId,
-          profileImage: friend.avatarUrl,
-          playFabId: friend.playFabId,
-        }));
+  const allFriends = useMemo<InboxFriend[]>(
+    () =>
+      mockMode
+        ? demoFriends
+        : (realFriendsQuery.data ?? [])
+            .filter((friend) => friend.status === "confirmed")
+            .map((friend) => ({
+              name: friend.username?.trim() || friend.displayName.trim() || "Crew Member",
+              level: friend.level ?? 1,
+              role: friend.role ?? "Crew Member",
+              online: Boolean(friend.online),
+              showStatus: friend.showStatus,
+              crewId: friend.playFabId,
+              profileImage: friend.avatarUrl,
+              playFabId: friend.playFabId,
+            })),
+    [demoFriends, mockMode, realFriendsQuery.data],
+  );
+
+  const friendSignature = allFriends
+    .map((friend) => friend.playFabId || friend.crewId || friend.name)
+    .sort()
+    .join("|");
+  useEffect(() => {
+    if (!mockMode && realFriendsQuery.isLoading) return;
+    const key = "crew-on-set-friendship-dates:" + (currentPlayerId || currentUsername);
+    let saved: Record<string, string> = {};
+    try {
+      const value = window.localStorage.getItem(key);
+      saved = value ? (JSON.parse(value) as Record<string, string>) : {};
+    } catch {
+      saved = {};
+    }
+    const now = new Date().toISOString();
+    for (const friend of allFriends) {
+      const id = friend.playFabId || friend.crewId || friend.name;
+      saved[id] ||= now;
+    }
+    try {
+      window.localStorage.setItem(key, JSON.stringify(saved));
+    } catch {
+      // The chat list remains usable if browser storage is unavailable.
+    }
+    setFriendshipDates(saved);
+  }, [
+    allFriends,
+    currentPlayerId,
+    currentUsername,
+    friendSignature,
+    mockMode,
+    realFriendsQuery.isLoading,
+  ]);
+
+  const chatContacts = useMemo(() => {
+    const contacts: ChatContact[] = allFriends.map((friend) => {
+      const latestIncoming = mailRows
+        .filter(
+          (mail) =>
+            mail.kind === "friend" &&
+            mail.senderUsername.toLowerCase() === friend.name.toLowerCase() &&
+            mail.recipientUsername.toLowerCase() === currentUsername.toLowerCase(),
+        )
+        .reduce((latest, mail) => Math.max(latest, new Date(mail.createdAt).getTime()), 0);
+      const id = friend.playFabId || friend.crewId || friend.name;
+      return {
+        key: friend.name,
+        kind: "friend" as const,
+        friend,
+        latestIncoming,
+        friendshipTime: new Date(friendshipDates[id] ?? 0).getTime(),
+      };
+    });
+    const adminMessages = mailRows.filter((mail) => mail.kind === "admin");
+    if (adminMessages.length) {
+      contacts.push({
+        key: "ADMINISTRATOR",
+        kind: "admin" as const,
+        friend: null,
+        latestIncoming: adminMessages.reduce(
+          (latest, mail) => Math.max(latest, new Date(mail.createdAt).getTime()),
+          0,
+        ),
+        friendshipTime: 0,
+      });
+    }
+    return contacts.sort(
+      (left, right) =>
+        right.latestIncoming - left.latestIncoming ||
+        right.friendshipTime - left.friendshipTime ||
+        left.key.localeCompare(right.key),
+    );
+  }, [allFriends, currentUsername, friendshipDates, mailRows]);
   function avatarFor(username: string) {
     const matchingFriend = allFriends.find(
       (friend) => friend.name.toLowerCase() === username.toLowerCase(),
@@ -292,11 +411,20 @@ function InboxPage() {
     const unreadMailIds = new Set(
       mailRows.filter((mail) => mail.kind === "admin" && !mail.read).map((mail) => mail.id),
     );
-    if (unreadMailIds.size === 0) return;
-    const unreadNoticeIds = new Set([...unreadMailIds].map((id) => id + "-notice"));
+    const unreadNoticeIds = new Set(
+      visibleNotifications
+        .filter((notification) => isAdminAuthoredNotification(notification) && !notification.read)
+        .map((notification) => notification.id),
+    );
+    for (const id of unreadMailIds) unreadNoticeIds.add(id + "-notice");
+    if (unreadMailIds.size === 0 && unreadNoticeIds.size === 0) return;
     if (mockMode) {
       setDemoNotifications((current) =>
-        current.map((item) => (unreadNoticeIds.has(item.id) ? { ...item, read: true } : item)),
+        current.map((item) =>
+          unreadNoticeIds.has(item.id) || unreadMailIds.has(item.id)
+            ? { ...item, read: true }
+            : item,
+        ),
       );
       setDemoMail((current) =>
         current.map((item) => (unreadMailIds.has(item.id) ? { ...item, read: true } : item)),
@@ -310,6 +438,7 @@ function InboxPage() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ ids: [...unreadMailIds, ...unreadNoticeIds] }),
       });
+      void realMailQuery.refetch();
     }
   }, [
     mailRows,
@@ -319,6 +448,8 @@ function InboxPage() {
     setDemoMail,
     setDemoNotifications,
     setRealNotifications,
+    realMailQuery,
+    visibleNotifications,
   ]);
 
   function selectTab(tab: "notifications" | "mail") {
@@ -367,12 +498,20 @@ function InboxPage() {
 
   function markMailRead(mail: MailRow) {
     if (mail.read) return;
-    if (visibleNotifications.some((notification) => notification.id === mail.id)) {
-      markNotificationRead(mail.id);
-    } else if (mockMode) {
+    if (mockMode) {
+      setDemoNotifications((current) =>
+        current.map((item) => (item.id === mail.id ? { ...item, read: true } : item)),
+      );
       setDemoMail((current) =>
         current.map((item) => (item.id === mail.id ? { ...item, read: true } : item)),
       );
+    } else {
+      void fetch("/api/notifications", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({ ids: [mail.id] }),
+      }).then(() => realMailQuery.refetch());
     }
   }
 
@@ -389,6 +528,11 @@ function InboxPage() {
       })
       .filter((mail) => !mail.read)
       .forEach(markMailRead);
+    if (name === "ADMINISTRATOR") {
+      visibleNotifications
+        .filter((notification) => isAdminAuthoredNotification(notification) && !notification.read)
+        .forEach((notification) => markNotificationRead(notification.id));
+    }
   }
 
   function openNotification(notification: InboxNotification) {
@@ -430,6 +574,7 @@ function InboxPage() {
           setComposerMessage("Message sent to " + friend.name + ".");
           window.setTimeout(() => setComposerMessage(""), 2500);
           void realNotificationsQuery.refetch();
+          void realMailQuery.refetch();
         })
         .catch((error: unknown) => {
           setComposerMessage(error instanceof Error ? error.message : "Message could not be sent.");
@@ -578,7 +723,38 @@ function InboxPage() {
                     </p>
                   </div>
                   <div className="min-h-0 flex-1 overflow-y-scroll divide-y divide-white/10">
-                    {allFriends.map((friend) => {
+                    {chatContacts.map((contact) => {
+                      if (contact.kind === "admin") {
+                        return (
+                          <button
+                            type="button"
+                            key="ADMINISTRATOR"
+                            aria-pressed={selectedAdminMail}
+                            onClick={() => selectContact("ADMINISTRATOR")}
+                            className={
+                              selectedAdminMail
+                                ? "flex w-full items-center gap-3 bg-white/[.08] px-5 py-4 text-left transition hover:bg-white/[.1]"
+                                : "flex w-full items-center gap-3 px-5 py-4 text-left transition hover:bg-white/[.05]"
+                            }
+                          >
+                            <span className="grid size-10 shrink-0 place-items-center rounded-full bg-coral/15 text-coral">
+                              <MailOpen className="size-5" />
+                            </span>
+                            <span className="min-w-0 flex-1">
+                              <span className="block truncate text-sm font-black text-white">
+                                Administrator
+                              </span>
+                              <span className="mt-1 block text-[10px] font-bold uppercase tracking-wide text-white/40">
+                                Inbox messages
+                              </span>
+                            </span>
+                            {mailRows.some((mail) => mail.kind === "admin" && !mail.read) && (
+                              <span className="size-2 shrink-0 rounded-full bg-coral" />
+                            )}
+                          </button>
+                        );
+                      }
+                      const friend = contact.friend;
                       const isOnline = friend.online && friend.showStatus !== false;
                       const selected = recipient.toLowerCase() === friend.name.toLowerCase();
                       return (
@@ -623,39 +799,13 @@ function InboxPage() {
                             (mail) =>
                               mail.kind === "friend" &&
                               !mail.read &&
-                              (mail.senderUsername === friend.name ||
-                                mail.recipientUsername === friend.name),
+                              mail.senderUsername.toLowerCase() === friend.name.toLowerCase() &&
+                              mail.recipientUsername.toLowerCase() ===
+                                currentUsername.toLowerCase(),
                           ) && <span className="size-2 shrink-0 rounded-full bg-coral" />}
                         </button>
                       );
                     })}
-                    {mailRows.some((mail) => mail.kind === "admin") && (
-                      <button
-                        type="button"
-                        aria-pressed={selectedAdminMail}
-                        onClick={() => selectContact("ADMINISTRATOR")}
-                        className={
-                          selectedAdminMail
-                            ? "flex w-full items-center gap-3 bg-white/[.08] px-5 py-4 text-left transition hover:bg-white/[.1]"
-                            : "flex w-full items-center gap-3 px-5 py-4 text-left transition hover:bg-white/[.05]"
-                        }
-                      >
-                        <span className="grid size-10 shrink-0 place-items-center rounded-full bg-coral/15 text-coral">
-                          <MailOpen className="size-5" />
-                        </span>
-                        <span className="min-w-0 flex-1">
-                          <span className="block truncate text-sm font-black text-white">
-                            Administrator
-                          </span>
-                          <span className="mt-1 block text-[10px] font-bold uppercase tracking-wide text-white/40">
-                            Inbox messages
-                          </span>
-                        </span>
-                        {mailRows.some((mail) => mail.kind === "admin" && !mail.read) && (
-                          <span className="size-2 shrink-0 rounded-full bg-coral" />
-                        )}
-                      </button>
-                    )}
                   </div>
                 </aside>
 

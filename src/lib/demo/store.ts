@@ -9,6 +9,7 @@
 import { useEffect, useRef, useState } from "react";
 
 import { isMockMode } from "@/lib/playfab/config";
+import type { PlayerMailMessage } from "@/lib/playfab/types";
 
 /* ---------------------------------------------------------------- utilities */
 
@@ -426,6 +427,7 @@ export type PlayerNotification = {
   /** In-app destination this notification links to when clicked. */
   href?: string;
   senderUsername?: string | undefined;
+  adminMessage?: boolean | undefined;
   /** Optional mock recipient identity for player-specific in-app messages. */
   recipientUsername?: string | undefined;
   recipientEmail?: string | undefined;
@@ -462,19 +464,33 @@ const seedNotifications: PlayerNotification[] = [
   {
     id: "ntf-1003",
     title: "New friend request",
-    body: "GAFFER_GEM wants to join your crew roster.",
+    body: "FRAMEHUNTER wants to join your crew roster.",
     createdAt: "2026-08-25T14:05:00.000Z",
     kind: "friend",
     read: true,
     channel: "notification",
     href: "/portal/friends",
+    recipientUsername: "CAMERA_PRO",
+    target: { kind: "players", playerIds: ["COS-2847-CP"] },
+  },
+  {
+    id: "ntf-1007",
+    title: "New friend request",
+    body: "CUTMASTER wants to join your crew roster.",
+    createdAt: "2026-08-24T10:10:00.000Z",
+    kind: "friend",
+    read: true,
+    channel: "notification",
+    href: "/portal/friends",
+    recipientUsername: "CAMERA_PRO",
+    target: { kind: "players", playerIds: ["COS-2847-CP"] },
   },
   {
     id: "ntf-1004",
     title: "C-Coin top-up confirmed",
     body: "1,200 C-Coins were added to your wallet. Receipt sent to your crew email.",
     createdAt: "2026-08-23T07:30:00.000Z",
-    kind: "shop",
+    kind: "transaction",
     read: true,
     channel: "notification",
     href: "/portal/shop",
@@ -499,6 +515,8 @@ const seedNotifications: PlayerNotification[] = [
     read: true,
     channel: "notification",
     href: "/portal/inbox?tab=mail",
+    senderUsername: "ADMINISTRATOR",
+    adminMessage: true,
     recipientUsername: "CAMERA_PRO",
     target: { kind: "players", playerIds: ["COS-2847-CP"] },
   },
@@ -511,17 +529,7 @@ export const notificationsStore = createStore<PlayerNotification>(
 
 /* --------------------------------------------------------------------- mail */
 
-export type PlayerMail = {
-  id: string;
-  threadId: string;
-  subject: string;
-  body: string;
-  senderUsername: string;
-  recipientUsername: string;
-  createdAt: string;
-  read: boolean;
-  kind: "admin" | "friend";
-};
+export type PlayerMail = PlayerMailMessage;
 
 const seedPlayerMail: PlayerMail[] = [
   {
@@ -545,6 +553,7 @@ const seedPlayerMail: PlayerMail[] = [
     createdAt: "2026-08-20T15:30:00.000Z",
     read: true,
     kind: "admin",
+    adminMessage: true,
   },
 ];
 
@@ -573,6 +582,7 @@ export function addReportFeedback(args: {
     createdAt,
     kind: "report",
     channel: "notification",
+    adminMessage: true,
     read: false,
     href: "/portal/inbox?tab=mail&contact=admin",
     recipientUsername: args.recipientUsername,
@@ -594,6 +604,7 @@ export function addReportFeedback(args: {
       createdAt,
       read: false,
       kind: "admin",
+      adminMessage: true,
     },
     ...playerMailStore.get().filter((item) => item.id !== messageId),
   ]);

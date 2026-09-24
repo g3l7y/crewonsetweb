@@ -1,46 +1,68 @@
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { getPlayFabService } from './service';
-import { isMockMode } from './config';
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { getPlayFabService } from "./service";
+import { isMockMode } from "./config";
 import type {
-  PlayerProfile, PlayerProgression, PlayerWallet, InventoryItem, Loadout,
-  Achievement, KnowledgeEntry, ProductionLog, LeaderboardEntry, FriendInfo,
-  Transaction, PlayerNotification, SessionData, RoleStatistics,
-  BugReport, PlayerReport, PartnershipApplication, AdminNotification,
-  AdEntry, RevenueEntry, GameBuild, BuildHistoryEntry, SystemRequirement,
-  InstallStep, SocialLink, CurrencyType,
-} from './types';
+  PlayerProfile,
+  PlayerProgression,
+  PlayerWallet,
+  InventoryItem,
+  Loadout,
+  Achievement,
+  KnowledgeEntry,
+  ProductionLog,
+  LeaderboardEntry,
+  FriendInfo,
+  Transaction,
+  PlayerNotification,
+  PlayerMailMessage,
+  SessionData,
+  RoleStatistics,
+  BugReport,
+  PlayerReport,
+  PartnershipApplication,
+  AdminNotification,
+  AdEntry,
+  RevenueEntry,
+  GameBuild,
+  BuildHistoryEntry,
+  SystemRequirement,
+  InstallStep,
+  SocialLink,
+  CurrencyType,
+} from "./types";
 
 export const QUERY_KEYS = {
-  session: ['playfab', 'session'] as const,
-  profile: ['playfab', 'player', 'profile'] as const,
-  progression: ['playfab', 'player', 'progression'] as const,
-  wallet: ['playfab', 'player', 'wallet'] as const,
-  inventory: ['playfab', 'player', 'inventory'] as const,
-  loadout: ['playfab', 'player', 'loadout'] as const,
-  achievements: ['playfab', 'player', 'achievements'] as const,
-  knowledge: ['playfab', 'player', 'knowledge'] as const,
-  productionLogs: ['playfab', 'player', 'productionLogs'] as const,
-  transactions: ['playfab', 'player', 'transactions'] as const,
-  friends: ['playfab', 'player', 'friends'] as const,
-  playerSearch: (query: string) => ['playfab', 'player', 'search', query] as const,
-  notifications: ['playfab', 'player', 'notifications'] as const,
-  leaderboard: (stat: string) => ['playfab', 'leaderboard', stat] as const,
-  leaderboardAround: (stat: string) => ['playfab', 'leaderboard', 'around', stat] as const,
-  catalog: ['playfab', 'shop', 'catalog'] as const,
+  session: ["playfab", "session"] as const,
+  profile: ["playfab", "player", "profile"] as const,
+  progression: ["playfab", "player", "progression"] as const,
+  wallet: ["playfab", "player", "wallet"] as const,
+  inventory: ["playfab", "player", "inventory"] as const,
+  loadout: ["playfab", "player", "loadout"] as const,
+  achievements: ["playfab", "player", "achievements"] as const,
+  knowledge: ["playfab", "player", "knowledge"] as const,
+  productionLogs: ["playfab", "player", "productionLogs"] as const,
+  transactions: ["playfab", "player", "transactions"] as const,
+  friends: ["playfab", "player", "friends"] as const,
+  playerSearch: (query: string) => ["playfab", "player", "search", query] as const,
+  notifications: ["playfab", "player", "notifications"] as const,
+  mail: ["playfab", "player", "mail"] as const,
+  leaderboard: (stat: string) => ["playfab", "leaderboard", stat] as const,
+  leaderboardAround: (stat: string) => ["playfab", "leaderboard", "around", stat] as const,
+  catalog: ["playfab", "shop", "catalog"] as const,
   // Admin keys
-  adminPlayers: ['playfab', 'admin', 'players'] as const,
-  adminPlayer: (id: string) => ['playfab', 'admin', 'player', id] as const,
-  adminBugReports: ['playfab', 'admin', 'bugReports'] as const,
-  adminPlayerReports: ['playfab', 'admin', 'playerReports'] as const,
-  adminPartnerships: ['playfab', 'admin', 'partnerships'] as const,
-  adminAds: ['playfab', 'admin', 'ads'] as const,
-  adminRevenue: ['playfab', 'admin', 'revenue'] as const,
-  adminGameBuilds: ['playfab', 'admin', 'gameBuilds'] as const,
-  adminBuildHistory: ['playfab', 'admin', 'buildHistory'] as const,
-  adminSystemRequirements: ['playfab', 'admin', 'systemRequirements'] as const,
-  adminInstallSteps: ['playfab', 'admin', 'installSteps'] as const,
-  adminSocialLinks: ['playfab', 'admin', 'socialLinks'] as const,
-  adminNotifications: ['playfab', 'admin', 'notifications'] as const,
+  adminPlayers: ["playfab", "admin", "players"] as const,
+  adminPlayer: (id: string) => ["playfab", "admin", "player", id] as const,
+  adminBugReports: ["playfab", "admin", "bugReports"] as const,
+  adminPlayerReports: ["playfab", "admin", "playerReports"] as const,
+  adminPartnerships: ["playfab", "admin", "partnerships"] as const,
+  adminAds: ["playfab", "admin", "ads"] as const,
+  adminRevenue: ["playfab", "admin", "revenue"] as const,
+  adminGameBuilds: ["playfab", "admin", "gameBuilds"] as const,
+  adminBuildHistory: ["playfab", "admin", "buildHistory"] as const,
+  adminSystemRequirements: ["playfab", "admin", "systemRequirements"] as const,
+  adminInstallSteps: ["playfab", "admin", "installSteps"] as const,
+  adminSocialLinks: ["playfab", "admin", "socialLinks"] as const,
+  adminNotifications: ["playfab", "admin", "notifications"] as const,
 } as const;
 
 export function useSession() {
@@ -149,7 +171,30 @@ export function useFriends() {
     queryKey: QUERY_KEYS.friends,
     queryFn: () => getPlayFabService().player.getFriends(),
     enabled: !!session,
+    refetchInterval: 30_000,
+    refetchIntervalInBackground: false,
+    refetchOnWindowFocus: true,
     staleTime: 2 * 60 * 1000,
+  });
+}
+
+export function usePlayerMail() {
+  const { data: session } = useSession();
+  return useQuery<PlayerMailMessage[]>({
+    queryKey: QUERY_KEYS.mail,
+    queryFn: async () => {
+      const response = await fetch("/api/mail", {
+        credentials: "same-origin",
+        cache: "no-store",
+      });
+      const result = await response.json();
+      if (!response.ok) throw new Error(result?.error ?? "Could not load mail.");
+      return (result?.data ?? []) as PlayerMailMessage[];
+    },
+    enabled: !!session && !isMockMode(),
+    staleTime: 15_000,
+    refetchInterval: 30_000,
+    refetchIntervalInBackground: false,
   });
 }
 
@@ -168,13 +213,16 @@ export function useSearchPlayers(query: string, enabled = true) {
   return useQuery<PlayerSearchResult[]>({
     queryKey: QUERY_KEYS.playerSearch(normalizedQuery),
     queryFn: async () => {
-      const response = await fetch(`/api/playfab/players/search?q=${encodeURIComponent(normalizedQuery)}`, {
-        credentials: 'same-origin',
-        cache: 'no-store',
-      });
+      const response = await fetch(
+        `/api/playfab/players/search?q=${encodeURIComponent(normalizedQuery)}`,
+        {
+          credentials: "same-origin",
+          cache: "no-store",
+        },
+      );
       const result = await response.json();
       if (!response.ok || result?.success === false) {
-        throw new Error(result?.error ?? 'Player search failed.');
+        throw new Error(result?.error ?? "Player search failed.");
       }
       return (result?.data ?? []) as PlayerSearchResult[];
     },
@@ -230,7 +278,7 @@ export function useAdminPlayers(enabled = true) {
   return useQuery({
     queryKey: QUERY_KEYS.adminPlayers,
     queryFn: () => getPlayFabService().admin.getPlayers(),
-    enabled: enabled && !!session && (session.role === 'admin' || session.role === 'developer'),
+    enabled: enabled && !!session && (session.role === "admin" || session.role === "developer"),
     staleTime: 2 * 60 * 1000,
   });
 }
@@ -240,7 +288,7 @@ export function useAdminPlayer(id: string) {
   return useQuery({
     queryKey: QUERY_KEYS.adminPlayer(id),
     queryFn: () => getPlayFabService().admin.getPlayer(id),
-    enabled: !!session && !!id && (session.role === 'admin' || session.role === 'developer'),
+    enabled: !!session && !!id && (session.role === "admin" || session.role === "developer"),
     staleTime: 2 * 60 * 1000,
   });
 }
@@ -250,7 +298,7 @@ export function useAdminBugReports() {
   return useQuery({
     queryKey: QUERY_KEYS.adminBugReports,
     queryFn: () => getPlayFabService().admin.getBugReports(),
-    enabled: !!session && (session.role === 'admin' || session.role === 'developer'),
+    enabled: !!session && (session.role === "admin" || session.role === "developer"),
     staleTime: 2 * 60 * 1000,
   });
 }
@@ -260,7 +308,7 @@ export function useAdminPlayerReports() {
   return useQuery({
     queryKey: QUERY_KEYS.adminPlayerReports,
     queryFn: () => getPlayFabService().admin.getPlayerReports(),
-    enabled: !!session && (session.role === 'admin' || session.role === 'developer'),
+    enabled: !!session && (session.role === "admin" || session.role === "developer"),
     staleTime: 2 * 60 * 1000,
   });
 }
@@ -270,7 +318,7 @@ export function useAdminPartnerships() {
   return useQuery({
     queryKey: QUERY_KEYS.adminPartnerships,
     queryFn: () => getPlayFabService().admin.getPartnerships(),
-    enabled: !!session && (session.role === 'admin' || session.role === 'developer'),
+    enabled: !!session && (session.role === "admin" || session.role === "developer"),
     refetchInterval: 30_000,
     staleTime: 2 * 60 * 1000,
   });
@@ -281,7 +329,7 @@ export function useAdminAds() {
   return useQuery({
     queryKey: QUERY_KEYS.adminAds,
     queryFn: () => getPlayFabService().admin.getAds(),
-    enabled: !!session && (session.role === 'admin' || session.role === 'developer'),
+    enabled: !!session && (session.role === "admin" || session.role === "developer"),
     refetchInterval: 30_000,
     staleTime: 2 * 60 * 1000,
   });
@@ -292,7 +340,7 @@ export function useAdminRevenue() {
   return useQuery({
     queryKey: QUERY_KEYS.adminRevenue,
     queryFn: () => getPlayFabService().admin.getRevenue(),
-    enabled: !!session && (session.role === 'admin' || session.role === 'developer'),
+    enabled: !!session && (session.role === "admin" || session.role === "developer"),
     staleTime: 2 * 60 * 1000,
   });
 }
@@ -302,7 +350,7 @@ export function useAdminGameBuilds() {
   return useQuery({
     queryKey: QUERY_KEYS.adminGameBuilds,
     queryFn: () => getPlayFabService().admin.getGameBuilds(),
-    enabled: !!session && (session.role === 'admin' || session.role === 'developer'),
+    enabled: !!session && (session.role === "admin" || session.role === "developer"),
     staleTime: 2 * 60 * 1000,
   });
 }
@@ -312,7 +360,7 @@ export function useAdminBuildHistory() {
   return useQuery({
     queryKey: QUERY_KEYS.adminBuildHistory,
     queryFn: () => getPlayFabService().admin.getBuildHistory(),
-    enabled: !!session && (session.role === 'admin' || session.role === 'developer'),
+    enabled: !!session && (session.role === "admin" || session.role === "developer"),
     staleTime: 2 * 60 * 1000,
   });
 }
@@ -322,7 +370,7 @@ export function useAdminSystemRequirements() {
   return useQuery({
     queryKey: QUERY_KEYS.adminSystemRequirements,
     queryFn: () => getPlayFabService().admin.getSystemRequirements(),
-    enabled: !!session && (session.role === 'admin' || session.role === 'developer'),
+    enabled: !!session && (session.role === "admin" || session.role === "developer"),
     staleTime: 2 * 60 * 1000,
   });
 }
@@ -332,7 +380,7 @@ export function useAdminInstallSteps() {
   return useQuery({
     queryKey: QUERY_KEYS.adminInstallSteps,
     queryFn: () => getPlayFabService().admin.getInstallSteps(),
-    enabled: !!session && (session.role === 'admin' || session.role === 'developer'),
+    enabled: !!session && (session.role === "admin" || session.role === "developer"),
     staleTime: 2 * 60 * 1000,
   });
 }
@@ -342,7 +390,7 @@ export function useAdminSocialLinks() {
   return useQuery({
     queryKey: QUERY_KEYS.adminSocialLinks,
     queryFn: () => getPlayFabService().admin.getSocialLinks(),
-    enabled: !!session && (session.role === 'admin' || session.role === 'developer'),
+    enabled: !!session && (session.role === "admin" || session.role === "developer"),
     staleTime: 2 * 60 * 1000,
   });
 }
@@ -352,7 +400,7 @@ export function useAdminNotifications() {
   return useQuery({
     queryKey: QUERY_KEYS.adminNotifications,
     queryFn: () => getPlayFabService().admin.getNotifications(),
-    enabled: !!session && (session.role === 'admin' || session.role === 'developer'),
+    enabled: !!session && (session.role === "admin" || session.role === "developer"),
     staleTime: 2 * 60 * 1000,
   });
 }
@@ -396,7 +444,8 @@ export function useUpdateLoadout() {
 export function useUpdateProfile() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: (profile: Partial<PlayerProfile>) => getPlayFabService().player.updateProfile(profile),
+    mutationFn: (profile: Partial<PlayerProfile>) =>
+      getPlayFabService().player.updateProfile(profile),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: QUERY_KEYS.profile });
     },
@@ -406,7 +455,8 @@ export function useUpdateProfile() {
 export function useSubmitBugReport() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: (report: Omit<BugReport, 'id' | 'createdAt' | 'status'>) => getPlayFabService().admin.submitBugReport(report),
+    mutationFn: (report: Omit<BugReport, "id" | "createdAt" | "status">) =>
+      getPlayFabService().admin.submitBugReport(report),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: QUERY_KEYS.adminBugReports });
     },
@@ -416,7 +466,8 @@ export function useSubmitBugReport() {
 export function useSubmitPlayerReport() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: (report: Omit<PlayerReport, 'id' | 'createdAt' | 'status'>) => getPlayFabService().admin.submitPlayerReport(report),
+    mutationFn: (report: Omit<PlayerReport, "id" | "createdAt" | "status">) =>
+      getPlayFabService().admin.submitPlayerReport(report),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: QUERY_KEYS.adminPlayerReports });
     },
@@ -426,7 +477,8 @@ export function useSubmitPlayerReport() {
 export function useSubmitPartnership() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: (partnership: Omit<PartnershipApplication, 'id' | 'createdAt' | 'status'>) => getPlayFabService().admin.submitPartnership(partnership),
+    mutationFn: (partnership: Omit<PartnershipApplication, "id" | "createdAt" | "status">) =>
+      getPlayFabService().admin.submitPartnership(partnership),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: QUERY_KEYS.adminPartnerships });
     },
@@ -436,7 +488,7 @@ export function useSubmitPartnership() {
 export function useUpdateBugReport() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: (args: { id: string; status: BugReport['status'] }) =>
+    mutationFn: (args: { id: string; status: BugReport["status"] }) =>
       getPlayFabService().admin.updateBugReport(args.id, { status: args.status }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: QUERY_KEYS.adminBugReports });
@@ -467,7 +519,7 @@ export function useDeleteBugReports() {
 export function useUpdatePlayerReport() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: (args: { id: string; status: PlayerReport['status'] }) =>
+    mutationFn: (args: { id: string; status: PlayerReport["status"] }) =>
       getPlayFabService().admin.updatePlayerReport(args.id, { status: args.status }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: QUERY_KEYS.adminPlayerReports });
@@ -498,7 +550,7 @@ export function useDeletePlayerReports() {
 export function useUpdatePartnership() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: (args: { id: string; status: PartnershipApplication['status'] }) =>
+    mutationFn: (args: { id: string; status: PartnershipApplication["status"] }) =>
       getPlayFabService().admin.updatePartnership(args.id, { status: args.status }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: QUERY_KEYS.adminPartnerships });
@@ -536,7 +588,8 @@ export function useDeletePartnerships() {
 export function useUpdateAd() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: (args: { id: string; data: Partial<AdEntry> }) => getPlayFabService().admin.updateAd(args.id, args.data),
+    mutationFn: (args: { id: string; data: Partial<AdEntry> }) =>
+      getPlayFabService().admin.updateAd(args.id, args.data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: QUERY_KEYS.adminAds });
     },
@@ -566,7 +619,8 @@ export function useUpdateGameBuild() {
 export function useUpdateSystemRequirements() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: (reqs: SystemRequirement[]) => getPlayFabService().admin.updateSystemRequirements(reqs),
+    mutationFn: (reqs: SystemRequirement[]) =>
+      getPlayFabService().admin.updateSystemRequirements(reqs),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: QUERY_KEYS.adminSystemRequirements });
     },
@@ -598,12 +652,12 @@ export function useAddFriend() {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: async (friendPlayFabId: string) => {
-      const response = await fetch('/api/playfab/friends/add', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+      const response = await fetch("/api/playfab/friends/add", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ friendPlayFabId }),
       });
-      if (!response.ok) throw new Error('Failed to add friend');
+      if (!response.ok) throw new Error("Failed to add friend");
       return response.json();
     },
     onSuccess: () => {
@@ -616,12 +670,12 @@ export function useRemoveFriend() {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: async (friendPlayFabId: string) => {
-      const response = await fetch('/api/playfab/friends/remove', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+      const response = await fetch("/api/playfab/friends/remove", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ friendPlayFabId }),
       });
-      if (!response.ok) throw new Error('Failed to remove friend');
+      if (!response.ok) throw new Error("Failed to remove friend");
       return response.json();
     },
     onSuccess: () => {

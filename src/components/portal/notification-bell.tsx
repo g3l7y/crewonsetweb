@@ -4,6 +4,7 @@ import { Bell, Megaphone, Trophy, Users, ShoppingBag, Settings2, CheckCheck } fr
 import { notificationsStore } from "@/lib/demo/store";
 import {
   NOTIFICATION_BELL_LIMIT,
+  dedupeNotifications,
   isPlayerAccountNotification,
   matchesPlayerRecipient,
   notificationHref as inboxNotificationHref,
@@ -26,6 +27,8 @@ type BellNotification = {
   recipientUsername?: string | undefined;
   recipientEmail?: string | undefined;
   target?: { kind: "all" | "players"; playerIds?: string[] | undefined } | undefined;
+  senderUsername?: string | undefined;
+  adminMessage?: boolean | undefined;
 };
 
 const iconByKind: Record<string, typeof Bell> = {
@@ -68,6 +71,8 @@ export function NotificationBell({ dark = true }: { dark?: boolean }) {
           target: notification.target
             ? { kind: notification.target.kind, playerIds: notification.target.playerIds }
             : undefined,
+          senderUsername: notification.senderUsername,
+          adminMessage: notification.adminMessage,
         }))
         .filter(
           (notification) =>
@@ -87,6 +92,8 @@ export function NotificationBell({ dark = true }: { dark?: boolean }) {
           recipientUsername: notification.recipientUsername,
           recipientEmail: undefined,
           target: notification.target,
+          senderUsername: notification.senderUsername,
+          adminMessage: notification.adminMessage,
         }))
         .filter(isPlayerAccountNotification);
   const ref = useRef<HTMLDivElement>(null);
@@ -102,9 +109,10 @@ export function NotificationBell({ dark = true }: { dark?: boolean }) {
     return () => document.removeEventListener("mousedown", onClickOutside);
   }, []);
 
-  const sortedNotifications = sortNotificationsNewestFirst(notifications);
+  const uniqueNotifications = dedupeNotifications(notifications);
+  const sortedNotifications = sortNotificationsNewestFirst(uniqueNotifications);
   const sorted = sortedNotifications.slice(0, NOTIFICATION_BELL_LIMIT);
-  const unreadCount = notifications.filter((n) => !n.read).length;
+  const unreadCount = uniqueNotifications.filter((n) => !n.read).length;
 
   function markRead(id: string) {
     if (mockMode) {
