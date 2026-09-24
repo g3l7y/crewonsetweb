@@ -1,6 +1,6 @@
 import Image from "@/components/next-compat/image";
 import Link from "@/components/next-compat/link";
-import { FormEvent, useState } from "react";
+import { FormEvent, useEffect, useRef, useState } from "react";
 import { useRouter } from "@/components/next-compat/navigation";
 import { ArrowLeft, Eye, EyeOff, KeyRound, LoaderCircle, Send, UserPlus, X } from "lucide-react";
 import {
@@ -26,6 +26,10 @@ type GoogleTokenResponse = {
   error_description?: string;
 };
 
+type GooglePopupError = {
+  type?: "popup_closed" | "popup_failed_to_open" | "unknown";
+};
+
 type GoogleAccessTokenClient = {
   requestAccessToken: () => void;
 };
@@ -39,6 +43,7 @@ declare global {
             client_id: string;
             scope: string;
             callback: (response: GoogleTokenResponse) => void;
+            error_callback: (error: GooglePopupError) => void;
           }) => GoogleAccessTokenClient;
         };
       };
@@ -62,7 +67,10 @@ async function requestGoogleAccessToken() {
       script.src = "https://accounts.google.com/gsi/client";
       script.async = true;
       script.onload = () => resolve();
-      script.onerror = () => reject(new Error("Unable to load Google sign-in."));
+      script.onerror = () => {
+        googleScriptPromise = undefined;
+        reject(new Error("Unable to load Google sign-in."));
+      };
       document.head.appendChild(script);
     });
     await googleScriptPromise;
@@ -72,17 +80,36 @@ async function requestGoogleAccessToken() {
   if (!oauth2) throw new Error("Google sign-in is unavailable. Please try again.");
 
   return new Promise<string>((resolve, reject) => {
+    let settled = false;
+    const rejectOnce = (message: string) => {
+      if (settled) return;
+      settled = true;
+      reject(new Error(message));
+    };
     const client = oauth2.initTokenClient({
       client_id: GOOGLE_CLIENT_ID,
       scope: "openid email profile",
       callback: (response) => {
         if (response.error) {
-          reject(new Error(response.error_description ?? "Google sign-in was cancelled."));
+          rejectOnce(
+            response.error_description ??
+              "Google sign-in was cancelled. You can continue with your email and password.",
+          );
         } else if (!response.access_token) {
-          reject(new Error("Google did not return an access token."));
+          rejectOnce("Google did not return an access token. Please try again.");
         } else {
+          settled = true;
           resolve(response.access_token);
         }
+      },
+      error_callback: (error) => {
+        const message =
+          error.type === "popup_closed"
+            ? "Google sign-in was cancelled. You can continue with your email and password."
+            : error.type === "popup_failed_to_open"
+              ? "The Google sign-in window could not be opened. Allow pop-ups or continue with your email and password."
+              : "Google sign-in could not be completed. Please try again or use your email and password.";
+        rejectOnce(message);
       },
     });
     client.requestAccessToken();
@@ -186,6 +213,7 @@ export function CrewAccessPage({ mode, scope = "player" }: CrewAccessPageProps) 
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
   const [googleLoading, setGoogleLoading] = useState(false);
+  const googleAttemptId = useRef(0);
   const [passwordVisible, setPasswordVisible] = useState(false);
   const [confirmationVisible, setConfirmationVisible] = useState(false);
   const [forgotOpen, setForgotOpen] = useState(false);
@@ -193,8 +221,18 @@ export function CrewAccessPage({ mode, scope = "player" }: CrewAccessPageProps) 
   const [acceptedPolicies, setAcceptedPolicies] = useState(false);
   const [policyOpen, setPolicyOpen] = useState<PolicyKind | null>(null);
 
+  useEffect(() => {
+    return () => {
+      // Ignore a late OAuth callback if the user leaves the login/signup page.
+      googleAttemptId.current += 1;
+    };
+  }, []);
+
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
+    // Choosing the manual form cancels any still-pending Google popup flow.
+    googleAttemptId.current += 1;
+    setGoogleLoading(false);
     const data = new FormData(event.currentTarget);
 
     if (!isLogin) {
@@ -275,20 +313,27 @@ export function CrewAccessPage({ mode, scope = "player" }: CrewAccessPageProps) 
       );
       return;
     }
+    const attemptId = ++googleAttemptId.current;
     setError("");
     setGoogleLoading(true);
     try {
-      const googleResult = isMockMode()
-        ? await loginWithGoogleAccessToken(
-            "mock-google-account",
-            isLogin ? "login" : "signup",
-            acceptedPolicies,
-          )
-        : await loginWithGoogleAccessToken(
-            await requestGoogleAccessToken(),
-            isLogin ? "login" : "signup",
-            acceptedPolicies,
-          );
+      let googleResult: Awaited<ReturnType<typeof loginWithGoogleAccessToken>>;
+      if (isMockMode()) {
+        googleResult = await loginWithGoogleAccessToken(
+          "mock-google-account",
+          isLogin ? "login" : "signup",
+          acceptedPolicies,
+        );
+      } else {
+        const accessToken = await requestGoogleAccessToken();
+        if (attemptId !== googleAttemptId.current) return;
+        googleResult = await loginWithGoogleAccessToken(
+          accessToken,
+          isLogin ? "login" : "signup",
+          acceptedPolicies,
+        );
+      }
+      if (attemptId !== googleAttemptId.current) return;
       if (googleResult.needsProfileSetup) {
         setGoogleProfileSetupOpen(true);
         setGoogleLoading(false);
@@ -297,6 +342,7 @@ export function CrewAccessPage({ mode, scope = "player" }: CrewAccessPageProps) 
       router.push(googleResult.destination);
       router.refresh();
     } catch (err) {
+      if (attemptId !== googleAttemptId.current) return;
       setError(err instanceof Error ? err.message : "Unable to sign in with Google.");
       setGoogleLoading(false);
     }
