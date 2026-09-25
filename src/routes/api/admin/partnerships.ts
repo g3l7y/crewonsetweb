@@ -282,7 +282,7 @@ export const Route = createFileRoute('/api/admin/partnerships')({
 
           let payment: PartnershipPayment | null = null;
           let emailWarning: string | undefined;
-          let nextApplication: PartnershipApplication = { ...application, status: nextStatus };
+          const nextApplication: PartnershipApplication = { ...application, status: nextStatus };
           let completesPromotion = false;
           if (application.adminNotes !== undefined) nextApplication.adminNotes = application.adminNotes;
 
