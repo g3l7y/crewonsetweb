@@ -45,10 +45,12 @@ export function isPaidCheckoutAmount(attributes: JsonRecord, expectedAmount: num
   const hasMatchingPaidPayment = paymentRecords.some((payment) => {
     const record = asRecord(payment);
     const paymentAttributes = asRecord(record["attributes"] ?? record);
+    const chargedAmount = Number(paymentAttributes["amount"]);
+    const merchantAmount = Number(paymentAttributes["net_amount"]);
     return (
       String(paymentAttributes["status"] || "").toLowerCase() === "paid" &&
       String(paymentAttributes["currency"] || "PHP").toUpperCase() === "PHP" &&
-      Number(paymentAttributes["amount"] ?? paymentAttributes["net_amount"]) === expectedAmount
+      (chargedAmount === expectedAmount || merchantAmount === expectedAmount)
     );
   });
   if (hasMatchingPaidPayment) return true;
