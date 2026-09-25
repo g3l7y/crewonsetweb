@@ -369,10 +369,9 @@ export function CrewAccessPage({ mode, scope = "player" }: CrewAccessPageProps) 
           <div className="flex size-11 items-center justify-center rounded-md bg-coral text-white">
             {isLogin ? <KeyRound className="size-5" /> : <UserPlus className="size-5" />}
           </div>
-          {isAdmin && (
-            <p className="mt-6 text-xs font-black tracking-[.18em] text-coral">STUDIO ADMIN</p>
-          )}
-          <h1 className="mt-2 text-4xl font-black uppercase tracking-[.04em] text-coral">
+          <h1
+            className={`${isAdmin ? "mt-6" : "mt-2"} text-4xl font-black uppercase tracking-[.04em] text-coral`}
+          >
             {isAdmin ? "Admin login" : isLogin ? "Login" : "Sign up"}
           </h1>
           <p className="mt-3 leading-relaxed text-navy/60">

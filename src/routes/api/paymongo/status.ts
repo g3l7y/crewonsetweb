@@ -15,6 +15,7 @@ import {
   updateWebsiteRecord,
 } from "@/lib/playfab/websiteData";
 import { recordPlayerTopUpNotification } from "@/lib/paymongo/player-notifications";
+import { isPaidCheckoutAmount } from "@/lib/paymongo/verification";
 
 type PayMongoOrder = {
   id: string;
@@ -77,26 +78,7 @@ async function retrievePaidCheckout(
     throw new Error(`PayMongo checkout verification failed with status ${response.status}.`);
   }
 
-  const attributes = asRecord(result.data?.attributes);
-  const payments = Array.isArray(attributes.payments) ? attributes.payments : [];
-  const paidPayment = payments.some((payment) => {
-    const paymentAttributes = asRecord(asRecord(payment).attributes);
-    const status = String(paymentAttributes.status || "").toLowerCase();
-    const currency = String(paymentAttributes.currency || "PHP").toUpperCase();
-    const rawAmount = paymentAttributes.amount ?? paymentAttributes.net_amount;
-    const amount = rawAmount === undefined ? undefined : Number(rawAmount);
-    return status === "paid" && currency === "PHP" && amount === expectedAmount;
-  });
-  if (paidPayment) return true;
-
-  const paymentIntent = asRecord(attributes.payment_intent);
-  const paymentIntentAttributes = asRecord(paymentIntent.attributes);
-  const intentAmount = Number(paymentIntentAttributes.amount);
-  return (
-    String(paymentIntentAttributes.status || "").toLowerCase() === "succeeded" &&
-    String(paymentIntentAttributes.currency || "PHP").toUpperCase() === "PHP" &&
-    intentAmount === expectedAmount
-  );
+  return isPaidCheckoutAmount(asRecord(result.data?.attributes), expectedAmount);
 }
 
 async function repairWebsiteOrder(

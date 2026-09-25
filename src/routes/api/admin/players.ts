@@ -1,6 +1,7 @@
 import { createFileRoute } from '@tanstack/react-router';
 import { unauthorizedSessionResponse, validateSessionFromRequest } from '@/lib/playfab/session';
 import { PLAYFAB_API_BASE } from '@/lib/playfab/config';
+import { DEFAULT_PROFILE_PICTURE_URL, isManagedProfileAvatarUrl } from '@/lib/profile-avatar';
 import { PLAYFAB_DATA_KEYS } from '@/lib/playfab/constants';
 import { getCcoinCurrencyCode } from '@/lib/playfab/economy';
 import { mapDataToAchievements } from '@/lib/playfab/achievements';
@@ -178,7 +179,9 @@ function mapExportRecord(record: ExportRecord): PlayerProfile | null {
     displayName,
     username: displayName,
     email: getExportValue(flattened, ['PrivateInfo.Email', 'ContactEmail', 'PrimaryEmail', 'EmailAddress', 'Email']),
-    avatarUrl: getExportValue(flattened, ['AvatarUrl', 'AvatarURL']) || '/assets/crew-team-illustration.png',
+    avatarUrl: isManagedProfileAvatarUrl(getExportValue(flattened, ['AvatarUrl', 'AvatarURL']))
+      ? getExportValue(flattened, ['AvatarUrl', 'AvatarURL'])
+      : DEFAULT_PROFILE_PICTURE_URL,
     role: 'Player',
     crewId: playFabId,
     bio: '',
@@ -461,7 +464,7 @@ async function loadRealPlayerDetails(playerId: string, secretKey: string): Promi
   const productionScore = productionLogs.reduce((total, log) => total + toNumber(log.overallScore), 0) || toNumber(statsByName.production_score);
   const gamesPlayed = productionLogs.length || toNumber(statsByName.games_played ?? statsByName.gamesplayed);
   const username = String(rawMetadata.username || profileRecord['DisplayName'] || account['Username'] || 'Player');
-  const email = String(account['PrivateInfo']?.['Email'] || rawMetadata.email || '');
+  const email = String(rawMetadata.email || account['PrivateInfo']?.['Email'] || '');
   const joinedAt = account['Created'] ? new Date(account['Created']).toISOString() : '';
   const profile: PlayerProfile = {
     id: playerId,
@@ -469,7 +472,9 @@ async function loadRealPlayerDetails(playerId: string, secretKey: string): Promi
     displayName: username,
     username,
     email,
-    avatarUrl: typeof profileRecord['AvatarUrl'] === 'string' ? profileRecord['AvatarUrl'] : '/assets/crew-team-illustration.png',
+    avatarUrl: isManagedProfileAvatarUrl(rawMetadata.avatarUrl)
+      ? rawMetadata.avatarUrl
+      : isManagedProfileAvatarUrl(profileRecord['AvatarUrl']) ? profileRecord['AvatarUrl'] : DEFAULT_PROFILE_PICTURE_URL,
     role: String(rawMetadata.primaryRole || profileRecord['PrimaryRole'] || 'Player'),
     crewId: String(rawMetadata.crewId || playerId),
     bio: typeof rawMetadata.bio === 'string' ? rawMetadata.bio : '',

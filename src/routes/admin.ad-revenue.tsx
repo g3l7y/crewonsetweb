@@ -173,8 +173,7 @@ function AdRevenuePage() {
   return (
     <div className="admin-page h-full overflow-y-auto bg-[#101923] text-white">
       <header className="mb-8">
-        <p className="text-xs font-black tracking-[.18em] !text-coral">REVENUE</p>
-        <h1 className="admin-heading mt-2 !text-white">Advertisement Revenue</h1>
+        <h1 className="admin-heading !text-white">Advertisement Revenue</h1>
         <p className="admin-kicker !text-white/45">
           Every approved brand advertisement, its live performance, and the revenue it drives.
         </p>

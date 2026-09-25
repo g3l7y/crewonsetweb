@@ -1,9 +1,11 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Award, ChevronDown, Crown, Film, Star, TrendingUp, Users, X } from "lucide-react";
 import { friendRosterStore } from "@/lib/demo/friends";
 import { getProfileArtwork } from "@/lib/demo/profile-art";
 import { isMockMode } from "@/lib/playfab/config";
-import { useFriends, useLeaderboard, usePlayerProfile } from "@/lib/playfab/hooks";
+import { useAchievements, useFriends, useLeaderboard, usePlayerProfile } from "@/lib/playfab/hooks";
+import type { Achievement, PlayerProfile } from "@/lib/playfab/types";
+import { formatSocialUsername, getSocialProfileUrl, type SocialLinks, type SocialPlatform } from "@/lib/profile-socials";
 
 type Leader = {
   playFabId?: string;
@@ -15,6 +17,14 @@ type Leader = {
   rating: number | null;
   legendary?: boolean;
   profileImage?: string;
+};
+
+type PublicProfilePreview = {
+  profileVisible: boolean;
+  showCrewActivity: boolean;
+  bio: string;
+  socialLinks: SocialLinks;
+  achievements: Achievement[];
 };
 
 const globalLeaders: Leader[] = [
@@ -72,7 +82,77 @@ export function Leaderboards() {
   const realLeaderboardQuery = useLeaderboard("total_score", 100);
   const realFriendsQuery = useFriends();
   const currentProfileQuery = usePlayerProfile();
+  const achievementsQuery = useAchievements();
+  const [publicProfile, setPublicProfile] = useState<PublicProfilePreview | null>(null);
+  const [publicProfileLoading, setPublicProfileLoading] = useState(false);
   const currentPlayerName = currentProfileQuery.data?.username || currentProfileQuery.data?.displayName || (mockMode ? "CAMERA_PRO" : "");
+
+  useEffect(() => {
+    let active = true;
+    setPublicProfile(null);
+    setPublicProfileLoading(Boolean(selectedLeader));
+    if (!selectedLeader) return () => { active = false; };
+
+    if (mockMode) {
+      const isOwner = selectedLeader.name.toLowerCase() === currentPlayerName.toLowerCase();
+      const friend = friends.find((candidate) => candidate.name.toLowerCase() === selectedLeader.name.toLowerCase());
+      if (isOwner) {
+        const profile = currentProfileQuery.data;
+        setPublicProfile({
+          profileVisible: true,
+          showCrewActivity: profile?.showCrewActivity ?? true,
+          bio: profile?.bio ?? "",
+          socialLinks: profile?.socialLinks ?? {},
+          achievements: profile?.showCrewActivity === false ? [] : (achievementsQuery.data ?? []).filter((achievement) => achievement.unlocked),
+        });
+      } else if (friend) {
+        setPublicProfile({
+          profileVisible: true,
+          showCrewActivity: true,
+          bio: friend.bio,
+          socialLinks: friend.socials,
+          achievements: [],
+        });
+      }
+      setPublicProfileLoading(false);
+      return () => { active = false; };
+    }
+
+    if (!selectedLeader.playFabId) {
+      setPublicProfileLoading(false);
+      return () => { active = false; };
+    }
+    void fetch(`/api/auth/player-profile?playFabId=${encodeURIComponent(selectedLeader.playFabId)}`, {
+      credentials: "include",
+      cache: "no-store",
+    })
+      .then(async (response) => {
+        if (!response.ok) return null;
+        return await response.json() as {
+          success?: boolean;
+          profile?: Partial<PlayerProfile> & { profileVisible?: boolean; achievements?: Achievement[] };
+        };
+      })
+      .then((result) => {
+        if (!active || !result?.success || !result.profile) return;
+        setPublicProfile({
+          profileVisible: result.profile.profileVisible ?? true,
+          showCrewActivity: result.profile.showCrewActivity ?? true,
+          bio: result.profile.bio ?? "",
+          socialLinks: result.profile.socialLinks ?? {},
+          achievements: result.profile.achievements ?? [],
+        });
+        setPublicProfileLoading(false);
+      })
+      .catch(() => {
+        // The rank/score modal remains usable when a public profile cannot be loaded.
+      })
+      .finally(() => {
+        if (active) setPublicProfileLoading(false);
+      });
+
+    return () => { active = false; };
+  }, [achievementsQuery.data, currentPlayerName, currentProfileQuery.data, friends, mockMode, selectedLeader]);
 
   const realGlobalLeaders = useMemo<Leader[]>(
     () =>
@@ -84,7 +164,7 @@ export function Leaderboards() {
         xp: null,
         productions: null,
         rating: null,
-        profileImage: entry.avatarUrl,
+        ...(entry.avatarUrl ? { profileImage: entry.avatarUrl } : {}),
       })),
     [realLeaderboardQuery.data],
   );
@@ -121,7 +201,7 @@ export function Leaderboards() {
         xp: friend.career.productionsCompleted * 70 + friend.level * 40,
         productions: friend.career.productionsCompleted,
         rating: Math.min(99, 78 + Math.round(friend.level / 4)),
-        profileImage: friend.profileImage,
+        ...(friend.profileImage ? { profileImage: friend.profileImage } : {}),
       })),
     ];
   }, [
@@ -494,22 +574,48 @@ export function Leaderboards() {
 
             </div>
 
-            {/* CAREER */}
+            {/* CURRENT PUBLIC PROFILE */}
 
-            <div className="mt-5 rounded-xl border border-white/[0.06] bg-white/[0.035] p-4">
-
-              <p className="text-[10px] font-black uppercase tracking-wider text-white/30">
-                Career Overview
-              </p>
-
-              <p className="mt-2 text-sm leading-relaxed text-white/50">
-                {selectedLeader.name} is a crew member ranked by the
-                {" "}
-                {formatMetric(selectedLeader.score)} total score. Additional
-                career metrics will appear when PlayFab provides them.
-              </p>
-
-            </div>
+            <section className="mt-5 rounded-xl border border-white/[0.06] bg-white/[0.035] p-4">
+              {publicProfileLoading ? (
+                <p className="text-sm text-white/40">Loading profile details…</p>
+              ) : publicProfile?.profileVisible === false ? (
+                <>
+                  <p className="text-[10px] font-black uppercase tracking-wider text-white/30">Profile details are private</p>
+                  <p className="mt-2 text-sm leading-relaxed text-white/50">This player has turned off profile visibility.</p>
+                </>
+              ) : publicProfile ? (
+                <>
+                  <p className="text-[10px] font-black uppercase tracking-wider text-white/30">About</p>
+                  <p className="mt-2 whitespace-pre-wrap text-sm leading-relaxed text-white/65">{publicProfile.bio || "No bio added."}</p>
+                  {Object.entries(publicProfile.socialLinks).some(([, value]) => Boolean(value)) && (
+                    <div className="mt-4 flex flex-wrap gap-2">
+                      {(Object.entries(publicProfile.socialLinks) as [SocialPlatform, string][]).filter(([, value]) => Boolean(value)).map(([platform, value]) => (
+                        <a key={platform} href={getSocialProfileUrl(platform, value)} target="_blank" rel="noreferrer" className="rounded-md border border-white/10 px-3 py-2 text-xs font-bold text-white/70 hover:border-coral hover:text-white">
+                          {platform === "twitter" ? "X / Twitter" : platform.charAt(0).toUpperCase() + platform.slice(1)} {formatSocialUsername(platform, value)}
+                        </a>
+                      ))}
+                    </div>
+                  )}
+                  {publicProfile.showCrewActivity && (
+                    <div className="mt-5 border-t border-white/[0.07] pt-4">
+                      <p className="text-[10px] font-black uppercase tracking-wider text-white/30">Unlocked Achievements</p>
+                      {publicProfile.achievements.length ? (
+                        <div className="mt-3 flex flex-wrap gap-2">
+                          {publicProfile.achievements.map((achievement) => (
+                            <span key={achievement.id} className="inline-flex items-center gap-2 rounded-md border border-white/[0.07] px-3 py-2 text-xs font-bold text-white/70">
+                              <Award className="size-4 text-yellow" /> {achievement.name || achievement.title}
+                            </span>
+                          ))}
+                        </div>
+                      ) : <p className="mt-2 text-sm text-white/35">No achievements unlocked yet.</p>}
+                    </div>
+                  )}
+                </>
+              ) : (
+                <p className="text-sm text-white/40">Public profile details are unavailable.</p>
+              )}
+            </section>
 
             {/* CLOSE */}
 

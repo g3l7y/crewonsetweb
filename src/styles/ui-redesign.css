@@ -4204,3 +4204,48 @@ html[data-display-theme="dark"] .display-theme-switcher button[aria-pressed="tru
   color: #0a0e19 !important;
   -webkit-text-fill-color: #0a0e19 !important;
 }
+
+/* Player display preferences apply across every portal route without changing
+   the selected light/dark palette. */
+.portal-theme.portal-compact main {
+  --spacing: .225rem;
+}
+
+.portal-theme.portal-large-text main {
+  --text-xs: .8125rem;
+  --text-sm: .9375rem;
+  --text-base: 1.0625rem;
+  --text-lg: 1.1875rem;
+  --text-xl: 1.3125rem;
+  --text-2xl: 1.5625rem;
+  --text-3xl: 1.9375rem;
+  --text-4xl: 2.4375rem;
+  --text-5xl: 3.0625rem;
+  --text-6xl: 3.875rem;
+  --text-7xl: 4.625rem;
+  --text-8xl: 6.25rem;
+  --text-9xl: 8.3125rem;
+}
+
+.portal-theme.portal-high-contrast main :where(
+  [class*="border-white/"],
+  [class*="border-navy/"]
+) {
+  border-color: color-mix(in srgb, currentColor 26%, transparent) !important;
+}
+
+.portal-theme.portal-high-contrast main :where(p, span, label, small, td, th) {
+  -webkit-text-stroke: .1px currentColor;
+}
+
+.portal-theme.portal-large-text main :where(
+  [class*="text-[10px]"],
+  [class*="text-[11px]"],
+  [class*="text-[12px]"]
+) {
+  font-size: 1.07em !important;
+}
+
+.portal-theme.portal-high-contrast main :where(a, button, input, select, textarea):focus-visible {
+  outline-width: 4px !important;
+}

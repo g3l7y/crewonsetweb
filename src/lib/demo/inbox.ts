@@ -13,6 +13,12 @@ export type NotificationLike = {
   target?: { kind: "all" | "players"; playerIds?: string[] | undefined } | undefined;
 };
 
+export type NotificationBellPreferences = {
+  productionUpdates?: boolean;
+  friendUpdates?: boolean;
+  transactions?: boolean;
+};
+
 export const RECENT_ACTIVITY_LIMIT = 5;
 export const NOTIFICATION_BELL_LIMIT = 10;
 
@@ -57,12 +63,80 @@ export function isAdminAuthoredNotification(notification: NotificationLike) {
   );
 }
 
+/** Apply notification preferences to the bell only; Inbox and activity feeds stay complete. */
+export function isVisibleInNotificationBell(
+  notification: NotificationLike,
+  preferences: NotificationBellPreferences,
+) {
+  if (isAdminAuthoredNotification(notification)) return true;
+
+  const kind = notification.kind?.trim().toLowerCase() ?? "";
+  const content = `${notification.title ?? ""} ${notification.body ?? ""}`.toLowerCase();
+  const productionEvent =
+    [
+      "achievement",
+      "achievement_unlocked",
+      "level_complete",
+      "level_completed",
+      "level_completion",
+      "production",
+      "production_complete",
+      "production_completed",
+      "production_completion",
+      "production_log",
+    ].includes(kind) ||
+    (kind === "activity" && /achievement|production|level|completed|finished|unlocked/.test(content));
+  if (productionEvent && preferences.productionUpdates === false) return false;
+
+  const friendAcceptance =
+    ["friend", "friend_update"].includes(kind) &&
+    (/(?:accepted|accepts|approved)\s+(?:your\s+)?(?:friend\s+)?request/.test(content) ||
+      /(?:friend\s+)?request\s+(?:was|has been)\s+accepted/.test(content) ||
+      /(?:now|officially)\s+friends?\s+with/.test(content));
+  if (friendAcceptance && preferences.friendUpdates === false) return false;
+
+  const transactionEvent = [
+    "c_coin_topup",
+    "ccoin_topup",
+    "coin_topup",
+    "purchase",
+    "shop",
+    "shop_purchase",
+    "topup",
+    "top_up",
+    "transaction",
+  ].includes(kind);
+  if (transactionEvent && preferences.transactions === false) return false;
+
+  return true;
+}
+
 /** Dashboard activity is intentionally limited to player social and commerce events. */
 export function isRecentPlayerActivity(notification: NotificationLike) {
   if (!isActivityNotification(notification) || isAdminAuthoredNotification(notification)) {
     return false;
   }
-  return ["friend", "shop", "transaction"].includes(notification.kind?.toLowerCase() ?? "");
+  return [
+    "achievement",
+    "achievement_unlocked",
+    "activity",
+    "friend",
+    "friend_update",
+    "level_complete",
+    "level_completed",
+    "level_completion",
+    "production",
+    "production_complete",
+    "production_completed",
+    "production_completion",
+    "production_log",
+    "purchase",
+    "shop",
+    "shop_purchase",
+    "topup",
+    "top_up",
+    "transaction",
+  ].includes(notification.kind?.toLowerCase() ?? "");
 }
 
 /** Remove duplicate records when the same event arrives through multiple feeds. */
@@ -87,12 +161,24 @@ export function dedupeNotifications<T extends NotificationLike>(notifications: T
 
 const playerNotificationKinds = new Set([
   "achievement",
+  "achievement_unlocked",
   "activity",
   "friend",
+  "friend_update",
+  "level_complete",
+  "level_completed",
+  "level_completion",
   "production",
+  "production_complete",
+  "production_completed",
+  "production_completion",
   "production_log",
   "report",
+  "purchase",
   "shop",
+  "shop_purchase",
+  "topup",
+  "top_up",
   "transaction",
 ]);
 

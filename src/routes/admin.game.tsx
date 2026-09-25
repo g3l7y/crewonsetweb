@@ -373,9 +373,7 @@ function GamePage() {
       {/* PAGE HEADER */}
       <header className="mb-8 flex flex-col justify-between gap-4 sm:flex-row sm:items-end">
         <div>
-          <p className="text-xs font-black tracking-[.18em] !text-coral">PRODUCTION</p>
-
-          <h1 className="admin-heading mt-2 !text-white">GAME &amp; UPDATES</h1>
+          <h1 className="admin-heading !text-white">GAME &amp; UPDATES</h1>
 
           <p className="admin-kicker !text-white/45">
             Manage builds, releases, and player communications.

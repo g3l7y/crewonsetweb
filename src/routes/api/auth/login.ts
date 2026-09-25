@@ -6,6 +6,7 @@ import { isValidEmail, isValidUsername } from "@/lib/validation";
 import type { SessionData, AuthResponse } from "@/lib/playfab/types";
 import { getPlayFabContactEmail, syncPlayFabContactEmail } from "@/lib/playfab/contact-email";
 import { resolvePlayFabLogin } from "@/lib/playfab/credential-verification";
+import { isEmailLoginIdentityStoreConfigured, saveEmailLoginAlias } from "@/lib/playfab/email-login-identities";
 
 export const Route = createFileRoute("/api/auth/login")({
   server: {
@@ -74,6 +75,7 @@ export const Route = createFileRoute("/api/auth/login")({
             const titleId = PLAYFAB_TITLE_ID || "D4EA4";
             let loginWithUsername = !isValidEmail(identifier);
             let playFabIdentifier = identifier;
+            let resolvedProfileEmail = "";
 
             // A renamed app username or contact email is resolved to the
             // account's canonical PlayFab username, then the supplied password
@@ -83,6 +85,7 @@ export const Route = createFileRoute("/api/auth/login")({
               try {
                 const resolution = await resolvePlayFabLogin(identifier);
                 if (resolution) {
+                  resolvedProfileEmail = resolution.profileMetadata.email ?? "";
                   const normalizedIdentifier = identifier.toLowerCase();
                   const changedIdentifier = isValidEmail(identifier)
                     ? resolution.profileMetadata.email
@@ -163,6 +166,10 @@ export const Route = createFileRoute("/api/auth/login")({
             // Determine admin role server-side via PlayFab admin tags
             let role: "admin" | "player" = "player";
             const secretKey = process.env["PLAYFAB_SECRET_KEY"];
+            const contactEmailOptions = {
+              playFabId,
+              ...(secretKey?.trim() ? { secretKey: secretKey.trim() } : {}),
+            };
 
             // If scope is explicitly admin, secret key is required to verify admin tags
             if (scope === "admin" && !secretKey) {
@@ -224,22 +231,28 @@ export const Route = createFileRoute("/api/auth/login")({
               );
             }
 
-            let sessionEmail = accountEmail;
-            if (accountEmail) {
+            let sessionEmail = resolvedProfileEmail || accountEmail;
+            if (sessionEmail) {
               let existingContactEmail: string | null = null;
               try {
                 existingContactEmail = await getPlayFabContactEmail(sessionTicket);
               } catch (contactEmailReadError) {
                 console.error("[PlayFab] Could not read login contact email:", contactEmailReadError);
               }
-              if (existingContactEmail) {
+              if (resolvedProfileEmail) {
+                sessionEmail = resolvedProfileEmail;
+                if (existingContactEmail !== resolvedProfileEmail) {
+                  try {
+                    await syncPlayFabContactEmail(sessionTicket, resolvedProfileEmail, contactEmailOptions);
+                  } catch (contactEmailError) {
+                    console.error("[PlayFab] Could not refresh the updated contact email:", contactEmailError);
+                  }
+                }
+              } else if (existingContactEmail) {
                 sessionEmail = existingContactEmail;
               } else {
                 try {
-                  await syncPlayFabContactEmail(sessionTicket, accountEmail, {
-                    playFabId,
-                    secretKey: secretKey?.trim(),
-                  });
+                  await syncPlayFabContactEmail(sessionTicket, accountEmail, contactEmailOptions);
                 } catch (contactEmailError) {
                   console.error("[PlayFab] Could not sync login contact email:", contactEmailError);
                 }
@@ -257,6 +270,13 @@ export const Route = createFileRoute("/api/auth/login")({
               displayName,
               email: sessionEmail,
             };
+            if (sessionEmail && isEmailLoginIdentityStoreConfigured()) {
+              try {
+                await saveEmailLoginAlias(sessionEmail, playFabId, role);
+              } catch (aliasError) {
+                console.warn("[Auth] Could not refresh the email sign-in alias:", aliasError);
+              }
+            }
           }
 
           // Set cookies

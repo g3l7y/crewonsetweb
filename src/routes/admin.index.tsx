@@ -32,6 +32,7 @@ import {
 } from "lucide-react";
 import { useMemo } from "react";
 import { topUpsStore } from "@/lib/admin-demo-data";
+import { useAdminPayMongoOrders } from "@/lib/admin-paymongo-orders";
 import { adminActivityStore, applicationsStore, contentStatsStore, formatMoney, gameBuildStore, messagesStore } from "@/lib/demo/store";
 import { sortNewestFirst } from "@/lib/validation";
 import { isMockMode } from "@/lib/playfab/config";
@@ -79,6 +80,7 @@ const activityKindStyles: Record<string, string> = {
   announcement: "bg-[#4b9bff]/15 text-[#7fb6ff]",
   almanac: "bg-[#43b581]/15 text-[#6cd6a3]",
   bug: "bg-coral/15 text-[#ff7663]",
+  transaction: "bg-[#d9a514]/15 text-[#e1b42b]",
 };
 
 function formatDate(iso: string) {
@@ -101,7 +103,12 @@ function AdminDashboardPage() {
   const [contentStats] = contentStatsStore.useStore();
   const [messages] = messagesStore.useStore();
   const [gameBuilds] = gameBuildStore.useStore();
-  const [topUps] = topUpsStore.useStore();
+  const [demoTopUps] = topUpsStore.useStore();
+  const liveTopUpsQuery = useAdminPayMongoOrders();
+  const topUps = useMemo(
+    () => (mockMode ? demoTopUps : (liveTopUpsQuery.data ?? [])),
+    [demoTopUps, liveTopUpsQuery.data, mockMode],
+  );
 
   const gameBuild = gameBuilds[0];
   const contentTotals = contentStats[0];
@@ -111,7 +118,18 @@ function AdminDashboardPage() {
     [activity],
   );
 
-  const recentActivity = useMemo(() => sortNewestFirst(activity, (entry) => entry.createdAt).slice(0, 6), [activity]);
+  const recentActivity = useMemo(() => {
+    const transactionActivity = topUps
+      .filter((topUp) => topUp.status === "Completed")
+      .map((topUp) => ({
+        id: `transaction-${topUp.id}`,
+        kind: "transaction" as const,
+        label: "C-Coin top-up received",
+        detail: `${topUp.playerName} completed ${formatMoney(topUp.amount)} payment.`,
+        createdAt: topUp.timestamp || `${topUp.date}T${topUp.time || "00:00"}:00.000Z`,
+      }));
+    return sortNewestFirst([...activity, ...transactionActivity], (entry) => entry.createdAt).slice(0, 6);
+  }, [activity, topUps]);
   const messageCounts = useMemo(() => {
     const unread = messages.filter((m) => m.status === "Unread").length;
     const inProgress = messages.filter((m) => m.status === "In Progress").length;
@@ -158,9 +176,7 @@ function AdminDashboardPage() {
     <div className="admin-page h-full overflow-y-auto bg-[#101923] text-white">
       {/* PAGE HEADER */}
       <header className="mb-8">
-        <p className="text-xs font-black tracking-[.18em] !text-coral">CONTROL ROOM</p>
-
-        <h1 className="admin-heading mt-2 !text-white">Dashboard</h1>
+        <h1 className="admin-heading !text-white">Dashboard</h1>
 
         <p className="admin-kicker !text-white/45">
           Studio performance and player activity at a glance.

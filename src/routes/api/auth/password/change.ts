@@ -4,6 +4,7 @@ import { updateMockAccountPassword, getMockAccountBySessionTicket } from "@/lib/
 import { validateSessionFromRequest } from "@/lib/playfab/session";
 import { isValidPassword, PASSWORD_ERROR } from "@/lib/validation";
 import { verifyPlayFabCurrentPassword } from "@/lib/playfab/credential-verification";
+import { sendPlayFabRecoveryEmail } from "@/lib/playfab/password-recovery-email";
 
 export const Route = createFileRoute("/api/auth/password/change")({
   server: {
@@ -26,7 +27,21 @@ export const Route = createFileRoute("/api/auth/password/change")({
         if (!(await verifyPlayFabCurrentPassword(session, currentPassword))) {
           return Response.json({ success: false, error: "Current password is incorrect." }, { status: 401 });
         }
-        return Response.json({ success: false, error: "PlayFab password changes must be completed through the secure Forgot Password recovery link." }, { status: 400 });
+        const secretKey = process.env["PLAYFAB_SECRET_KEY"]?.trim();
+        const email = session.email?.trim().toLowerCase();
+        if (!secretKey || !email || !session.playFabId) {
+          return Response.json({ success: false, error: "Secure password change is unavailable because this account does not have a configured recovery email." }, { status: 503 });
+        }
+        try {
+          await sendPlayFabRecoveryEmail(session.playFabId, email, secretKey);
+          return Response.json({
+            success: true,
+            recoveryRequired: true,
+            message: `A secure password reset link was sent to ${email}. Follow it to finish changing your password.`,
+          });
+        } catch (error) {
+          return Response.json({ success: false, error: error instanceof Error ? error.message : "Unable to send the secure password reset email." }, { status: 502 });
+        }
       },
     },
   },

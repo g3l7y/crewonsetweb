@@ -1,12 +1,27 @@
 import { PLAYFAB_API_BASE } from "@/lib/playfab/config";
 import type { SessionData } from "@/lib/playfab/types";
 import { isValidEmail } from "@/lib/validation";
+import { findEmailLoginAlias, isEmailLoginIdentityStoreConfigured } from "@/lib/playfab/email-login-identities";
+
+type PlayFabAccountInfo = {
+  PlayFabId?: string;
+  Username?: string;
+  PrivateInfo?: { Email?: string };
+  TitleInfo?: { DisplayName?: string };
+  AccountInfo?: PlayFabAccountInfo;
+};
 
 type PlayFabResult = {
   code?: number;
   errorCode?: number;
   errorMessage?: string;
-  data?: any;
+  data?: {
+    UserInfo?: PlayFabAccountInfo;
+    AccountInfo?: PlayFabAccountInfo;
+    InfoResultPayload?: { AccountInfo?: PlayFabAccountInfo };
+    PlayFabId?: string;
+    Data?: Record<string, { Value?: string } | undefined>;
+  };
 };
 
 export type PlayFabAccountLookup = {
@@ -34,9 +49,9 @@ function accountFromResult(result: PlayFabResult): PlayFabAccountLookup | null {
 
   return {
     playFabId,
-    username: typeof account?.Username === "string" ? account.Username : undefined,
-    email: typeof account?.PrivateInfo?.Email === "string" ? account.PrivateInfo.Email.trim().toLowerCase() : undefined,
-    displayName: typeof account?.TitleInfo?.DisplayName === "string" ? account.TitleInfo.DisplayName : undefined,
+    ...(typeof account?.Username === "string" ? { username: account.Username } : {}),
+    ...(typeof account?.PrivateInfo?.Email === "string" ? { email: account.PrivateInfo.Email.trim().toLowerCase() } : {}),
+    ...(typeof account?.TitleInfo?.DisplayName === "string" ? { displayName: account.TitleInfo.DisplayName } : {}),
   };
 }
 
@@ -50,7 +65,13 @@ export async function findPlayFabAccountByIdentifier(identifier: string): Promis
   if (!secretKey) throw new Error("Server credential validation is not configured: PLAYFAB_SECRET_KEY is missing.");
 
   const value = identifier.trim();
-  const body = isValidEmail(value) ? { Email: value.toLowerCase() } : { TitleDisplayName: value };
+  let body: Record<string, string>;
+  if (isValidEmail(value)) {
+    const alias = isEmailLoginIdentityStoreConfigured() ? await findEmailLoginAlias(value) : null;
+    body = alias ? { PlayFabId: alias.playfab_id } : { Email: value.toLowerCase() };
+  } else {
+    body = { TitleDisplayName: value };
+  }
   const { response, result } = await request("/Admin/GetUserAccountInfo", body, { "X-SecretKey": secretKey });
   if (!response.ok || result.code !== 200) return null;
   return accountFromResult(result);
@@ -72,9 +93,13 @@ export async function resolvePlayFabLogin(identifier: string): Promise<PlayFabLo
   if (!secretKey) return null;
 
   const value = identifier.trim();
-  const candidates = isValidEmail(value)
-    ? [{ Email: value.toLowerCase() }]
-    : [{ TitleDisplayName: value }, { Username: value }];
+  let candidates: Array<Record<string, string>>;
+  if (isValidEmail(value)) {
+    const alias = isEmailLoginIdentityStoreConfigured() ? await findEmailLoginAlias(value) : null;
+    candidates = alias ? [{ PlayFabId: alias.playfab_id }] : [{ Email: value.toLowerCase() }];
+  } else {
+    candidates = [{ TitleDisplayName: value }, { Username: value }];
+  }
 
   let account: PlayFabAccountLookup | null = null;
   for (const candidate of candidates) {
@@ -91,7 +116,7 @@ export async function resolvePlayFabLogin(identifier: string): Promise<PlayFabLo
     Keys: ["profile_metadata"],
   }, { "X-SecretKey": secretKey });
   let profileMetadata: { username?: string; email?: string } = {};
-  const rawMetadata = userData.result.data?.Data?.profile_metadata?.Value;
+  const rawMetadata = userData.result.data?.Data?.["profile_metadata"]?.Value;
   if (userData.response.ok && userData.result.code === 200 && typeof rawMetadata === "string") {
     try {
       const parsed = JSON.parse(rawMetadata) as { username?: unknown; email?: unknown };

@@ -80,8 +80,7 @@ function NotificationsPage() {
     <div className="admin-page h-full overflow-y-auto bg-[#101923] text-white">
       <header className="mb-8 grid grid-cols-[minmax(0,1fr)_auto] items-start gap-4 sm:flex sm:items-end sm:justify-between">
         <div className="min-w-0">
-          <p className="text-xs font-black tracking-[.18em] !text-coral">STUDIO</p>
-          <h1 className="admin-heading mt-2 !text-white">Notifications</h1>
+          <h1 className="admin-heading !text-white">Notifications</h1>
           <p className="admin-kicker !text-white/45">
             Every admin alert and recent dashboard activity in one place.
           </p>

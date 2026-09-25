@@ -1,5 +1,6 @@
 import { playfabClientApi, PlayFabError } from './client';
 import type { PlayerProfile } from './types';
+import { DEFAULT_PROFILE_PICTURE_URL, isManagedProfileAvatarUrl } from '@/lib/profile-avatar';
 
 /**
  * Get the current player's profile.
@@ -87,7 +88,7 @@ export function mapPlayFabProfileToPlayerProfile(profile: any): PlayerProfile {
       displayName: 'Player',
       username: 'player',
       email: '',
-      avatarUrl: '/assets/crew-team-illustration.png',
+      avatarUrl: DEFAULT_PROFILE_PICTURE_URL,
       role: 'cameraman',
       crewId: 'CREW-001',
       bio: '',
@@ -112,7 +113,7 @@ export function mapPlayFabProfileToPlayerProfile(profile: any): PlayerProfile {
     displayName,
     username: displayName,
     email: contactEmail || profile.Email || '',
-    avatarUrl: profile.AvatarUrl || '/assets/crew-team-illustration.png',
+    avatarUrl: isManagedProfileAvatarUrl(profile.AvatarUrl) ? profile.AvatarUrl : DEFAULT_PROFILE_PICTURE_URL,
     role: (profile.Role || 'cameraman') as any,
     crewId: profile.CrewId || 'CREW-001',
     bio: profile.Bio || '',

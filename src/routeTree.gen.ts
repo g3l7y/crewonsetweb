@@ -57,6 +57,7 @@ import { Route as ApiAdminPlayerMailRouteImport } from './routes/api/admin/playe
 import { Route as ApiAdminPlayerReportsRouteImport } from './routes/api/admin/player-reports'
 import { Route as ApiAdminPlayersRouteImport } from './routes/api/admin/players'
 import { Route as ApiAdminSubmissionAttachmentsRouteImport } from './routes/api/admin/submission-attachments'
+import { Route as ApiAuthAvatarRouteImport } from './routes/api/auth/avatar'
 import { Route as ApiAuthCheckUsernameRouteImport } from './routes/api/auth/check-username'
 import { Route as ApiAuthGoogleRouteImport } from './routes/api/auth/google'
 import { Route as ApiAuthLoginRouteImport } from './routes/api/auth/login'
@@ -73,6 +74,10 @@ import { Route as ApiPaymongoReturnRouteImport } from './routes/api/paymongo/ret
 import { Route as ApiPaymongoStatusRouteImport } from './routes/api/paymongo/status'
 import { Route as ApiPaymongoWebhookRouteImport } from './routes/api/paymongo/webhook'
 import { Route as ApiPlayfabClientRouteImport } from './routes/api/playfab/client'
+import { Route as ApiPlayfabProfileAvatarRouteImport } from './routes/api/playfab/profile-avatar'
+import { Route as ApiAuthEmailChangeCompleteRouteImport } from './routes/api/auth/email-change/complete'
+import { Route as ApiAuthEmailChangeRequestRouteImport } from './routes/api/auth/email-change/request'
+import { Route as ApiAuthEmailChangeVerifyRouteImport } from './routes/api/auth/email-change/verify'
 import { Route as ApiAuthPasswordRecoveryRequestRouteImport } from './routes/api/auth/password-recovery/request'
 import { Route as ApiAuthPasswordRecoveryResetRouteImport } from './routes/api/auth/password-recovery/reset'
 import { Route as ApiAuthPasswordRecoveryVerifyRouteImport } from './routes/api/auth/password-recovery/verify'
@@ -324,6 +329,11 @@ const ApiAdminSubmissionAttachmentsRoute =
     path: '/api/admin/submission-attachments',
     getParentRoute: () => rootRouteImport,
   } as any)
+const ApiAuthAvatarRoute = ApiAuthAvatarRouteImport.update({
+  id: '/api/auth/avatar',
+  path: '/api/auth/avatar',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiAuthCheckUsernameRoute = ApiAuthCheckUsernameRouteImport.update({
   id: '/api/auth/check-username',
   path: '/api/auth/check-username',
@@ -405,6 +415,29 @@ const ApiPlayfabClientRoute = ApiPlayfabClientRouteImport.update({
   path: '/api/playfab/client',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiPlayfabProfileAvatarRoute = ApiPlayfabProfileAvatarRouteImport.update({
+  id: '/api/playfab/profile-avatar',
+  path: '/api/playfab/profile-avatar',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiAuthEmailChangeCompleteRoute =
+  ApiAuthEmailChangeCompleteRouteImport.update({
+    id: '/api/auth/email-change/complete',
+    path: '/api/auth/email-change/complete',
+    getParentRoute: () => rootRouteImport,
+  } as any)
+const ApiAuthEmailChangeRequestRoute =
+  ApiAuthEmailChangeRequestRouteImport.update({
+    id: '/api/auth/email-change/request',
+    path: '/api/auth/email-change/request',
+    getParentRoute: () => rootRouteImport,
+  } as any)
+const ApiAuthEmailChangeVerifyRoute =
+  ApiAuthEmailChangeVerifyRouteImport.update({
+    id: '/api/auth/email-change/verify',
+    path: '/api/auth/email-change/verify',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 const ApiAuthPasswordRecoveryRequestRoute =
   ApiAuthPasswordRecoveryRequestRouteImport.update({
     id: '/api/auth/password-recovery/request',
@@ -504,6 +537,7 @@ export interface FileRoutesByFullPath {
   '/api/admin/player-reports': typeof ApiAdminPlayerReportsRoute
   '/api/admin/players': typeof ApiAdminPlayersRoute
   '/api/admin/submission-attachments': typeof ApiAdminSubmissionAttachmentsRoute
+  '/api/auth/avatar': typeof ApiAuthAvatarRoute
   '/api/auth/check-username': typeof ApiAuthCheckUsernameRoute
   '/api/auth/google': typeof ApiAuthGoogleRoute
   '/api/auth/login': typeof ApiAuthLoginRoute
@@ -520,6 +554,10 @@ export interface FileRoutesByFullPath {
   '/api/paymongo/status': typeof ApiPaymongoStatusRoute
   '/api/paymongo/webhook': typeof ApiPaymongoWebhookRoute
   '/api/playfab/client': typeof ApiPlayfabClientRoute
+  '/api/playfab/profile-avatar': typeof ApiPlayfabProfileAvatarRoute
+  '/api/auth/email-change/complete': typeof ApiAuthEmailChangeCompleteRoute
+  '/api/auth/email-change/request': typeof ApiAuthEmailChangeRequestRoute
+  '/api/auth/email-change/verify': typeof ApiAuthEmailChangeVerifyRoute
   '/api/auth/password-recovery/request': typeof ApiAuthPasswordRecoveryRequestRoute
   '/api/auth/password-recovery/reset': typeof ApiAuthPasswordRecoveryResetRoute
   '/api/auth/password-recovery/verify': typeof ApiAuthPasswordRecoveryVerifyRoute
@@ -577,6 +615,7 @@ export interface FileRoutesByTo {
   '/api/admin/player-reports': typeof ApiAdminPlayerReportsRoute
   '/api/admin/players': typeof ApiAdminPlayersRoute
   '/api/admin/submission-attachments': typeof ApiAdminSubmissionAttachmentsRoute
+  '/api/auth/avatar': typeof ApiAuthAvatarRoute
   '/api/auth/check-username': typeof ApiAuthCheckUsernameRoute
   '/api/auth/google': typeof ApiAuthGoogleRoute
   '/api/auth/login': typeof ApiAuthLoginRoute
@@ -593,6 +632,10 @@ export interface FileRoutesByTo {
   '/api/paymongo/status': typeof ApiPaymongoStatusRoute
   '/api/paymongo/webhook': typeof ApiPaymongoWebhookRoute
   '/api/playfab/client': typeof ApiPlayfabClientRoute
+  '/api/playfab/profile-avatar': typeof ApiPlayfabProfileAvatarRoute
+  '/api/auth/email-change/complete': typeof ApiAuthEmailChangeCompleteRoute
+  '/api/auth/email-change/request': typeof ApiAuthEmailChangeRequestRoute
+  '/api/auth/email-change/verify': typeof ApiAuthEmailChangeVerifyRoute
   '/api/auth/password-recovery/request': typeof ApiAuthPasswordRecoveryRequestRoute
   '/api/auth/password-recovery/reset': typeof ApiAuthPasswordRecoveryResetRoute
   '/api/auth/password-recovery/verify': typeof ApiAuthPasswordRecoveryVerifyRoute
@@ -653,6 +696,7 @@ export interface FileRoutesById {
   '/api/admin/player-reports': typeof ApiAdminPlayerReportsRoute
   '/api/admin/players': typeof ApiAdminPlayersRoute
   '/api/admin/submission-attachments': typeof ApiAdminSubmissionAttachmentsRoute
+  '/api/auth/avatar': typeof ApiAuthAvatarRoute
   '/api/auth/check-username': typeof ApiAuthCheckUsernameRoute
   '/api/auth/google': typeof ApiAuthGoogleRoute
   '/api/auth/login': typeof ApiAuthLoginRoute
@@ -669,6 +713,10 @@ export interface FileRoutesById {
   '/api/paymongo/status': typeof ApiPaymongoStatusRoute
   '/api/paymongo/webhook': typeof ApiPaymongoWebhookRoute
   '/api/playfab/client': typeof ApiPlayfabClientRoute
+  '/api/playfab/profile-avatar': typeof ApiPlayfabProfileAvatarRoute
+  '/api/auth/email-change/complete': typeof ApiAuthEmailChangeCompleteRoute
+  '/api/auth/email-change/request': typeof ApiAuthEmailChangeRequestRoute
+  '/api/auth/email-change/verify': typeof ApiAuthEmailChangeVerifyRoute
   '/api/auth/password-recovery/request': typeof ApiAuthPasswordRecoveryRequestRoute
   '/api/auth/password-recovery/reset': typeof ApiAuthPasswordRecoveryResetRoute
   '/api/auth/password-recovery/verify': typeof ApiAuthPasswordRecoveryVerifyRoute
@@ -730,6 +778,7 @@ export interface FileRouteTypes {
     | '/api/admin/player-reports'
     | '/api/admin/players'
     | '/api/admin/submission-attachments'
+    | '/api/auth/avatar'
     | '/api/auth/check-username'
     | '/api/auth/google'
     | '/api/auth/login'
@@ -746,6 +795,10 @@ export interface FileRouteTypes {
     | '/api/paymongo/status'
     | '/api/paymongo/webhook'
     | '/api/playfab/client'
+    | '/api/playfab/profile-avatar'
+    | '/api/auth/email-change/complete'
+    | '/api/auth/email-change/request'
+    | '/api/auth/email-change/verify'
     | '/api/auth/password-recovery/request'
     | '/api/auth/password-recovery/reset'
     | '/api/auth/password-recovery/verify'
@@ -803,6 +856,7 @@ export interface FileRouteTypes {
     | '/api/admin/player-reports'
     | '/api/admin/players'
     | '/api/admin/submission-attachments'
+    | '/api/auth/avatar'
     | '/api/auth/check-username'
     | '/api/auth/google'
     | '/api/auth/login'
@@ -819,6 +873,10 @@ export interface FileRouteTypes {
     | '/api/paymongo/status'
     | '/api/paymongo/webhook'
     | '/api/playfab/client'
+    | '/api/playfab/profile-avatar'
+    | '/api/auth/email-change/complete'
+    | '/api/auth/email-change/request'
+    | '/api/auth/email-change/verify'
     | '/api/auth/password-recovery/request'
     | '/api/auth/password-recovery/reset'
     | '/api/auth/password-recovery/verify'
@@ -878,6 +936,7 @@ export interface FileRouteTypes {
     | '/api/admin/player-reports'
     | '/api/admin/players'
     | '/api/admin/submission-attachments'
+    | '/api/auth/avatar'
     | '/api/auth/check-username'
     | '/api/auth/google'
     | '/api/auth/login'
@@ -894,6 +953,10 @@ export interface FileRouteTypes {
     | '/api/paymongo/status'
     | '/api/paymongo/webhook'
     | '/api/playfab/client'
+    | '/api/playfab/profile-avatar'
+    | '/api/auth/email-change/complete'
+    | '/api/auth/email-change/request'
+    | '/api/auth/email-change/verify'
     | '/api/auth/password-recovery/request'
     | '/api/auth/password-recovery/reset'
     | '/api/auth/password-recovery/verify'
@@ -934,6 +997,7 @@ export interface RootRouteChildren {
   ApiAdminPlayerReportsRoute: typeof ApiAdminPlayerReportsRoute
   ApiAdminPlayersRoute: typeof ApiAdminPlayersRoute
   ApiAdminSubmissionAttachmentsRoute: typeof ApiAdminSubmissionAttachmentsRoute
+  ApiAuthAvatarRoute: typeof ApiAuthAvatarRoute
   ApiAuthCheckUsernameRoute: typeof ApiAuthCheckUsernameRoute
   ApiAuthGoogleRoute: typeof ApiAuthGoogleRoute
   ApiAuthLoginRoute: typeof ApiAuthLoginRoute
@@ -949,6 +1013,10 @@ export interface RootRouteChildren {
   ApiPaymongoStatusRoute: typeof ApiPaymongoStatusRoute
   ApiPaymongoWebhookRoute: typeof ApiPaymongoWebhookRoute
   ApiPlayfabClientRoute: typeof ApiPlayfabClientRoute
+  ApiPlayfabProfileAvatarRoute: typeof ApiPlayfabProfileAvatarRoute
+  ApiAuthEmailChangeCompleteRoute: typeof ApiAuthEmailChangeCompleteRoute
+  ApiAuthEmailChangeRequestRoute: typeof ApiAuthEmailChangeRequestRoute
+  ApiAuthEmailChangeVerifyRoute: typeof ApiAuthEmailChangeVerifyRoute
   ApiAuthPasswordRecoveryRequestRoute: typeof ApiAuthPasswordRecoveryRequestRoute
   ApiAuthPasswordRecoveryResetRoute: typeof ApiAuthPasswordRecoveryResetRoute
   ApiAuthPasswordRecoveryVerifyRoute: typeof ApiAuthPasswordRecoveryVerifyRoute
@@ -1297,6 +1365,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiAdminSubmissionAttachmentsRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/auth/avatar': {
+      id: '/api/auth/avatar'
+      path: '/api/auth/avatar'
+      fullPath: '/api/auth/avatar'
+      preLoaderRoute: typeof ApiAuthAvatarRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/auth/check-username': {
       id: '/api/auth/check-username'
       path: '/api/auth/check-username'
@@ -1407,6 +1482,34 @@ declare module '@tanstack/react-router' {
       path: '/api/playfab/client'
       fullPath: '/api/playfab/client'
       preLoaderRoute: typeof ApiPlayfabClientRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/playfab/profile-avatar': {
+      id: '/api/playfab/profile-avatar'
+      path: '/api/playfab/profile-avatar'
+      fullPath: '/api/playfab/profile-avatar'
+      preLoaderRoute: typeof ApiPlayfabProfileAvatarRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/auth/email-change/complete': {
+      id: '/api/auth/email-change/complete'
+      path: '/api/auth/email-change/complete'
+      fullPath: '/api/auth/email-change/complete'
+      preLoaderRoute: typeof ApiAuthEmailChangeCompleteRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/auth/email-change/request': {
+      id: '/api/auth/email-change/request'
+      path: '/api/auth/email-change/request'
+      fullPath: '/api/auth/email-change/request'
+      preLoaderRoute: typeof ApiAuthEmailChangeRequestRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/auth/email-change/verify': {
+      id: '/api/auth/email-change/verify'
+      path: '/api/auth/email-change/verify'
+      fullPath: '/api/auth/email-change/verify'
+      preLoaderRoute: typeof ApiAuthEmailChangeVerifyRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/api/auth/password-recovery/request': {
@@ -1584,6 +1687,7 @@ const rootRouteChildren: RootRouteChildren = {
   ApiAdminPlayerReportsRoute: ApiAdminPlayerReportsRoute,
   ApiAdminPlayersRoute: ApiAdminPlayersRoute,
   ApiAdminSubmissionAttachmentsRoute: ApiAdminSubmissionAttachmentsRoute,
+  ApiAuthAvatarRoute: ApiAuthAvatarRoute,
   ApiAuthCheckUsernameRoute: ApiAuthCheckUsernameRoute,
   ApiAuthGoogleRoute: ApiAuthGoogleRoute,
   ApiAuthLoginRoute: ApiAuthLoginRoute,
@@ -1599,6 +1703,10 @@ const rootRouteChildren: RootRouteChildren = {
   ApiPaymongoStatusRoute: ApiPaymongoStatusRoute,
   ApiPaymongoWebhookRoute: ApiPaymongoWebhookRoute,
   ApiPlayfabClientRoute: ApiPlayfabClientRoute,
+  ApiPlayfabProfileAvatarRoute: ApiPlayfabProfileAvatarRoute,
+  ApiAuthEmailChangeCompleteRoute: ApiAuthEmailChangeCompleteRoute,
+  ApiAuthEmailChangeRequestRoute: ApiAuthEmailChangeRequestRoute,
+  ApiAuthEmailChangeVerifyRoute: ApiAuthEmailChangeVerifyRoute,
   ApiAuthPasswordRecoveryRequestRoute: ApiAuthPasswordRecoveryRequestRoute,
   ApiAuthPasswordRecoveryResetRoute: ApiAuthPasswordRecoveryResetRoute,
   ApiAuthPasswordRecoveryVerifyRoute: ApiAuthPasswordRecoveryVerifyRoute,

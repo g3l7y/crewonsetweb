@@ -16,7 +16,7 @@ export const Route = createFileRoute("/portal/settings")({
 });
 
 import Image from "@/components/next-compat/image";
-import { ChangeEvent, useEffect, useRef, useState } from "react";
+import { ChangeEvent, useCallback, useEffect, useRef, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import {
   Bell,
@@ -40,6 +40,8 @@ import { DisplayThemeSwitcher } from "@/components/theme/display-theme-switcher"
 import { PasswordRecoveryModal } from "@/components/password-recovery-modal";
 import { isMockMode } from "@/lib/playfab/config";
 import { QUERY_KEYS, usePlayerProfile, useUpdateProfile } from "@/lib/playfab/hooks";
+import { DEFAULT_PROFILE_PICTURE_URL, isManagedProfileAvatarUrl } from "@/lib/profile-avatar";
+import { readImageAsDataUrl, savePlayerAvatar } from "@/lib/profile-avatar-client";
 import {
   bugCategories,
   adminNotificationsStore,
@@ -89,13 +91,10 @@ type Preferences = {
   profileVisibility: boolean;
   showStatus: boolean;
   showCrewActivity: boolean;
-  showCareerInfo: boolean;
   productionUpdates: boolean;
-  friendRequests: boolean;
-  crewInvites: boolean;
-  emailNotifications: boolean;
+  friendUpdates: boolean;
+  transactions: boolean;
   compactMode: boolean;
-  reduceMotion: boolean;
   highContrast: boolean;
   largeText: boolean;
 };
@@ -103,20 +102,23 @@ type Preferences = {
 const defaultAccount: AccountData = {
   username: "CAMERA_PRO",
   email: "player@gmail.com",
-  avatar: "/assets/crew-set-illustration.png",
+  avatar: DEFAULT_PROFILE_PICTURE_URL,
 };
+
+function getSavedAvatar(value: unknown): string {
+  if (typeof value !== "string") return DEFAULT_PROFILE_PICTURE_URL;
+  if (value === DEFAULT_PROFILE_PICTURE_URL || value.startsWith("data:image/") || isManagedProfileAvatarUrl(value)) return value;
+  return DEFAULT_PROFILE_PICTURE_URL;
+}
 
 const defaultPreferences: Preferences = {
   profileVisibility: true,
   showStatus: true,
   showCrewActivity: true,
-  showCareerInfo: true,
   productionUpdates: true,
-  friendRequests: true,
-  crewInvites: true,
-  emailNotifications: false,
+  friendUpdates: true,
+  transactions: true,
   compactMode: false,
-  reduceMotion: false,
   highContrast: false,
   largeText: false,
 };
@@ -141,6 +143,7 @@ function SettingsPage() {
   const [account, setAccount] = useState<AccountData>(defaultAccount);
 
   const [savedAccount, setSavedAccount] = useState<AccountData>(defaultAccount);
+  const [avatarSaving, setAvatarSaving] = useState(false);
 
   const [preferences, setPreferences] = useState<Preferences>(defaultPreferences);
 
@@ -200,51 +203,51 @@ function SettingsPage() {
   const [credentialConfirmPassword, setCredentialConfirmPassword] = useState("");
   const [credentialConfirmError, setCredentialConfirmError] = useState("");
   const [pendingAccount, setPendingAccount] = useState<AccountData | null>(null);
+  const [emailChangeDemoLink, setEmailChangeDemoLink] = useState("");
+  const [emailChangeToken, setEmailChangeToken] = useState("");
+  const [emailChangeOpen, setEmailChangeOpen] = useState(false);
+  const [emailChangeDraft, setEmailChangeDraft] = useState("");
+  const [emailChangeError, setEmailChangeError] = useState("");
+  const [emailChangeSaving, setEmailChangeSaving] = useState(false);
+  const handledEmailChangeLink = useRef("");
 
   const fileInput = useRef<HTMLInputElement>(null);
 
   /* =========================================================
-     LOAD SAVED SETTINGS
+  LOAD SAVED SETTINGS
   ========================================================= */
 
   useEffect(() => {
-    if (!mockMode) {
-      const profile = profileQuery.data;
-      if (!profile) return;
-      const loadedAccount: AccountData = {
-        username: profile.username || profile.displayName || "player",
-        email: profile.email || "",
-        avatar: profile.avatarUrl || defaultAccount.avatar,
-      };
-      setAccount(loadedAccount);
-      setSavedAccount(loadedAccount);
-      setPreferences({
-        ...defaultPreferences,
-        showStatus: profile.showStatus ?? defaultPreferences.showStatus,
-      });
-      setLoaded(true);
-      return;
-    }
+    const profile = profileQuery.data;
+    if (!mockMode && !profile) return;
 
     try {
       const storedAccount = localStorage.getItem("player-account");
       const storedIdentity = localStorage.getItem("cos.profile.account");
-
       const storedPreferences = localStorage.getItem("player-preferences");
+      const savedPreferences = storedPreferences
+        ? JSON.parse(storedPreferences) as Partial<Preferences> & { friendRequests?: boolean; reduceMotion?: boolean }
+        : {};
 
       const profileIdentity = storedIdentity
         ? JSON.parse(storedIdentity) as { username?: string; email?: string }
         : null;
 
       const storedAccountData = storedAccount
-        ? JSON.parse(storedAccount) as Partial<AccountData> & { displayName?: string }
+        ? JSON.parse(storedAccount) as Partial<AccountData> & { displayName?: string; avatarUrl?: string }
         : null;
-      const loadedAccount = storedAccountData
+      const loadedAccount = !mockMode && profile
+        ? {
+            username: profile.username || profile.displayName || "player",
+            email: profile.email || "",
+            avatar: profile.avatarUrl || defaultAccount.avatar,
+          }
+        : storedAccountData
         ? {
             ...defaultAccount,
             username: storedAccountData.username || storedAccountData.displayName || defaultAccount.username,
             email: storedAccountData.email || defaultAccount.email,
-            avatar: storedAccountData.avatar || defaultAccount.avatar,
+            avatar: getSavedAvatar(storedAccountData.avatarUrl ?? storedAccountData.avatar),
           }
         : profileIdentity?.username
           ? {
@@ -254,17 +257,18 @@ function SettingsPage() {
             }
         : defaultAccount;
 
-      const loadedPreferences = storedPreferences
-        ? {
-            ...defaultPreferences,
-            ...JSON.parse(storedPreferences),
-          }
-        : {
-            ...defaultPreferences,
-            showStatus: mockMode
-              ? defaultPreferences.showStatus
-              : profileQuery.data?.showStatus ?? defaultPreferences.showStatus,
-          };
+      const loadedPreferences: Preferences = {
+        ...defaultPreferences,
+        productionUpdates: savedPreferences.productionUpdates ?? defaultPreferences.productionUpdates,
+        friendUpdates: savedPreferences.friendUpdates ?? savedPreferences.friendRequests ?? defaultPreferences.friendUpdates,
+        transactions: savedPreferences.transactions ?? defaultPreferences.transactions,
+        compactMode: savedPreferences.compactMode ?? defaultPreferences.compactMode,
+        highContrast: savedPreferences.highContrast ?? defaultPreferences.highContrast,
+        largeText: savedPreferences.largeText ?? defaultPreferences.largeText,
+        profileVisibility: profile?.profileVisibility ?? savedPreferences.profileVisibility ?? defaultPreferences.profileVisibility,
+        showStatus: profile?.showStatus ?? savedPreferences.showStatus ?? defaultPreferences.showStatus,
+        showCrewActivity: profile?.showCrewActivity ?? savedPreferences.showCrewActivity ?? defaultPreferences.showCrewActivity,
+      };
 
       setAccount(loadedAccount);
       setSavedAccount(loadedAccount);
@@ -281,13 +285,107 @@ function SettingsPage() {
      MESSAGE
   ========================================================= */
 
-  const showMessage = (text: string, type: "success" | "error" = "success") => {
+  const showMessage = useCallback((text: string, type: "success" | "error" = "success") => {
     setMessage(text);
     setMessageType(type);
 
     window.setTimeout(() => {
       setMessage("");
     }, 3000);
+  }, []);
+
+  useEffect(() => {
+    if (!loaded) return;
+    const url = new URL(window.location.href);
+    const token = url.searchParams.get("emailChangeToken") ?? "";
+    if (!token || handledEmailChangeLink.current === token) return;
+    handledEmailChangeLink.current = token;
+    url.searchParams.delete("emailChangeToken");
+    window.history.replaceState({}, "", url.toString());
+    void (async () => {
+      try {
+        const response = await fetch("/api/auth/email-change/verify", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ token }),
+        });
+        const result = await response.json().catch(() => ({})) as { success?: boolean; error?: string };
+        if (!response.ok || !result.success) throw new Error(result.error ?? "This email-change link is invalid or expired.");
+        setEmailChangeToken(token);
+        setEmailChangeDraft("");
+        setEmailChangeError("");
+        setEmailChangeOpen(true);
+      } catch (error) {
+        showMessage(error instanceof Error ? error.message : "Unable to verify this email-change link.", "error");
+      }
+    })();
+  }, [loaded, showMessage]);
+
+  const requestEmailChange = async () => {
+    setEmailChangeDemoLink("");
+    try {
+      const response = await fetch("/api/auth/email-change/request", { method: "POST" });
+      const result = await response.json().catch(() => ({})) as { success?: boolean; error?: string; message?: string; verificationUrl?: string };
+      if (!response.ok || !result.success) throw new Error(result.error ?? "Unable to send an email-change link.");
+      if (result.verificationUrl) setEmailChangeDemoLink(result.verificationUrl);
+      showMessage(result.message ?? "Check your current email for a secure change link.");
+    } catch (error) {
+      showMessage(error instanceof Error ? error.message : "Unable to send an email-change link.", "error");
+    }
+  };
+
+  const openEmailChangeLink = async (token: string) => {
+    try {
+      const response = await fetch("/api/auth/email-change/verify", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ token }),
+      });
+      const result = await response.json().catch(() => ({})) as { success?: boolean; error?: string };
+      if (!response.ok || !result.success) throw new Error(result.error ?? "This email-change link is invalid or expired.");
+      setEmailChangeToken(token);
+      setEmailChangeDraft("");
+      setEmailChangeError("");
+      setEmailChangeOpen(true);
+    } catch (error) {
+      showMessage(error instanceof Error ? error.message : "Unable to verify this email-change link.", "error");
+    }
+  };
+
+  const completeEmailChange = async () => {
+    const nextEmail = emailChangeDraft.trim().toLowerCase();
+    if (!isValidEmail(nextEmail)) {
+      setEmailChangeError(EMAIL_ERROR);
+      return;
+    }
+    setEmailChangeSaving(true);
+    setEmailChangeError("");
+    try {
+      const response = await fetch("/api/auth/email-change/complete", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ token: emailChangeToken, email: nextEmail }),
+      });
+      const result = await response.json().catch(() => ({})) as { success?: boolean; email?: string; error?: string; message?: string };
+      if (!response.ok || !result.success) throw new Error(result.error ?? "Unable to update your email address.");
+      const nextAccount = { ...account, email: result.email ?? nextEmail };
+      setAccount(nextAccount);
+      setSavedAccount(nextAccount);
+      if (mockMode) {
+        window.localStorage.setItem("player-account", JSON.stringify(nextAccount));
+        window.localStorage.setItem("cos.profile.account", JSON.stringify({ username: nextAccount.username, email: nextAccount.email }));
+      }
+      await queryClient.invalidateQueries({ queryKey: QUERY_KEYS.profile });
+      await queryClient.invalidateQueries({ queryKey: QUERY_KEYS.session });
+      setEmailChangeOpen(false);
+      setEmailChangeDemoLink("");
+      setEmailChangeToken("");
+      showMessage(result.message ?? "Email updated.");
+    } catch (error) {
+      setEmailChangeError(error instanceof Error ? error.message : "Unable to update your email address.");
+    } finally {
+      setEmailChangeSaving(false);
+    }
   };
 
   /* =========================================================
@@ -299,11 +397,14 @@ function SettingsPage() {
     previousPreferences: Preferences,
   ) => {
     try {
-      if (!mockMode && profileQuery.data?.showStatus !== nextPreferences.showStatus) {
-        await updateProfileMutation.mutateAsync({ showStatus: nextPreferences.showStatus });
+      const profileUpdates: Partial<import('@/lib/playfab/types').PlayerProfile> = {};
+      for (const key of ['profileVisibility', 'showStatus', 'showCrewActivity'] as const) {
+        if (previousPreferences[key] !== nextPreferences[key]) profileUpdates[key] = nextPreferences[key];
       }
+      if (Object.keys(profileUpdates).length > 0) await updateProfileMutation.mutateAsync(profileUpdates);
 
       window.localStorage.setItem("player-preferences", JSON.stringify(nextPreferences));
+      window.dispatchEvent(new Event("cos:player-preferences"));
       setPreferences(nextPreferences);
       showMessage("Preference updated.");
     } catch {
@@ -317,13 +418,13 @@ function SettingsPage() {
       const usernameChanged = nextAccount.username.toLowerCase() !== savedAccount.username.toLowerCase();
       const emailChanged = nextAccount.email.toLowerCase() !== savedAccount.email.toLowerCase();
 
-      if (usernameChanged || emailChanged) {
+      if (emailChanged) throw new Error("Email changes require verification from your current email.");
+      if (usernameChanged) {
         const response = await fetch("/api/auth/profile", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
             ...(usernameChanged ? { username: nextAccount.username } : {}),
-            ...(emailChanged ? { email: nextAccount.email } : {}),
             currentPassword: confirmationPassword,
           }),
         });
@@ -361,6 +462,10 @@ function SettingsPage() {
   ========================================================= */
 
   const saveAccountField = async (field: "Username" | "Email") => {
+    if (field === "Email") {
+      await requestEmailChange();
+      return;
+    }
     const value = draftValue.trim();
 
     if (!value) {
@@ -368,17 +473,12 @@ function SettingsPage() {
       return;
     }
 
-    if (field === "Email" && !isValidEmail(value)) {
-      showMessage(EMAIL_ERROR, "error");
-      return;
-    }
-
-    if (field === "Username" && !isValidUsername(value)) {
+    if (!isValidUsername(value)) {
       showMessage(USERNAME_ERROR, "error");
       return;
     }
 
-    if (field === "Username" && value.toLowerCase() !== savedAccount.username.toLowerCase()) {
+    if (value.toLowerCase() !== savedAccount.username.toLowerCase()) {
       try {
         const response = await fetch(`/api/auth/check-username?username=${encodeURIComponent(value)}`);
         const result = (await response.json()) as { available?: boolean; error?: string };
@@ -392,10 +492,7 @@ function SettingsPage() {
       }
     }
 
-    const nextAccount =
-      field === "Username"
-        ? { ...account, username: value.toUpperCase() }
-        : { ...account, email: value.toLowerCase() };
+    const nextAccount = { ...account, username: value.toUpperCase() };
 
     setPendingAccount(nextAccount);
     setCredentialConfirmPassword("");
@@ -412,7 +509,7 @@ function SettingsPage() {
     setCredentialConfirmError("");
     const saved = await persistAccount(
       pendingAccount,
-      pendingAccount.username.toLowerCase() !== savedAccount.username.toLowerCase() ? "Username updated." : "Email updated.",
+      "Username updated.",
       credentialConfirmPassword,
     );
     if (!saved) {
@@ -430,13 +527,9 @@ function SettingsPage() {
      AVATAR
   ========================================================= */
 
-  const handleAvatarChange = (event: ChangeEvent<HTMLInputElement>) => {
-    if (!mockMode) {
-      showMessage("Avatar uploads are not connected to PlayFab yet.", "error");
-      return;
-    }
+  const handleAvatarChange = async (event: ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
-
+    event.target.value = "";
     if (!file) return;
 
     if (!["image/jpeg", "image/png"].includes(file.type)) {
@@ -449,26 +542,25 @@ function SettingsPage() {
       return;
     }
 
-    const reader = new FileReader();
-
-    reader.onload = () => {
-      const result = reader.result;
-
-      if (typeof result !== "string") {
-        showMessage("Unable to load the selected image.", "error");
-        return;
+    setAvatarSaving(true);
+    try {
+      const avatarUrl = mockMode
+        ? await readImageAsDataUrl(file)
+        : await savePlayerAvatar(file);
+      if (mockMode) await updateProfileMutation.mutateAsync({ avatarUrl });
+      const nextAccount = { ...account, avatar: avatarUrl };
+      setAccount(nextAccount);
+      setSavedAccount(nextAccount);
+      if (mockMode) {
+        window.localStorage.setItem("player-account", JSON.stringify({ ...nextAccount, avatarUrl }));
       }
-
-      void persistAccount({ ...account, avatar: result }, "Avatar updated.");
-    };
-
-    reader.onerror = () => {
-      showMessage("Unable to load the selected image.", "error");
-    };
-
-    reader.readAsDataURL(file);
-
-    event.target.value = "";
+      await queryClient.invalidateQueries({ queryKey: QUERY_KEYS.profile });
+      showMessage("Avatar updated.");
+    } catch (error) {
+      showMessage(error instanceof Error ? error.message : "The avatar could not be saved.", "error");
+    } finally {
+      setAvatarSaving(false);
+    }
   };
 
   /* =========================================================
@@ -495,9 +587,17 @@ function SettingsPage() {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ currentPassword, newPassword }),
     });
-    const result = (await response.json().catch(() => ({}))) as { success?: boolean; error?: string };
+    const result = (await response.json().catch(() => ({}))) as { success?: boolean; error?: string; recoveryRequired?: boolean; message?: string };
     if (!response.ok || result.success === false) {
       setPasswordError(result.error ?? "Unable to update your password.");
+      return;
+    }
+    if (result.recoveryRequired) {
+      setPasswordOpen(false);
+      setCurrentPassword("");
+      setNewPassword("");
+      setConfirmPassword("");
+      showMessage(result.message ?? "Follow the secure reset link sent to your email to finish changing your password.");
       return;
     }
     setPasswordSuccess(true);
@@ -533,6 +633,7 @@ function SettingsPage() {
     localStorage.removeItem("player-account");
 
     localStorage.removeItem("player-preferences");
+    window.dispatchEvent(new Event("cos:player-preferences"));
 
     localStorage.removeItem("player-password");
 
@@ -918,7 +1019,7 @@ function SettingsPage() {
                 <div className="divide-y divide-white/[0.07] px-6">
                   {/* ACCOUNT FIELDS */}
 
-                  {accountRows.map((row) => (
+        {accountRows.map((row) => (
                     <div
                       key={row.label}
                       className="flex flex-col justify-between gap-3 py-5 sm:flex-row sm:items-center"
@@ -928,7 +1029,7 @@ function SettingsPage() {
                           {row.label}
                         </p>
 
-                        {editing === row.key ? (
+                        {editing === row.key && row.key === "Username" ? (
                           <input
                             value={draftValue}
                             onChange={(event) => {
@@ -951,7 +1052,7 @@ function SettingsPage() {
                               }
                             }}
                             autoFocus
-                            type={row.key === "Email" ? "email" : "text"}
+                            type="text"
                             minLength={row.key === "Username" ? 3 : undefined}
                             maxLength={row.key === "Username" ? 20 : undefined}
                             pattern={row.key === "Username" ? "[A-Za-z][A-Za-z0-9_]{2,19}" : undefined}
@@ -967,6 +1068,10 @@ function SettingsPage() {
                       <button
                         type="button"
                         onClick={() => {
+                          if (row.key === "Email") {
+                            void requestEmailChange();
+                            return;
+                          }
                           if (editing === row.key) {
                             void saveAccountField(row.key);
                           } else {
@@ -975,10 +1080,16 @@ function SettingsPage() {
                         }}
                         className="w-fit rounded-md border border-white/10 px-3 py-2 text-xs font-black text-white/45 transition hover:border-coral hover:text-coral"
                       >
-                        {editing === row.key ? "DONE" : "CHANGE"}
+                        {row.key === "Username" && editing === row.key ? "DONE" : "CHANGE"}
                       </button>
                     </div>
                   ))}
+
+                  {emailChangeDemoLink && (
+                    <div className="mb-4 rounded-md border border-yellow/25 bg-yellow/[0.06] p-4 text-sm text-white/70">
+                      Demo verification email prepared. <a href={emailChangeDemoLink} className="ml-1 font-black text-yellow underline" onClick={(event) => { event.preventDefault(); const token = new URL(emailChangeDemoLink).searchParams.get("emailChangeToken") ?? ""; void openEmailChangeLink(token); }}>Open demo email link</a>
+                    </div>
+                  )}
 
                   {/* AVATAR */}
 
@@ -989,7 +1100,7 @@ function SettingsPage() {
                           src={account.avatar}
                           alt="Player avatar"
                           fill
-                          unoptimized={account.avatar.startsWith("data:")}
+                      unoptimized={account.avatar.startsWith("data:")}
                           className="object-cover object-[62%_45%]"
                         />
                       </div>
@@ -1014,9 +1125,10 @@ function SettingsPage() {
                     <button
                       type="button"
                       onClick={() => fileInput.current?.click()}
-                      className="w-fit rounded-md border border-white/10 px-3 py-2 text-xs font-black text-white/45 transition hover:border-coral hover:text-coral"
+                      disabled={avatarSaving}
+                      className="w-fit rounded-md border border-white/10 px-3 py-2 text-xs font-black text-white/45 transition hover:border-coral hover:text-coral disabled:cursor-wait disabled:opacity-50"
                     >
-                      CHANGE
+                      {avatarSaving ? "SAVING…" : "CHANGE"}
                     </button>
                   </div>
                 </div>
@@ -1079,13 +1191,6 @@ function SettingsPage() {
                   />
 
                   <PreferenceRow
-                    label="Reduce Motion"
-                    description="Minimize animations and transitions across the portal."
-                    checked={preferences.reduceMotion}
-                    onChange={() => togglePreference("reduceMotion")}
-                  />
-
-                  <PreferenceRow
                     label="High Contrast"
                     description="Increase contrast for better readability."
                     checked={preferences.highContrast}
@@ -1134,13 +1239,6 @@ function SettingsPage() {
                   />
 
                   <PreferenceRow
-                    label="Career Information"
-                    description="Show your career statistics and achievements."
-                    checked={preferences.showCareerInfo}
-                    onChange={() => togglePreference("showCareerInfo")}
-                  />
-
-                  <PreferenceRow
                     label="Crew Activity"
                     description="Show your activity to current crew members."
                     checked={preferences.showCrewActivity}
@@ -1169,30 +1267,23 @@ function SettingsPage() {
                 <div className="space-y-3 p-7">
                   <PreferenceRow
                     label="Production Updates"
-                    description="Receive updates about productions you are involved in."
+                    description="Bell alerts for completed production levels and unlocked achievements; activity stays in Dashboard and Inbox."
                     checked={preferences.productionUpdates}
                     onChange={() => togglePreference("productionUpdates")}
                   />
 
                   <PreferenceRow
-                    label="Friend Requests"
-                    description="Receive notifications when players send you friend requests."
-                    checked={preferences.friendRequests}
-                    onChange={() => togglePreference("friendRequests")}
+                    label="Friend Updates"
+                    description="Bell alerts when someone accepts your friend request; activity stays in Dashboard and Inbox."
+                    checked={preferences.friendUpdates}
+                    onChange={() => togglePreference("friendUpdates")}
                   />
 
                   <PreferenceRow
-                    label="Crew Invitations"
-                    description="Receive notifications when a crew invites you."
-                    checked={preferences.crewInvites}
-                    onChange={() => togglePreference("crewInvites")}
-                  />
-
-                  <PreferenceRow
-                    label="Email Notifications"
-                    description="Receive important player updates through email."
-                    checked={preferences.emailNotifications}
-                    onChange={() => togglePreference("emailNotifications")}
+                    label="Transactions"
+                    description="Bell alerts for shop purchases and C-Coin top-ups; activity stays in Dashboard and Inbox."
+                    checked={preferences.transactions}
+                    onChange={() => togglePreference("transactions")}
                   />
                 </div>
               </section>
@@ -1604,7 +1695,7 @@ function SettingsPage() {
               </div>
               <button type="button" onClick={() => setCredentialConfirmOpen(false)} aria-label="Close" className="grid size-9 place-items-center rounded-md text-white/30 transition hover:bg-white/[0.05] hover:text-white"><X className="size-5" /></button>
             </div>
-            <p className="mt-4 text-sm leading-relaxed text-white/55">Enter your current password before we update your username or email address.</p>
+            <p className="mt-4 text-sm leading-relaxed text-white/55">Enter your current password before we update your username.</p>
             {credentialConfirmError && <p className="mt-4 rounded-md border border-coral/30 bg-coral/10 px-3 py-2 text-xs font-bold text-coral">{credentialConfirmError}</p>}
             <input
               type="password"
@@ -1619,6 +1710,27 @@ function SettingsPage() {
             <div className="mt-5 flex justify-end gap-2">
               <button type="button" onClick={() => setCredentialConfirmOpen(false)} className="rounded-md border border-white/10 px-4 py-2.5 text-xs font-black uppercase text-white/50 hover:text-white">Cancel</button>
               <button type="button" onClick={() => void confirmAccountCredentialChange()} className="rounded-md bg-coral px-5 py-2.5 text-xs font-black uppercase text-white hover:bg-coral/90">Confirm</button>
+            </div>
+          </section>
+        </div>
+      )}
+
+      {emailChangeOpen && (
+        <div className="fixed inset-0 z-[90] grid place-items-center bg-[#05080d]/85 p-5 backdrop-blur-md" role="dialog" aria-modal="true">
+          <section className="w-full max-w-md rounded-xl border border-white/[0.09] bg-[#151c29] p-6 text-white shadow-2xl shadow-black/50">
+            <div className="flex items-start justify-between gap-4">
+              <div>
+                <p className="text-[10px] font-black uppercase tracking-[.18em] text-coral">ACCOUNT SECURITY</p>
+                <h2 className="mt-2 text-2xl font-black uppercase tracking-tight">Update Email</h2>
+              </div>
+              <button type="button" onClick={() => setEmailChangeOpen(false)} aria-label="Close" className="grid size-9 place-items-center rounded-md text-white/30 transition hover:bg-white/[0.05] hover:text-white"><X className="size-5" /></button>
+            </div>
+            <p className="mt-4 text-sm leading-relaxed text-white/55">The verification link is valid for 30 minutes. Enter the new email address you want to use to sign in.</p>
+            {emailChangeError && <p className="mt-4 rounded-md border border-coral/30 bg-coral/10 px-3 py-2 text-xs font-bold text-coral">{emailChangeError}</p>}
+            <input type="email" value={emailChangeDraft} onChange={(event) => setEmailChangeDraft(event.target.value)} onKeyDown={(event) => { if (event.key === "Enter") void completeEmailChange(); }} autoComplete="email" placeholder="New email address" className="mt-4 w-full rounded-lg border border-white/10 bg-[#0d121c] px-4 py-3 text-sm text-white outline-none placeholder:text-white/20 focus:border-coral focus:ring-4 focus:ring-coral/10" autoFocus />
+            <div className="mt-5 flex justify-end gap-2">
+              <button type="button" onClick={() => setEmailChangeOpen(false)} className="rounded-md border border-white/10 px-4 py-2.5 text-xs font-black uppercase text-white/50 hover:text-white">Cancel</button>
+              <button type="button" disabled={emailChangeSaving} onClick={() => void completeEmailChange()} className="rounded-md bg-coral px-5 py-2.5 text-xs font-black uppercase text-white hover:bg-coral/90 disabled:opacity-60">{emailChangeSaving ? "SAVING…" : "SAVE NEW EMAIL"}</button>
             </div>
           </section>
         </div>

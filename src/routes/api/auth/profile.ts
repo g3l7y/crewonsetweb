@@ -1,9 +1,8 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { PLAYFAB_API_BASE, isMockMode } from "@/lib/playfab/config";
-import { syncPlayFabContactEmail } from "@/lib/playfab/contact-email";
 import { PLAYFAB_DATA_KEYS } from "@/lib/playfab/constants";
 import { createSessionCookies, validateSessionFromRequest } from "@/lib/playfab/session";
-import { getMockAccountBySessionTicket, isMockEmailTaken, isMockUsernameTaken, updateMockAccountEmail, updateMockAccountUsername } from "@/lib/playfab/mock-accounts";
+import { getMockAccountBySessionTicket, isMockUsernameTaken, updateMockAccountUsername } from "@/lib/playfab/mock-accounts";
 import { isValidEmail, isValidUsername, EMAIL_ERROR, USERNAME_ERROR } from "@/lib/validation";
 import { findPlayFabAccountByIdentifier, verifyPlayFabCurrentPassword } from "@/lib/playfab/credential-verification";
 
@@ -12,6 +11,9 @@ type ProfileMetadata = {
   email?: string;
   googleProfileSetup?: boolean;
   bio?: string;
+  avatarUrl?: string;
+  avatarFileName?: string;
+  avatarUpdatedAt?: number;
   socialLinks?: { twitter?: string; instagram?: string; youtube?: string };
   showStatus?: boolean;
 };
@@ -41,11 +43,12 @@ export const Route = createFileRoute("/api/auth/profile")({
         const email = body.email?.trim().toLowerCase() ?? "";
         if (username && !isValidUsername(username)) return Response.json({ success: false, error: USERNAME_ERROR }, { status: 400 });
         if (email && !isValidEmail(email)) return Response.json({ success: false, error: EMAIL_ERROR }, { status: 400 });
+        if (email) return Response.json({ success: false, error: "Email changes require verification from your current email. Use the email-change link in Account Settings." }, { status: 400 });
         if (!username && !email && body.bio === undefined && !body.socialLinks) {
           return Response.json({ success: false, error: "A profile field is required." }, { status: 400 });
         }
 
-        const credentialChange = Boolean(username || email);
+        const credentialChange = Boolean(username);
         if (credentialChange && !body.currentPassword) {
           return Response.json({ success: false, error: "Enter your current password before changing account credentials." }, { status: 400 });
         }
@@ -59,16 +62,9 @@ export const Route = createFileRoute("/api/auth/profile")({
           if (username && username.toLowerCase() !== account.username.toLowerCase() && isMockUsernameTaken(username)) {
             return Response.json({ success: false, error: "That username is already in use. Please choose another." }, { status: 409 });
           }
-          if (email && email.toLowerCase() !== account.email.toLowerCase() && isMockEmailTaken(email)) {
-            return Response.json({ success: false, error: "That email is already in use. Please choose another." }, { status: 409 });
-          }
           if (username) {
             const updatedUsername = updateMockAccountUsername(session.sessionTicket, username);
             if (!updatedUsername.success) return Response.json(updatedUsername, { status: 409 });
-          }
-          if (email) {
-            const updatedEmail = updateMockAccountEmail(session.sessionTicket, email);
-            if (!updatedEmail.success) return Response.json(updatedEmail, { status: 409 });
           }
           const updatedAccount = getMockAccountBySessionTicket(session.sessionTicket);
           const headers = new Headers({ "Content-Type": "application/json" });
@@ -76,7 +72,7 @@ export const Route = createFileRoute("/api/auth/profile")({
             ...session,
             username: updatedAccount?.username ?? session.username,
             displayName: updatedAccount?.displayName ?? session.displayName,
-            email: updatedAccount?.email ?? session.email,
+            email: session.email,
           })) headers.append("Set-Cookie", cookie);
           return new Response(JSON.stringify({ success: true, username: updatedAccount?.username, email: updatedAccount?.email }), { headers });
         }
@@ -86,21 +82,11 @@ export const Route = createFileRoute("/api/auth/profile")({
             return Response.json({ success: false, error: "Current password is incorrect." }, { status: 401 });
           }
 
-          for (const candidate of [username, email].filter(Boolean)) {
-            const existing = await findPlayFabAccountByIdentifier(candidate);
-            if (existing && existing.playFabId !== session.playFabId) {
-              return Response.json({ success: false, error: candidate === email ? "That email is already in use. Please choose another." : "That username is already in use. Please choose another." }, { status: 409 });
-            }
-          }
-
           if (username) {
-            await playFabClientRequest("/Client/UpdateUserTitleDisplayName", session.sessionTicket, { DisplayName: username });
-          }
-          if (email) {
-            await syncPlayFabContactEmail(session.sessionTicket, email, {
-              playFabId: session.playFabId,
-              secretKey: process.env["PLAYFAB_SECRET_KEY"]?.trim(),
-            });
+            const existing = await findPlayFabAccountByIdentifier(username);
+            if (existing && existing.playFabId !== session.playFabId) {
+              return Response.json({ success: false, error: "That username is already in use. Please choose another." }, { status: 409 });
+            }
           }
 
           const userData = await playFabClientRequest("/Client/GetUserData", session.sessionTicket, { Keys: [PLAYFAB_DATA_KEYS.profile_metadata] });
@@ -109,27 +95,35 @@ export const Route = createFileRoute("/api/auth/profile")({
           if (rawMetadata) {
             try { metadata = JSON.parse(rawMetadata) as ProfileMetadata; } catch { metadata = {}; }
           }
+          const updatedMetadata: ProfileMetadata = {
+            ...metadata,
+            ...(username ? { username } : {}),
+            ...(body.bio !== undefined ? { bio: body.bio } : {}),
+            ...(body.socialLinks ? { socialLinks: body.socialLinks } : {}),
+            googleProfileSetup: true,
+          };
           await playFabClientRequest("/Client/UpdateUserData", session.sessionTicket, {
-            Data: {
-              [PLAYFAB_DATA_KEYS.profile_metadata]: JSON.stringify({
-                ...metadata,
-                ...(username ? { username } : {}),
-                ...(email ? { email } : {}),
-                ...(body.bio !== undefined ? { bio: body.bio } : {}),
-                ...(body.socialLinks ? { socialLinks: body.socialLinks } : {}),
-                googleProfileSetup: true,
-              }),
-            },
+            Data: { [PLAYFAB_DATA_KEYS.profile_metadata]: JSON.stringify(updatedMetadata) },
           });
+          if (username) {
+            try {
+              await playFabClientRequest("/Client/UpdateUserTitleDisplayName", session.sessionTicket, { DisplayName: username });
+            } catch (error) {
+              await playFabClientRequest("/Client/UpdateUserData", session.sessionTicket, {
+                Data: { [PLAYFAB_DATA_KEYS.profile_metadata]: JSON.stringify(metadata) },
+              }).catch(() => undefined);
+              throw error;
+            }
+          }
 
           const headers = new Headers({ "Content-Type": "application/json" });
           for (const cookie of createSessionCookies({
             ...session,
             username: username || session.username,
             displayName: username || session.displayName,
-            email: email || session.email,
+            email: session.email,
           })) headers.append("Set-Cookie", cookie);
-          return new Response(JSON.stringify({ success: true, username: username || session.username, email: email || session.email }), { headers });
+          return new Response(JSON.stringify({ success: true, username: username || session.username, email: session.email }), { headers });
         } catch (error) {
           const message = error instanceof Error ? error.message : "PlayFab could not save your profile.";
           const status = /name|display|email/i.test(message) ? 409 : 400;

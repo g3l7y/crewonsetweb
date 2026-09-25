@@ -62,6 +62,8 @@ export function findMockAccount(identifier: string) {
   return (
     Array.from(mockAccounts.values()).find(
       (account) =>
+        accountKey(account.username) === normalizedIdentifier ||
+        accountKey(account.email) === normalizedIdentifier ||
         accountKey(account.username) === aliasedIdentifier ||
         accountKey(account.email) === aliasedIdentifier,
     ) ?? null
