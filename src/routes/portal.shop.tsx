@@ -58,6 +58,13 @@ const rarityStyles: Record<string, string> = {
 
 type ConfirmTarget = { mode: "cart" } | { mode: "single"; itemId: string };
 
+function cleanPaymentReturnUrl() {
+  const url = new URL(window.location.href);
+  url.searchParams.delete("payment");
+  url.searchParams.delete("reference");
+  window.history.replaceState({}, "", url.pathname + url.search + url.hash);
+}
+
 function ShopPage() {
   const mockMode = isMockMode();
   const searchParams = useSearchParams();
@@ -205,13 +212,6 @@ function ShopPage() {
     setPaymentNotice(null);
     setPaymentBusy(true);
 
-    const cleanReturnUrl = () => {
-      const url = new URL(window.location.href);
-      url.searchParams.delete("payment");
-      url.searchParams.delete("reference");
-      window.history.replaceState({}, "", url.pathname + url.search + url.hash);
-    };
-
     async function reconcileReturn() {
       const maxAttempts = resultKind === "cancelled" ? 1 : 20;
       let lastResult: {
@@ -316,6 +316,7 @@ function ShopPage() {
             confirmedCoins.toLocaleString("en-PH") +
             " C-Coins have been delivered to your wallet.",
         });
+        cleanPaymentReturnUrl();
       } else if (lastResult?.status === "failed" || resultKind === "cancelled") {
         setCheckoutPayload(null);
         setPaymentNotice({
@@ -324,6 +325,7 @@ function ShopPage() {
           message:
             "The payment was not completed, so no C-Coins were added. If your payment provider shows a charge, please contact support.",
         });
+        cleanPaymentReturnUrl();
       } else {
         setPaymentNotice({
           status: "pending",
@@ -332,7 +334,6 @@ function ShopPage() {
             "We are still confirming your payment. C-Coins have not been delivered yet; please check back shortly.",
         });
       }
-      cleanReturnUrl();
       setPaymentBusy(false);
     }
 
@@ -346,7 +347,6 @@ function ShopPage() {
             ? error.message + " C-Coins have not been marked as delivered."
             : "We could not confirm the payment yet. C-Coins have not been marked as delivered.",
       });
-      cleanReturnUrl();
       setPaymentBusy(false);
     });
 
@@ -999,11 +999,23 @@ function ShopPage() {
                 ? "We are securely checking your payment. Your wallet will update only after confirmation."
                 : paymentNotice?.message}
             </p>
+            {!paymentBusy && paymentNotice?.status === "pending" && paymentReference && (
+              <button
+                type="button"
+                className="shop-secondary-button"
+                onClick={() => window.location.reload()}
+              >
+                Check payment again
+              </button>
+            )}
             {!paymentBusy && (
               <button
                 type="button"
                 className="shop-primary-button"
-                onClick={() => setPaymentNotice(null)}
+                onClick={() => {
+                  cleanPaymentReturnUrl();
+                  setPaymentNotice(null);
+                }}
               >
                 Return to Shop
               </button>
