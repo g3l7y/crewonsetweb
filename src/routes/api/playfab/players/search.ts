@@ -1,6 +1,7 @@
 import { createFileRoute } from '@tanstack/react-router';
 import { PLAYFAB_API_BASE } from '@/lib/playfab/config';
 import { unauthorizedSessionResponse, validateSessionFromRequest } from '@/lib/playfab/session';
+import { DEFAULT_PROFILE_PICTURE_URL, isManagedProfileAvatarUrl } from '@/lib/profile-avatar';
 
 type PlayFabAccountInfo = {
   PlayFabId?: string;
@@ -17,7 +18,7 @@ function publicPlayer(account: PlayFabAccountInfo) {
     playFabId: account.PlayFabId ?? '',
     username: displayName,
     displayName,
-    avatarUrl: account.TitleInfo?.AvatarUrl ?? null,
+    avatarUrl: isManagedProfileAvatarUrl(account.TitleInfo?.AvatarUrl) ? account.TitleInfo?.AvatarUrl : DEFAULT_PROFILE_PICTURE_URL,
     level: 1,
     role: 'Crew Member',
     online: false,
@@ -52,7 +53,7 @@ export const Route = createFileRoute('/api/playfab/players/search')({
             const account = result?.data?.AccountInfo as PlayFabAccountInfo | undefined;
             const playFabId = account?.PlayFabId ?? '';
 
-            if (playfabResponse.ok && result?.code === 200 && playFabId && playFabId !== session.playFabId) {
+            if (account && playfabResponse.ok && result?.code === 200 && playFabId && playFabId !== session.playFabId) {
               return Response.json({ success: true, data: [publicPlayer(account)] });
             }
           } catch {

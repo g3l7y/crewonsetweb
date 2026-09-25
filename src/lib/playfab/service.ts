@@ -14,6 +14,7 @@ import { getTransactions } from './transactions';
 import { getNotifications } from './notifications';
 import { getGlobalLeaderboard, getLeaderboardAroundPlayer } from './leaderboard';
 import { getFriendsList } from './friends';
+import { DEFAULT_PROFILE_PICTURE_URL, isManagedProfileAvatarUrl } from '../profile-avatar';
 
 // Cached session ticket in memory for fast authenticated Client API calls
 let _cachedTicket: string | null = null;
@@ -179,6 +180,20 @@ function createRealService(): PlayFabService {
     player: {
       getProfile: async () => {
         const ticket = await resolveSessionTicket();
+        const sessionIdentity = await getSessionIdentity();
+        const fallbackProfile = {
+          id: sessionIdentity?.playFabId ?? '',
+          playFabId: sessionIdentity?.playFabId ?? '',
+          email: sessionIdentity?.email ?? '',
+          displayName: sessionIdentity?.displayName || sessionIdentity?.username || 'Player',
+          username: sessionIdentity?.username || sessionIdentity?.displayName || 'player',
+          avatarUrl: DEFAULT_PROFILE_PICTURE_URL,
+          role: 'cameraman' as const,
+          crewId: 'CREW-001',
+          bio: '',
+          joinedAt: new Date().toISOString(),
+          lastLoginAt: new Date().toISOString(),
+        };
         if (!ticket) {
           return {
             id: '',
@@ -199,8 +214,12 @@ function createRealService(): PlayFabService {
           const metadataRaw = (await getUserData(ticket, [PLAYFAB_DATA_KEYS.profile_metadata]))[PLAYFAB_DATA_KEYS.profile_metadata];
           if (metadataRaw) {
             try {
-              const metadata = JSON.parse(metadataRaw) as Pick<PlayerProfile, 'bio' | 'socialLinks' | 'showStatus'>;
-              return { ...profile, ...metadata };
+              const metadata = JSON.parse(metadataRaw) as Pick<PlayerProfile, 'username' | 'bio' | 'avatarUrl' | 'socialLinks' | 'showStatus' | 'profileVisibility' | 'showCrewActivity'>;
+              return {
+                ...profile,
+                ...metadata,
+                avatarUrl: isManagedProfileAvatarUrl(metadata.avatarUrl) ? metadata.avatarUrl : DEFAULT_PROFILE_PICTURE_URL,
+              };
             } catch {
               // Ignore malformed optional profile metadata and keep the PlayFab profile.
             }
@@ -308,22 +327,28 @@ function createRealService(): PlayFabService {
       updateProfile: async (updates) => {
         const ticket = await resolveSessionTicket();
         if (!ticket) return;
+        const profileUpdates = updates as Partial<PlayerProfile>;
         if (updates.username) {
           if (!(await updateDisplayName(ticket, updates.username))) throw new Error('PlayFab could not update your username.');
         } else if (updates.displayName) {
           if (!(await updateDisplayName(ticket, updates.displayName))) throw new Error('PlayFab could not update your display name.');
         }
-        if ('bio' in updates || 'socialLinks' in updates || 'showStatus' in updates) {
+        if ('bio' in profileUpdates || 'avatarUrl' in profileUpdates || 'socialLinks' in profileUpdates || 'showStatus' in profileUpdates || 'profileVisibility' in profileUpdates || 'showCrewActivity' in profileUpdates) {
           const currentRaw = (await getUserData(ticket, [PLAYFAB_DATA_KEYS.profile_metadata]))[PLAYFAB_DATA_KEYS.profile_metadata];
-          let current: Pick<PlayerProfile, 'bio' | 'socialLinks' | 'showStatus'> = {};
+          let current: Partial<Pick<PlayerProfile, 'username' | 'bio' | 'avatarUrl' | 'socialLinks' | 'showStatus' | 'profileVisibility' | 'showCrewActivity'>> = {};
           if (currentRaw) {
             try { current = JSON.parse(currentRaw); } catch { /* replace malformed metadata */ }
           }
           const saved = await updateUserData(ticket, {
             [PLAYFAB_DATA_KEYS.profile_metadata]: JSON.stringify({
-              bio: 'bio' in updates ? updates.bio ?? '' : current.bio ?? '',
-              socialLinks: 'socialLinks' in updates ? updates.socialLinks ?? {} : current.socialLinks ?? {},
-              showStatus: 'showStatus' in updates ? updates.showStatus ?? true : current.showStatus ?? true,
+              ...current,
+              ...(profileUpdates.username !== undefined ? { username: profileUpdates.username } : {}),
+              ...(profileUpdates.bio !== undefined ? { bio: profileUpdates.bio } : {}),
+              ...(profileUpdates.avatarUrl !== undefined ? { avatarUrl: profileUpdates.avatarUrl } : {}),
+              ...(profileUpdates.socialLinks !== undefined ? { socialLinks: profileUpdates.socialLinks } : {}),
+              ...(profileUpdates.showStatus !== undefined ? { showStatus: profileUpdates.showStatus } : {}),
+              ...(profileUpdates.profileVisibility !== undefined ? { profileVisibility: profileUpdates.profileVisibility } : {}),
+              ...(profileUpdates.showCrewActivity !== undefined ? { showCrewActivity: profileUpdates.showCrewActivity } : {}),
             }),
           });
           if (!saved) throw new Error('PlayFab could not save your profile metadata.');

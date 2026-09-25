@@ -16,6 +16,7 @@ import { useEffect, useMemo, useState } from "react";
 import type { MouseEvent, ReactNode } from "react";
 import {
   Ban,
+  Award,
   Check,
   Copy,
   ExternalLink,
@@ -29,8 +30,10 @@ import {
   Users,
   UserX,
   Twitter,
+  Youtube,
   X,
 } from "lucide-react";
+import type { Achievement } from "@/lib/playfab/types";
 import {
   friendRequestsStore,
   friendRosterStore,
@@ -61,6 +64,7 @@ type Socials = {
   facebook?: string;
   twitter?: string;
   linkedin?: string;
+  youtube?: string;
 };
 
 type CareerOverview = {
@@ -81,6 +85,9 @@ type Friend = {
   joinedDate: string;
   socials: Socials;
   career: CareerOverview;
+  profileVisible?: boolean;
+  showCrewActivity?: boolean;
+  achievements?: Achievement[];
 };
 
 type FriendRequest = {
@@ -138,7 +145,7 @@ const initialFriends: Friend[] = [
     role: "Sound Mixer",
     online: true,
     crewId: "COS-1942-BM",
-    profileImage: "/assets/team-kelvin.png",
+    profileImage: getProfileArtwork("DIRECTOR_X"),
     bio: "Sound enthusiast focused on clean production audio and creating immersive soundscapes for every project.",
     joinedDate: "March 14, 2024",
     socials: {
@@ -158,7 +165,7 @@ const initialFriends: Friend[] = [
     role: "Camera Operator",
     online: true,
     crewId: "COS-7381-DD",
-    profileImage: "/assets/team-rae.png",
+    profileImage: getProfileArtwork("LIGHT_MASTER"),
     bio: "Camera operator who loves dynamic movement, practical lighting, and finding the perfect shot.",
     joinedDate: "July 22, 2024",
     socials: {
@@ -178,7 +185,7 @@ const initialFriends: Friend[] = [
     role: "Lighting Artist",
     online: false,
     crewId: "COS-4920-LL",
-    profileImage: "/assets/team-princess.png",
+    profileImage: getProfileArtwork("EDIT_KING"),
     bio: "Lighting artist creating cinematic atmosphere through color, contrast, and carefully controlled light.",
     joinedDate: "November 3, 2023",
     socials: {
@@ -197,7 +204,7 @@ const initialFriends: Friend[] = [
     role: "Prop Master",
     online: false,
     crewId: "COS-6157-PM",
-    profileImage: "/assets/team-joseph.png",
+    profileImage: getProfileArtwork("SCENE_SETTER"),
     bio: "Prop master specializing in detailed environments, practical props, and believable production worlds.",
     joinedDate: "January 9, 2024",
     socials: {
@@ -219,7 +226,7 @@ const searchablePlayers: Player[] = [
     role: "Director",
     online: true,
     crewId: "COS-3812-FH",
-    profileImage: "/assets/director.png",
+    profileImage: getProfileArtwork("FRAMEHUNTER"),
     bio: "Director focused on character-driven stories and strong visual composition.",
     joinedDate: "February 18, 2025",
     socials: {
@@ -1525,8 +1532,11 @@ function PlayerProfile({
           profile?: {
             username?: string;
             avatarUrl?: string | null;
+            profileVisible?: boolean;
+            showCrewActivity?: boolean;
             bio?: string;
             socialLinks?: Socials;
+            achievements?: Achievement[];
             joinedAt?: string | null;
           };
         };
@@ -1538,7 +1548,9 @@ function PlayerProfile({
           ...current,
           name: remote.username || current.name,
           profileImage: remote.avatarUrl || current.profileImage,
-          bio: remote.bio ?? current.bio,
+          profileVisible: remote.profileVisible ?? true,
+          showCrewActivity: remote.showCrewActivity ?? true,
+          bio: remote.profileVisible === false ? "" : remote.bio ?? current.bio,
           joinedDate: remote.joinedAt
             ? new Date(remote.joinedAt).toLocaleDateString("en-US", {
                 month: "long",
@@ -1546,7 +1558,10 @@ function PlayerProfile({
                 year: "numeric",
               })
             : current.joinedDate,
-          socials: remote.socialLinks ?? {},
+          socials: remote.profileVisible === false ? {} : remote.socialLinks ?? {},
+          achievements: remote.profileVisible !== false && remote.showCrewActivity !== false
+            ? remote.achievements ?? []
+            : [],
         }));
       })
       .catch(() => {
@@ -1694,124 +1709,59 @@ function PlayerProfile({
             {/* LEFT */}
 
             <div className="p-6 sm:p-8 lg:p-9">
-              {/* ABOUT */}
+              {player.profileVisible === false ? (
+                <section className="rounded-xl border border-white/[0.07] bg-white/[0.025] p-6">
+                  <h3 className="text-lg font-black uppercase tracking-tight text-white">Profile details are private</h3>
+                  <p className="mt-2 text-sm leading-6 text-white/50">This player has turned off profile visibility.</p>
+                </section>
+              ) : (
+                <>
+                  <section>
+                    <p className="text-[10px] font-black uppercase tracking-[0.18em] text-coral">About</p>
+                    <h3 className="mt-2 text-2xl font-black uppercase tracking-tight text-white">Bio</h3>
+                    <p className="mt-3 max-w-2xl whitespace-pre-wrap text-sm leading-7 text-white/50">{player.bio || "No bio added."}</p>
+                  </section>
 
-              <section>
-                <p className="text-[10px] font-black uppercase tracking-[0.18em] text-coral">
-                  About
-                </p>
+                  {player.showCrewActivity !== false && (
+                    <section className="mt-9">
+                      <div className="flex items-center gap-3">
+                        <div className="h-7 w-1 rounded-full bg-coral" />
+                        <h3 className="text-2xl font-black uppercase tracking-tight text-white">Unlocked Achievements</h3>
+                      </div>
+                      {player.achievements?.length ? (
+                        <div className="mt-5 grid gap-2 sm:grid-cols-2">
+                          {player.achievements.map((achievement) => (
+                            <div key={achievement.id} className="flex items-center gap-3 rounded-xl border border-white/[0.07] bg-[#1b2433] p-4">
+                              <Award className="size-5 shrink-0 text-yellow" />
+                              <span className="text-sm font-bold text-white/75">{achievement.name || achievement.title}</span>
+                            </div>
+                          ))}
+                        </div>
+                      ) : (
+                        <p className="mt-4 text-sm text-white/35">No achievements unlocked yet.</p>
+                      )}
+                    </section>
+                  )}
 
-                <h3 className="mt-2 text-2xl font-black uppercase tracking-tight text-white">
-                  Bio
-                </h3>
-
-                <p className="mt-3 max-w-2xl text-sm leading-7 text-white/50">{player.bio}</p>
-              </section>
-
-              {/* CAREER */}
-
-              <section className="mt-9">
-                <div className="flex items-center gap-3">
-                  <div className="h-7 w-1 rounded-full bg-coral" />
-
-                  <h3 className="text-2xl font-black uppercase tracking-tight text-white">
-                    Career Overview
-                  </h3>
-                </div>
-
-                {/* CAREER STATS */}
-
-                <div className="mt-5 grid gap-3 sm:grid-cols-2">
-                  <div className="rounded-xl border border-white/[0.07] bg-[#1b2433] p-5 transition hover:border-white/[0.12]">
-                    <p className="text-3xl font-black tracking-tight text-white">
-                      {player.career.productionsCompleted}
-                    </p>
-
-                    <p className="mt-1 text-[9px] font-black uppercase tracking-[0.12em] text-white/30">
-                      Productions Completed
-                    </p>
-                  </div>
-
-                  <div className="rounded-xl border border-white/[0.07] bg-[#1b2433] p-5 transition hover:border-white/[0.12]">
-                    <p className="text-3xl font-black tracking-tight text-white">
-                      {player.career.yearsExperience}
-                    </p>
-
-                    <p className="mt-1 text-[9px] font-black uppercase tracking-[0.12em] text-white/30">
-                      Years Experience
-                    </p>
-                  </div>
-                </div>
-
-                {/* SPECIALTIES */}
-
-                <div className="mt-3 rounded-xl border border-white/[0.07] bg-[#1b2433] p-5">
-                  <p className="text-[9px] font-black uppercase tracking-[0.14em] text-white/30">
-                    Specialties
-                  </p>
-
-                  <div className="mt-3 flex flex-wrap gap-2">
-                    {player.career.specialties.map((specialty) => (
-                      <span
-                        key={specialty}
-                        className="rounded-md border border-white/[0.06] bg-[#252f40] px-3 py-2 text-[9px] font-black uppercase tracking-wide text-white/55"
-                      >
-                        {specialty}
-                      </span>
-                    ))}
-                  </div>
-                </div>
-              </section>
-
-              {/* SOCIALS */}
-
-              <section className="mt-9">
-                <div className="flex items-center gap-3">
-                  <div className="h-7 w-1 rounded-full bg-coral" />
-
-                  <h3 className="text-2xl font-black uppercase tracking-tight text-white">
-                    Socials
-                  </h3>
-                </div>
-
-                {Object.keys(player.socials).length === 0 ? (
-                  <p className="mt-4 text-sm text-white/30">No social accounts linked.</p>
-                ) : (
-                  <div className="mt-5 grid gap-2 sm:grid-cols-2 xl:grid-cols-3">
-                    {player.socials.instagram && (
-                      <SocialLink
-                        icon={<Instagram className="size-4" />}
-                        label="Instagram"
-                        username={player.socials.instagram}
-                      />
+                  <section className="mt-9">
+                    <div className="flex items-center gap-3">
+                      <div className="h-7 w-1 rounded-full bg-coral" />
+                      <h3 className="text-2xl font-black uppercase tracking-tight text-white">Socials</h3>
+                    </div>
+                    {Object.values(player.socials).some(Boolean) ? (
+                      <div className="mt-5 grid gap-2 sm:grid-cols-2 xl:grid-cols-3">
+                        {player.socials.instagram && <SocialLink icon={<Instagram className="size-4" />} label="Instagram" username={player.socials.instagram} />}
+                        {player.socials.facebook && <SocialLink icon={<Facebook className="size-4" />} label="Facebook" username={player.socials.facebook} />}
+                        {player.socials.twitter && <SocialLink icon={<Twitter className="size-4" />} label="Twitter" username={player.socials.twitter} />}
+                        {player.socials.linkedin && <SocialLink icon={<Linkedin className="size-4" />} label="LinkedIn" username={player.socials.linkedin} />}
+                        {player.socials.youtube && <SocialLink icon={<Youtube className="size-4" />} label="YouTube" username={player.socials.youtube} />}
+                      </div>
+                    ) : (
+                      <p className="mt-4 text-sm text-white/30">No social accounts linked.</p>
                     )}
-
-                    {player.socials.facebook && (
-                      <SocialLink
-                        icon={<Facebook className="size-4" />}
-                        label="Facebook"
-                        username={player.socials.facebook}
-                      />
-                    )}
-
-                    {player.socials.twitter && (
-                      <SocialLink
-                        icon={<Twitter className="size-4" />}
-                        label="Twitter"
-                        username={player.socials.twitter}
-                      />
-                    )}
-
-                    {player.socials.linkedin && (
-                      <SocialLink
-                        icon={<Linkedin className="size-4" />}
-                        label="LinkedIn"
-                        username={player.socials.linkedin}
-                      />
-                    )}
-                  </div>
-                )}
-              </section>
+                  </section>
+                </>
+              )}
             </div>
 
             {/* =================================================

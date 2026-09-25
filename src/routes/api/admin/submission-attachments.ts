@@ -26,15 +26,38 @@ export const Route = createFileRoute("/api/admin/submission-attachments")({
             return Response.json({ error: "Attachment not found." }, { status: 404 });
           }
 
-          // PlayFab returns a short-lived signed download URL. Redirecting the
-          // browser to that URL keeps the file response stream on PlayFab's
-          // storage service, which is supported by both Node and edge runtimes
-          // and makes images, PDFs, and the Open Attached File action work.
-          return new Response(null, {
-            status: 302,
+          const extension = fileName.split(".").pop()?.toLowerCase();
+          const contentType =
+            extension === "pdf"
+              ? "application/pdf"
+              : extension === "jpg" || extension === "jpeg"
+                ? "image/jpeg"
+                : extension === "png"
+                  ? "image/png"
+                  : extension === "webp"
+                    ? "image/webp"
+                    : extension === "gif"
+                      ? "image/gif"
+                      : null;
+          if (!contentType) {
+            return Response.json({ error: "Unsupported attachment type." }, { status: 415 });
+          }
+
+          // Stream the signed file through this authenticated endpoint so we
+          // can override PlayFab's download disposition and let the browser
+          // render PDFs and images inline in previews and new tabs.
+          const fileResponse = await fetch(metadata.DownloadUrl, { cache: "no-store" });
+          if (!fileResponse.ok || !fileResponse.body) {
+            return Response.json({ error: "Attachment could not be loaded." }, { status: 502 });
+          }
+
+          return new Response(fileResponse.body, {
+            status: 200,
             headers: {
               "Cache-Control": "private, no-store",
-              Location: metadata.DownloadUrl,
+              "Content-Disposition": `inline; filename="${fileName}"`,
+              "Content-Type": contentType,
+              "X-Content-Type-Options": "nosniff",
             },
           });
         } catch (error) {

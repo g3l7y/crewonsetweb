@@ -9,7 +9,9 @@ import {
   matchesPlayerRecipient,
   notificationHref as inboxNotificationHref,
   relativeTime as inboxRelativeTime,
+  isVisibleInNotificationBell,
   sortNotificationsNewestFirst,
+  type NotificationBellPreferences,
 } from "@/lib/demo/inbox";
 import type { PlayerNotification as PlayFabNotification } from "@/lib/playfab/types";
 import { isMockMode } from "@/lib/playfab/config";
@@ -39,7 +41,13 @@ const iconByKind: Record<string, typeof Bell> = {
   system: Settings2,
 };
 
-export function NotificationBell({ dark = true }: { dark?: boolean }) {
+export function NotificationBell({
+  dark = true,
+  preferences = {},
+}: {
+  dark?: boolean;
+  preferences?: NotificationBellPreferences;
+}) {
   const mockMode = isMockMode();
   const [demoNotifications, setDemoNotifications] = notificationsStore.useStore();
   const realNotificationsQuery = useNotifications();
@@ -109,7 +117,10 @@ export function NotificationBell({ dark = true }: { dark?: boolean }) {
     return () => document.removeEventListener("mousedown", onClickOutside);
   }, []);
 
-  const uniqueNotifications = dedupeNotifications(notifications);
+  const bellNotifications = notifications.filter((notification) =>
+    isVisibleInNotificationBell(notification, preferences),
+  );
+  const uniqueNotifications = dedupeNotifications(bellNotifications);
   const sortedNotifications = sortNotificationsNewestFirst(uniqueNotifications);
   const sorted = sortedNotifications.slice(0, NOTIFICATION_BELL_LIMIT);
   const unreadCount = uniqueNotifications.filter((n) => !n.read).length;
@@ -137,18 +148,20 @@ export function NotificationBell({ dark = true }: { dark?: boolean }) {
       setDemoNotifications((current) =>
         current.map((item) =>
           isPlayerAccountNotification(item) &&
-          matchesPlayerRecipient(item, mockPlayerUsername, mockPlayerEmail, mockPlayerId)
+          matchesPlayerRecipient(item, mockPlayerUsername, mockPlayerEmail, mockPlayerId) &&
+          uniqueNotifications.some((notification) => notification.id === item.id)
             ? { ...item, read: true }
             : item,
         ),
       );
     } else {
-      setRealNotifications((current) => current.map((item) => ({ ...item, read: true })));
+      const visibleIds = new Set(uniqueNotifications.map((item) => item.id));
+      setRealNotifications((current) => current.map((item) => visibleIds.has(item.id) ? { ...item, read: true } : item));
       void fetch("/api/notifications", {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         credentials: "include",
-        body: JSON.stringify({ ids: notifications.map((item) => item.id) }),
+        body: JSON.stringify({ ids: [...visibleIds] }),
       });
     }
   }

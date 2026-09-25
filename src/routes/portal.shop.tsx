@@ -84,6 +84,7 @@ function ShopPage() {
   const inventoryQuery = usePlayerInventory();
   const purchaseItem = usePurchaseItem();
   const realNotificationsQuery = useNotifications();
+  const refreshPlayerNotifications = realNotificationsQuery.refetch;
 
   const [demoOwnedIds, setDemoOwnedIds] = ownedItemsStore.useStore();
   const [cart, setCart] = cartStore.useStore();
@@ -304,7 +305,7 @@ function ShopPage() {
             window.localStorage.setItem("cos.paymongo.fulfilled." + reference, "1");
           }
         } else {
-          await refreshPlayerWallet();
+          await Promise.all([refreshPlayerWallet(), refreshPlayerNotifications()]);
         }
         setCheckoutPayload(null);
         setPaymentNotice({
@@ -359,6 +360,7 @@ function ShopPage() {
     paymentReference,
     paymentResult,
     refreshPlayerWallet,
+    refreshPlayerNotifications,
   ]);
 
   const confirmLines = useMemo(() => {

@@ -16,6 +16,7 @@ import {
   updateWebsiteRecord,
 } from "@/lib/playfab/websiteData";
 import { recordPlayerTopUpNotification } from "@/lib/paymongo/player-notifications";
+import { isPaidCheckoutAmount, parsePaidCheckoutEvent } from "@/lib/paymongo/verification";
 
 type PayMongoOrder = {
   id: string;
@@ -80,14 +81,14 @@ async function verifySignature(
   secret: string,
 ): Promise<boolean> {
   const parts = signaturesFromHeader(header);
-  const timestamp = parts.t;
+  const timestamp = parts["t"];
   if (!timestamp || !/^\d+$/.test(timestamp)) return false;
   if (Math.abs(Math.floor(Date.now() / 1000) - Number(timestamp)) > 600) return false;
 
   const expected = await hmacHex(secret, timestamp + "." + rawBody);
   return (
-    (!!parts.te && constantTimeEqual(expected, parts.te)) ||
-    (!!parts.li && constantTimeEqual(expected, parts.li))
+    (!!parts["te"] && constantTimeEqual(expected, parts["te"])) ||
+    (!!parts["li"] && constantTimeEqual(expected, parts["li"]))
   );
 }
 
@@ -115,17 +116,12 @@ export const Route = createFileRoute("/api/paymongo/webhook")({
 
         try {
           const body = JSON.parse(rawBody) as Record<string, unknown>;
-          const event = asRecord(body.data);
-          const eventType = String(event.type || "");
-          if (eventType !== "checkout_session.payment.paid") {
-            return Response.json({ received: true });
-          }
+          const paidEvent = parsePaidCheckoutEvent(body);
+          if (!paidEvent) return Response.json({ received: true });
 
-          const eventData = asRecord(event.data);
-          const attributes = asRecord(eventData.attributes);
-          const metadata = asRecord(attributes.metadata);
-          const referenceNumber = String(attributes.reference_number || metadata.orderId || "");
-          const eventId = String(body.id || eventData.id || "");
+          const { attributes, eventId, sessionId } = paidEvent;
+          const metadata = asRecord(attributes["metadata"]);
+          const referenceNumber = String(attributes["reference_number"] || metadata["orderId"] || "");
           if (!referenceNumber) return Response.json({ received: true });
 
           let order: PayMongoOrder | null = null;
@@ -139,27 +135,14 @@ export const Route = createFileRoute("/api/paymongo/webhook")({
               partnershipPayments.find(
                 (item) =>
                   item.id === referenceNumber ||
-                  item.checkoutSessionId === String(eventData.id || ""),
+                  item.checkoutSessionId === sessionId,
               ) ?? null;
           }
           if (brandPayment && playfabSecret) {
             if (brandPayment.status === "fulfilled") return Response.json({ received: true });
-            const brandPayments = Array.isArray(attributes.payments) ? attributes.payments : [];
-            const hasPaidPayment =
-              brandPayments.length > 0 &&
-              brandPayments.some((payment) => {
-                const paymentAttributes = asRecord(asRecord(payment).attributes);
-                const status = String(paymentAttributes.status || "").toLowerCase();
-                const currency = String(paymentAttributes.currency || "PHP").toUpperCase();
-                const rawAmount = paymentAttributes.amount ?? paymentAttributes.net_amount;
-                const amount = rawAmount === undefined ? undefined : Number(rawAmount);
-                return (
-                  status === "paid" &&
-                  currency === "PHP" &&
-                  amount === brandPayment?.amountInCentavos
-                );
-              });
-            if (!hasPaidPayment) return Response.json({ received: true });
+            if (!isPaidCheckoutAmount(attributes, brandPayment.amountInCentavos)) {
+              return Response.json({ received: true });
+            }
             const result = await markPartnershipPaymentPaid(brandPayment, eventId, playfabSecret);
             if (!result.updated && !result.alreadyPaid) {
               return Response.json(
@@ -196,7 +179,7 @@ export const Route = createFileRoute("/api/paymongo/webhook")({
               orders.find(
                 (item) =>
                   item.id === referenceNumber ||
-                  item.checkoutSessionId === String(eventData.id || ""),
+                  item.checkoutSessionId === sessionId,
               ) ?? null;
           }
 
@@ -233,19 +216,9 @@ export const Route = createFileRoute("/api/paymongo/webhook")({
             return Response.json({ received: true });
           }
 
-          const payments = Array.isArray(attributes.payments) ? attributes.payments : [];
-          const hasPaidPayment =
-            payments.length > 0 &&
-            payments.some((payment) => {
-              const paymentAttributes = asRecord(asRecord(payment).attributes);
-              const status = String(paymentAttributes.status || "").toLowerCase();
-              const currency = String(paymentAttributes.currency || "PHP").toUpperCase();
-              const rawAmount = paymentAttributes.amount ?? paymentAttributes.net_amount;
-              const amount = rawAmount === undefined ? undefined : Number(rawAmount);
-              const amountMatches = amount === order.amountInCentavos;
-              return status === "paid" && currency === "PHP" && amountMatches;
-            });
-          if (!hasPaidPayment) return Response.json({ received: true });
+          if (!isPaidCheckoutAmount(attributes, order.amountInCentavos)) {
+            return Response.json({ received: true });
+          }
 
           if (processingOrders.has(order.id)) {
             return Response.json({ received: true });
@@ -257,7 +230,7 @@ export const Route = createFileRoute("/api/paymongo/webhook")({
             try {
               claim = await claimPayMongoOrder({
                 orderId: order.id,
-                checkoutSessionId: String(eventData.id || order.checkoutSessionId),
+                checkoutSessionId: sessionId || order.checkoutSessionId,
                 playFabId: order.playFabId,
                 packageId: order.packageId,
                 coins: order.coins,

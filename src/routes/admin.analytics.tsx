@@ -5,6 +5,7 @@ import { useSearchParams } from "@/components/next-compat/navigation";
 import { playerChartData, salesChartData, players as mockPlayers, topUpsStore } from "@/lib/admin-demo-data";
 import { buildOverallAnalysis, type AnalysisTrendPoint, type AdminAnalysisSnapshot } from "@/lib/admin-analysis";
 import { applicationsStore, formatMoney } from "@/lib/demo/store";
+import { useAdminPayMongoOrders } from "@/lib/admin-paymongo-orders";
 import { isMockMode } from "@/lib/playfab/config";
 import { useAdminPlayers } from "@/lib/playfab/hooks";
 import {
@@ -124,7 +125,12 @@ function AnalyticsPage() {
   const mockMode = isMockMode();
   const adminPlayersQuery = useAdminPlayers();
   const [applications] = applicationsStore.useStore();
-  const [topUps] = topUpsStore.useStore();
+  const [demoTopUps] = topUpsStore.useStore();
+  const liveTopUpsQuery = useAdminPayMongoOrders();
+  const topUps = useMemo(
+    () => (mockMode ? demoTopUps : (liveTopUpsQuery.data ?? [])),
+    [demoTopUps, liveTopUpsQuery.data, mockMode],
+  );
   const searchParams = useSearchParams();
   const selectedChart = searchParams.get("chart") === "sales" ? "sales" : "players";
 
@@ -141,7 +147,7 @@ function AnalyticsPage() {
       recognizedBrandBudgets,
       total: paymongoRevenue + recognizedBrandBudgets,
     };
-  }, [applications, mockMode, topUps]);
+  }, [applications, topUps]);
 
   const playerTrend = useMemo(
     () => getPlayerTrend(mockMode, adminPlayersQuery.data),
@@ -175,7 +181,7 @@ function AnalyticsPage() {
         trend: salesTrend.trend,
       },
     };
-  }, [adminPlayersQuery.data, mockMode, playerTrend, revenue, salesTrend, topUps.length]);
+  }, [adminPlayersQuery.data, mockMode, playerTrend, revenue, salesTrend, topUps]);
   const overallAnalysis = useMemo(
     () => buildOverallAnalysis(analysisSnapshot),
     [analysisSnapshot],
@@ -223,8 +229,7 @@ function AnalyticsPage() {
   return (
     <div className="admin-page h-full overflow-y-auto bg-[#101923] text-white">
       <header className="mb-8">
-        <p className="text-xs font-black tracking-[.18em] !text-coral">INSIGHTS</p>
-        <h1 className="admin-heading mt-2 !text-white">Analytics</h1>
+        <h1 className="admin-heading !text-white">Analytics</h1>
         <p className="admin-kicker !text-white/45">
           Track player growth, sales performance, and the revenue behind studio operations.
         </p>

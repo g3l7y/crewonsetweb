@@ -95,6 +95,10 @@ export interface PlayerProfile {
   socialLinks?: { twitter?: string; instagram?: string; youtube?: string } | undefined;
   /** Whether confirmed friends may see this player's live online status. */
   showStatus?: boolean | undefined;
+  /** Whether other players may view this player's bio, socials, and public profile details. */
+  profileVisibility?: boolean | undefined;
+  /** Whether unlocked achievements may be shown to other players. */
+  showCrewActivity?: boolean | undefined;
   /** ISO timestamp when the account was registered */
   joinedAt: string;
   /** ISO timestamp of most recent login */

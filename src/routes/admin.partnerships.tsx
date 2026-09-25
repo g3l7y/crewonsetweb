@@ -386,8 +386,7 @@ function PartnershipsPage() {
   return (
     <div className="admin-page h-full overflow-y-auto bg-[#101923] text-white">
       <header className="mb-8">
-        <p className="text-xs font-black tracking-[.18em] !text-coral">PARTNERSHIPS &amp; ADS</p>
-        <h1 className="admin-heading mt-2 !text-white">Partnerships &amp; Ads</h1>
+        <h1 className="admin-heading !text-white">Partnerships &amp; Ads</h1>
         <p className="admin-kicker !text-white/45">
           Review brand proposals and manage application approval status.
         </p>
@@ -701,7 +700,8 @@ function PartnershipsPage() {
           onClick={() => setSelected(null)}
         >
           <div
-            className="relative flex max-h-[90vh] w-full max-w-xl flex-col overflow-hidden rounded-xl border border-white/[.08] bg-[#151c28] shadow-2xl"
+            className="relative flex max-h-[85vh] w-full flex-col overflow-hidden rounded-xl border border-white/[.08] bg-[#151c28] shadow-2xl"
+            style={{ maxWidth: "32rem" }}
             onClick={(e) => e.stopPropagation()}
           >
             <button
@@ -711,7 +711,7 @@ function PartnershipsPage() {
               <X className="size-4" />
             </button>
 
-            <div className="border-b border-white/[.06] bg-[#0d121b] px-6 py-6">
+            <div className="border-b border-white/[.06] bg-[#0d121b] py-6 pl-6 pr-14">
               <p className="text-[10px] font-black uppercase tracking-[.2em] !text-coral">
                 {selected.id}
               </p>
@@ -777,13 +777,13 @@ function PartnershipsPage() {
                           <img
                             src={selected.attachmentUrl}
                             alt={selected.fileName || "Application attachment"}
-                            className="max-h-64 w-full rounded-md object-contain"
+                            className="max-h-56 w-full rounded-md object-contain"
                           />
                         ) : (
                           <iframe
                             src={selected.attachmentUrl}
                             title={selected.fileName || "Application PDF"}
-                            className="h-64 w-full rounded-md bg-white"
+                            className="h-56 w-full rounded-md bg-white"
                           />
                         )}
                         <a

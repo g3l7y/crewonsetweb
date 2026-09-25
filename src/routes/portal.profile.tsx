@@ -16,6 +16,7 @@ import Image from "@/components/next-compat/image";
 import Link from "@/components/next-compat/link";
 import {
   Check,
+  Award,
   Eye,
   EyeOff,
   Instagram,
@@ -37,9 +38,11 @@ import {
 import { CosmeticArt } from "@/components/portal/cosmetic-art";
 import { cosmeticCatalog, ownedItemsStore } from "@/lib/demo/portal-shop";
 import { getProfileArtwork } from "@/lib/demo/profile-art";
+import { DEFAULT_PROFILE_PICTURE_URL } from "@/lib/profile-avatar";
+import { readImageAsDataUrl, savePlayerAvatar } from "@/lib/profile-avatar-client";
 import { isMockMode } from "@/lib/playfab/config";
-import { formatSocialUsername, getSocialProfileUrl, normalizeSocialUsername } from "@/lib/profile-socials";
-import { QUERY_KEYS, useCatalog, usePlayerInventory, usePlayerLoadout, usePlayerProfile, usePlayerProgression, useTransactions, useUpdateProfile } from "@/lib/playfab/hooks";
+import { formatSocialUsername, getSocialProfileUrl, normalizeSocialProfile } from "@/lib/profile-socials";
+import { QUERY_KEYS, useAchievements, useCatalog, usePlayerInventory, usePlayerLoadout, usePlayerProfile, usePlayerProgression, useTransactions, useUpdateProfile } from "@/lib/playfab/hooks";
 import { Coins, Lock } from "lucide-react";
 
 type ProfileTransaction = {
@@ -78,6 +81,7 @@ function CrewProfilePage() {
   const [transactions] = transactionsStore.useStore();
   const [ownedIds] = ownedItemsStore.useStore();
   const profileQuery = usePlayerProfile();
+  const achievementsQuery = useAchievements();
   const progressionQuery = usePlayerProgression();
   const inventoryQuery = usePlayerInventory();
   const catalogQuery = useCatalog();
@@ -163,8 +167,11 @@ function CrewProfilePage() {
   }, [demoOwnedItems, mockMode, transactions, transactionsQuery.data]);
 
   const [profileImage, setProfileImage] = useState(
-    getProfileArtwork("CAMERA_PRO")
+    DEFAULT_PROFILE_PICTURE_URL
   );
+  const [pendingAvatarFile, setPendingAvatarFile] = useState<File | null>(null);
+  const [pendingAvatarDataUrl, setPendingAvatarDataUrl] = useState<string | null>(null);
+  const [avatarResetRequested, setAvatarResetRequested] = useState(false);
 
   const [account, setAccount] = useState<ProfileAccount>(defaultProfileAccount);
 
@@ -204,9 +211,9 @@ function CrewProfilePage() {
       setAccount(readProfileAccount());
       if (!profile) return;
       setBio(profile.bio || "");
-      setTwitter(normalizeSocialUsername(profile.socialLinks?.twitter, "twitter"));
-      setInstagram(normalizeSocialUsername(profile.socialLinks?.instagram, "instagram"));
-      setYoutube(normalizeSocialUsername(profile.socialLinks?.youtube, "youtube"));
+      setTwitter(profile.socialLinks?.twitter || "");
+      setInstagram(profile.socialLinks?.instagram || "");
+      setYoutube(profile.socialLinks?.youtube || "");
       setProfileImage(profile.avatarUrl || getProfileArtwork(profile.username || profile.displayName || "Player"));
       return;
     }
@@ -218,9 +225,9 @@ function CrewProfilePage() {
       email: profile.email || "",
     });
     setBio(profile.bio || "");
-    setTwitter(normalizeSocialUsername(profile.socialLinks?.twitter, "twitter"));
-    setInstagram(normalizeSocialUsername(profile.socialLinks?.instagram, "instagram"));
-    setYoutube(normalizeSocialUsername(profile.socialLinks?.youtube, "youtube"));
+    setTwitter(profile.socialLinks?.twitter || "");
+    setInstagram(profile.socialLinks?.instagram || "");
+    setYoutube(profile.socialLinks?.youtube || "");
     setProfileImage(profile.avatarUrl || getProfileArtwork(profile.username || profile.displayName || "Player"));
   }, [mockMode, profileQuery.data]);
 
@@ -243,6 +250,10 @@ function CrewProfilePage() {
         })
       : "—";
   const openEditor = () => {
+    setProfileImage(profileQuery.data?.avatarUrl || DEFAULT_PROFILE_PICTURE_URL);
+    setPendingAvatarFile(null);
+    setPendingAvatarDataUrl(null);
+    setAvatarResetRequested(false);
     setDraftBio(bio);
     setDraftTwitter(twitter);
     setDraftInstagram(instagram);
@@ -256,6 +267,11 @@ function CrewProfilePage() {
   };
 
   const cancelEditor = () => {
+    if (profileImage.startsWith("blob:")) URL.revokeObjectURL(profileImage);
+    setProfileImage(profileQuery.data?.avatarUrl || DEFAULT_PROFILE_PICTURE_URL);
+    setPendingAvatarFile(null);
+    setPendingAvatarDataUrl(null);
+    setAvatarResetRequested(false);
     setDraftBio(bio);
     setDraftTwitter(twitter);
     setDraftInstagram(instagram);
@@ -274,14 +290,17 @@ function CrewProfilePage() {
       email: draftEmail.trim() || account.email,
     };
     const socialLinks = {
-      twitter: normalizeSocialUsername(draftTwitter, "twitter"),
-      instagram: normalizeSocialUsername(draftInstagram, "instagram"),
-      youtube: normalizeSocialUsername(draftYoutube, "youtube"),
+      twitter: normalizeSocialProfile(draftTwitter, "twitter"),
+      instagram: normalizeSocialProfile(draftInstagram, "instagram"),
+      youtube: normalizeSocialProfile(draftYoutube, "youtube"),
     };
     const normalizedBio = draftBio.trim();
+    let avatarUrl: string | undefined;
 
     if (!mockMode) {
       try {
+        if (avatarResetRequested) avatarUrl = await savePlayerAvatar(undefined, true);
+        else if (pendingAvatarFile) avatarUrl = await savePlayerAvatar(pendingAvatarFile);
         const credentialsChanged =
           nextAccount.username.toLowerCase() !== account.username.toLowerCase() ||
           nextAccount.email.toLowerCase() !== account.email.toLowerCase();
@@ -294,6 +313,7 @@ function CrewProfilePage() {
             : {}),
           bio: normalizedBio,
           socialLinks,
+          ...(avatarUrl !== undefined ? { avatarUrl } : {}),
         });
       } catch {
         setFieldError("PlayFab could not save your profile changes. Please try again.");
@@ -301,6 +321,8 @@ function CrewProfilePage() {
       }
     } else {
       try {
+        if (avatarResetRequested) avatarUrl = DEFAULT_PROFILE_PICTURE_URL;
+        else if (pendingAvatarFile) avatarUrl = pendingAvatarDataUrl ?? await readImageAsDataUrl(pendingAvatarFile);
         if (nextAccount.username.toLowerCase() !== account.username.toLowerCase()) {
           const response = await fetch("/api/auth/check-username", {
             method: "POST",
@@ -313,7 +335,7 @@ function CrewProfilePage() {
           }
         }
 
-        await updateProfileMutation.mutateAsync({ bio: normalizedBio, socialLinks });
+        await updateProfileMutation.mutateAsync({ bio: normalizedBio, socialLinks, ...(avatarUrl !== undefined ? { avatarUrl } : {}) });
         window.localStorage.setItem(
           PROFILE_ACCOUNT_KEY,
           JSON.stringify(nextAccount),
@@ -324,7 +346,7 @@ function CrewProfilePage() {
           : {};
         window.localStorage.setItem(
           "player-account",
-          JSON.stringify({ ...playerAccount, ...nextAccount, bio: normalizedBio, socialLinks }),
+          JSON.stringify({ ...playerAccount, ...nextAccount, bio: normalizedBio, socialLinks, ...(avatarUrl !== undefined ? { avatarUrl } : {}) }),
         );
         if (draftPassword) {
           window.localStorage.setItem("cos.profile.password", draftPassword);
@@ -340,6 +362,11 @@ function CrewProfilePage() {
     setInstagram(socialLinks.instagram);
     setYoutube(socialLinks.youtube);
     setAccount(nextAccount);
+    if (avatarUrl !== undefined) setProfileImage(avatarUrl);
+    if (profileImage.startsWith("blob:")) URL.revokeObjectURL(profileImage);
+    setPendingAvatarFile(null);
+    setPendingAvatarDataUrl(null);
+    setAvatarResetRequested(false);
     setDraftPassword("");
     setDraftPasswordConfirm("");
     setEditMode(false);
@@ -436,29 +463,40 @@ function CrewProfilePage() {
   };
 
   const handleImageUpload = (event: ChangeEvent<HTMLInputElement>) => {
-    if (!mockMode) {
-      setFieldError("Profile photo uploads are not connected to PlayFab yet.");
-      return;
-    }
     const file = event.target.files?.[0];
+    event.target.value = "";
 
     if (!file) return;
 
-    if (!file.type.startsWith("image/")) {
+    if (!["image/jpeg", "image/png"].includes(file.type)) {
+      setFieldError("Please select a JPG or PNG image.");
+      return;
+    }
+    if (file.size === 0 || file.size > 5 * 1024 * 1024) {
+      setFieldError("Profile pictures must be no larger than 5 MB.");
       return;
     }
 
-    const imageUrl = URL.createObjectURL(file);
-
-    setProfileImage(imageUrl);
+    if (profileImage.startsWith("blob:")) URL.revokeObjectURL(profileImage);
+    setPendingAvatarFile(file);
+    setAvatarResetRequested(false);
+    setPendingAvatarDataUrl(null);
+    setFieldError("");
+    if (mockMode) {
+      void readImageAsDataUrl(file).then(setPendingAvatarDataUrl).then(() => {
+        void readImageAsDataUrl(file).then(setProfileImage);
+      }).catch(() => setFieldError("Unable to load the selected image."));
+    } else {
+      setProfileImage(URL.createObjectURL(file));
+    }
   };
 
   const removeProfileImage = () => {
-    if (mockMode) {
-      setProfileImage(getProfileArtwork("CAMERA_PRO"));
-    } else {
-      setProfileImage(profileQuery.data?.avatarUrl || getProfileArtwork(profileDisplayName));
-    }
+    if (profileImage.startsWith("blob:")) URL.revokeObjectURL(profileImage);
+    setPendingAvatarFile(null);
+    setPendingAvatarDataUrl(null);
+    setAvatarResetRequested(true);
+    setProfileImage(DEFAULT_PROFILE_PICTURE_URL);
   };
 
   const hasSocials = twitter || instagram || youtube;
@@ -522,7 +560,7 @@ function CrewProfilePage() {
                   src={profileImage}
                   alt={profileDisplayName + " avatar"}
                   fill
-                  unoptimized={profileImage.startsWith("blob:")}
+                  unoptimized={profileImage.startsWith("blob:") || profileImage.startsWith("data:")}
                   className="object-cover object-[62%_45%]"
                 />
               </div>
@@ -644,6 +682,23 @@ function CrewProfilePage() {
                 )}
               </div>
             </div>
+
+            {profileQuery.data?.showCrewActivity !== false && (
+              <section className="mt-8 border-t border-white/[0.07] pt-7">
+                <h3 className="text-xs font-black uppercase tracking-[0.15em] text-white/45">Unlocked Achievements</h3>
+                {(achievementsQuery.data ?? []).filter((achievement) => achievement.unlocked).length > 0 ? (
+                  <div className="mt-4 flex flex-wrap gap-2">
+                    {(achievementsQuery.data ?? []).filter((achievement) => achievement.unlocked).map((achievement) => (
+                      <span key={achievement.id} className="inline-flex items-center gap-2 rounded-md border border-yellow/20 bg-yellow/10 px-3 py-2 text-xs font-bold text-yellow">
+                        <Award className="size-4" /> {achievement.name || achievement.title}
+                      </span>
+                    ))}
+                  </div>
+                ) : (
+                  <p className="mt-3 text-sm text-white/35">No achievements unlocked yet.</p>
+                )}
+              </section>
+            )}
           </div>
 
           {/* =======================================================
@@ -875,7 +930,7 @@ function CrewProfilePage() {
                       src={profileImage}
                       alt={profileDisplayName + " profile preview"}
                       fill
-                      unoptimized={profileImage.startsWith("blob:")}
+                      unoptimized={profileImage.startsWith("blob:") || profileImage.startsWith("data:")}
                       className="object-cover object-[62%_45%]"
                     />
                   </div>
@@ -895,15 +950,22 @@ function CrewProfilePage() {
                     <input
                       ref={fileInputRef}
                       type="file"
-                      accept="image/png,image/jpeg,image/webp"
+                      accept="image/png,image/jpeg"
                       onChange={handleImageUpload}
                       className="hidden"
                     />
+                    <button
+                      type="button"
+                      onClick={removeProfileImage}
+                      className="rounded-md border border-white/10 px-4 py-3 text-xs font-black uppercase text-white/50 transition hover:border-white/30 hover:text-white"
+                    >
+                      Use Default
+                    </button>
                   </div>
                 </div>
 
                 <p className="mt-2 text-xs text-white/30">
-                  JPG, PNG or WEBP. Recommended 500×500.
+                  JPG or PNG, up to 5 MB. Recommended 500×500.
                 </p>
               </div>
 

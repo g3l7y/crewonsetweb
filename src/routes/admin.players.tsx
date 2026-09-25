@@ -25,6 +25,7 @@ import {
 } from "@/lib/admin-demo-data";
 import { notificationsStore, uid } from "@/lib/demo/store";
 import { isMockMode } from "@/lib/playfab/config";
+import { DEFAULT_PROFILE_PICTURE_URL } from "@/lib/profile-avatar";
 import { useAdminPlayer, useAdminPlayers } from "@/lib/playfab/hooks";
 import type { AdminPlayerDetails, PlayerProfile } from "@/lib/playfab/types";
 
@@ -54,6 +55,7 @@ type Player = {
   score: number;
   role?: string;
   bannedUntil?: string | null;
+  avatarUrl: string;
 };
 
 type SortKey = "playtime" | "score" | "joined" | "gamesPlayed";
@@ -157,17 +159,8 @@ function mapPlayFabPlayer(player: PlayerProfile): Player {
     joined: formatJoinedDate(player.joinedAt),
     score: 0,
     role: player.primaryRole || player.role || "Player",
+    avatarUrl: player.avatarUrl || DEFAULT_PROFILE_PICTURE_URL,
   };
-}
-
-function getInitials(username: string) {
-  const clean = username.replace(/[^a-zA-Z0-9]/g, "");
-
-  if (!clean) {
-    return "PL";
-  }
-
-  return clean.slice(0, 2).toUpperCase();
 }
 
 /* =========================================================
@@ -433,6 +426,7 @@ function PlayersPage() {
             ...player,
             id: String(player.id),
             status: player.status === "Banned" ? "Banned" : "Active",
+            avatarUrl: DEFAULT_PROFILE_PICTURE_URL,
           }) as Player,
       ),
     );
@@ -1018,24 +1012,22 @@ function PlayersPage() {
      ========================================================= */
 
   return (
-    <div className="admin-player-management flex h-full min-h-0 flex-col overflow-hidden bg-[#0d1217] text-white">
+    <div className="admin-page admin-player-management flex h-full min-h-0 flex-col overflow-hidden bg-[#0d1217] text-white">
       {/* =====================================================
           PAGE HEADER
           ===================================================== */}
 
-      <header className="shrink-0 border-b border-white/[.06] px-5 pb-6 pt-7">
-        <p className="text-xs font-black tracking-[.18em] text-[#ff6248]">COMMUNITY</p>
+      <header className="mb-8 shrink-0">
+        <h1 className="admin-heading !text-white">Player Management</h1>
 
-        <h1 className="admin-heading mt-2 !text-white">Player Management</h1>
-
-        <p className="mt-2 text-sm text-white/40">Search, review, and manage registered players.</p>
+        <p className="admin-kicker !text-white/45">Search, review, and manage registered players.</p>
       </header>
 
       {/* =====================================================
           SEARCH + FILTER BAR
           ===================================================== */}
 
-      <section className="shrink-0 px-4 py-4">
+      <section className="shrink-0 py-4">
         <div className="rounded-lg border border-white/[.07] bg-[#151c21] p-4">
           <div className="flex flex-col gap-3 xl:flex-row xl:items-center">
             {/* =================================================
@@ -1375,9 +1367,9 @@ function PlayersPage() {
           PLAYER TABLE
           ===================================================== */}
 
-      <section className="min-h-0 flex-1 overflow-hidden px-4 pb-4">
+      <section className="min-h-0 flex-1 overflow-hidden pb-4">
         <div className="h-full overflow-hidden rounded-lg border border-white/[.07] bg-[#11171b]">
-          <div className="admin-player-table-scroll h-full overflow-auto">
+          <div className="admin-player-table-scroll h-full min-h-[20rem] overflow-auto">
             <table className="min-w-[1450px] w-full border-collapse">
               <thead className="sticky top-0 z-20">
                 <tr className="border-b border-white/[.06] bg-[#151c21]">
@@ -1469,8 +1461,8 @@ function PlayersPage() {
 
                       <td className="px-4 py-3">
                         <div className="flex items-center gap-3">
-                          <div className="grid size-8 shrink-0 place-items-center rounded-full border border-white/10 bg-[#222b31] text-[9px] font-black text-white/55">
-                            {getInitials(player.username)}
+                          <div className="size-8 shrink-0 overflow-hidden rounded-full border border-white/10 bg-[#222b31]">
+                            <img src={player.avatarUrl || DEFAULT_PROFILE_PICTURE_URL} alt={player.username + " avatar"} className="size-full object-cover" />
                           </div>
 
                           <div className="min-w-0">
@@ -1752,8 +1744,12 @@ function PlayersPage() {
             <div className="shrink-0 border-b border-white/[.06] bg-[#0d121b] px-8 py-7">
               <div className="flex items-center gap-5">
                 <div className="relative">
-                  <div className="grid size-[105px] place-items-center rounded-2xl border-2 border-[#f5c431] bg-[#202a3a] text-3xl font-black text-white/70">
-                    {getInitials(selectedPlayer.username)}
+                  <div className="size-[105px] overflow-hidden rounded-2xl border-2 border-[#f5c431] bg-[#202a3a]">
+                    <img
+                      src={displayProfile?.avatarUrl || selectedPlayer.avatarUrl || DEFAULT_PROFILE_PICTURE_URL}
+                      alt={selectedPlayer.username + " avatar"}
+                      className="size-full object-cover"
+                    />
                   </div>
 
                   <span

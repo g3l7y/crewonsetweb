@@ -132,8 +132,7 @@ function BugReportsPage() {
   return (
     <div className="admin-page h-full overflow-y-auto bg-[#101923] text-white">
       <header className="mb-8">
-        <p className="text-xs font-black tracking-[.18em] !text-coral">SUPPORT</p>
-        <h1 className="admin-heading mt-2 !text-white">Bug Reports</h1>
+        <h1 className="admin-heading !text-white">Bug Reports</h1>
         <p className="admin-kicker !text-white/45">
           Review player-submitted issues and track triage status.
         </p>
@@ -280,15 +279,22 @@ function BugReportsPage() {
           onClick={() => setViewBug(null)}
         >
           <div
-            className="max-h-[85vh] w-full max-w-lg overflow-y-auto rounded-xl border border-white/10 bg-[#151c28] p-6 shadow-2xl"
+            className="flex max-h-[85vh] w-full flex-col overflow-hidden rounded-xl border border-white/10 bg-[#151c28] shadow-2xl"
+            style={{ maxWidth: "32rem" }}
             onClick={(event) => event.stopPropagation()}
           >
-            <div className="flex items-start justify-between">
+            <div className="flex shrink-0 items-start justify-between border-b border-white/10 px-5 py-4">
               <h3 className="text-lg font-black uppercase text-white">{viewBug.id}</h3>
-              <button onClick={() => setViewBug(null)} className="!text-white/40 hover:!text-white">
+              <button
+                type="button"
+                aria-label="Close report details"
+                onClick={() => setViewBug(null)}
+                className="grid size-8 shrink-0 place-items-center rounded-full !text-white/55 hover:bg-white/10 hover:!text-white"
+              >
                 <X className="size-5" />
               </button>
             </div>
+            <div className="min-h-0 flex-1 overflow-y-auto p-5">
             <p className="mt-3 text-xs font-black uppercase tracking-wide !text-white/35">Player</p>
             <p className="text-sm !text-white/80">
               {viewBug.playerName}
@@ -312,13 +318,13 @@ function BugReportsPage() {
                   <img
                     src={viewBug.attachmentUrl}
                     alt={viewBug.attachmentName || "Bug report attachment"}
-                    className="max-h-72 w-full rounded object-contain"
+                    className="max-h-60 w-full rounded object-contain"
                   />
                 ) : (
                   <iframe
                     src={viewBug.attachmentUrl}
                     title={viewBug.attachmentName || "Bug report PDF attachment"}
-                    className="h-72 w-full rounded bg-white"
+                    className="h-60 w-full rounded bg-white"
                   />
                 )}
                 <a
@@ -336,6 +342,7 @@ function BugReportsPage() {
                 retained.
               </p>
             ) : null}
+            </div>
           </div>
         </div>
       )}

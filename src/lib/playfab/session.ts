@@ -4,6 +4,20 @@ import { isMockMode, PLAYFAB_API_BASE, PLAYFAB_TITLE_ID } from './config';
 import { PLAYFAB_DATA_KEYS } from './constants';
 import { getMockAccountBySessionTicket } from './mock-accounts';
 
+type PlayFabSessionAccount = {
+  PlayFabId?: string;
+  Username?: string;
+  TitleInfo?: { DisplayName?: string };
+  PrivateInfo?: { Email?: string };
+};
+
+type PlayFabSessionResult = {
+  code?: number;
+  error?: string;
+  errorMessage?: string;
+  data?: { AccountInfo?: PlayFabSessionAccount };
+};
+
 /**
  * Cookie builder helper.
  * Uses HttpOnly, SameSite=Strict, Path=/.
@@ -124,7 +138,7 @@ export async function validateSessionFromRequest(
 
   try {
     let accountResponse: Response | null = null;
-    let accountResult: any = null;
+    let accountResult: PlayFabSessionResult | null = null;
     for (let attempt = 0; attempt < 2; attempt += 1) {
       try {
         accountResponse = await fetch(`${PLAYFAB_API_BASE}/Client/GetAccountInfo`, {
@@ -135,17 +149,17 @@ export async function validateSessionFromRequest(
           },
           body: JSON.stringify({}),
         });
-        accountResult = await accountResponse.json();
+        accountResult = await accountResponse.json() as PlayFabSessionResult;
       } catch (error) {
         if (attempt === 1) throw error;
         continue;
       }
 
-      const retryable = accountResponse.status === 429 || accountResponse.status >= 500 || accountResult?.code >= 500;
+      const retryable = accountResponse.status === 429 || accountResponse.status >= 500 || (typeof accountResult?.code === 'number' && accountResult.code >= 500);
       if (!retryable || attempt === 1) break;
     }
 
-    if (!accountResponse) return null;
+    if (!accountResponse || !accountResult) return null;
     if (!accountResponse.ok || accountResult.code !== 200) {
       // A temporary PlayFab/network failure must not erase a valid browser
       // session. The ticket is still the credential used for every protected
@@ -198,28 +212,26 @@ export async function validateSessionFromRequest(
     if (options.requireAdmin && role !== 'admin') return null;
 
     let savedUsername = '';
+    let savedEmail = '';
     const accountDisplayName = account?.TitleInfo?.DisplayName || account?.Username || '';
-    if (accountDisplayName === 'Player' || !accountDisplayName) {
-      try {
-        const userDataResponse = await fetch(`${PLAYFAB_API_BASE}/Client/GetUserData`, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'X-Authorization': parsed.sessionTicket,
-          },
-          body: JSON.stringify({ Keys: [PLAYFAB_DATA_KEYS.profile_metadata] }),
-        });
-        const userDataResult = await userDataResponse.json();
-        const rawMetadata = userDataResult?.data?.Data?.[PLAYFAB_DATA_KEYS.profile_metadata]?.Value;
-        if (typeof rawMetadata === 'string' && rawMetadata) {
-          const metadata = JSON.parse(rawMetadata) as { username?: unknown };
-          if (typeof metadata.username === 'string' && metadata.username.trim()) {
-            savedUsername = metadata.username.trim();
-          }
-        }
-      } catch {
-        // Profile metadata is optional; keep the PlayFab account name if it is unavailable.
+    try {
+      const userDataResponse = await fetch(`${PLAYFAB_API_BASE}/Client/GetUserData`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-Authorization': parsed.sessionTicket,
+        },
+        body: JSON.stringify({ Keys: [PLAYFAB_DATA_KEYS.profile_metadata] }),
+      });
+      const userDataResult = await userDataResponse.json();
+      const rawMetadata = userDataResult?.data?.Data?.[PLAYFAB_DATA_KEYS.profile_metadata]?.Value;
+      if (typeof rawMetadata === 'string' && rawMetadata) {
+        const metadata = JSON.parse(rawMetadata) as { username?: unknown; email?: unknown };
+        if (typeof metadata.username === 'string' && metadata.username.trim()) savedUsername = metadata.username.trim();
+        if (typeof metadata.email === 'string' && metadata.email.trim()) savedEmail = metadata.email.trim().toLowerCase();
       }
+    } catch {
+      // Profile metadata is optional; retain the provider/session values if it is unavailable.
     }
 
     const resolvedUsername = savedUsername || accountDisplayName || 'Player';
@@ -230,7 +242,9 @@ export async function validateSessionFromRequest(
       username: resolvedUsername,
       playFabUsername: account?.Username || parsed.playFabUsername,
       displayName: resolvedUsername,
-      email: account?.PrivateInfo?.Email || '',
+      // PlayFab's primary login email may remain unchanged when this app uses
+      // its verified email alias flow. Prefer the current app credential.
+      email: savedEmail || account?.PrivateInfo?.Email || parsed.email || '',
     };
   } catch {
     // Do not turn a short PlayFab outage into an apparent logout for players.
