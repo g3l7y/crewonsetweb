@@ -13,7 +13,12 @@ export default defineConfig(({ mode }) => {
   return {
     // Durable per-promotion expiry timers run on Vercel instead of daily cron polling.
     plugins: [workflow()],
-    nitro: { preset: "vercel" },
+    nitro: {
+      preset: "vercel",
+      // Payment confirmation can perform several sequential provider and database
+      // requests. Keep the request alive long enough to finish fulfillment.
+      vercel: { functions: { maxDuration: 60 } },
+    },
     define: {
       ...(
         // Ensure PlayFab env vars are available
