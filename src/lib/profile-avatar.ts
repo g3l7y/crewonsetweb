@@ -1,4 +1,5 @@
-export const DEFAULT_PROFILE_PICTURE_URL = "/assets/profile-default.jpg";
+// Version the default URL so browsers discard the previous built-in artwork.
+export const DEFAULT_PROFILE_PICTURE_URL = "/assets/profile-default.jpg?v=20260926";
 
 export function isManagedProfileAvatarUrl(value: unknown): value is string {
   return typeof value === "string" && value.includes("/api/playfab/profile-avatar?");

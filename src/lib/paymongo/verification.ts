@@ -16,6 +16,9 @@ export function parsePaidCheckoutEvent(payload: unknown): PaidCheckoutEvent | nu
   const data = asRecord(body["data"]);
   const envelopeAttributes = asRecord(data["attributes"]);
   const wrappedEvent = data["type"] === "event";
+  // PayMongo's current Hosted Checkout webhook uses a compact `data.type`
+  // envelope, while older event deliveries use `data.type === "event"` and
+  // place the event name under `data.attributes.type`.
   const eventType = String(wrappedEvent ? envelopeAttributes["type"] : data["type"] || "");
   if (eventType !== "checkout_session.payment.paid") return null;
 
@@ -24,7 +27,7 @@ export function parsePaidCheckoutEvent(payload: unknown): PaidCheckoutEvent | nu
   if (!session["id"] || !Object.keys(attributes).length) return null;
 
   return {
-    eventId: String((wrappedEvent ? data["id"] : body["id"]) || session["id"]),
+    eventId: String((wrappedEvent ? data["id"] : body["id"] || data["id"]) || session["id"]),
     sessionId: String(session["id"]),
     attributes,
   };

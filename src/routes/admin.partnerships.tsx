@@ -286,7 +286,9 @@ function PartnershipsPage() {
     let savedApplication: PartnershipApplication;
     let emailWarning: string | undefined;
     if (isMockMode()) {
-      const mockPaymentRequested = app.status === 'New' && status === 'Pending';
+      const mockPaymentRequested = status === 'Pending' &&
+        app.paymentStatus !== 'Paid' &&
+        !app.paymentCheckoutUrl;
       const promotionStartedAt = status === 'On-going'
         ? app.promotionStartedAt || new Date().toISOString()
         : app.promotionStartedAt;

@@ -80,9 +80,13 @@ function getStoredMockProfileMetadata(): StoredMockProfileMetadata {
     const raw = window.localStorage.getItem(MOCK_PROFILE_METADATA_KEY);
     if (!raw) return {};
     const metadata = JSON.parse(raw) as StoredMockProfileMetadata;
+    const savedAvatar = typeof metadata.avatarUrl === 'string' &&
+      (metadata.avatarUrl === DEFAULT_PROFILE_PICTURE_URL || metadata.avatarUrl.startsWith('data:image/'))
+      ? metadata.avatarUrl
+      : undefined;
     return {
       ...(typeof metadata.bio === 'string' ? { bio: metadata.bio } : {}),
-      ...(typeof metadata.avatarUrl === 'string' ? { avatarUrl: metadata.avatarUrl } : {}),
+      ...(savedAvatar ? { avatarUrl: savedAvatar } : {}),
       ...(metadata.socialLinks ? { socialLinks: metadata.socialLinks } : {}),
       ...(typeof metadata.showStatus === 'boolean' ? { showStatus: metadata.showStatus } : {}),
       ...(typeof metadata.profileVisibility === 'boolean' ? { profileVisibility: metadata.profileVisibility } : {}),

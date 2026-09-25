@@ -31,14 +31,26 @@ function uid(prefix: string): string {
 const transitions: Record<PartnershipStatus, PartnershipStatus[]> = {
   New: ['New', 'Pending', 'Declined'],
   Pending: ['Pending', 'Approved'],
-  Approved: ['Approved', 'On-going'],
-  'On-going': ['On-going', 'Done'],
-  Done: ['Done'],
-  Declined: ['Declined'],
+  Approved: ['Approved', 'Pending', 'On-going'],
+  'On-going': ['On-going', 'Pending', 'Done'],
+  Done: ['Done', 'Pending'],
+  Declined: ['Declined', 'Pending'],
 };
 
 function isPartnershipStatus(value: unknown): value is PartnershipStatus {
   return typeof value === 'string' && value in transitions;
+}
+
+async function trySendPartnershipStatusEmail(
+  options: Parameters<typeof sendPartnershipStatusEmail>[0],
+): Promise<string | undefined> {
+  try {
+    await sendPartnershipStatusEmail(options);
+    return undefined;
+  } catch (error) {
+    console.error('[API] Partnership status email could not be delivered:', error);
+    return error instanceof Error ? error.message : 'The partnership email could not be delivered.';
+  }
 }
 
 function getPaymentMethodTypes(): string[] {
@@ -259,13 +271,17 @@ export const Route = createFileRoute('/api/admin/partnerships')({
           }
           const nextStatus = body.status;
           if (!isPartnershipStatus(application.status) || !transitions[application.status].includes(nextStatus)) {
-            return Response.json({ error: 'That status change is not allowed. Partnership statuses only move forward.' }, { status: 409 });
+            return Response.json({ error: 'That partnership status change is not allowed.' }, { status: 409 });
           }
-          if (nextStatus === application.status) {
+          const canRetryPendingSetup = nextStatus === 'Pending' &&
+            application.paymentStatus !== 'Paid' &&
+            (!application.paymentCheckoutUrl || !application.paymentEmailSentAt);
+          if (nextStatus === application.status && !canRetryPendingSetup) {
             return Response.json({ success: true, data: application });
           }
 
           let payment: PartnershipPayment | null = null;
+          let emailWarning: string | undefined;
           let nextApplication: PartnershipApplication = { ...application, status: nextStatus };
           let completesPromotion = false;
           if (application.adminNotes !== undefined) nextApplication.adminNotes = application.adminNotes;
@@ -288,14 +304,11 @@ export const Route = createFileRoute('/api/admin/partnerships')({
             completesPromotion = true;
           }
 
-          if (application.status === 'New' && nextStatus === 'Pending') {
+          if (nextStatus === 'Pending' && application.paymentStatus !== 'Paid') {
             const amountInCentavos = Math.round(Number(application.budget || 0) * 100);
             if (!Number.isFinite(amountInCentavos) || amountInCentavos <= 0) {
               return Response.json({ error: 'A positive proposed budget is required before requesting payment.' }, { status: 400 });
             }
-            const paymongoSecret = process.env['PAYMONGO_SECRET_KEY']?.trim();
-            if (!paymongoSecret) return Response.json({ error: 'PAYMONGO_SECRET_KEY is not configured.' }, { status: 503 });
-
             payment = await findPartnershipPayment(application.id, secretKey);
             if (!payment) {
               const now = new Date().toISOString();
@@ -314,7 +327,12 @@ export const Route = createFileRoute('/api/admin/partnerships')({
               const saved = await appendWebsiteRecord(WEBSITE_DATA_KEYS.partnershipPayments, payment, secretKey);
               if (!saved) return Response.json({ error: 'The brand payment could not be recorded.' }, { status: 500 });
             }
-            if (!payment.checkoutUrl || payment.status === 'failed') {
+            nextApplication.paymentStatus = 'Pending';
+            nextApplication.paymentId = payment.id;
+            nextApplication.paymentAmount = payment.amountInCentavos / 100;
+
+            const paymongoSecret = process.env['PAYMONGO_SECRET_KEY']?.trim();
+            if ((!payment.checkoutUrl || payment.status === 'failed') && paymongoSecret) {
               const checkout = await startPayMongoCheckout(request, application, payment, paymongoSecret).catch(async (error) => {
                 await updatePartnershipPayment(payment?.id || '', (current) => ({ ...current, status: 'failed', updatedAt: new Date().toISOString() }), secretKey);
                 throw error;
@@ -329,18 +347,27 @@ export const Route = createFileRoute('/api/admin/partnerships')({
               if (!activated) return Response.json({ error: 'The brand payment could not be activated.' }, { status: 500 });
               payment = { ...payment, ...checkout, status: 'active' };
             }
-            await sendPartnershipStatusEmail({ application, status: 'Pending', paymentUrl: payment.checkoutUrl });
-            nextApplication.paymentStatus = 'Pending';
-            nextApplication.paymentId = payment.id;
-            nextApplication.paymentCheckoutUrl = payment.checkoutUrl;
-            nextApplication.paymentAmount = payment.amountInCentavos / 100;
-            nextApplication.paymentEmailSentAt = new Date().toISOString();
+            if (payment.checkoutUrl && payment.status !== 'failed') {
+              nextApplication.paymentCheckoutUrl = payment.checkoutUrl;
+              const emailError = await trySendPartnershipStatusEmail({
+                application,
+                status: 'Pending',
+                paymentUrl: payment.checkoutUrl,
+              });
+              if (emailError) emailWarning = 'The status was saved, but the payment email could not be delivered: ' + emailError;
+              else nextApplication.paymentEmailSentAt = new Date().toISOString();
+            } else {
+              emailWarning = paymongoSecret
+                ? 'The status was saved as Pending, but a payment checkout link could not be created. Select Pending again to retry.'
+                : 'The status was saved as Pending, but payment checkout is not configured. Add PAYMONGO_SECRET_KEY, then select Pending again to create the checkout link.';
+            }
           } else if (application.status === 'Pending' && nextStatus === 'Approved') {
             if (application.paymentStatus !== 'Paid') {
               return Response.json({ error: 'The application cannot be approved until the brand payment is completed.' }, { status: 409 });
             }
-            await sendPartnershipStatusEmail({ application, status: 'Approved' });
-            nextApplication.approvalEmailSentAt = new Date().toISOString();
+            const emailError = await trySendPartnershipStatusEmail({ application, status: 'Approved' });
+            if (emailError) emailWarning = 'The status was saved, but the approval email could not be delivered: ' + emailError;
+            else nextApplication.approvalEmailSentAt = new Date().toISOString();
           } else if (nextStatus === 'On-going') {
             if (application.paymentStatus !== 'Paid') {
               return Response.json({ error: 'The application cannot go on-going until the brand payment is completed.' }, { status: 409 });
@@ -354,13 +381,15 @@ export const Route = createFileRoute('/api/admin/partnerships')({
               application.duration,
               application.durationUnit,
             );
-            await sendPartnershipStatusEmail({
+            const emailError = await trySendPartnershipStatusEmail({
               application: nextApplication,
               status: nextStatus,
               promotionUrl: getPromotionUrl(request, brandPromotionToken),
             });
-          } else if (!completesPromotion) {
-            await sendPartnershipStatusEmail({ application, status: nextStatus });
+            if (emailError) emailWarning = 'The status was saved, but the promotion email could not be delivered: ' + emailError;
+          } else if (!completesPromotion && !(nextStatus === 'Pending' && application.paymentStatus === 'Paid')) {
+            const emailError = await trySendPartnershipStatusEmail({ application, status: nextStatus });
+            if (emailError) emailWarning = 'The status was saved, but the partnership email could not be delivered: ' + emailError;
           }
 
           const saved = await updateWebsiteRecord<PartnershipApplication>(
@@ -370,14 +399,13 @@ export const Route = createFileRoute('/api/admin/partnerships')({
             secretKey,
           );
           if (!saved) return Response.json({ error: 'Failed to update partnership application.' }, { status: 500 });
-          let emailWarning: string | undefined;
           let responseApplication = nextApplication;
           if (nextStatus === 'On-going' && !isMockMode()) {
             try {
               responseApplication = await ensureBrandPromotionExpiryWorkflow(nextApplication, secretKey);
             } catch (error) {
               console.error('[API] Promotion is live but its expiry workflow could not be scheduled:', application.id, error);
-              emailWarning = 'The promotion is live, but its automatic expiry could not be scheduled. Please retry by refreshing the applications page or contact support.';
+              emailWarning = [emailWarning, 'The promotion is live, but its automatic expiry could not be scheduled. Please retry by refreshing the applications page or contact support.'].filter(Boolean).join(' ');
             }
           }
           if (completesPromotion) {
@@ -385,7 +413,7 @@ export const Route = createFileRoute('/api/admin/partnerships')({
               await sendPromotionCompletionEmail(nextApplication, secretKey);
             } catch (error) {
               console.error('[API] Promotion completion email failed; it will be retried by the expiry job:', error);
-              emailWarning = 'The status was saved, but the completion email could not be delivered yet. It will be retried automatically.';
+              emailWarning = [emailWarning, 'The status was saved, but the completion email could not be delivered yet. It will be retried automatically.'].filter(Boolean).join(' ');
             }
           }
           return Response.json({ success: true, data: responseApplication, payment, emailWarning });
