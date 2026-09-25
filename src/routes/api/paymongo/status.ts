@@ -146,7 +146,8 @@ async function reconcilePaidOrder(
     if (!credited.success) {
       await markPayMongoOrderFailed(order.id, credited.error);
       await repairWebsiteOrder(order.id, playfabSecret, "failed");
-      return "failed";
+      console.error("[PayMongo] C-Coin delivery will be retried:", order.id, credited.error);
+      return "processing";
     }
   }
 
@@ -215,7 +216,7 @@ export const Route = createFileRoute("/api/paymongo/status")({
           }
 
           let status = order.status;
-          if (status !== "fulfilled" && status !== "failed") {
+          if (status !== "fulfilled") {
             status = (await reconcilePaidOrder(
               order,
               mockMode,

@@ -2,6 +2,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import { PLAYFAB_API_BASE } from "@/lib/playfab/config";
 import { PLAYFAB_DATA_KEYS } from "@/lib/playfab/constants";
 import { getProfileAvatarFile } from "@/lib/playfab/profile-avatars";
+import { DEFAULT_PROFILE_PICTURE_URL } from "@/lib/profile-avatar";
 
 type ProfileMetadata = { avatarFileName?: string };
 
@@ -44,12 +45,13 @@ export const Route = createFileRoute("/api/playfab/profile-avatar")({
             try { metadata = JSON.parse(rawMetadata) as ProfileMetadata; } catch { metadata = {}; }
           }
           const fileName = metadata.avatarFileName;
-          if (!fileName) return new Response(null, { status: 404 });
+          const defaultAvatar = () => Response.redirect(new URL(DEFAULT_PROFILE_PICTURE_URL, request.url), 302);
+          if (!fileName) return defaultAvatar();
 
           const file = await getProfileAvatarFile(playFabId, fileName, secretKey);
-          if (!file?.DownloadUrl) return new Response(null, { status: 404 });
+          if (!file?.DownloadUrl) return defaultAvatar();
           const image = await fetch(file.DownloadUrl);
-          if (!image.ok || !image.body) return new Response(null, { status: 502 });
+          if (!image.ok || !image.body) return defaultAvatar();
 
           const headers = new Headers({
             "Content-Type": fileName.toLowerCase().endsWith(".png") ? "image/png" : "image/jpeg",

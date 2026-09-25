@@ -1,4 +1,4 @@
-import { neon } from "@neondatabase/serverless";
+import { neon, type NeonQueryFunction } from "@neondatabase/serverless";
 
 type PayMongoLedgerStatus = "pending" | "active" | "processing" | "fulfilled" | "failed";
 
@@ -42,7 +42,7 @@ function getSql() {
   return neon(databaseUrl);
 }
 
-async function ensureSchema(sql: ReturnType<typeof neon>): Promise<void> {
+async function ensureSchema(sql: NeonQueryFunction<false, false>): Promise<void> {
   if (!schemaPromise) {
     schemaPromise = (async () => {
       await sql`
@@ -56,10 +56,17 @@ async function ensureSchema(sql: ReturnType<typeof neon>): Promise<void> {
           status TEXT NOT NULL,
           event_id TEXT,
           claimed_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+          processing_at TIMESTAMPTZ,
           fulfilled_at TIMESTAMPTZ,
           failed_at TIMESTAMPTZ,
           last_error TEXT
         )
+      `;
+      await sql`ALTER TABLE paymongo_payment_ledger ADD COLUMN IF NOT EXISTS processing_at TIMESTAMPTZ`;
+      await sql`
+        UPDATE paymongo_payment_ledger
+        SET processing_at = claimed_at
+        WHERE status = 'processing' AND processing_at IS NULL
       `;
       // Keep existing installations compatible with mock Test checkout states.
       await sql`ALTER TABLE paymongo_payment_ledger DROP CONSTRAINT IF EXISTS paymongo_payment_ledger_status_check`;
@@ -137,15 +144,15 @@ export async function getPayMongoOrder(
   const row = rows[0] as Record<string, unknown> | undefined;
   if (!row) return null;
   return {
-    orderId: String(row.order_id),
-    checkoutSessionId: String(row.checkout_session_id),
-    playFabId: String(row.playfab_id),
-    packageId: String(row.package_id),
-    coins: Number(row.coins),
-    amountInCentavos: Number(row.amount_in_centavos),
-    status: String(row.status) as PayMongoLedgerStatus,
-    createdAt: new Date(String(row.claimed_at)).toISOString(),
-    ...(row.fulfilled_at ? { fulfilledAt: new Date(String(row.fulfilled_at)).toISOString() } : {}),
+    orderId: String(row["order_id"]),
+    checkoutSessionId: String(row["checkout_session_id"]),
+    playFabId: String(row["playfab_id"]),
+    packageId: String(row["package_id"]),
+    coins: Number(row["coins"]),
+    amountInCentavos: Number(row["amount_in_centavos"]),
+    status: String(row["status"]) as PayMongoLedgerStatus,
+    createdAt: new Date(String(row["claimed_at"])).toISOString(),
+    ...(row["fulfilled_at"] ? { fulfilledAt: new Date(String(row["fulfilled_at"])).toISOString() } : {}),
   };
 }
 
@@ -166,7 +173,8 @@ export async function claimPayMongoOrder(input: PayMongoOrderInput): Promise<Pay
       coins,
       amount_in_centavos,
       status,
-      event_id
+      event_id,
+      processing_at
     ) VALUES (
       ${input.orderId},
       ${input.checkoutSessionId},
@@ -175,7 +183,8 @@ export async function claimPayMongoOrder(input: PayMongoOrderInput): Promise<Pay
       ${input.coins},
       ${input.amountInCentavos},
       'processing',
-      ${input.eventId || null}
+      ${input.eventId || null},
+      NOW()
     )
     ON CONFLICT (order_id) DO NOTHING
     RETURNING order_id
@@ -186,12 +195,26 @@ export async function claimPayMongoOrder(input: PayMongoOrderInput): Promise<Pay
   const activated = await sql`
     UPDATE paymongo_payment_ledger
     SET status = 'processing',
-        event_id = COALESCE(${input.eventId || null}, event_id)
+        event_id = COALESCE(${input.eventId || null}, event_id),
+        processing_at = NOW(),
+        failed_at = NULL,
+        last_error = NULL
     WHERE order_id = ${input.orderId}
-      AND status IN ('pending', 'active')
+      AND status IN ('pending', 'active', 'failed')
     RETURNING order_id
   `;
   if (activated.length > 0) return { status: "claimed" };
+
+  const recovered = await sql`
+    UPDATE paymongo_payment_ledger
+    SET processing_at = NOW(),
+        event_id = COALESCE(${input.eventId || null}, event_id)
+    WHERE order_id = ${input.orderId}
+      AND status = 'processing'
+      AND processing_at < NOW() - INTERVAL '2 minutes'
+    RETURNING order_id
+  `;
+  if (recovered.length > 0) return { status: "claimed" };
 
   const existing = await sql`
     SELECT status
@@ -199,7 +222,7 @@ export async function claimPayMongoOrder(input: PayMongoOrderInput): Promise<Pay
     WHERE order_id = ${input.orderId}
     LIMIT 1
   `;
-  const status = String(existing[0]?.status || "processing") as PayMongoLedgerStatus;
+  const status = String(existing[0]?.["status"] || "processing") as PayMongoLedgerStatus;
   if (!["pending", "active", "processing", "fulfilled", "failed"].includes(status)) {
     throw new Error(`Unknown PayMongo ledger status for ${input.orderId}: ${status}`);
   }
@@ -217,7 +240,10 @@ export async function markPayMongoOrderFulfilled(
     UPDATE paymongo_payment_ledger
     SET status = 'fulfilled',
         event_id = COALESCE(${eventId || null}, event_id),
-        fulfilled_at = NOW()
+        fulfilled_at = NOW(),
+        processing_at = NULL,
+        failed_at = NULL,
+        last_error = NULL
     WHERE order_id = ${orderId}
       AND status = 'processing'
     RETURNING order_id
@@ -232,6 +258,7 @@ export async function markPayMongoOrderFailed(orderId: string, reason: string): 
     UPDATE paymongo_payment_ledger
     SET status = 'failed',
         failed_at = NOW(),
+        processing_at = NULL,
         last_error = ${reason.slice(0, 1000)}
     WHERE order_id = ${orderId}
       AND status IN ('pending', 'active', 'processing')

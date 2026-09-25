@@ -297,7 +297,7 @@ export const Route = createFileRoute("/api/paymongo/webhook")({
                 { source: "paymongo", orderId: order.id },
               );
               if (!credited.success) {
-                console.error("[PayMongo] Failed to credit order:", order.id);
+                console.error("[PayMongo] C-Coin delivery failed and will be retried:", order.id, credited.error);
                 let ledgerFailed = false;
                 try {
                   ledgerFailed = await markPayMongoOrderFailed(order.id, credited.error);
@@ -320,7 +320,10 @@ export const Route = createFileRoute("/api/paymongo/webhook")({
                     { status: 500 },
                   );
                 }
-                return Response.json({ received: true });
+                return Response.json(
+                  { error: "Payment was received, but C-Coin delivery failed and should be retried." },
+                  { status: 503 },
+                );
               }
             }
 
