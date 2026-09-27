@@ -411,7 +411,7 @@ function PlayerDashboardPage() {
         {/* LATEST UPDATE */}
         <section className="latest-update-card on-dark relative mt-6 overflow-hidden rounded-xl bg-[#111c30]">
           <Image
-            src={displayAvatar}
+            src="/assets/crew-on-set-hero.jpg"
             alt="Crew On Set version 1.4"
             fill
             className="object-cover opacity-40"
