@@ -83,6 +83,7 @@ function GamePage() {
   const [requirementsOpen, setRequirementsOpen] = useState(false);
   const [remoteRequirements] = systemRequirementsStore.useStore();
   const [remoteBuildInfoRows] = buildInfoStore.useStore();
+  const [remoteGameBuildRows] = gameBuildStore.useStore();
   const [brandUpdates] = brandUpdatesStore.useStore();
   const [brandMetrics, setBrandMetrics] = useState<
     Record<string, { clicks: number; visits: number; impressions: number }>
@@ -98,6 +99,7 @@ function GamePage() {
   const [installerFile, setInstallerFile] = useState<File | null>(null);
   const [savingRequirements, setSavingRequirements] = useState(false);
   const installerInputRef = useRef<HTMLInputElement>(null);
+  const buildDraftTouched = useRef(false);
   const [composerMessage, setComposerMessage] = useState("");
 
   useEffect(() => {
@@ -233,7 +235,9 @@ function GamePage() {
       };
       systemRequirementsStore.set(requirements);
       buildInfoStore.set([buildInfo]);
-      gameBuildStore.set([nextBuild]);
+      if (nextBuild.version.trim() || nextBuild.downloadUrl || nextBuild.releaseNotes.trim()) {
+        gameBuildStore.set([nextBuild]);
+      }
       setBuildDraft(nextBuild);
       notifyRequirementsUpdated();
       setInstallerFile(null);
@@ -271,6 +275,12 @@ function GamePage() {
         releasedAt: new Date().toISOString(),
       },
   );
+
+  useEffect(() => {
+    if (remoteGameBuildRows[0] && !buildDraftTouched.current) {
+      setBuildDraft({ ...remoteGameBuildRows[0] });
+    }
+  }, [remoteGameBuildRows]);
 
   function publishBrandUpdate(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -595,9 +605,10 @@ function GamePage() {
                     VERSION
                     <input
                       value={buildDraft.version}
-                      onChange={(event) =>
-                        setBuildDraft((current) => ({ ...current, version: event.target.value }))
-                      }
+                      onChange={(event) => {
+                        buildDraftTouched.current = true;
+                        setBuildDraft((current) => ({ ...current, version: event.target.value }));
+                      }}
                       placeholder="0.9.5"
                       className="mt-1.5 w-full rounded-md border border-white/10 bg-[#182330] px-3 py-2 text-sm font-bold !text-white outline-none focus:border-coral"
                     />
@@ -606,12 +617,13 @@ function GamePage() {
                     BUILD NUMBER
                     <input
                       value={buildDraft.buildNumber}
-                      onChange={(event) =>
+                      onChange={(event) => {
+                        buildDraftTouched.current = true;
                         setBuildDraft((current) => ({
                           ...current,
                           buildNumber: event.target.value,
-                        }))
-                      }
+                        }));
+                      }}
                       placeholder="950"
                       className="mt-1.5 w-full rounded-md border border-white/10 bg-[#182330] px-3 py-2 text-sm font-bold !text-white outline-none focus:border-coral"
                     />
@@ -620,12 +632,13 @@ function GamePage() {
                     INSTALLER FILE NAME
                     <input
                       value={buildDraft.installerFileName}
-                      onChange={(event) =>
+                      onChange={(event) => {
+                        buildDraftTouched.current = true;
                         setBuildDraft((current) => ({
                           ...current,
                           installerFileName: event.target.value,
-                        }))
-                      }
+                        }));
+                      }}
                       placeholder="CrewOnSet-0.9.5.exe"
                       className="mt-1.5 w-full rounded-md border border-white/10 bg-[#182330] px-3 py-2 text-sm font-bold !text-white outline-none focus:border-coral"
                     />
@@ -636,7 +649,10 @@ function GamePage() {
                       ref={installerInputRef}
                       type="file"
                       accept=".exe,application/vnd.microsoft.portable-executable,application/octet-stream"
-                      onChange={(event) => setInstallerFile(event.currentTarget.files?.[0] ?? null)}
+                      onChange={(event) => {
+                        buildDraftTouched.current = true;
+                        setInstallerFile(event.currentTarget.files?.[0] ?? null);
+                      }}
                       className="mt-1.5 w-full rounded-md border border-white/10 bg-[#182330] px-3 py-2 text-sm font-bold !text-white file:mr-3 file:rounded file:border-0 file:bg-coral file:px-3 file:py-2 file:text-xs file:font-black file:text-white"
                     />
                     <span className="mt-1 block text-xs normal-case tracking-normal !text-white/40">
@@ -651,12 +667,13 @@ function GamePage() {
                     RELEASE NOTES
                     <textarea
                       value={buildDraft.releaseNotes}
-                      onChange={(event) =>
+                      onChange={(event) => {
+                        buildDraftTouched.current = true;
                         setBuildDraft((current) => ({
                           ...current,
                           releaseNotes: event.target.value,
-                        }))
-                      }
+                        }));
+                      }}
                       rows={4}
                       className="mt-1.5 w-full resize-y rounded-md border border-white/10 bg-[#182330] px-3 py-2 text-sm font-bold !text-white outline-none focus:border-coral"
                     />
