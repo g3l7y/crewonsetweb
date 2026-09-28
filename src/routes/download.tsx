@@ -92,19 +92,25 @@ function DownloadPage() {
               </span>
             </a>
 
-            {buildInfo && (
+            {(displayedVersion || currentBuild) && (
               <div className="mt-8 flex flex-wrap items-center gap-x-6 gap-y-2 text-xs font-bold uppercase tracking-wider text-white/50">
-                <span>{displayedVersion}</span>
-                <span className="hidden sm:inline">·</span>
-                <span>{buildInfo.builtOn}</span>
-                <span className="hidden sm:inline">·</span>
-                <span>{displayedWindowsRequirement}</span>
-                {currentBuild && (
+                {displayedVersion && <span>{displayedVersion}</span>}
+                {buildInfo?.builtOn && (
+                  <>
+                    <span className="hidden sm:inline">·</span>
+                    <span>{buildInfo.builtOn}</span>
+                  </>
+                )}
+                {displayedWindowsRequirement && (
+                  <>
+                    <span className="hidden sm:inline">·</span>
+                    <span>{displayedWindowsRequirement}</span>
+                  </>
+                )}
+                {currentBuild?.buildNumber && (
                   <>
                     <span className="hidden sm:inline">·</span>
                     <span>Build {currentBuild.buildNumber}</span>
-                    <span className="hidden sm:inline">·</span>
-                    <span>{currentBuild.minWindows}</span>
                   </>
                 )}
               </div>
@@ -129,12 +135,12 @@ function DownloadPage() {
                 changes as the studio grows.
               </p>
 
-              {currentBuild?.releaseNotes && (
+              {currentBuild?.version && (
                 <p className="download-card mt-4 rounded-md border border-[#fefaef]/80 bg-[#fefaef] px-4 py-3 text-sm leading-relaxed text-[#0a0e19]/75">
                   <span className="font-black uppercase tracking-wider text-yellow">
                     Version {currentBuild.version}
-                  </span>{" "}
-                  — {currentBuild.releaseNotes}
+                  </span>
+                  {currentBuild.releaseNotes && <> — {currentBuild.releaseNotes}</>}
                 </p>
               )}
 
