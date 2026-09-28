@@ -28,7 +28,7 @@ import {
   installStepsStore,
   systemRequirementsStore,
 } from "@/lib/demo/store";
-import { getInstallerDownloadUrl } from "@/lib/game-download";
+import { downloadMockInstaller, getInstallerDownloadUrl } from "@/lib/game-download";
 
 function DownloadPage() {
   const [requirements] = systemRequirementsStore.useStore();
@@ -73,6 +73,17 @@ function DownloadPage() {
             <a
               href={downloadHref}
               download={currentBuild?.installerFileName || true}
+              onClick={(event) => {
+                if (!downloadHref.startsWith("mock-installer://")) return;
+                event.preventDefault();
+                void downloadMockInstaller(
+                  currentBuild?.installerFileName || "CrewOnSetInstaller.exe",
+                ).catch((error: unknown) =>
+                  window.alert(
+                    error instanceof Error ? error.message : "Installer download failed.",
+                  ),
+                );
+              }}
               className="cta-primary mt-8 inline-flex sm:mt-10"
             >
               <span className="cta-text">DOWNLOAD THE GAME</span>
