@@ -42,7 +42,7 @@ import {
 } from "lucide-react";
 import { cosmeticCatalog, ownedItemsStore } from "@/lib/demo/portal-shop";
 import { brandUpdatesStore, gameBuildStore, notificationsStore } from "@/lib/demo/store";
-import { getInstallerDownloadUrl } from "@/lib/game-download";
+import { downloadMockInstaller, getInstallerDownloadUrl } from "@/lib/game-download";
 import {
   dedupeNotifications,
   isRecentPlayerActivity,
@@ -438,6 +438,17 @@ function PlayerDashboardPage() {
               id="play-now"
               href={playNowHref}
               download={currentBuild?.installerFileName || true}
+              onClick={(event) => {
+                if (!playNowHref.startsWith("mock-installer://")) return;
+                event.preventDefault();
+                void downloadMockInstaller(
+                  currentBuild?.installerFileName || "CrewOnSetInstaller.exe",
+                ).catch((error: unknown) =>
+                  window.alert(
+                    error instanceof Error ? error.message : "Installer download failed.",
+                  ),
+                );
+              }}
               className="latest-update-play-button mt-7 inline-flex items-center gap-2 rounded-md bg-coral px-5 py-3 text-sm font-black text-white transition hover:bg-coral-dark"
             >
               <Play className="size-4 fill-current" />
