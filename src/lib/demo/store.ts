@@ -384,7 +384,11 @@ export function createStore<T>(key: string, seed: T[]) {
           ? window.setInterval(() => setItems((current) => reconcileExpired(key, current)), 1_000)
           : undefined;
       const sharedRefreshInterval =
-        usesServerApi && key === "cos.topUps" ? window.setInterval(refresh, 15_000) : undefined;
+        usesServerApi && key === "cos.topUps"
+          ? window.setInterval(refresh, 15_000)
+          : usesServerApi && key === "cos.gameBuild"
+            ? window.setInterval(refresh, 30_000)
+            : undefined;
       return () => {
         active = false;
         if (expiryInterval !== undefined) window.clearInterval(expiryInterval);
