@@ -47,6 +47,16 @@ const RECORD_COLLECTION_KEYS = new Set([
   "website_admin_notifications",
 ]);
 
+const DEFAULT_SYSTEM_REQUIREMENTS = [
+  { id: "req-os", label: "OS", minimum: "Windows 10 64-bit", recommended: "Windows 11 64-bit" },
+  { id: "req-cpu", label: "Processor", minimum: "Intel Core i3-8100 / AMD Ryzen 3 2200G", recommended: "Intel Core i5-10400 / AMD Ryzen 5 3600" },
+  { id: "req-ram", label: "Memory", minimum: "8 GB RAM", recommended: "16 GB RAM" },
+  { id: "req-gpu", label: "Graphics", minimum: "GTX 960 / RX 570 (2 GB VRAM)", recommended: "GTX 1660 / RX 5600 XT (6 GB VRAM)" },
+  { id: "req-dx", label: "DirectX", minimum: "Version 11", recommended: "Version 12" },
+  { id: "req-storage", label: "Storage", minimum: "6 GB available space", recommended: "10 GB available space (SSD)" },
+  { id: "req-net", label: "Network", minimum: "Broadband internet for co-op play", recommended: "Broadband internet for co-op play" },
+];
+
 async function readAdminData(key: string, secretKey: string): Promise<unknown> {
   return RECORD_COLLECTION_KEYS.has(key)
     ? getWebsiteRecords<{ id: string }>(key, secretKey)
@@ -82,7 +92,12 @@ export const Route = createFileRoute("/api/admin/data")({
         }
         if (!key) return Response.json({ error: "Unknown admin data key." }, { status: 400 });
         try {
-          const value = await readAdminData(key, getSecretKey());
+          let value = await readAdminData(key, getSecretKey());
+          if (key === DATA_KEYS["systemRequirements"] && Array.isArray(value) && value.length === 0) {
+            const defaultsSaved = await writeAdminData(key, DEFAULT_SYSTEM_REQUIREMENTS, getSecretKey());
+            if (!defaultsSaved) return Response.json({ error: "Failed to initialize system requirements." }, { status: 500 });
+            value = DEFAULT_SYSTEM_REQUIREMENTS;
+          }
           return Response.json({ success: true, data: value ?? [] });
         } catch (error) {
           console.error("[API] GET admin/data error:", error);

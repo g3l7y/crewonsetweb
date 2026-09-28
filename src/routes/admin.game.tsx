@@ -148,7 +148,7 @@ function GamePage() {
 
   function updateRequirement(
     id: string,
-    field: "label" | "minimum" | "recommended",
+    field: "minimum" | "recommended",
     value: string,
   ) {
     setRequirements((current) =>
@@ -156,24 +156,11 @@ function GamePage() {
     );
   }
 
-  function addRequirement() {
-    setRequirements((current) => [
-      ...current,
-      { id: uid("req"), label: "", minimum: "", recommended: "" },
-    ]);
-  }
-
-  function removeRequirement(id: string) {
-    setRequirements((current) => current.filter((row) => row.id !== id));
-  }
-
-  function saveRequirements() {
-    systemRequirementsStore.set(requirements);
-    buildInfoStore.set([buildInfo]);
+  function notifyRequirementsUpdated(title = "System requirements updated") {
     notificationsStore.set([
       {
         id: uid("requirements"),
-        title: "System requirements updated",
+        title,
         body: "The latest system requirements are available. Open the Download page to review them and get the game.",
         createdAt: new Date().toISOString(),
         kind: "announcement",
@@ -183,15 +170,22 @@ function GamePage() {
       },
       ...notificationsStore.get(),
     ]);
+  }
+
+  function saveRequirements() {
+    systemRequirementsStore.set(requirements);
+    buildInfoStore.set([buildInfo]);
+    notifyRequirementsUpdated();
     setSavedMessage("Saved — Download page updated.");
     window.setTimeout(() => setSavedMessage(""), 3000);
   }
 
   function resetRequirements() {
-    setRequirements(isMockMode() ? seedSystemRequirements.map((row) => ({ ...row })) : []);
-    setBuildInfo(isMockMode() ? { ...seedBuildInfo } : { ...emptyBuildInfo });
-    systemRequirementsStore.set(isMockMode() ? seedSystemRequirements : []);
-    buildInfoStore.set([isMockMode() ? seedBuildInfo : emptyBuildInfo]);
+    setRequirements(seedSystemRequirements.map((row) => ({ ...row })));
+    setBuildInfo({ ...seedBuildInfo });
+    systemRequirementsStore.set(seedSystemRequirements);
+    buildInfoStore.set([seedBuildInfo]);
+    notifyRequirementsUpdated("System requirements reset to defaults");
     setSavedMessage("Reset to defaults.");
     window.setTimeout(() => setSavedMessage(""), 3000);
   }
@@ -645,13 +639,13 @@ function GamePage() {
                 {requirements.map((row) => (
                   <div
                     key={row.id}
-                    className="grid gap-2 rounded-md border border-white/[0.07] bg-[#101923] p-3 sm:grid-cols-[1fr_1.4fr_1.4fr_auto]"
+                    className="grid gap-2 rounded-md border border-white/[0.07] bg-[#101923] p-3 sm:grid-cols-[1fr_1.4fr_1.4fr]"
                   >
                     <input
                       value={row.label}
-                      onChange={(e) => updateRequirement(row.id, "label", e.target.value)}
-                      placeholder="Label"
-                      className="rounded-md border border-white/10 bg-[#182330] px-3 py-2 text-sm font-bold !text-white outline-none focus:border-coral"
+                      readOnly
+                      aria-label="Component"
+                      className="rounded-md border border-white/10 bg-[#182330] px-3 py-2 text-sm font-bold !text-white/70 outline-none"
                     />
                     <input
                       value={row.minimum}
@@ -665,28 +659,11 @@ function GamePage() {
                       placeholder="Recommended"
                       className="rounded-md border border-white/10 bg-[#182330] px-3 py-2 text-sm !text-white/80 outline-none focus:border-coral"
                     />
-                    <button
-                      type="button"
-                      onClick={() => removeRequirement(row.id)}
-                      className="grid size-9 shrink-0 place-items-center justify-self-end rounded-md border border-coral/25 text-coral transition hover:bg-coral hover:text-white sm:justify-self-auto"
-                      aria-label={`Remove ${row.label || "row"}`}
-                    >
-                      <Trash2 className="size-4" />
-                    </button>
                   </div>
                 ))}
               </div>
 
               <div className="flex flex-wrap items-center gap-2">
-                <button
-                  type="button"
-                  onClick={addRequirement}
-                  className="inline-flex items-center gap-2 rounded-md border border-white/10 bg-[#101923] px-3 py-2 text-xs font-bold !text-white/60 transition hover:border-coral hover:text-white"
-                >
-                  <PlusIcon className="size-3.5" />
-                  Add Row
-                </button>
-
                 <button
                   type="button"
                   onClick={saveRequirements}
