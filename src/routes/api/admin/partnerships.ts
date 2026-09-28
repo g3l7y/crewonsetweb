@@ -31,10 +31,10 @@ function uid(prefix: string): string {
 const transitions: Record<PartnershipStatus, PartnershipStatus[]> = {
   New: ['New', 'Pending', 'Declined'],
   Pending: ['Pending', 'Approved'],
-  Approved: ['Approved', 'Pending', 'On-going'],
-  'On-going': ['On-going', 'Pending', 'Done'],
-  Done: ['Done', 'Pending'],
-  Declined: ['Declined', 'Pending'],
+  Approved: ['Approved', 'On-going'],
+  'On-going': ['On-going', 'Done'],
+  Done: ['Done'],
+  Declined: ['Declined'],
 };
 
 function isPartnershipStatus(value: unknown): value is PartnershipStatus {
