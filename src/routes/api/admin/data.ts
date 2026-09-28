@@ -98,6 +98,14 @@ export const Route = createFileRoute("/api/admin/data")({
             if (!defaultsSaved) return Response.json({ error: "Failed to initialize system requirements." }, { status: 500 });
             value = DEFAULT_SYSTEM_REQUIREMENTS;
           }
+          if (
+            key === DATA_KEYS["gameBuild"] &&
+            value &&
+            typeof value === "object" &&
+            !Array.isArray(value)
+          ) {
+            value = [value];
+          }
           return Response.json({ success: true, data: value ?? [] });
         } catch (error) {
           console.error("[API] GET admin/data error:", error);
