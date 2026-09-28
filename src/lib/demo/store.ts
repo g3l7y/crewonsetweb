@@ -1085,8 +1085,7 @@ export const gameBuildStore = createStore<GameBuild>("cos.gameBuild", [
     minWindows: "Windows 10 64-bit",
     installerFileName: "CrewOnSet-0.9.4-playtest.exe",
     downloadUrl: "https://drive.google.com/",
-    releaseNotes:
-      "New client shoots in Studio B, rebalanced lighting scoring, and fixes for co-op lobby desyncs.",
+    releaseNotes: "",
     releasedAt: "2026-08-27T00:00:00.000Z",
   },
 ]);

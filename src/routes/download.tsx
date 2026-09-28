@@ -19,6 +19,7 @@ export const Route = createFileRoute("/download")({
 });
 
 import { Download, Gamepad2, HardDrive, MonitorPlay, ShieldCheck } from "lucide-react";
+import { useQuery } from "@tanstack/react-query";
 
 import Image from "@/components/next-compat/image";
 import { MarketingShell } from "@/components/marketing/marketing-shell";
@@ -27,15 +28,35 @@ import {
   gameBuildStore,
   installStepsStore,
   systemRequirementsStore,
+  type GameBuild,
 } from "@/lib/demo/store";
 import { downloadMockInstaller, getInstallerDownloadUrl } from "@/lib/game-download";
+import { isMockMode } from "@/lib/playfab/config";
 
 function DownloadPage() {
   const [requirements] = systemRequirementsStore.useStore();
   const [buildInfoRows] = buildInfoStore.useStore();
   const buildInfo = buildInfoRows[0];
   const [gameBuilds] = gameBuildStore.useStore();
-  const currentBuild = gameBuilds[0];
+  const mockMode = isMockMode();
+  const publishedBuildQuery = useQuery({
+    queryKey: ["public", "game-build"],
+    queryFn: async (): Promise<GameBuild | undefined> => {
+      const response = await fetch("/api/admin/data?key=gameBuild", { cache: "no-store" });
+      if (!response.ok) throw new Error("Published game version could not be loaded.");
+      const result = (await response.json()) as { data?: GameBuild | GameBuild[] };
+      const builds = Array.isArray(result.data)
+        ? result.data
+        : result.data && typeof result.data === "object"
+          ? [result.data]
+          : [];
+      return builds[0];
+    },
+    enabled: !mockMode,
+    staleTime: 0,
+    refetchInterval: 30_000,
+  });
+  const currentBuild = mockMode ? gameBuilds[0] : publishedBuildQuery.data;
   const [steps] = installStepsStore.useStore();
   const downloadHref = getInstallerDownloadUrl(currentBuild?.downloadUrl);
   const displayedVersion = currentBuild ? `Version ${currentBuild.version}` : buildInfo?.version;
@@ -135,12 +156,12 @@ function DownloadPage() {
                 changes as the studio grows.
               </p>
 
-              {currentBuild?.version && (
+              {currentBuild?.version?.trim() && (
                 <p className="download-card mt-4 rounded-md border border-[#fefaef]/80 bg-[#fefaef] px-4 py-3 text-sm leading-relaxed text-[#0a0e19]/75">
                   <span className="font-black uppercase tracking-wider text-yellow">
-                    Version {currentBuild.version}
+                    Version {currentBuild.version.trim()}
                   </span>
-                  {currentBuild.releaseNotes && <> — {currentBuild.releaseNotes}</>}
+                  {currentBuild.releaseNotes?.trim() && <> — {currentBuild.releaseNotes.trim()}</>}
                 </p>
               )}
 
