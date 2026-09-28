@@ -12,49 +12,58 @@
 /**
  * Playable film crew roles in Crew On Set.
  */
-export type PlayerRole = 'director' | 'cameraman' | 'av_technician' | 'editor';
+export type PlayerRole = "director" | "cameraman" | "av_technician" | "editor";
 
 /**
  * In-game shop and inventory item categories.
  */
-export type ItemCategory = 'costumes' | 'decorators' | 'equipment' | 'other';
+export type ItemCategory =
+  | "costumes"
+  | "decorators"
+  | "equipment"
+  | "other"
+  | "Hair"
+  | "Tops"
+  | "Bottoms"
+  | "Shoe Wear"
+  | "Accessories";
 
 /**
  * Item rarity tiers determining visual styling and drop rates.
  */
-export type ItemRarity = 'common' | 'uncommon' | 'rare' | 'epic' | 'legendary';
+export type ItemRarity = "common" | "uncommon" | "rare" | "epic" | "legendary";
 
 /**
  * Production game modes.
  */
-export type ProductionMode = 'solo' | 'multiplayer';
+export type ProductionMode = "solo" | "multiplayer";
 
 /**
  * Virtual currencies supported in the ecosystem.
  * - bCoins: Soft in-game currency earned via productions.
  * - cCoins: Premium hard currency (potential real-money), server-authoritative only.
  */
-export type CurrencyType = 'bCoins' | 'cCoins';
+export type CurrencyType = "bCoins" | "cCoins";
 
 /**
  * Transaction ledger operation types.
  */
-export type TransactionType = 'purchase' | 'earn' | 'spend' | 'grant';
+export type TransactionType = "purchase" | "earn" | "spend" | "grant";
 
 /**
  * Social friendship connection states.
  */
-export type FriendStatus = 'confirmed' | 'pending_incoming' | 'pending_outgoing';
+export type FriendStatus = "confirmed" | "pending_incoming" | "pending_outgoing";
 
 /**
  * Moderation triage states for player and bug reports.
  */
-export type ReportStatus = 'New' | 'Investigating' | 'Resolved';
+export type ReportStatus = "New" | "Investigating" | "Resolved";
 
 /**
  * Brand partnership application workflow states.
  */
-export type PartnershipStatus = 'Pending' | 'Approved' | 'On-going' | 'Done' | 'Declined';
+export type PartnershipStatus = "New" | "Pending" | "Approved" | "On-going" | "Done" | "Declined";
 
 // ============================================================================
 // Player Data
@@ -86,6 +95,10 @@ export interface PlayerProfile {
   socialLinks?: { twitter?: string; instagram?: string; youtube?: string } | undefined;
   /** Whether confirmed friends may see this player's live online status. */
   showStatus?: boolean | undefined;
+  /** Whether other players may view this player's bio, socials, and public profile details. */
+  profileVisibility?: boolean | undefined;
+  /** Whether unlocked achievements may be shown to other players. */
+  showCrewActivity?: boolean | undefined;
   /** ISO timestamp when the account was registered */
   joinedAt: string;
   /** ISO timestamp of most recent login */
@@ -97,6 +110,56 @@ export interface PlayerProfile {
   lastLogin?: string | undefined;
   /** Legacy / convenience alias for joinedAt */
   createdAt?: string | undefined;
+
+  /** Admin-only moderation state supplied by the server-backed admin API. */
+  adminStatus?: "Active" | "Banned" | undefined;
+  /** Active PlayFab ban expiry, when the account is banned. */
+  bannedUntil?: string | null | undefined;
+}
+
+export interface AdminPlayerAccountInfo {
+  platform: string;
+  device: string;
+  loginMethod: string;
+  twoFactor: string;
+  lastLogin: string;
+  lastIp?: string | undefined;
+}
+
+export interface AdminPlayerActivity {
+  id: string;
+  label: string;
+  detail: string;
+  timestamp: string;
+}
+
+export interface AdminPlayerTransaction {
+  id: string;
+  type: string;
+  item: string;
+  amount: string;
+  status: string;
+  date: string;
+}
+
+export interface AdminPlayerDetails {
+  profile: PlayerProfile;
+  progression: PlayerProgression;
+  wallet: PlayerWallet;
+  inventory: InventoryItem[];
+  achievements: Achievement[];
+  statistics: RoleStatistics[];
+  productionLogs?: ProductionLog[] | undefined;
+  transactions?: AdminPlayerTransaction[] | undefined;
+  accountInfo?: AdminPlayerAccountInfo | undefined;
+  activity?: AdminPlayerActivity[] | undefined;
+  career?:
+    | {
+        productionScore: number;
+        gamesPlayed: number;
+        playtime: string;
+      }
+    | undefined;
 }
 
 /**
@@ -190,6 +253,9 @@ export interface Loadout {
   Hair?: string | undefined;
   Tops?: string | undefined;
   Bottoms?: string | undefined;
+  "Shoe Wear"?: string | undefined;
+  ShoeWear?: string | undefined;
+  Accessories?: string | undefined;
   Eyeglasses?: string | undefined;
 
   /** Legacy slots retained so older PlayFab player data can still be read. */
@@ -397,6 +463,23 @@ export interface FriendInfo {
   tags?: string[] | undefined;
 }
 
+export type PlayerFriendRequestStatus = "pending" | "accepted" | "declined" | "cancelled";
+
+/** A player-to-player friend request stored by the website until accepted. */
+export interface PlayerFriendRequest {
+  id: string;
+  senderPlayFabId: string;
+  senderUsername: string;
+  senderLevel: number;
+  senderRole: string;
+  recipientPlayFabId: string;
+  recipientUsername: string;
+  recipientLevel: number;
+  recipientRole: string;
+  createdAt: string;
+  status: PlayerFriendRequestStatus;
+}
+
 /**
  * Transaction history ledger entry.
  */
@@ -445,12 +528,27 @@ export interface PlayerNotification {
   target?: { kind: "all" | "players"; playerIds?: string[] } | undefined;
   /** Sender username for player-to-player mail. */
   senderUsername?: string | undefined;
+  /** True for a message or notice authored by an administrator. */
+  adminMessage?: boolean | undefined;
   /** Conversation recipient username. */
   recipientUsername?: string | undefined;
 
   /** Legacy / mock compatibility aliases */
   message?: string | undefined;
   type?: string | undefined;
+}
+
+export interface PlayerMailMessage {
+  id: string;
+  threadId: string;
+  subject: string;
+  body: string;
+  senderUsername: string;
+  recipientUsername: string;
+  createdAt: string;
+  read: boolean;
+  kind: "admin" | "friend";
+  adminMessage?: boolean | undefined;
 }
 
 // ============================================================================
@@ -562,6 +660,33 @@ export interface PartnershipApplication {
   submittedAt: string;
   /** Application review status */
   status: PartnershipStatus | string;
+  /** Payment lifecycle for sponsorship applications. */
+  paymentStatus?: "Pending" | "Paid" | undefined;
+  paymentId?: string | undefined;
+  paymentCheckoutUrl?: string | undefined;
+  paymentAmount?: number | undefined;
+  paymentPaidAt?: string | undefined;
+  paymentEmailSentAt?: string | undefined;
+  approvalEmailSentAt?: string | undefined;
+  /** Opaque token used by the applicant's live promotion status link. */
+  brandPromotionToken?: string | undefined;
+  /** ISO timestamp when the promotion became live. */
+  promotionStartedAt?: string | undefined;
+  /** ISO timestamp when the promotion contract ends. */
+  promotionEndsAt?: string | undefined;
+  /** Vercel Workflow run responsible for expiring this live promotion. */
+  promotionExpiryWorkflowRunId?: string | undefined;
+  /** Contract end timestamp associated with the scheduled expiry workflow. */
+  promotionExpiryWorkflowFor?: string | undefined;
+  /** Actual completion time; earlier than promotionEndsAt when ended early. */
+  promotionEndedAt?: string | undefined;
+  /** Why the campaign was completed. */
+  promotionEndType?: "expired" | "ended-early" | undefined;
+  /** Admin-provided reason for ending the campaign before its scheduled end. */
+  promotionEndReason?: string | undefined;
+  /** ISO timestamp when the completion email was delivered. */
+  promotionCompletionEmailSentAt?: string | undefined;
+  adminNotes?: string | undefined;
   /** Whether archived from active admin view */
   archived?: boolean | undefined;
   /** ISO timestamp when archived */
@@ -573,8 +698,25 @@ export interface PartnershipApplication {
   proposal?: string | undefined;
 }
 
-/**
- * Administrator alert and notification.
+/** A brand sponsorship payment, kept independently from the application record. */
+export type PartnershipPaymentStatus = "pending" | "active" | "fulfilled" | "failed";
+
+export interface PartnershipPayment {
+  id: string;
+  applicationId: string;
+  brand: string;
+  email: string;
+  amountInCentavos: number;
+  currency: "PHP";
+  checkoutSessionId: string;
+  checkoutUrl?: string | undefined;
+  status: PartnershipPaymentStatus;
+  createdAt: string;
+  updatedAt: string;
+  paidAt?: string | undefined;
+  eventId?: string | undefined;
+}
+/** Administrator alert and notification.
  */
 export interface AdminNotification {
   /** Unique alert identifier */
@@ -617,6 +759,11 @@ export interface AdEntry {
   clicks: number;
   /** Contract revenue generated */
   revenue?: number | undefined;
+  /** Optional tracked performance values for a live promotion. */
+  adClicks?: number | undefined;
+  adVisits?: number | undefined;
+  adImpressions?: number | undefined;
+  adRevenue?: number | undefined;
   /** ISO timestamp of placement campaign start */
   startDate?: string | undefined;
   /** ISO timestamp of campaign conclusion */
@@ -627,6 +774,25 @@ export interface AdEntry {
   imageUrl?: string | undefined;
   /** In-game set location (e.g. "Studio B — craft table props") */
   placement?: string | undefined;
+  /** Stable relationship to the source partnership application. */
+  applicationId?: string | undefined;
+  /** Product model shown in the admin promotion detail view. */
+  exactModel?: string | undefined;
+  /** Product category shown in the admin promotion detail view. */
+  productType?: string | undefined;
+  /** Contract/campaign description shown in the admin promotion detail view. */
+  contract?: string | undefined;
+  /** Unique-visitor count for the placement. */
+  visits?: number | undefined;
+  /** ISO timestamp used by the live countdown. */
+  expiresAt?: string | undefined;
+  /** Submitted destination URL and first-party tracked redirect. */
+  submittedLink?: string | undefined;
+  trackedLink?: string | undefined;
+  /** Whether durable first-party click tracking is configured for this ad. */
+  trackingEnabled?: boolean | undefined;
+  endedAt?: string | undefined;
+  endReason?: string | undefined;
 
   /** Legacy / mock compatibility aliases */
   title?: string | undefined;
@@ -766,9 +932,11 @@ export interface SessionData {
   /** PlayFab client session authentication ticket */
   sessionTicket?: string | undefined;
   /** Authorized role tier */
-  role: 'admin' | 'player' | 'developer';
+  role: "admin" | "player" | "developer";
   /** Canonical username identifier */
   username?: string | undefined;
+  /** The immutable PlayFab username used for password authentication. */
+  playFabUsername?: string | undefined;
   /** User's display name */
   displayName?: string | undefined;
   /** User's email */
@@ -832,7 +1000,11 @@ export interface PlayerService {
   getTransactions(): Promise<Transaction[]>;
   getFriends(): Promise<FriendInfo[]>;
   getNotifications(): Promise<PlayerNotification[]>;
-  updateProfile(updates: Partial<Pick<PlayerProfile, 'displayName' | 'username' | 'avatarUrl'>> | Partial<PlayerProfile>): Promise<PlayerProfile | void>;
+  updateProfile(
+    updates:
+      | Partial<Pick<PlayerProfile, "displayName" | "username" | "avatarUrl">>
+      | Partial<PlayerProfile>,
+  ): Promise<PlayerProfile | void>;
   updateLoadout(loadout: Loadout | Partial<Loadout>): Promise<Loadout | void>;
 
   /** Optional convenience aliases */
@@ -853,8 +1025,16 @@ export interface LeaderboardService {
  */
 export interface ShopService {
   getCatalog(): Promise<InventoryItem[]>;
-  purchaseItem(itemId: string, currency: CurrencyType, price: number): Promise<{ success: boolean; error?: string } | boolean>;
-  purchaseItem(itemId: string, price: number, currency: CurrencyType): Promise<{ success: boolean; error?: string } | boolean>;
+  purchaseItem(
+    itemId: string,
+    currency: CurrencyType,
+    price: number,
+  ): Promise<{ success: boolean; error?: string } | boolean>;
+  purchaseItem(
+    itemId: string,
+    price: number,
+    currency: CurrencyType,
+  ): Promise<{ success: boolean; error?: string } | boolean>;
   purchaseCoinPack(packId: string): Promise<{ success: boolean; error?: string } | boolean>;
 }
 
@@ -863,14 +1043,7 @@ export interface ShopService {
  */
 export interface AdminService {
   getPlayers(): Promise<PlayerProfile[]>;
-  getPlayer(playFabId: string): Promise<{
-    profile: PlayerProfile;
-    progression: PlayerProgression;
-    wallet: PlayerWallet;
-    inventory: InventoryItem[];
-    achievements: Achievement[];
-    statistics: RoleStatistics[];
-  } | PlayerProfile | null>;
+  getPlayer(playFabId: string): Promise<AdminPlayerDetails | PlayerProfile | null>;
   getBugReports(): Promise<BugReport[]>;
   updateBugReport(id: string, updates: Partial<BugReport>): Promise<BugReport | void>;
   deleteBugReport(id: string): Promise<void>;
@@ -880,7 +1053,10 @@ export interface AdminService {
   deletePlayerReport(id: string): Promise<void>;
   deletePlayerReports(ids: string[]): Promise<void>;
   getPartnerships(): Promise<PartnershipApplication[]>;
-  updatePartnership(id: string, updates: Partial<PartnershipApplication>): Promise<PartnershipApplication | void>;
+  updatePartnership(
+    id: string,
+    updates: Partial<PartnershipApplication>,
+  ): Promise<PartnershipApplication | void>;
   deletePartnership(id: string): Promise<void>;
   deletePartnerships?(ids: string[]): Promise<void>;
   getAds(): Promise<AdEntry[]>;
@@ -898,9 +1074,21 @@ export interface AdminService {
   getSocialLinks(): Promise<SocialLink[]>;
   updateSocialLinks(links: SocialLink[]): Promise<void>;
   getNotifications(): Promise<AdminNotification[]>;
-  submitBugReport(report: Omit<BugReport, 'id' | 'submittedAt' | 'status'> | Omit<BugReport, 'id' | 'status' | 'createdAt'>): Promise<BugReport | void>;
-  submitPlayerReport(report: Omit<PlayerReport, 'id' | 'submittedAt' | 'status'> | Omit<PlayerReport, 'id' | 'status' | 'createdAt'>): Promise<PlayerReport | void>;
-  submitPartnership(app: Omit<PartnershipApplication, 'id' | 'submittedAt' | 'status' | 'archived' | 'archivedAt'> | Omit<PartnershipApplication, 'id' | 'status' | 'submittedAt'>): Promise<PartnershipApplication | void>;
+  submitBugReport(
+    report:
+      | Omit<BugReport, "id" | "submittedAt" | "status">
+      | Omit<BugReport, "id" | "status" | "createdAt">,
+  ): Promise<BugReport | void>;
+  submitPlayerReport(
+    report:
+      | Omit<PlayerReport, "id" | "submittedAt" | "status">
+      | Omit<PlayerReport, "id" | "status" | "createdAt">,
+  ): Promise<PlayerReport | void>;
+  submitPartnership(
+    app:
+      | Omit<PartnershipApplication, "id" | "submittedAt" | "status" | "archived" | "archivedAt">
+      | Omit<PartnershipApplication, "id" | "status" | "submittedAt">,
+  ): Promise<PartnershipApplication | void>;
 }
 
 /**

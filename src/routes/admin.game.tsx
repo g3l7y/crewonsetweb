@@ -29,6 +29,7 @@ import { isMockMode } from "@/lib/playfab/config";
 import { isValidEmail } from "@/lib/validation";
 import {
   buildHistoryStore,
+  brandUpdatesStore,
   buildInfoStore,
   gameBuildStore,
   installStepsStore,
@@ -71,7 +72,9 @@ function GamePage() {
         username: player.username || player.displayName,
         email: player.email,
       }));
-  const [composerTab, setComposerTab] = useState<"game" | "mail">("game");
+  const [composerTab, setComposerTab] = useState<"game" | "brand" | "mail">("game");
+  const [brandUrl, setBrandUrl] = useState("");
+  const [brandNotes, setBrandNotes] = useState("");
   const [mailTo, setMailTo] = useState("");
   const [mailSubject, setMailSubject] = useState("");
   const [mailBody, setMailBody] = useState("");
@@ -89,12 +92,16 @@ function GamePage() {
   const [requirementsOpen, setRequirementsOpen] = useState(false);
   const [remoteRequirements] = systemRequirementsStore.useStore();
   const [remoteBuildInfoRows] = buildInfoStore.useStore();
+  const [brandUpdates] = brandUpdatesStore.useStore();
+  const [brandMetrics, setBrandMetrics] = useState<
+    Record<string, { clicks: number; visits: number; impressions: number }>
+  >({});
   const [remoteInstallSteps] = installStepsStore.useStore();
   const [requirements, setRequirements] = useState<SystemRequirementRow[]>(() =>
     systemRequirementsStore.get(),
   );
-  const [buildInfo, setBuildInfo] = useState(() =>
-    buildInfoStore.get()[0] ?? (isMockMode() ? seedBuildInfo : emptyBuildInfo),
+  const [buildInfo, setBuildInfo] = useState(
+    () => buildInfoStore.get()[0] ?? (isMockMode() ? seedBuildInfo : emptyBuildInfo),
   );
   const [savedMessage, setSavedMessage] = useState("");
   const [composerMessage, setComposerMessage] = useState("");
@@ -111,9 +118,42 @@ function GamePage() {
     }
   }, [remoteBuildInfoRows, buildInfo.version]);
 
+  useEffect(() => {
+    if (isMockMode()) return;
+    let active = true;
+    void Promise.all(
+      brandUpdates.map(async (update) => {
+        const response = await fetch(
+          `/api/admin/brand-updates/${encodeURIComponent(update.id)}/metrics`,
+          { credentials: "include", cache: "no-store" },
+        );
+        if (!response.ok) return null;
+        const body = (await response.json()) as {
+          data?: { clicks: number; visits: number; impressions: number };
+        };
+        return body.data ? ([update.id, body.data] as const) : null;
+      }),
+    )
+      .then((rows) => {
+        if (active)
+          setBrandMetrics(
+            Object.fromEntries(rows.filter((row): row is NonNullable<typeof row> => row !== null)),
+          );
+      })
+      .catch(() => undefined);
+    return () => {
+      active = false;
+    };
+  }, [brandUpdates]);
 
-  function updateRequirement(id: string, field: "label" | "minimum" | "recommended", value: string) {
-    setRequirements((current) => current.map((row) => (row.id === id ? { ...row, [field]: value } : row)));
+  function updateRequirement(
+    id: string,
+    field: "label" | "minimum" | "recommended",
+    value: string,
+  ) {
+    setRequirements((current) =>
+      current.map((row) => (row.id === id ? { ...row, [field]: value } : row)),
+    );
   }
 
   function addRequirement() {
@@ -130,6 +170,19 @@ function GamePage() {
   function saveRequirements() {
     systemRequirementsStore.set(requirements);
     buildInfoStore.set([buildInfo]);
+    notificationsStore.set([
+      {
+        id: uid("requirements"),
+        title: "System requirements updated",
+        body: "The latest system requirements are available. Open the Download page to review them and get the game.",
+        createdAt: new Date().toISOString(),
+        kind: "announcement",
+        read: false,
+        href: "/portal#play-now",
+        target: { kind: "all" },
+      },
+      ...notificationsStore.get(),
+    ]);
     setSavedMessage("Saved — Download page updated.");
     window.setTimeout(() => setSavedMessage(""), 3000);
   }
@@ -150,15 +203,16 @@ function GamePage() {
   const currentBuild = buildRows[0];
 
   const [buildDraft, setBuildDraft] = useState<GameBuild>(
-    () => gameBuildStore.get()[0] ?? {
-      version: "",
-      buildNumber: "",
-      minWindows: "",
-      installerFileName: "",
-      downloadUrl: "",
-      releaseNotes: "",
-      releasedAt: new Date().toISOString(),
-    },
+    () =>
+      gameBuildStore.get()[0] ?? {
+        version: "",
+        buildNumber: "",
+        minWindows: "",
+        installerFileName: "",
+        downloadUrl: "",
+        releaseNotes: "",
+        releasedAt: new Date().toISOString(),
+      },
   );
 
   function submitUpload(event: FormEvent<HTMLFormElement>) {
@@ -210,13 +264,62 @@ function GamePage() {
     if (current) setBuildDraft({ ...current });
   }
 
+  function publishBrandUpdate(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    const url = brandUrl.trim();
+    try {
+      const parsed = new URL(url);
+      if (!["http:", "https:"].includes(parsed.protocol)) throw new Error("Invalid URL");
+    } catch {
+      setComposerMessage("Enter a valid https:// brand URL.");
+      return;
+    }
+    const update = {
+      id: uid("brand-update"),
+      url,
+      notes: brandNotes.trim(),
+      publishedAt: new Date().toISOString(),
+    };
+    brandUpdatesStore.set([update, ...brandUpdatesStore.get()]);
+    if (!isMockMode()) {
+      void fetch(`/api/admin/brand-updates/${encodeURIComponent(update.id)}/metrics`, {
+        method: "POST",
+        credentials: "include",
+      });
+    }
+    notificationsStore.set([
+      {
+        id: uid("brand-notice"),
+        title: "New brand update",
+        body: update.notes || "A new brand update is available.",
+        createdAt: update.publishedAt,
+        kind: "announcement",
+        read: false,
+        href: isMockMode()
+          ? update.url
+          : `${window.location.origin}/api/brand-updates/${encodeURIComponent(update.id)}/click`,
+        target: { kind: "all" },
+      },
+      ...notificationsStore.get(),
+    ]);
+    logAdminActivity({
+      kind: "game",
+      label: "Brand update published",
+      detail: update.notes || url,
+    });
+    setBrandUrl("");
+    setBrandNotes("");
+    setComposerMessage("Brand update published and players notified.");
+    window.setTimeout(() => setComposerMessage(""), 3000);
+  }
+
   function resetMailForm() {
     setMailTo("");
     setMailSubject("");
     setMailBody("");
   }
 
-  function submitMail(event: FormEvent<HTMLFormElement>) {
+  async function submitMail(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     if (!mailTo.trim() || !mailBody.trim()) return;
 
@@ -228,23 +331,69 @@ function GamePage() {
     );
 
     if (matchedPlayer) {
-      notificationsStore.set([
-        {
-          id: uid("ntf"),
-          title: mailSubject.trim(),
-          body: mailBody.trim(),
-          createdAt: new Date().toISOString(),
-          kind: "system",
-          channel: "mail",
-          read: false,
-          href: "/portal/inbox?tab=mail",
-          recipientUsername: matchedPlayer.username,
-          recipientEmail: matchedPlayer.email,
-          target: { kind: "players", playerIds: [String(matchedPlayer.id)] },
-        },
-        ...notificationsStore.get(),
-      ]);
-      setComposerMessage(`In-app message sent to ${matchedPlayer.username}.`);
+      const subject = mailSubject.trim();
+      const body = mailBody.trim();
+      const id = uid("admin-mail");
+      const createdAt = new Date().toISOString();
+      const target = { kind: "players" as const, playerIds: [String(matchedPlayer.id)] };
+      const href = "/portal/inbox?tab=mail&contact=admin";
+
+      if (isMockMode()) {
+        notificationsStore.set([
+          {
+            id: id + "-notice",
+            title: "New message from Administrator",
+            body: "The admin team sent you a message: " + subject + ". Open your Inbox to read it.",
+            createdAt,
+            kind: "system",
+            channel: "notification",
+            read: false,
+            href,
+            recipientUsername: matchedPlayer.username,
+            target,
+            senderUsername: "ADMINISTRATOR",
+            adminMessage: true,
+          },
+          {
+            id,
+            title: subject,
+            body,
+            createdAt,
+            kind: "system",
+            channel: "mail",
+            read: false,
+            href,
+            senderUsername: "ADMINISTRATOR",
+            adminMessage: true,
+            recipientUsername: matchedPlayer.username,
+            target,
+          },
+          ...notificationsStore.get(),
+        ]);
+      } else {
+        try {
+          const response = await fetch("/api/admin/player-mail", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            credentials: "include",
+            body: JSON.stringify({
+              recipientPlayerId: String(matchedPlayer.id),
+              subject,
+              body,
+            }),
+          });
+          const result = (await response.json().catch(() => ({}))) as { error?: string };
+          if (!response.ok) {
+            setComposerMessage(result.error || "The in-app message could not be sent.");
+            return;
+          }
+        } catch {
+          setComposerMessage("The in-app message could not be sent. Please try again.");
+          return;
+        }
+      }
+
+      setComposerMessage("In-app message sent to " + matchedPlayer.username + ".");
       resetMailForm();
       window.setTimeout(() => setComposerMessage(""), 3000);
       return;
@@ -274,7 +423,12 @@ function GamePage() {
   }, [installDraft.length, remoteInstallSteps]);
 
   function openInstall() {
-    setInstallDraft(installStepsStore.get().slice(0, MAX_INSTALL_STEPS).map((step) => ({ ...step })));
+    setInstallDraft(
+      installStepsStore
+        .get()
+        .slice(0, MAX_INSTALL_STEPS)
+        .map((step) => ({ ...step })),
+    );
     setInstallOpen(true);
   }
 
@@ -316,13 +470,7 @@ function GamePage() {
       {/* PAGE HEADER */}
       <header className="mb-8 flex flex-col justify-between gap-4 sm:flex-row sm:items-end">
         <div>
-          <p className="text-xs font-black tracking-[.18em] !text-coral">
-            PRODUCTION
-          </p>
-
-          <h1 className="admin-heading mt-2 !text-white">
-            GAME &amp; UPDATES
-          </h1>
+          <h1 className="admin-heading !text-white">GAME &amp; UPDATES</h1>
 
           <p className="admin-kicker !text-white/45">
             Manage builds, releases, and player communications.
@@ -337,7 +485,6 @@ function GamePage() {
             <ListChecks className="size-4" />
             Edit Installation Instructions
           </button>
-
         </div>
       </header>
 
@@ -354,9 +501,7 @@ function GamePage() {
             </span>
           </div>
 
-          <p className="mt-6 text-3xl font-black !text-white">
-            v{currentBuild?.version ?? "—"}
-          </p>
+          <p className="mt-6 text-3xl font-black !text-white">v{currentBuild?.version ?? "—"}</p>
 
           <p className="mt-1 text-xs font-bold uppercase tracking-wider !text-white/35">
             Current Version
@@ -368,9 +513,7 @@ function GamePage() {
             <Download className="size-5" />
           </div>
 
-          <p className="mt-6 text-3xl font-black !text-white">
-            {isMockMode() ? "68,320" : "—"}
-          </p>
+          <p className="mt-6 text-3xl font-black !text-white">{isMockMode() ? "68,320" : "—"}</p>
 
           <p className="mt-1 text-xs font-bold uppercase tracking-wider !text-white/35">
             Total Downloads
@@ -387,7 +530,6 @@ function GamePage() {
               Live build details shown on the public Download page and the admin dashboard.
             </p>
           </div>
-
         </div>
 
         {currentBuild ? (
@@ -396,20 +538,29 @@ function GamePage() {
               {[
                 ["Version", `v${currentBuild.version}`],
                 ["Build Number", currentBuild.buildNumber],
-["Windows Requirement", currentBuild.minWindows],
-              ["Release Date", buildDate],
-              ["Installer File", currentBuild.installerFileName],
+                ["Windows Requirement", currentBuild.minWindows],
+                ["Release Date", buildDate],
+                ["Installer File", currentBuild.installerFileName],
                 ["Download URL", currentBuild.downloadUrl],
               ].map(([label, value]) => (
-                <div key={label} className="min-w-0 rounded-md border border-white/[0.07] bg-[#101923] p-4">
-                  <p className="text-[10px] font-black uppercase tracking-wider !text-white/30">{label}</p>
-                  <p className="mt-1.5 break-words text-sm font-bold !text-white/75">{value || "—"}</p>
+                <div
+                  key={label}
+                  className="min-w-0 rounded-md border border-white/[0.07] bg-[#101923] p-4"
+                >
+                  <p className="text-[10px] font-black uppercase tracking-wider !text-white/30">
+                    {label}
+                  </p>
+                  <p className="mt-1.5 break-words text-sm font-bold !text-white/75">
+                    {value || "—"}
+                  </p>
                 </div>
               ))}
             </div>
 
             <div className="mt-3 rounded-md border border-white/[0.07] bg-[#101923] p-4">
-              <p className="text-[10px] font-black uppercase tracking-wider !text-white/30">Release Notes</p>
+              <p className="text-[10px] font-black uppercase tracking-wider !text-white/30">
+                Release Notes
+              </p>
               <p className="mt-1.5 whitespace-pre-line text-sm leading-relaxed !text-white/65">
                 {currentBuild.releaseNotes || "No release notes recorded."}
               </p>
@@ -427,9 +578,7 @@ function GamePage() {
           className="flex w-full items-center justify-between p-5 text-left transition hover:bg-white/[0.02]"
         >
           <div>
-            <h2 className="font-black uppercase !text-white">
-              System Requirements
-            </h2>
+            <h2 className="font-black uppercase !text-white">System Requirements</h2>
 
             <p className="mt-1 text-xs !text-white/35">
               Editable minimum and recommended specs shown on the public Download page.
@@ -445,9 +594,7 @@ function GamePage() {
 
         <div
           className={`grid overflow-hidden transition-all duration-300 ${
-            requirementsOpen
-              ? "grid-rows-[1fr] border-t border-white/[0.08]"
-              : "grid-rows-[0fr]"
+            requirementsOpen ? "grid-rows-[1fr] border-t border-white/[0.08]" : "grid-rows-[0fr]"
           }`}
         >
           <div className="min-h-0">
@@ -496,7 +643,10 @@ function GamePage() {
               {/* REQUIREMENT ROWS */}
               <div className="space-y-3">
                 {requirements.map((row) => (
-                  <div key={row.id} className="grid gap-2 rounded-md border border-white/[0.07] bg-[#101923] p-3 sm:grid-cols-[1fr_1.4fr_1.4fr_auto]">
+                  <div
+                    key={row.id}
+                    className="grid gap-2 rounded-md border border-white/[0.07] bg-[#101923] p-3 sm:grid-cols-[1fr_1.4fr_1.4fr_auto]"
+                  >
                     <input
                       value={row.label}
                       onChange={(e) => updateRequirement(row.id, "label", e.target.value)}
@@ -563,11 +713,48 @@ function GamePage() {
         </div>
       </section>
 
+      {brandUpdates.length > 0 && (
+        <section className="mt-6 rounded-lg border border-white/[0.06] bg-[#182330] p-5 shadow-xl">
+          <h2 className="font-black uppercase !text-white">Published Brand Updates</h2>
+          <div className="mt-4 space-y-3">
+            {brandUpdates.map((update) => {
+              const metrics = brandMetrics[update.id];
+              return (
+                <article
+                  key={update.id}
+                  className="rounded-md border border-white/10 bg-[#101923] p-4"
+                >
+                  <a
+                    href={update.url}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="break-all text-sm font-bold text-yellow hover:underline"
+                  >
+                    {update.url}
+                  </a>
+                  <p className="mt-2 whitespace-pre-line text-sm text-white/65">
+                    {update.notes || "No notes."}
+                  </p>
+                  <p className="mt-2 text-[10px] uppercase tracking-wider text-white/35">
+                    Published {new Date(update.publishedAt).toLocaleString()}
+                  </p>
+                  <p className="mt-2 text-[10px] font-bold uppercase tracking-wider text-white/45">
+                    {metrics
+                      ? `${metrics.impressions} impressions · ${metrics.clicks} clicks · ${metrics.visits} visits`
+                      : isMockMode()
+                        ? "Mock tracking active"
+                        : "Loading metrics…"}
+                  </p>
+                </article>
+              );
+            })}
+          </div>
+        </section>
+      )}
+
       {/* RECENT UPLOADS */}
       <section className="mt-6">
-        <h2 className="mb-4 text-lg font-black uppercase !text-white">
-          Recent Uploads
-        </h2>
+        <h2 className="mb-4 text-lg font-black uppercase !text-white">Recent Uploads</h2>
 
         <div className="overflow-hidden rounded-lg border border-white/[0.06] bg-[#182330] shadow-xl">
           <div className="overflow-x-auto">
@@ -601,9 +788,7 @@ function GamePage() {
                     key={`${build.version}-${build.buildNumber}-${build.releasedAt}`}
                     className="border-b border-white/[0.05] transition last:border-0 hover:bg-white/[0.025]"
                   >
-                    <td className="px-5 py-4 font-black !text-white">
-                      v{build.version}
-                    </td>
+                    <td className="px-5 py-4 font-black !text-white">v{build.version}</td>
 
                     <td className="whitespace-nowrap px-5 py-4 text-sm !text-white/50">
                       {new Date(build.releasedAt).toLocaleDateString("en-US", {
@@ -613,16 +798,12 @@ function GamePage() {
                       })}
                     </td>
 
-                    <td className="px-5 py-4 text-sm !text-white/50">
-                      Build {build.buildNumber}
-                    </td>
+                    <td className="px-5 py-4 text-sm !text-white/50">Build {build.buildNumber}</td>
 
                     <td className="px-5 py-4">
                       <span
                         className={`rounded px-2.5 py-1 text-[10px] font-black uppercase ${
-                          live
-                            ? "bg-[#2d9d8f]/15 text-[#4bc4b4]"
-                            : "bg-white/[0.06] !text-white/35"
+                          live ? "bg-[#2d9d8f]/15 text-[#4bc4b4]" : "bg-white/[0.06] !text-white/35"
                         }`}
                       >
                         {live ? "Live" : "Archived"}
@@ -630,7 +811,6 @@ function GamePage() {
                     </td>
                   </tr>
                 ))}
-
               </tbody>
             </table>
           </div>
@@ -641,15 +821,25 @@ function GamePage() {
       <section className="mt-6 rounded-lg border border-white/[0.06] bg-[#182330] p-5 shadow-xl">
         <div className="mb-5 flex items-start gap-3">
           <div className="grid size-9 shrink-0 place-items-center rounded-md bg-coral text-white">
-            {composerTab === "game" ? <UploadCloud className="size-4.5" /> : <Mail className="size-4.5" />}
+            {composerTab !== "mail" ? (
+              <UploadCloud className="size-4.5" />
+            ) : (
+              <Mail className="size-4.5" />
+            )}
           </div>
           <div className="min-w-0">
             <h2 className="font-black uppercase !text-white">
-              {composerTab === "game" ? "New Game Release" : "Mail"}
+              {composerTab === "mail"
+                ? "Mail"
+                : composerTab === "brand"
+                  ? "Brand Updates"
+                  : "New Game Release"}
             </h2>
             <p className="text-xs !text-white/35">
-              {composerTab === "game"
-                ? "Publish a new build and update the release details shown to players."
+              {composerTab !== "mail"
+                ? composerTab === "brand"
+                  ? "Publish a brand link and notify players when it is available."
+                  : "Publish a new build and update release details shown to players."
                 : "Send status feedback to players who submitted reports or brands with applications."}
             </p>
           </div>
@@ -660,10 +850,13 @@ function GamePage() {
           role="tablist"
           aria-label="Game and updates forms"
         >
-          {([
-            ["game", "Game Updates"],
-            ["mail", "Mail"],
-          ] as const).map(([tab, label]) => {
+          {(
+            [
+              ["game", "Game Release"],
+              ["brand", "Brand Updates"],
+              ["mail", "Mail"],
+            ] as const
+          ).map(([tab, label]) => {
             const active = composerTab === tab;
             return (
               <button
@@ -684,16 +877,67 @@ function GamePage() {
           })}
         </div>
 
-        {composerTab === "game" ? (
+        {composerTab === "brand" ? (
+          <form onSubmit={publishBrandUpdate} className="grid gap-4">
+            <label className="block text-[10px] font-black uppercase tracking-wider !text-white/45">
+              Brand URL
+              <input
+                value={brandUrl}
+                onChange={(event) => setBrandUrl(event.target.value)}
+                type="url"
+                required
+                placeholder="https://brand.example/campaign"
+                className="admin-input mt-2 w-full rounded-md border border-white/10 bg-[#101923] px-3 py-2.5 text-sm font-bold !text-white outline-none transition placeholder:!text-white/25 focus:border-coral"
+              />
+            </label>
+            <label className="block text-[10px] font-black uppercase tracking-wider !text-white/45">
+              Notes
+              <textarea
+                value={brandNotes}
+                onChange={(event) => setBrandNotes(event.target.value)}
+                rows={6}
+                placeholder="What should players know about this brand update?"
+                className="admin-input mt-2 min-h-[140px] w-full resize-y rounded-md border border-white/10 bg-[#101923] px-3 py-2.5 text-sm font-bold !text-white outline-none transition placeholder:!text-white/25 focus:border-coral"
+              />
+            </label>
+            <div className="flex flex-wrap items-center gap-2">
+              <button
+                type="submit"
+                className="inline-flex items-center gap-2 rounded-md bg-[#d9a514] px-5 py-2.5 text-xs font-black uppercase text-[#101923] transition hover:bg-[#e6b62b]"
+              >
+                <UploadCloud className="size-4" />
+                Publish Brand Update
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setBrandUrl("");
+                  setBrandNotes("");
+                }}
+                className="rounded-md border border-white/10 px-4 py-2.5 text-xs font-black uppercase !text-white/60 transition hover:!text-white"
+              >
+                Reset
+              </button>
+              {composerMessage && (
+                <span className="text-xs font-bold !text-[#4bc4b4]">{composerMessage}</span>
+              )}
+            </div>
+          </form>
+        ) : composerTab === "game" ? (
           <form onSubmit={submitUpload} className="grid gap-4">
             <div className="grid gap-4 sm:grid-cols-2">
-              {([
-                ["version", "Version", "0.9.5"],
-                ["buildNumber", "Build Number", "950"],
-                ["minWindows", "Minimum Windows Version", "Windows 10 64-bit"],
-                ["installerFileName", "Windows Installer File Name", "CrewOnSet-0.9.5.exe"],
-              ] as const).map(([field, label, placeholder]) => (
-                <label key={field} className="block text-[10px] font-black uppercase tracking-wider !text-white/45">
+              {(
+                [
+                  ["version", "Version", "0.9.5"],
+                  ["buildNumber", "Build Number", "950"],
+                  ["minWindows", "Minimum Windows Version", "Windows 10 64-bit"],
+                  ["installerFileName", "Windows Installer File Name", "CrewOnSet-0.9.5.exe"],
+                ] as const
+              ).map(([field, label, placeholder]) => (
+                <label
+                  key={field}
+                  className="block text-[10px] font-black uppercase tracking-wider !text-white/45"
+                >
                   {label}
                   <input
                     value={buildDraft[field]}
@@ -748,7 +992,9 @@ function GamePage() {
               >
                 Reset
               </button>
-              {composerMessage && <span className="text-xs font-bold !text-[#4bc4b4]">{composerMessage}</span>}
+              {composerMessage && (
+                <span className="text-xs font-bold !text-[#4bc4b4]">{composerMessage}</span>
+              )}
             </div>
           </form>
         ) : (
@@ -835,7 +1081,9 @@ function GamePage() {
               >
                 Reset
               </button>
-              {composerMessage && <span className="text-xs font-bold !text-[#4bc4b4]">{composerMessage}</span>}
+              {composerMessage && (
+                <span className="text-xs font-bold !text-[#4bc4b4]">{composerMessage}</span>
+              )}
             </div>
           </form>
         )}
@@ -886,7 +1134,9 @@ function GamePage() {
           >
             <div className="grid grid-cols-[minmax(0,1fr)_auto] items-start gap-3">
               <div className="min-w-0">
-                <p className="text-[10px] font-black uppercase tracking-[.18em] !text-coral">Announcement</p>
+                <p className="text-[10px] font-black uppercase tracking-[.18em] !text-coral">
+                  Announcement
+                </p>
                 <h2 className="mt-1 text-xl font-black uppercase !text-white">{detail.title}</h2>
               </div>
               <button
@@ -899,27 +1149,37 @@ function GamePage() {
               </button>
             </div>
 
-            <p className="mt-4 whitespace-pre-line text-sm leading-relaxed !text-white/60">{detail.body}</p>
+            <p className="mt-4 whitespace-pre-line text-sm leading-relaxed !text-white/60">
+              {detail.body}
+            </p>
 
             <dl className="mt-5 grid gap-3 sm:grid-cols-2">
               <div className="rounded-md border border-white/[0.07] bg-[#101923] p-3">
-                <dt className="text-[10px] font-black uppercase tracking-wide !text-white/30">Date</dt>
+                <dt className="text-[10px] font-black uppercase tracking-wide !text-white/30">
+                  Date
+                </dt>
                 <dd className="mt-1 text-sm font-bold !text-white">
                   {new Date(detail.createdAt).toLocaleDateString()}
                 </dd>
               </div>
               <div className="rounded-md border border-white/[0.07] bg-[#101923] p-3">
-                <dt className="text-[10px] font-black uppercase tracking-wide !text-white/30">Time</dt>
+                <dt className="text-[10px] font-black uppercase tracking-wide !text-white/30">
+                  Time
+                </dt>
                 <dd className="mt-1 text-sm font-bold !text-white">
                   {new Date(detail.createdAt).toLocaleTimeString()}
                 </dd>
               </div>
               <div className="rounded-md border border-white/[0.07] bg-[#101923] p-3">
-                <dt className="text-[10px] font-black uppercase tracking-wide !text-white/30">Status</dt>
+                <dt className="text-[10px] font-black uppercase tracking-wide !text-white/30">
+                  Status
+                </dt>
                 <dd className="mt-1 text-sm font-bold !text-white">Sent</dd>
               </div>
               <div className="rounded-md border border-white/[0.07] bg-[#101923] p-3">
-                <dt className="text-[10px] font-black uppercase tracking-wide !text-white/30">Audience</dt>
+                <dt className="text-[10px] font-black uppercase tracking-wide !text-white/30">
+                  Audience
+                </dt>
                 <dd className="mt-1 text-sm font-bold !text-white">
                   {detail.target?.kind === "players" ? "Specific Players" : "All Players"}
                 </dd>
@@ -927,7 +1187,9 @@ function GamePage() {
             </dl>
 
             <div className="mt-5">
-              <p className="text-[10px] font-black uppercase tracking-wide !text-white/30">Recipients</p>
+              <p className="text-[10px] font-black uppercase tracking-wide !text-white/30">
+                Recipients
+              </p>
               {detail.target?.kind === "players" ? (
                 <ul className="mt-2 divide-y divide-white/[0.05] overflow-hidden rounded-md border border-white/[0.07] bg-[#101923]">
                   {(detail.target.playerIds ?? []).map((playerId) => {
@@ -969,7 +1231,9 @@ function GamePage() {
           >
             <div className="flex items-center justify-between gap-4 border-b border-white/[0.07] px-5 py-4">
               <div className="min-w-0">
-                <h3 className="text-base font-black uppercase !text-white">Installation Instructions</h3>
+                <h3 className="text-base font-black uppercase !text-white">
+                  Installation Instructions
+                </h3>
                 <p className="mt-1 text-xs !text-white/35">
                   Up to {MAX_INSTALL_STEPS} steps, shown on the public Download page.
                 </p>
@@ -987,7 +1251,10 @@ function GamePage() {
 
             <div className="max-h-[70vh] space-y-4 overflow-y-auto p-5">
               {installDraft.slice(0, MAX_INSTALL_STEPS).map((step, index) => (
-                <div key={step.id} className="rounded-md border border-white/[0.07] bg-[#101923] p-4">
+                <div
+                  key={step.id}
+                  className="rounded-md border border-white/[0.07] bg-[#101923] p-4"
+                >
                   <div className="grid grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-3">
                     <span className="grid size-8 shrink-0 place-items-center rounded-md bg-coral text-xs font-black text-white">
                       {index + 1}

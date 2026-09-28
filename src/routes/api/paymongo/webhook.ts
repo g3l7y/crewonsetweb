@@ -1,18 +1,22 @@
-import { createFileRoute } from '@tanstack/react-router';
+import { createFileRoute } from "@tanstack/react-router";
 import {
   claimPayMongoOrder,
   getPayMongoOrder,
   isPayMongoLedgerConfigured,
   markPayMongoOrderFailed,
   markPayMongoOrderFulfilled,
-} from '@/lib/paymongo/ledger';
-import { addCurrency } from '@/lib/playfab/economy';
-import { isMockMode } from '@/lib/playfab/config';
+} from "@/lib/paymongo/ledger";
+import { addCurrency, getCcoinCurrencyCode } from "@/lib/playfab/economy";
+import { isMockMode } from "@/lib/playfab/config";
+import type { PartnershipPayment } from "@/lib/playfab/types";
+import { markPartnershipPaymentPaid } from "@/lib/partnership-payments";
 import {
   WEBSITE_DATA_KEYS,
   getWebsiteRecords,
   updateWebsiteRecord,
-} from '@/lib/playfab/websiteData';
+} from "@/lib/playfab/websiteData";
+import { recordPlayerTopUpNotification } from "@/lib/paymongo/player-notifications";
+import { isPaidCheckoutAmount, parsePaidCheckoutEvent } from "@/lib/paymongo/verification";
 
 type PayMongoOrder = {
   id: string;
@@ -22,9 +26,9 @@ type PayMongoOrder = {
   packageId: string;
   coins: number;
   amountInCentavos: number;
-  currency: 'PHP';
+  currency: "PHP";
   email: string;
-  status: 'pending' | 'active' | 'processing' | 'fulfilled' | 'failed';
+  status: "pending" | "active" | "processing" | "fulfilled" | "failed";
   createdAt: string;
   updatedAt: string;
   processingAt?: string;
@@ -40,9 +44,9 @@ const processingOrders = new Set<string>();
 
 function signaturesFromHeader(value: string | null): Record<string, string> {
   return Object.fromEntries(
-    (value || '')
+    (value || "")
       .split(/[;,]/)
-      .map((part) => part.trim().split('='))
+      .map((part) => part.trim().split("="))
       .filter((parts) => parts.length === 2 && parts[0] && parts[1])
       .map((parts) => [parts[0] as string, parts[1] as string]),
   );
@@ -59,68 +63,95 @@ function constantTimeEqual(left: string, right: string): boolean {
 
 async function hmacHex(secret: string, value: string): Promise<string> {
   const key = await crypto.subtle.importKey(
-    'raw',
+    "raw",
     new TextEncoder().encode(secret),
-    { name: 'HMAC', hash: 'SHA-256' },
+    { name: "HMAC", hash: "SHA-256" },
     false,
-    ['sign'],
+    ["sign"],
   );
-  const signature = await crypto.subtle.sign('HMAC', key, new TextEncoder().encode(value));
+  const signature = await crypto.subtle.sign("HMAC", key, new TextEncoder().encode(value));
   return Array.from(new Uint8Array(signature))
-    .map((byte) => byte.toString(16).padStart(2, '0'))
-    .join('');
+    .map((byte) => byte.toString(16).padStart(2, "0"))
+    .join("");
 }
 
-async function verifySignature(rawBody: string, header: string | null, secret: string): Promise<boolean> {
+async function verifySignature(
+  rawBody: string,
+  header: string | null,
+  secret: string,
+): Promise<boolean> {
   const parts = signaturesFromHeader(header);
-  const timestamp = parts.t;
+  const timestamp = parts["t"];
   if (!timestamp || !/^\d+$/.test(timestamp)) return false;
   if (Math.abs(Math.floor(Date.now() / 1000) - Number(timestamp)) > 600) return false;
 
-  const expected = await hmacHex(secret, timestamp + '.' + rawBody);
+  const expected = await hmacHex(secret, timestamp + "." + rawBody);
   return (
-    (!!parts.te && constantTimeEqual(expected, parts.te)) ||
-    (!!parts.li && constantTimeEqual(expected, parts.li))
+    (!!parts["te"] && constantTimeEqual(expected, parts["te"])) ||
+    (!!parts["li"] && constantTimeEqual(expected, parts["li"]))
   );
 }
 
 function asRecord(value: unknown): Record<string, unknown> {
-  return value && typeof value === 'object' ? (value as Record<string, unknown>) : {};
+  return value && typeof value === "object" ? (value as Record<string, unknown>) : {};
 }
 
-export const Route = createFileRoute('/api/paymongo/webhook')({
+export const Route = createFileRoute("/api/paymongo/webhook")({
   server: {
     handlers: {
       POST: async ({ request }) => {
         const mockMode = isMockMode();
-        const webhookSecret = process.env['PAYMONGO_WEBHOOK_SECRET'];
-        const playfabSecret = process.env['PLAYFAB_SECRET_KEY'];
-        if (!webhookSecret || (!mockMode && !playfabSecret) || !isPayMongoLedgerConfigured()) {
-          return Response.json({ error: 'Webhook is not configured.' }, { status: 503 });
+        const webhookSecret = process.env["PAYMONGO_WEBHOOK_SECRET"];
+        const playfabSecret = process.env["PLAYFAB_SECRET_KEY"];
+        if (!webhookSecret || (!mockMode && !playfabSecret)) {
+          return Response.json({ error: "Webhook is not configured." }, { status: 503 });
         }
 
         const rawBody = await request.text();
-        const signature = request.headers.get('Paymongo-Signature') || request.headers.get('X-Paymongo-Signature');
+        const signature =
+          request.headers.get("Paymongo-Signature") || request.headers.get("X-Paymongo-Signature");
         if (!(await verifySignature(rawBody, signature, webhookSecret))) {
-          return Response.json({ error: 'Invalid webhook signature.' }, { status: 401 });
+          return Response.json({ error: "Invalid webhook signature." }, { status: 401 });
         }
 
         try {
           const body = JSON.parse(rawBody) as Record<string, unknown>;
-          const event = asRecord(body.data);
-          const eventType = String(event.type || '');
-          if (eventType !== 'checkout_session.payment.paid') {
-            return Response.json({ received: true });
-          }
+          const paidEvent = parsePaidCheckoutEvent(body);
+          if (!paidEvent) return Response.json({ received: true });
 
-          const eventData = asRecord(event.data);
-          const attributes = asRecord(eventData.attributes);
-          const metadata = asRecord(attributes.metadata);
-          const referenceNumber = String(attributes.reference_number || metadata.orderId || '');
-          const eventId = String(body.id || eventData.id || '');
+          const { attributes, eventId, sessionId } = paidEvent;
+          const metadata = asRecord(attributes["metadata"]);
+          const referenceNumber = String(attributes["reference_number"] || metadata["orderId"] || "");
           if (!referenceNumber) return Response.json({ received: true });
 
           let order: PayMongoOrder | null = null;
+          let brandPayment: PartnershipPayment | null = null;
+          if (playfabSecret) {
+            const partnershipPayments = await getWebsiteRecords<PartnershipPayment>(
+              WEBSITE_DATA_KEYS.partnershipPayments,
+              playfabSecret,
+            );
+            brandPayment =
+              partnershipPayments.find(
+                (item) =>
+                  item.id === referenceNumber ||
+                  item.checkoutSessionId === sessionId,
+              ) ?? null;
+          }
+          if (brandPayment && playfabSecret) {
+            if (brandPayment.status === "fulfilled") return Response.json({ received: true });
+            if (!isPaidCheckoutAmount(attributes, brandPayment.amountInCentavos)) {
+              return Response.json({ received: true });
+            }
+            const result = await markPartnershipPaymentPaid(brandPayment, eventId, playfabSecret);
+            if (!result.updated && !result.alreadyPaid) {
+              return Response.json(
+                { error: "Brand payment could not be saved; webhook will be retried." },
+                { status: 500 },
+              );
+            }
+            return Response.json({ received: true });
+          }
           if (mockMode) {
             const ledgerOrder = await getPayMongoOrder(referenceNumber);
             if (ledgerOrder) {
@@ -131,11 +162,12 @@ export const Route = createFileRoute('/api/paymongo/webhook')({
                 packageId: ledgerOrder.packageId,
                 coins: ledgerOrder.coins,
                 amountInCentavos: ledgerOrder.amountInCentavos,
-                currency: 'PHP',
-                email: '',
+                currency: "PHP",
+                email: "",
                 status: ledgerOrder.status,
-                createdAt: '',
-                updatedAt: '',
+                createdAt: ledgerOrder.createdAt,
+                updatedAt: ledgerOrder.fulfilledAt || ledgerOrder.createdAt,
+                ...(ledgerOrder.fulfilledAt ? { paidAt: ledgerOrder.fulfilledAt } : {}),
               };
             }
           } else {
@@ -143,30 +175,50 @@ export const Route = createFileRoute('/api/paymongo/webhook')({
               WEBSITE_DATA_KEYS.paymongoOrders,
               playfabSecret as string,
             );
-            order = orders.find(
-              (item) => item.id === referenceNumber || item.checkoutSessionId === String(eventData.id || ''),
-            ) ?? null;
+            order =
+              orders.find(
+                (item) =>
+                  item.id === referenceNumber ||
+                  item.checkoutSessionId === sessionId,
+              ) ?? null;
           }
 
           if (!order) {
-            console.warn('[PayMongo] Paid checkout has no matching order:', referenceNumber);
+            if (!isPayMongoLedgerConfigured()) {
+              return Response.json({ error: "Payment ledger is not configured." }, { status: 503 });
+            }
+            console.warn("[PayMongo] Paid checkout has no matching order:", referenceNumber);
             return Response.json({ received: true });
           }
-          if (order.status === 'fulfilled' || order.status === 'processing') {
+          if (order.status === "fulfilled") {
+            if (!mockMode && playfabSecret) {
+              const notificationSaved = await recordPlayerTopUpNotification(
+                {
+                  id: order.id,
+                  playFabId: order.playFabId,
+                  ...(order.username ? { username: order.username } : {}),
+                  coins: order.coins,
+                  amountInCentavos: order.amountInCentavos,
+                  completedAt: order.paidAt || order.updatedAt,
+                },
+                playfabSecret,
+              );
+              if (!notificationSaved) {
+                return Response.json(
+                  { error: "Player notification could not be saved; webhook will be retried." },
+                  { status: 500 },
+                );
+              }
+            }
+            return Response.json({ received: true });
+          }
+          if (order.status === "processing") {
             return Response.json({ received: true });
           }
 
-          const payments = Array.isArray(attributes.payments) ? attributes.payments : [];
-          const hasPaidPayment = payments.length > 0 && payments.some((payment) => {
-            const paymentAttributes = asRecord(asRecord(payment).attributes);
-            const status = String(paymentAttributes.status || '').toLowerCase();
-            const currency = String(paymentAttributes.currency || 'PHP').toUpperCase();
-            const rawAmount = paymentAttributes.amount ?? paymentAttributes.net_amount;
-            const amount = rawAmount === undefined ? undefined : Number(rawAmount);
-            const amountMatches = amount === undefined || amount === order.amountInCentavos;
-            return status === 'paid' && currency === 'PHP' && amountMatches;
-          });
-          if (!hasPaidPayment) return Response.json({ received: true });
+          if (!isPaidCheckoutAmount(attributes, order.amountInCentavos)) {
+            return Response.json({ received: true });
+          }
 
           if (processingOrders.has(order.id)) {
             return Response.json({ received: true });
@@ -178,7 +230,7 @@ export const Route = createFileRoute('/api/paymongo/webhook')({
             try {
               claim = await claimPayMongoOrder({
                 orderId: order.id,
-                checkoutSessionId: String(eventData.id || order.checkoutSessionId),
+                checkoutSessionId: sessionId || order.checkoutSessionId,
                 playFabId: order.playFabId,
                 packageId: order.packageId,
                 coins: order.coins,
@@ -186,18 +238,40 @@ export const Route = createFileRoute('/api/paymongo/webhook')({
                 eventId,
               });
             } catch (error) {
-              console.error('[PayMongo] Could not claim payment ledger order:', error);
-              return Response.json({ error: 'Payment ledger unavailable; webhook will be retried.' }, { status: 500 });
+              console.error("[PayMongo] Could not claim payment ledger order:", error);
+              return Response.json(
+                { error: "Payment ledger unavailable; webhook will be retried." },
+                { status: 500 },
+              );
             }
 
-            if (claim.status !== 'claimed') {
-              if (claim.status === 'fulfilled' && !mockMode) {
+            if (claim.status !== "claimed") {
+              if (claim.status === "fulfilled" && !mockMode) {
+                const notificationSaved = await recordPlayerTopUpNotification(
+                  {
+                    id: order.id,
+                    playFabId: order.playFabId,
+                    ...(order.username ? { username: order.username } : {}),
+                    coins: order.coins,
+                    amountInCentavos: order.amountInCentavos,
+                    completedAt: order.paidAt || order.updatedAt,
+                  },
+                  playfabSecret as string,
+                );
+                if (!notificationSaved) {
+                  return Response.json(
+                    { error: "Player notification could not be saved; webhook will be retried." },
+                    { status: 500 },
+                  );
+                }
+              }
+              if (claim.status === "fulfilled" && !mockMode) {
                 const repaired = await updateWebsiteRecord<PayMongoOrder>(
                   WEBSITE_DATA_KEYS.paymongoOrders,
                   order.id,
                   (current) => ({
                     ...current,
-                    status: 'fulfilled',
+                    status: "fulfilled",
                     paidAt: current.paidAt || new Date().toISOString(),
                     updatedAt: new Date().toISOString(),
                     eventId: current.eventId || eventId,
@@ -205,7 +279,10 @@ export const Route = createFileRoute('/api/paymongo/webhook')({
                   playfabSecret as string,
                 );
                 if (!repaired) {
-                  console.warn('[PayMongo] Ledger is fulfilled but the website order could not be repaired:', order.id);
+                  console.warn(
+                    "[PayMongo] Ledger is fulfilled but the website order could not be repaired:",
+                    order.id,
+                  );
                 }
               }
               return Response.json({ received: true });
@@ -214,35 +291,39 @@ export const Route = createFileRoute('/api/paymongo/webhook')({
             if (!mockMode) {
               const credited = await addCurrency(
                 order.playFabId,
-                'CC',
+                getCcoinCurrencyCode(),
                 order.coins,
                 playfabSecret as string,
+                { source: "paymongo", orderId: order.id },
               );
-              if (!credited) {
-                console.error('[PayMongo] Failed to credit order:', order.id);
+              if (!credited.success) {
+                console.error("[PayMongo] C-Coin delivery failed and will be retried:", order.id, credited.error);
                 let ledgerFailed = false;
                 try {
-                  ledgerFailed = await markPayMongoOrderFailed(
-                    order.id,
-                    'PlayFab currency grant did not complete.',
-                  );
+                  ledgerFailed = await markPayMongoOrderFailed(order.id, credited.error);
                 } catch (error) {
-                  console.error('[PayMongo] Could not mark failed ledger order:', error);
+                  console.error("[PayMongo] Could not mark failed ledger order:", error);
                 }
                 await updateWebsiteRecord<PayMongoOrder>(
                   WEBSITE_DATA_KEYS.paymongoOrders,
                   order.id,
                   (current) => ({
                     ...current,
-                    status: 'failed',
+                    status: "failed",
                     updatedAt: new Date().toISOString(),
                   }),
                   playfabSecret as string,
                 );
                 if (!ledgerFailed) {
-                  return Response.json({ error: 'Currency credit failed; manual review required.' }, { status: 500 });
+                  return Response.json(
+                    { error: "Currency credit failed; manual review required." },
+                    { status: 500 },
+                  );
                 }
-                return Response.json({ received: true });
+                return Response.json(
+                  { error: "Payment was received, but C-Coin delivery failed and should be retried." },
+                  { status: 503 },
+                );
               }
             }
 
@@ -250,11 +331,17 @@ export const Route = createFileRoute('/api/paymongo/webhook')({
             try {
               ledgerFulfilled = await markPayMongoOrderFulfilled(order.id, eventId);
             } catch (error) {
-              console.error('[PayMongo] Payment was accepted but ledger fulfillment could not be saved:', error);
-              return Response.json({ error: 'Ledger status could not be saved.' }, { status: 500 });
+              console.error(
+                "[PayMongo] Payment was accepted but ledger fulfillment could not be saved:",
+                error,
+              );
+              return Response.json({ error: "Ledger status could not be saved." }, { status: 500 });
             }
             if (!ledgerFulfilled) {
-              console.warn('[PayMongo] Ledger was already finalized; payment will not be credited again:', order.id);
+              console.warn(
+                "[PayMongo] Ledger was already finalized; payment will not be credited again:",
+                order.id,
+              );
               return Response.json({ received: true });
             }
 
@@ -264,7 +351,7 @@ export const Route = createFileRoute('/api/paymongo/webhook')({
                 order.id,
                 (current) => ({
                   ...current,
-                  status: 'fulfilled',
+                  status: "fulfilled",
                   paidAt: new Date().toISOString(),
                   updatedAt: new Date().toISOString(),
                   eventId,
@@ -272,7 +359,27 @@ export const Route = createFileRoute('/api/paymongo/webhook')({
                 playfabSecret as string,
               );
               if (!updated) {
-                console.error('[PayMongo] Ledger fulfilled; website order could not be saved:', order.id);
+                console.error(
+                  "[PayMongo] Ledger fulfilled; website order could not be saved:",
+                  order.id,
+                );
+              }
+              const notificationSaved = await recordPlayerTopUpNotification(
+                {
+                  id: order.id,
+                  playFabId: order.playFabId,
+                  ...(order.username ? { username: order.username } : {}),
+                  coins: order.coins,
+                  amountInCentavos: order.amountInCentavos,
+                  completedAt: new Date().toISOString(),
+                },
+                playfabSecret as string,
+              );
+              if (!notificationSaved) {
+                return Response.json(
+                  { error: "Player notification could not be saved; webhook will be retried." },
+                  { status: 500 },
+                );
               }
             }
 
@@ -281,8 +388,8 @@ export const Route = createFileRoute('/api/paymongo/webhook')({
             processingOrders.delete(order.id);
           }
         } catch (error) {
-          console.error('[API] PayMongo webhook error:', error);
-          return Response.json({ error: 'Webhook processing failed.' }, { status: 500 });
+          console.error("[API] PayMongo webhook error:", error);
+          return Response.json({ error: "Webhook processing failed." }, { status: 500 });
         }
       },
     },

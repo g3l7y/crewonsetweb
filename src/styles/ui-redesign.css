@@ -511,6 +511,7 @@ body { min-width: 320px; }
 
 .marketing-theme .team-page .crew-profile :where(h2, h3, p, span),
 .marketing-theme .team-page .tools-box :where(h2, h3, p, span) { color: var(--cos-light) !important; }
+.marketing-theme .team-page .crew-profile-info > p { color: #fefdf8 !important; }
 
 .marketing-theme .team-page .hero-photo,
 .marketing-theme .team-page .behind-photo {
@@ -964,6 +965,21 @@ body { min-width: 320px; }
   width: 100%;
 }
 
+/* PASSWORD RECOVERY: keep the admin dialog compact and make its light-theme
+   email field match the rest of the light admin surface. */
+.recovery-modal-shell,
+.admin-theme .admin-recovery-modal {
+  width: 100% !important;
+  max-width: 32rem !important;
+}
+.admin-theme.admin-light .admin-recovery-email-label {
+  color: #0a0e19 !important;
+}
+.admin-theme.admin-light .admin-recovery-email-input,
+.portal-theme.portal-light .admin-recovery-email-input {
+  background-color: #f0ede4 !important;
+  color: #0a0e19 !important;
+}
 /* ADMIN CONTROL ROOM */
 .admin-theme {
   --admin-bg: var(--cos-ink);
@@ -2205,8 +2221,8 @@ body { min-width: 320px; }
 /* PLAYER PROFILE DETAILS: use the dark console surface for the information,
    account, and production-statistics cards while preserving status colors. */
 .admin-theme:not(.admin-light) .admin-player-profile-info-card {
-  background-color: #0f1626 !important;
-  border-color: #0f1626 !important;
+  background-color: #172235 !important;
+  border-color: #172235 !important;
 }
 
 .admin-theme:not(.admin-light) .admin-player-profile-info-card :where(p) {
@@ -2958,7 +2974,7 @@ html[data-display-theme="dark"] .display-theme-switcher button[aria-pressed="tru
 }
 
 .portal-theme .portal-title-heading {
-  margin-top: .5rem !important;
+  margin-top: 0 !important;
   color: #0a0e19 !important;
   font-family: var(--font-display) !important;
   font-size: clamp(3rem, 5vw, 4rem) !important;
@@ -3101,6 +3117,16 @@ html[data-display-theme="dark"] .display-theme-switcher button[aria-pressed="tru
   background-color: #0f1626 !important;
   color: #fefdf8 !important;
   box-shadow: 7px 7px 0 #fbbf24 !important;
+}
+
+/* Some portal cards are identified by their Tailwind background utility
+   rather than a card class. Keep their corners as softly rounded in dark mode
+   as the shared light-mode card treatment. */
+.portal-theme.portal-dark [class*="bg-[#151c29"],
+.portal-theme.portal-dark [class*="bg-[#121d32"],
+.portal-theme.portal-dark [class*="bg-[#1b2433"],
+.portal-theme.portal-dark [class*="bg-[#111c30"] {
+  border-radius: 14px !important;
 }
 
 .portal-theme.portal-dark .portal-page > div > section:not([class*="p-"]) {
@@ -3969,6 +3995,25 @@ html[data-display-theme="dark"] .display-theme-switcher button[aria-pressed="tru
   height: clamp(22rem, 68vh, 37rem);
   max-height: none;
 }
+/* LEADERBOARD EMPTY STATES: center the no-data message in the area below the table header. */
+.portal-theme .leaderboard-scroll-list {
+  position: relative;
+}
+
+.portal-theme .leaderboard-empty-state {
+  position: absolute;
+  top: 3.75rem;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 2rem 2.5rem;
+  transform: translateY(.75rem);
+}
+
 /* FRIENDS LISTS: use the Friends tab card as the shared viewport for every list tab. */
 .portal-theme .friends-list-scroll {
   height: clamp(20rem, 60vh, 34rem);
@@ -4143,4 +4188,64 @@ html[data-display-theme="dark"] .display-theme-switcher button[aria-pressed="tru
   ) {
   color: #0a0e19 !important;
   -webkit-text-fill-color: #0a0e19 !important;
+}
+
+/* Partnership applications: New is the initial, neutral state. */
+.admin-theme .admin-partnership-status-option[data-status="New"],
+.admin-theme .admin-partnership-status-select[data-status="New"],
+.admin-theme .admin-partnership-status-label[data-status="New"] {
+  color: #fefaef !important;
+  -webkit-text-fill-color: #fefaef !important;
+}
+
+.admin-theme.admin-light .admin-partnership-status-option[data-status="New"],
+.admin-theme.admin-light .admin-partnership-status-select[data-status="New"],
+.admin-theme.admin-light .admin-partnership-status-label[data-status="New"] {
+  color: #0a0e19 !important;
+  -webkit-text-fill-color: #0a0e19 !important;
+}
+
+/* Player display preferences apply across every portal route without changing
+   the selected light/dark palette. */
+.portal-theme.portal-compact main {
+  --spacing: .225rem;
+}
+
+.portal-theme.portal-large-text main {
+  --text-xs: .8125rem;
+  --text-sm: .9375rem;
+  --text-base: 1.0625rem;
+  --text-lg: 1.1875rem;
+  --text-xl: 1.3125rem;
+  --text-2xl: 1.5625rem;
+  --text-3xl: 1.9375rem;
+  --text-4xl: 2.4375rem;
+  --text-5xl: 3.0625rem;
+  --text-6xl: 3.875rem;
+  --text-7xl: 4.625rem;
+  --text-8xl: 6.25rem;
+  --text-9xl: 8.3125rem;
+}
+
+.portal-theme.portal-high-contrast main :where(
+  [class*="border-white/"],
+  [class*="border-navy/"]
+) {
+  border-color: color-mix(in srgb, currentColor 26%, transparent) !important;
+}
+
+.portal-theme.portal-high-contrast main :where(p, span, label, small, td, th) {
+  -webkit-text-stroke: .1px currentColor;
+}
+
+.portal-theme.portal-large-text main :where(
+  [class*="text-[10px]"],
+  [class*="text-[11px]"],
+  [class*="text-[12px]"]
+) {
+  font-size: 1.07em !important;
+}
+
+.portal-theme.portal-high-contrast main :where(a, button, input, select, textarea):focus-visible {
+  outline-width: 4px !important;
 }

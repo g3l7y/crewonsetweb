@@ -28,7 +28,8 @@ type PayMongoOrder = {
 };
 
 function getSecret(name: 'PAYMONGO_SECRET_KEY' | 'PLAYFAB_SECRET_KEY'): string | null {
-  return process.env[name] || null;
+  const value = process.env[name]?.trim();
+  return value || null;
 }
 
 function createOrderId(): string {
@@ -61,9 +62,21 @@ export const Route = createFileRoute('/api/paymongo/checkout')({
         const mockMode = isMockMode();
         const paymongoSecret = getSecret('PAYMONGO_SECRET_KEY');
         const playfabSecret = getSecret('PLAYFAB_SECRET_KEY');
-        if (!paymongoSecret || (!mockMode && !playfabSecret)) {
+        if (!paymongoSecret) {
+          const error = mockMode
+            ? 'Mock mode requires PAYMONGO_SECRET_KEY with an sk_test_ key.'
+            : 'PayMongo checkout is not configured on this server yet.';
+          return Response.json({ error }, { status: 503 });
+        }
+        if (!mockMode && !playfabSecret) {
           return Response.json(
             { error: 'PayMongo checkout is not configured on this server yet.' },
+            { status: 503 },
+          );
+        }
+        if (mockMode && !paymongoSecret.startsWith('sk_test_')) {
+          return Response.json(
+            { error: 'Mock mode requires a PayMongo Test secret key beginning with sk_test_.' },
             { status: 503 },
           );
         }
@@ -90,10 +103,28 @@ export const Route = createFileRoute('/api/paymongo/checkout')({
             return Response.json({ error: 'Please enter a valid email address.' }, { status: 400 });
           }
 
+          const accountEmail = session.email?.trim().toLowerCase() || "";
+          if (!accountEmail) {
+            return Response.json(
+              { error: "Your player account does not have a saved email address. Add one before purchasing." },
+              { status: 400 },
+            );
+          }
+          if (email.toLowerCase() !== accountEmail) {
+            return Response.json(
+              { error: "The checkout email must match the email saved on your player account." },
+              { status: 400 },
+            );
+          }
+
           const orderId = createOrderId();
           const totalCoins = pack.coins;
           const amountInCentavos = Math.round(pack.pricePhp * 100);
-          const publicAppUrl = (process.env['PUBLIC_APP_URL'] || new URL(request.url).origin).replace(/\/$/, '');
+          // Always return to the deployment that created the order. This preserves
+          // the session on Vercel preview deployments instead of redirecting to a
+          // different host through a shared PUBLIC_APP_URL value.
+          const publicAppUrl = new URL(request.url).origin.replace(/\/$/, '');
+          const returnPath = mockMode ? '/api/paymongo/return' : '/portal/shop';
           const now = new Date().toISOString();
           const order: PayMongoOrder = {
             id: orderId,
@@ -156,8 +187,8 @@ export const Route = createFileRoute('/api/paymongo/checkout')({
                   description: 'Crew On Set C-Coin top-up',
                   show_description: true,
                   show_line_items: true,
-                  success_url: publicAppUrl + '/portal/shop?payment=success&reference=' + encodeURIComponent(orderId),
-                  cancel_url: publicAppUrl + '/portal/shop?payment=cancelled&reference=' + encodeURIComponent(orderId),
+                  success_url: publicAppUrl + returnPath + '?payment=success&reference=' + encodeURIComponent(orderId),
+                  cancel_url: publicAppUrl + returnPath + '?payment=cancelled&reference=' + encodeURIComponent(orderId),
                   reference_number: orderId,
                   send_email_receipt: true,
                   metadata: {

@@ -1,4 +1,5 @@
 import { createFileRoute } from '@tanstack/react-router';
+import { PLAYFAB_API_BASE, isMockMode } from '@/lib/playfab/config';
 import { unauthorizedSessionResponse, validateSessionFromRequest } from '@/lib/playfab/session';
 import {
   WEBSITE_DATA_KEYS,
@@ -8,6 +9,12 @@ import {
   deleteWebsiteRecords,
 } from '@/lib/playfab/websiteData';
 import type { PlayerReport } from '@/lib/playfab/types';
+import { persistAdminPlayerMessage } from '@/lib/playfab/admin-player-message';
+import { buildReportInvestigationMessage } from '@/lib/report-investigation-message';
+import {
+  parseSubmissionRequest,
+  uploadSubmissionAttachment,
+} from '@/lib/playfab/submission-attachments';
 
 function getSecretKey(): string {
   const key = process.env['PLAYFAB_SECRET_KEY'];
@@ -19,6 +26,66 @@ function uid(prefix: string): string {
   return `${prefix}-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
 }
 
+type PlayFabAccountInfo = {
+  PlayFabId?: string;
+  Username?: string;
+  TitleInfo?: {
+    DisplayName?: string;
+  };
+};
+
+type ReportedPlayerLookup = {
+  player: { playFabId: string; username: string } | null;
+  providerUnavailable: boolean;
+};
+
+async function findRealReportedPlayer(
+  sessionTicket: string,
+  reporterId: string,
+  username: string,
+): Promise<ReportedPlayerLookup> {
+  let providerUnavailable = false;
+  const normalizedUsername = username.trim().toLowerCase();
+
+  for (const lookup of [{ TitleDisplayName: username }, { Username: username }]) {
+    try {
+      const playfabResponse = await fetch(`${PLAYFAB_API_BASE}/Client/GetAccountInfo`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-Authorization': sessionTicket,
+        },
+        body: JSON.stringify(lookup),
+      });
+      const result = await playfabResponse.json().catch(() => ({}));
+      const account = result?.data?.AccountInfo as PlayFabAccountInfo | undefined;
+      const playFabId = account?.PlayFabId?.trim() ?? '';
+      const displayName = account?.TitleInfo?.DisplayName?.trim() ?? '';
+      const playFabUsername = account?.Username?.trim() ?? '';
+
+      if (playfabResponse.status >= 500 || Number(result?.code) >= 500) {
+        providerUnavailable = true;
+        continue;
+      }
+
+      const matchesUsername = displayName.toLowerCase() === normalizedUsername ||
+        playFabUsername.toLowerCase() === normalizedUsername;
+      if (playfabResponse.ok && result?.code === 200 && playFabId && playFabId !== reporterId && matchesUsername) {
+        return {
+          player: {
+            playFabId,
+            username: displayName || playFabUsername || username.trim(),
+          },
+          providerUnavailable,
+        };
+      }
+    } catch {
+      providerUnavailable = true;
+    }
+  }
+
+  return { player: null, providerUnavailable };
+}
 export const Route = createFileRoute('/api/admin/player-reports')({
   server: {
     handlers: {
@@ -47,32 +114,67 @@ export const Route = createFileRoute('/api/admin/player-reports')({
             return Response.json({ error: 'Authentication required.' }, { status: 401 });
           }
 
-          const body = await request.json();
+          const { fields, attachment } = await parseSubmissionRequest(request);
           const {
             reportedUsername,
             reportedPlayerId,
             reportType,
             description,
             attachmentName,
-            attachmentUrl,
             attachmentType,
-          } = body as Record<string, string>;
+          } = fields;
 
           if (!description) {
             return Response.json({ error: 'Description is required.' }, { status: 400 });
           }
 
+          const normalizedReportedUsername = reportedUsername?.trim() ?? '';
+          if (!normalizedReportedUsername) {
+            return Response.json({ error: 'The reported username is required.' }, { status: 400 });
+          }
+
+          let resolvedReportedUsername = normalizedReportedUsername;
+          let resolvedReportedPlayerId = reportedPlayerId?.trim() || undefined;
+          if (!isMockMode()) {
+            const lookup = await findRealReportedPlayer(session.sessionTicket || '', session.playFabId, normalizedReportedUsername);
+            if (!lookup.player) {
+              return Response.json(
+                { error: lookup.providerUnavailable
+                    ? 'Player lookup is temporarily unavailable. Please try again.'
+                    : 'The reported username must match an existing player account.' },
+                { status: lookup.providerUnavailable ? 503 : 400 },
+              );
+            }
+            resolvedReportedUsername = lookup.player.username;
+            resolvedReportedPlayerId = lookup.player.playFabId;
+          }
+
+          const id = uid('PR');
+          let uploadedAttachment: { attachmentUrl: string; fileName: string } | undefined;
+          if (attachment) {
+            try {
+              uploadedAttachment = await uploadSubmissionAttachment(
+                id,
+                attachment,
+                getSecretKey(),
+              );
+            } catch (error) {
+              const message = error instanceof Error ? error.message : 'Attachment upload failed.';
+              return Response.json({ error: message }, { status: 400 });
+            }
+          }
+
           const report: PlayerReport = {
-            id: uid('PR'),
+            id,
             reporterId: session.playFabId,
             reporterName: session.username || session.displayName || 'Player',
-            reportedUsername: reportedUsername || 'Unknown',
-            reportedPlayerId: reportedPlayerId || undefined,
+            reportedUsername: resolvedReportedUsername,
+            reportedPlayerId: resolvedReportedPlayerId,
             reportType: reportType || 'Other',
             description,
-            attachmentName: attachmentName || undefined,
-            attachmentUrl: attachmentUrl || undefined,
-            attachmentType: attachmentType || undefined,
+            attachmentName: attachment?.name || attachmentName || undefined,
+            attachmentUrl: uploadedAttachment?.attachmentUrl || undefined,
+            attachmentType: attachment?.type || attachmentType || undefined,
             submittedAt: new Date().toISOString(),
             status: 'New',
           };
@@ -110,6 +212,46 @@ export const Route = createFileRoute('/api/admin/player-reports')({
             return Response.json({ error: 'Report ID is required.' }, { status: 400 });
           }
 
+          const allowedStatuses = ['New', 'Investigating', 'Resolved'];
+          if (status !== undefined && !allowedStatuses.includes(status)) {
+            return Response.json({ error: 'Invalid player report status.' }, { status: 400 });
+          }
+          const secretKey = getSecretKey();
+          const reports = await getWebsiteRecords<PlayerReport>(WEBSITE_DATA_KEYS.playerReports, secretKey);
+          const current = reports.find((report) => report.id === id);
+          if (!current) return Response.json({ error: 'Report not found.' }, { status: 404 });
+
+          if (status !== undefined) {
+            const order: Record<string, number> = { New: 0, Investigating: 1, Resolved: 2 };
+            if ((order[status] ?? -1) < (order[current.status] ?? -1)) {
+              return Response.json({ error: 'Player report statuses can only move forward.' }, { status: 409 });
+            }
+            if (current.status === 'New' && status === 'Investigating') {
+              const playerId = current.reporterId?.trim();
+              if (!playerId || playerId === 'anonymous') {
+                return Response.json(
+                  { error: 'This report is not linked to a player account, so an Inbox update cannot be delivered.' },
+                  { status: 409 },
+                );
+              }
+              const message = buildReportInvestigationMessage({
+                kind: 'player',
+                reportId: current.id,
+                category: current.reportType || 'Other',
+              });
+              const saved = await persistAdminPlayerMessage({
+                id: 'report-' + current.id + '-investigating',
+                subject: message.subject,
+                body: message.body,
+                recipientPlayerId: playerId,
+                recipientUsername: current.reporterName || 'Player',
+                kind: 'report',
+                secretKey,
+              });
+              if (!saved) return Response.json({ error: 'Could not save the player Inbox update. The report status was not changed.' }, { status: 500 });
+            }
+          }
+
           const success = await updateWebsiteRecord<PlayerReport>(
             WEBSITE_DATA_KEYS.playerReports,
             id,
@@ -118,7 +260,7 @@ export const Route = createFileRoute('/api/admin/player-reports')({
               ...(status !== undefined ? { status } : {}),
               ...(adminNotes !== undefined ? { adminNotes } : {}),
             }),
-            getSecretKey(),
+            secretKey,
           );
 
           if (!success) {

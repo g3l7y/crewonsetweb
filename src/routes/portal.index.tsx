@@ -4,9 +4,15 @@ export const Route = createFileRoute("/portal/")({
   head: () => ({
     meta: [
       { title: "Crew Portal — Crew On Set!" },
-      { name: "description", content: "Your production hub: progress, rewards, and crew activity." },
+      {
+        name: "description",
+        content: "Your production hub: progress, rewards, and crew activity.",
+      },
       { property: "og:title", content: "Crew Portal — Crew On Set!" },
-      { property: "og:description", content: "Your production hub: progress, rewards, and crew activity." },
+      {
+        property: "og:description",
+        content: "Your production hub: progress, rewards, and crew activity.",
+      },
     ],
   }),
   component: PlayerDashboardPage,
@@ -15,7 +21,7 @@ export const Route = createFileRoute("/portal/")({
 import Image from "@/components/next-compat/image";
 import Link from "@/components/next-compat/link";
 import { getProfileArtwork } from "@/lib/demo/profile-art";
-import { useMemo } from "react";
+import { useEffect, useMemo } from "react";
 import {
   Clock3,
   Film,
@@ -35,9 +41,11 @@ import {
   Settings2,
 } from "lucide-react";
 import { cosmeticCatalog, ownedItemsStore } from "@/lib/demo/portal-shop";
-import { gameBuildStore, notificationsStore } from "@/lib/demo/store";
+import { brandUpdatesStore, gameBuildStore, notificationsStore } from "@/lib/demo/store";
+import { getInstallerDownloadUrl } from "@/lib/game-download";
 import {
-  isActivityNotification,
+  dedupeNotifications,
+  isRecentPlayerActivity,
   matchesPlayerRecipient,
   RECENT_ACTIVITY_LIMIT,
   relativeTime,
@@ -46,7 +54,15 @@ import {
 import type { CosmeticItem } from "@/lib/demo/portal-shop";
 import { CosmeticArt } from "@/components/portal/cosmetic-art";
 import { Leaderboards } from "@/components/portal/leaderboards";
-import { useAchievements, useCatalog, useNotifications, usePlayerInventory, usePlayerProfile, usePlayerProgression, useProductionLogs } from "@/lib/playfab/hooks";
+import {
+  useAchievements,
+  useCatalog,
+  useNotifications,
+  usePlayerInventory,
+  usePlayerProfile,
+  usePlayerProgression,
+  useProductionLogs,
+} from "@/lib/playfab/hooks";
 import { isMockMode } from "@/lib/playfab/config";
 import { sortNewestFirst } from "@/lib/validation";
 
@@ -101,53 +117,56 @@ type ActivityItem = {
   icon: typeof Film;
 };
 
-const recentActivity: ActivityItem[] = sortNewestFirst([
-  {
-    id: "act-1",
-    kind: "production",
-    title: "Wrapped “Northline Optics — NL-70 Launch”",
-    detail: "Scored 94% as Cameraman",
-    time: "2 hours ago",
-    createdAt: "2026-09-04T08:00:00.000Z",
-    icon: Film,
-  },
-  {
-    id: "act-2",
-    kind: "achievement",
-    title: "Achievement unlocked — One Take Wonder",
-    detail: "+450 XP awarded",
-    time: "Yesterday",
-    createdAt: "2026-09-03T18:00:00.000Z",
-    icon: Award,
-  },
-  {
-    id: "act-3",
-    kind: "session",
-    title: "Completed a practice session",
-    detail: "Lighting department drill, 38 minutes",
-    time: "Yesterday",
-    createdAt: "2026-09-03T12:00:00.000Z",
-    icon: Play,
-  },
-  {
-    id: "act-4",
-    kind: "purchase",
-    title: "Purchased Studio Curls",
-    detail: "400 C-Coins spent in the Shop",
-    time: "2 days ago",
-    createdAt: "2026-09-02T12:00:00.000Z",
-    icon: ShoppingBag,
-  },
-  {
-    id: "act-5",
-    kind: "level",
-    title: "Reached Crew Level 27",
-    detail: "{currentXp.toLocaleString()} / {xpToNextLevel.toLocaleString()} XP toward Level 28",
-    time: "4 days ago",
-    createdAt: "2026-08-31T12:00:00.000Z",
-    icon: Sparkles,
-  },
-], (activity) => activity.createdAt);
+const recentActivity: ActivityItem[] = sortNewestFirst(
+  [
+    {
+      id: "act-1",
+      kind: "production",
+      title: "Wrapped “Northline Optics — NL-70 Launch”",
+      detail: "Scored 94% as Cameraman",
+      time: "2 hours ago",
+      createdAt: "2026-09-04T08:00:00.000Z",
+      icon: Film,
+    },
+    {
+      id: "act-2",
+      kind: "achievement",
+      title: "Achievement unlocked — One Take Wonder",
+      detail: "+450 XP awarded",
+      time: "Yesterday",
+      createdAt: "2026-09-03T18:00:00.000Z",
+      icon: Award,
+    },
+    {
+      id: "act-3",
+      kind: "session",
+      title: "Completed a practice session",
+      detail: "Lighting department drill, 38 minutes",
+      time: "Yesterday",
+      createdAt: "2026-09-03T12:00:00.000Z",
+      icon: Play,
+    },
+    {
+      id: "act-4",
+      kind: "purchase",
+      title: "Purchased Studio Curls",
+      detail: "400 C-Coins spent in the Shop",
+      time: "2 days ago",
+      createdAt: "2026-09-02T12:00:00.000Z",
+      icon: ShoppingBag,
+    },
+    {
+      id: "act-5",
+      kind: "level",
+      title: "Reached Crew Level 27",
+      detail: "{currentXp.toLocaleString()} / {xpToNextLevel.toLocaleString()} XP toward Level 28",
+      time: "4 days ago",
+      createdAt: "2026-08-31T12:00:00.000Z",
+      icon: Sparkles,
+    },
+  ],
+  (activity) => activity.createdAt,
+);
 
 function PlayerDashboardPage() {
   const mockMode = isMockMode();
@@ -160,32 +179,61 @@ function PlayerDashboardPage() {
   const productionLogsQuery = useProductionLogs();
   const realNotificationsQuery = useNotifications();
   const [gameBuilds] = gameBuildStore.useStore();
+  const [brandUpdates] = brandUpdatesStore.useStore();
   const [demoNotifications] = notificationsStore.useStore();
   const currentBuild = gameBuilds[0];
-  const playNowHref = currentBuild?.downloadUrl?.trim() || "notes://";
+  const playNowHref = getInstallerDownloadUrl(currentBuild?.downloadUrl);
+  const featuredBrandUpdate = brandUpdates[0];
+  useEffect(() => {
+    if (featuredBrandUpdate && !mockMode) {
+      void fetch(`/api/brand-updates/${encodeURIComponent(featuredBrandUpdate.id)}/impression`, {
+        method: "POST",
+        credentials: "include",
+      });
+    }
+  }, [featuredBrandUpdate?.id, mockMode]);
 
   const displayName = profileQuery.data?.username || profileQuery.data?.displayName || "CAMERA_PRO";
   const displayAvatar = mockMode
     ? getProfileArtwork(displayName)
     : profileQuery.data?.avatarUrl || getProfileArtwork(displayName);
-  const level = mockMode ? 27 : progressionQuery.data?.level ?? 1;
-  const currentXp = mockMode ? 6820 : progressionQuery.data?.currentXp ?? 0;
-  const xpToNextLevel = mockMode ? 10000 : progressionQuery.data?.xpToNextLevel ?? 0;
-  const progressPercent = xpToNextLevel > 0 ? Math.min(100, Math.round((currentXp / xpToNextLevel) * 100)) : 0;
+  const level = mockMode ? 27 : (progressionQuery.data?.level ?? 1);
+  const currentXp = mockMode ? 6820 : (progressionQuery.data?.currentXp ?? 0);
+  const xpToNextLevel = mockMode ? 10000 : (progressionQuery.data?.xpToNextLevel ?? 0);
+  const progressPercent =
+    xpToNextLevel > 0 ? Math.min(100, Math.round((currentXp / xpToNextLevel) * 100)) : 0;
   const dashboardCareer = mockMode
     ? career
     : [
-        { label: "Productions Completed", value: String(productionLogsQuery.data?.length ?? 0), icon: Film },
-        { label: "Sessions Played", value: String(productionLogsQuery.data?.length ?? 0), icon: Play },
+        {
+          label: "Productions Completed",
+          value: String(productionLogsQuery.data?.length ?? 0),
+          icon: Film,
+        },
+        {
+          label: "Sessions Played",
+          value: String(productionLogsQuery.data?.length ?? 0),
+          icon: Play,
+        },
         { label: "Total Play Time", value: "—", icon: Clock3 },
-        { label: "Best Rating", value: productionLogsQuery.data?.length ? Math.max(...productionLogsQuery.data.map((log) => Number(log.overallScore ?? log.score ?? 0))) + "%" : "—", icon: Star },
+        {
+          label: "Best Rating",
+          value: productionLogsQuery.data?.length
+            ? Math.max(
+                ...productionLogsQuery.data.map((log) =>
+                  Number(log.overallScore ?? log.score ?? 0),
+                ),
+              ) + "%"
+            : "—",
+          icon: Star,
+        },
         { label: "Global Rank", value: "—", icon: Hash },
       ];
   const dashboardBadges = mockMode
     ? badges
     : Array.from({ length: 6 }, (_, index) => {
-        const achievement = (achievementsQuery.data ?? []).filter(
-          (item) => Boolean(item.title.trim() && item.description.trim()),
+        const achievement = (achievementsQuery.data ?? []).filter((item) =>
+          Boolean(item.title.trim() && item.description.trim()),
         )[index];
         return {
           id: achievement?.id ?? `real-locked-badge-${index}`,
@@ -196,13 +244,16 @@ function PlayerDashboardPage() {
       });
   const dashboardActivity = mockMode
     ? sortNotificationsNewestFirst(
-        demoNotifications.filter((notification) =>
-          isActivityNotification(notification) &&
-          matchesPlayerRecipient(
-            notification,
-            profileQuery.data?.username ?? profileQuery.data?.displayName ?? "CAMERA_PRO",
-            profileQuery.data?.email ?? "player@crewonset.com",
-            profileQuery.data?.playFabId ?? "MOCK-PLAYER-001",
+        dedupeNotifications(
+          demoNotifications.filter(
+            (notification) =>
+              isRecentPlayerActivity(notification) &&
+              matchesPlayerRecipient(
+                notification,
+                profileQuery.data?.username ?? profileQuery.data?.displayName ?? "CAMERA_PRO",
+                profileQuery.data?.email ?? "player@crewonset.com",
+                profileQuery.data?.playFabId ?? "MOCK-PLAYER-001",
+              ),
           ),
         ),
       )
@@ -214,18 +265,21 @@ function PlayerDashboardPage() {
           detail: notification.body,
           time: relativeTime(notification.createdAt),
           createdAt: notification.createdAt,
-          icon: ({
-            announcement: Megaphone,
-            achievement: Award,
-            friend: UserPlus,
-            shop: ShoppingBag,
-            transaction: ShoppingBag,
-            report: Flag,
-            system: Settings2,
-          } as Record<string, typeof Film>)[notification.kind] ?? Settings2,
+          icon:
+            (
+              {
+                announcement: Megaphone,
+                achievement: Award,
+                friend: UserPlus,
+                shop: ShoppingBag,
+                transaction: ShoppingBag,
+                report: Flag,
+                system: Settings2,
+              } as Record<string, typeof Film>
+            )[notification.kind] ?? Settings2,
         }))
     : sortNotificationsNewestFirst(
-        (realNotificationsQuery.data ?? []).filter(isActivityNotification),
+        dedupeNotifications((realNotificationsQuery.data ?? []).filter(isRecentPlayerActivity)),
       )
         .slice(0, RECENT_ACTIVITY_LIMIT)
         .map((notification) => ({
@@ -235,15 +289,18 @@ function PlayerDashboardPage() {
           detail: notification.body ?? "",
           time: relativeTime(notification.createdAt),
           createdAt: notification.createdAt,
-          icon: ({
-            announcement: Megaphone,
-            achievement: Award,
-            friend: UserPlus,
-            shop: ShoppingBag,
-            transaction: ShoppingBag,
-            report: Flag,
-            system: Settings2,
-          } as Record<string, typeof Film>)[notification.kind ?? "system"] ?? Settings2,
+          icon:
+            (
+              {
+                announcement: Megaphone,
+                achievement: Award,
+                friend: UserPlus,
+                shop: ShoppingBag,
+                transaction: ShoppingBag,
+                report: Flag,
+                system: Settings2,
+              } as Record<string, typeof Film>
+            )[notification.kind ?? "system"] ?? Settings2,
         }));
 
   const catalog = useMemo(() => {
@@ -251,15 +308,17 @@ function PlayerDashboardPage() {
     return (catalogQuery.data ?? [])
       .map((remote) => {
         const category = remote.category as CosmeticItem["category"];
-        if (!["Hair", "Tops", "Bottoms", "Eyeglasses"].includes(category)) return null;
+        if (!["Hair", "Tops", "Bottoms", "Shoe Wear", "Accessories"].includes(category))
+          return null;
         const rarityValue = String(remote.rarity ?? "").toLowerCase();
-        const rarity = rarityValue === "rare"
-          ? "Rare"
-          : rarityValue === "epic"
-            ? "Epic"
-            : rarityValue === "legendary"
-              ? "Legendary"
-              : "Common";
+        const rarity =
+          rarityValue === "rare"
+            ? "Rare"
+            : rarityValue === "epic"
+              ? "Epic"
+              : rarityValue === "legendary"
+                ? "Legendary"
+                : "Common";
         return {
           id: remote.itemId,
           name: remote.displayName ?? "",
@@ -269,32 +328,36 @@ function PlayerDashboardPage() {
           description: remote.description ?? "",
           assetKey: remote.customData?.assetKey ?? "",
           imageUrl: remote.customData?.imageUrl ?? "",
-          placeholder: !remote.displayName && !remote.description && !remote.customData?.assetKey && !remote.customData?.imageUrl,
+          placeholder:
+            !remote.displayName &&
+            !remote.description &&
+            !remote.customData?.assetKey &&
+            !remote.customData?.imageUrl,
         };
       })
       .filter((item): item is CosmeticItem => item !== null);
   }, [catalogQuery.data, mockMode]);
 
-  const ownedIds = mockMode
-    ? demoOwnedIds
-    : (inventoryQuery.data ?? []).map((item) => item.itemId);
+  const ownedIds = mockMode ? demoOwnedIds : (inventoryQuery.data ?? []).map((item) => item.itemId);
   const ownedItems = useMemo(
     () => catalog.filter((item) => ownedIds.includes(item.id)),
     [catalog, ownedIds],
   );
   const recentMockOwnedItems = useMemo(
-    () => ownedIds
-      .map((id) => catalog.find((item) => item.id === id))
-      .filter((item): item is CosmeticItem => item !== undefined)
-      .slice(-2),
+    () =>
+      ownedIds
+        .map((id) => catalog.find((item) => item.id === id))
+        .filter((item): item is CosmeticItem => item !== undefined)
+        .slice(-2),
     [catalog, ownedIds],
   );
   const recentRealOwnedItems = useMemo(
-    () => [...(inventoryQuery.data ?? [])]
-      .sort((a, b) => new Date(b.acquiredAt).getTime() - new Date(a.acquiredAt).getTime())
-      .map((inventoryItem) => catalog.find((item) => item.id === inventoryItem.itemId))
-      .filter((item): item is CosmeticItem => item !== undefined)
-      .slice(0, 2),
+    () =>
+      [...(inventoryQuery.data ?? [])]
+        .sort((a, b) => new Date(b.acquiredAt).getTime() - new Date(a.acquiredAt).getTime())
+        .map((inventoryItem) => catalog.find((item) => item.id === inventoryItem.itemId))
+        .filter((item): item is CosmeticItem => item !== undefined)
+        .slice(0, 2),
     [catalog, inventoryQuery.data],
   );
   const dashboardOwnedItems = mockMode ? recentMockOwnedItems : recentRealOwnedItems;
@@ -306,8 +369,7 @@ function PlayerDashboardPage() {
       <div className="portal-title-container mx-auto max-w-[1500px]">
         {/* HEADER */}
         <header className="portal-title-header">
-          <p className="portal-title-eyebrow text-xs font-black tracking-[.18em] text-coral">PLAYER PORTAL</p>
-          <h1 className="portal-title-heading mt-2 text-4xl font-black uppercase tracking-tight text-white sm:text-5xl">
+          <h1 className="portal-title-heading text-4xl font-black uppercase tracking-tight text-white sm:text-5xl">
             Dashboard
           </h1>
         </header>
@@ -336,9 +398,14 @@ function PlayerDashboardPage() {
                   LEVEL {level}
                 </span>
                 <div className="h-2 max-w-md flex-1 overflow-hidden rounded-full bg-navy/10">
-                  <div className="h-full rounded-full bg-coral" style={{ width: progressPercent + "%" }} />
+                  <div
+                    className="h-full rounded-full bg-coral"
+                    style={{ width: progressPercent + "%" }}
+                  />
                 </div>
-                <span className="text-xs font-bold text-navy/45">{currentXp.toLocaleString()} / {xpToNextLevel.toLocaleString()} XP</span>
+                <span className="text-xs font-bold text-navy/45">
+                  {currentXp.toLocaleString()} / {xpToNextLevel.toLocaleString()} XP
+                </span>
               </div>
             </div>
 
@@ -368,14 +435,31 @@ function PlayerDashboardPage() {
             </h2>
             <p className="mt-4 text-lg text-white/75">Miss your crew? Play the game now.</p>
             <a
+              id="play-now"
               href={playNowHref}
-              target="_blank"
-              rel="noreferrer"
+              download={currentBuild?.installerFileName || true}
               className="latest-update-play-button mt-7 inline-flex items-center gap-2 rounded-md bg-coral px-5 py-3 text-sm font-black text-white transition hover:bg-coral-dark"
             >
               <Play className="size-4 fill-current" />
               PLAY NOW
             </a>
+            {featuredBrandUpdate && (
+              <a
+                href={
+                  mockMode
+                    ? featuredBrandUpdate.url
+                    : `/api/brand-updates/${encodeURIComponent(featuredBrandUpdate.id)}/click`
+                }
+                className="mt-4 block max-w-xl rounded-lg border border-white/15 bg-black/25 p-4 text-sm text-white transition hover:border-yellow/60"
+              >
+                <span className="block text-[10px] font-black uppercase tracking-widest text-yellow">
+                  Brand Update
+                </span>
+                <span className="mt-1 block font-bold">
+                  {featuredBrandUpdate.notes || "Visit our featured brand"}
+                </span>
+              </a>
+            )}
           </div>
         </section>
 
@@ -390,7 +474,10 @@ function PlayerDashboardPage() {
             {dashboardCareer.map((stat) => {
               const Icon = stat.icon;
               return (
-                <article key={stat.label} className="bg-[#121d32] p-5 transition hover:bg-[#17243c]">
+                <article
+                  key={stat.label}
+                  className="bg-[#121d32] p-5 transition hover:bg-[#17243c]"
+                >
                   <Icon className="size-5 text-coral" />
                   <p className="mt-5 text-3xl font-black tracking-tight text-white">{stat.value}</p>
                   <p className="mt-1 text-[10px] font-black uppercase tracking-wider text-white/45">
@@ -431,10 +518,18 @@ function PlayerDashboardPage() {
                 }`}
               >
                 <span className="text-3xl transition group-hover:scale-110">
-                  {badge.unlocked ? badge.icon : <Lock className="mx-auto size-6" aria-label="Locked badge" />}
+                  {badge.unlocked ? (
+                    badge.icon
+                  ) : (
+                    <Lock className="mx-auto size-6" aria-label="Locked badge" />
+                  )}
                 </span>
 
-                {badge.name && <p className="badge-label mt-3 text-xs font-black uppercase text-white/80">{badge.name}</p>}
+                {badge.name && (
+                  <p className="badge-label mt-3 text-xs font-black uppercase text-white/80">
+                    {badge.name}
+                  </p>
+                )}
               </div>
             ))}
           </div>
@@ -483,7 +578,9 @@ function PlayerDashboardPage() {
           <section className="dashboard-owned-items-card overflow-hidden rounded-xl border border-white/10 bg-[#121d32]">
             <div className="flex items-center justify-between border-b border-white/10 px-5 py-4">
               <h2 className="text-sm font-black uppercase tracking-wide text-white">Owned Items</h2>
-              <span className="text-[10px] font-bold uppercase text-white/30">{ownedItemsTotal} total</span>
+              <span className="text-[10px] font-bold uppercase text-white/30">
+                {ownedItemsTotal} total
+              </span>
             </div>
 
             {ownedItemsLoading ? (
@@ -505,8 +602,16 @@ function PlayerDashboardPage() {
                     key={item.id}
                     className="rounded-lg border border-white/10 bg-white/[0.03] p-3 text-center"
                   >
-                    {item.imageUrl ? <img className="owned-item-art" src={item.imageUrl} alt="" /> : item.assetKey ? <CosmeticArt item={item} className="owned-item-art" /> : <div className="owned-item-art shop-art-placeholder" aria-hidden="true" />}
-                    {item.name && <p className="mt-2 truncate text-xs font-bold text-white">{item.name}</p>}
+                    {item.imageUrl ? (
+                      <img className="owned-item-art" src={item.imageUrl} alt="" />
+                    ) : item.assetKey ? (
+                      <CosmeticArt item={item} className="owned-item-art" />
+                    ) : (
+                      <div className="owned-item-art shop-art-placeholder" aria-hidden="true" />
+                    )}
+                    {item.name && (
+                      <p className="mt-2 truncate text-xs font-bold text-white">{item.name}</p>
+                    )}
                     <p className="text-[10px] uppercase text-white/30">{item.category}</p>
                   </div>
                 ))}

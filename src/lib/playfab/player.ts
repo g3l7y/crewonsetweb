@@ -1,5 +1,6 @@
 import { playfabClientApi, PlayFabError } from './client';
 import type { PlayerProfile } from './types';
+import { DEFAULT_PROFILE_PICTURE_URL, isManagedProfileAvatarUrl } from '@/lib/profile-avatar';
 
 /**
  * Get the current player's profile.
@@ -12,6 +13,7 @@ export async function getPlayerProfile(sessionTicket: string): Promise<PlayerPro
       ProfileConstraints: {
         ShowDisplayName: true,
         ShowAvatarUrl: true,
+        ShowContactEmailAddresses: true,
         ShowLastLogin: true,
       }
     }, sessionTicket);
@@ -86,7 +88,7 @@ export function mapPlayFabProfileToPlayerProfile(profile: any): PlayerProfile {
       displayName: 'Player',
       username: 'player',
       email: '',
-      avatarUrl: '/assets/crew-team-illustration.png',
+      avatarUrl: DEFAULT_PROFILE_PICTURE_URL,
       role: 'cameraman',
       crewId: 'CREW-001',
       bio: '',
@@ -99,6 +101,9 @@ export function mapPlayFabProfileToPlayerProfile(profile: any): PlayerProfile {
 
   const playFabId = profile.PlayerId || '';
   const displayName = profile.DisplayName || 'Player';
+  const contactEmail = Array.isArray(profile.ContactEmailAddresses)
+    ? profile.ContactEmailAddresses.find((entry: any) => typeof entry?.EmailAddress === 'string' && entry.EmailAddress.trim())?.EmailAddress?.trim()
+    : '';
   const lastLoginAt = profile.LastLogin ? new Date(profile.LastLogin).toISOString() : new Date().toISOString();
   const joinedAt = profile.Created ? new Date(profile.Created).toISOString() : new Date().toISOString();
 
@@ -107,8 +112,8 @@ export function mapPlayFabProfileToPlayerProfile(profile: any): PlayerProfile {
     playFabId,
     displayName,
     username: displayName,
-    email: profile.Email || '',
-    avatarUrl: profile.AvatarUrl || '/assets/crew-team-illustration.png',
+    email: contactEmail || profile.Email || '',
+    avatarUrl: isManagedProfileAvatarUrl(profile.AvatarUrl) ? profile.AvatarUrl : DEFAULT_PROFILE_PICTURE_URL,
     role: (profile.Role || 'cameraman') as any,
     crewId: profile.CrewId || 'CREW-001',
     bio: profile.Bio || '',

@@ -1,15 +1,14 @@
 import Link from "@/components/next-compat/link";
 import { usePathname, useRouter } from "@/components/next-compat/navigation";
+import { useQuery } from "@tanstack/react-query";
 import { Toaster } from "@/components/ui/sonner";
 import {
   adminAccountStore,
-  adminActivityStore,
-  adsStore,
   alertReadStore,
-  applicationsStore,
   bugReportsStore,
   playerReportsStore,
 } from "@/lib/demo/store";
+import { topUpsStore, type TopUpRecord } from "@/lib/admin-demo-data";
 import { buildAlerts } from "@/components/admin/admin-alerts";
 import { isMockMode } from "@/lib/playfab/config";
 import { useSession } from "@/lib/playfab/hooks";
@@ -22,8 +21,6 @@ import {
   ChevronsLeft,
   ChevronsRight,
   ExternalLink,
-  Eye,
-  EyeOff,
   Gamepad2,
   HandCoins,
   LayoutDashboard,
@@ -36,31 +33,14 @@ import {
 } from "lucide-react";
 import { useMemo, useState } from "react";
 
-function useUnreadAlertsCount() {
-  const [applications] = applicationsStore.useStore();
-  const [ads] = adsStore.useStore();
-  const [bugs] = bugReportsStore.useStore();
-  const [playerReports] = playerReportsStore.useStore();
-  const alerts = useMemo(
-    () => buildAlerts(applications, ads, bugs, playerReports, [], isMockMode()),
-    [applications, ads, bugs, playerReports],
-  );
-  const [readIds] = alertReadStore.useStore();
-
-  return {
-    total: alerts.length,
-    unread: alerts.filter((alert) => !readIds.includes(alert.id)).length,
-  };
-}
-
 const navigation = [
   { label: "Dashboard", href: "/admin", icon: LayoutDashboard },
   { label: "Players", href: "/admin/players", icon: Users },
   { label: "Game & Updates", href: "/admin/game", icon: Gamepad2 },
+  { label: "Transactions", href: "/admin/transactions", icon: Banknote },
   { label: "Notifications", href: "/admin/notifications", icon: Bell },
   { label: "Bug Reports", href: "/admin/bugs", icon: Bug },
   { label: "Player Reports", href: "/admin/player-reports", icon: Bug },
-  { label: "Transactions", href: "/admin/transactions", icon: Banknote },
   { label: "Partnerships & Ads", href: "/admin/partnerships", icon: HandCoins },
   { label: "Ad Revenue", href: "/admin/ad-revenue", icon: LineChart },
   { label: "Analytics", href: "/admin/analytics", icon: BarChart3 },
@@ -73,21 +53,37 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
   const displayTheme = useDisplayTheme("admin");
   const mockMode = isMockMode();
   const sessionQuery = useSession();
+  const [demoTransactions] = topUpsStore.useStore();
+  const liveTransactionsQuery = useQuery({
+    queryKey: ["admin", "paymongo-orders", "notifications"],
+    queryFn: async (): Promise<TopUpRecord[]> => {
+      const response = await fetch("/api/admin/paymongo-orders", {
+        credentials: "include",
+        cache: "no-store",
+      });
+      if (!response.ok) return [];
+      const result = (await response.json().catch(() => ({}))) as { data?: unknown };
+      return Array.isArray(result.data) ? (result.data as TopUpRecord[]) : [];
+    },
+    enabled: !mockMode && Boolean(sessionQuery.data),
+    staleTime: 0,
+    refetchInterval: mockMode ? false : 15 * 1000,
+  });
+  const transactions = useMemo(
+    () => (mockMode ? demoTransactions : (liveTransactionsQuery.data ?? [])),
+    [demoTransactions, liveTransactionsQuery.data, mockMode],
+  );
   const [mobileOpen, setMobileOpen] = useState(false);
   const [collapsed, setCollapsed] = useState(false);
   const [identityOpen, setIdentityOpen] = useState(false);
-  const [showPassword, setShowPassword] = useState(false);
   const [logoutConfirmOpen, setLogoutConfirmOpen] = useState(false);
   const [notificationsOpen, setNotificationsOpen] = useState(false);
   const [account] = adminAccountStore.useStore();
-  const [applications] = applicationsStore.useStore();
-  const [ads] = adsStore.useStore();
   const [bugs] = bugReportsStore.useStore();
   const [playerReports] = playerReportsStore.useStore();
-  const [activity] = adminActivityStore.useStore();
   const alerts = useMemo(
-    () => buildAlerts(applications, ads, bugs, playerReports, mockMode ? activity : [], mockMode),
-    [applications, ads, bugs, playerReports, activity, mockMode],
+    () => buildAlerts(bugs, playerReports, transactions),
+    [bugs, playerReports, transactions],
   );
   const [readIds, setReadIds] = alertReadStore.useStore();
   const unread = alerts.filter((alert) => !readIds.includes(alert.id)).length;
@@ -122,7 +118,14 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
             </p>
             <div className="flex items-center gap-2">
               <span className="text-[10px] text-white/40">{unread} unread</span>
-              <button type="button" disabled={!unread} onClick={() => setReadIds(alerts.map((alert) => alert.id))} className="text-[9px] font-black uppercase text-coral disabled:cursor-not-allowed disabled:opacity-30">Mark all read</button>
+              <button
+                type="button"
+                disabled={!unread}
+                onClick={() => setReadIds(alerts.map((alert) => alert.id))}
+                className="text-[9px] font-black uppercase text-coral disabled:cursor-not-allowed disabled:opacity-30"
+              >
+                Mark all read
+              </button>
             </div>
           </div>
           <div className="max-h-80 overflow-y-auto">
@@ -156,11 +159,13 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
     router.refresh();
   }
 
-  const admin = mockMode ? account[0] : {
-    name: sessionQuery.data?.displayName || sessionQuery.data?.username || "Administrator",
-    email: sessionQuery.data?.email || "",
-    password: "",
-  };
+  const admin = mockMode
+    ? account[0]
+    : {
+        name: sessionQuery.data?.displayName || sessionQuery.data?.username || "Administrator",
+        email: sessionQuery.data?.email || "",
+        password: "",
+      };
 
   const sidebar = (
     <div className="flex h-full min-h-0 flex-col">
@@ -185,7 +190,10 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
           onClick={() => setCollapsed((current) => !current)}
           title={collapsed ? "Expand sidebar" : "Collapse sidebar"}
           aria-label={collapsed ? "Expand sidebar" : "Collapse sidebar"}
-          className={"sidebar-toggle absolute z-10 hidden size-8 place-items-center rounded-md text-white/40 transition hover:bg-white/10 hover:text-white md:grid " + (collapsed ? "bottom-1 right-2" : "bottom-5 right-2")}
+          className={
+            "sidebar-toggle absolute z-10 hidden size-8 place-items-center rounded-md text-white/40 transition hover:bg-white/10 hover:text-white md:grid " +
+            (collapsed ? "bottom-1 right-2" : "bottom-5 right-2")
+          }
         >
           {collapsed ? <ChevronsRight className="size-4" /> : <ChevronsLeft className="size-4" />}
         </button>
@@ -243,7 +251,6 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
             type="button"
             onClick={() => {
               setIdentityOpen((current) => !current);
-              setShowPassword(false);
             }}
             aria-expanded={identityOpen}
             className={`admin-profile-summary flex w-full items-center gap-3 rounded-md px-2 py-1.5 text-left transition hover:bg-white/5 ${
@@ -281,24 +288,10 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
                 <span className="font-black uppercase tracking-wide text-white/30">Email: </span>
                 {admin?.email ?? "—"}
               </p>
-              {mockMode ? (
-                <div className="mt-1.5 flex items-center gap-2 text-[11px] text-white/50">
-                  <span className="font-black uppercase tracking-wide text-white/30">Password:</span>
-                  <span className="min-w-0 flex-1 truncate">
-                    {showPassword ? (admin?.password ?? "—") : "••••••••"}
-                  </span>
-                  <button
-                    type="button"
-                    onClick={() => setShowPassword((current) => !current)}
-                    aria-label={showPassword ? "Hide password" : "Show password"}
-                    className="shrink-0 text-white/40 transition hover:text-yellow"
-                  >
-                    {showPassword ? <Eye className="size-3.5" /> : <EyeOff className="size-3.5" />}
-                  </button>
-                </div>
-              ) : (
-                <p className="mt-1.5 text-[11px] text-white/50">Password managed by PlayFab.</p>
-              )}
+              <div className="mt-1.5 flex items-center gap-2 text-[11px] text-white/50">
+                <span className="font-black uppercase tracking-wide text-white/30">Password:</span>
+                <span className="tracking-[0.2em]">••••••••</span>
+              </div>
               <div className="mt-3 space-y-1 border-t border-white/10 pt-2">
                 <Link
                   href="/"
@@ -329,7 +322,9 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
   );
 
   return (
-    <div className={`admin-theme relative h-dvh w-full overflow-hidden bg-[#1a1b1e] text-[#eceef1] ${displayTheme === "light" ? "admin-light" : ""}`}>
+    <div
+      className={`admin-theme relative h-dvh w-full overflow-hidden bg-[#1a1b1e] text-[#eceef1] ${displayTheme === "light" ? "admin-light" : ""}`}
+    >
       <Toaster theme="dark" position="top-right" richColors />
 
       {/* DESKTOP SIDEBAR */}
@@ -435,9 +430,7 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
         <div className="admin-notification-header admin-notification-bar hidden h-16 items-center justify-end border-b border-white/[0.06] bg-navy px-6 md:flex">
           {notificationBell}
         </div>
-        <div className="admin-shell-content min-h-0 min-w-0 flex-1 overflow-hidden">
-          {children}
-        </div>
+        <div className="admin-shell-content min-h-0 min-w-0 flex-1 overflow-hidden">{children}</div>
       </main>
     </div>
   );

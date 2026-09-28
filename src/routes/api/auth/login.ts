@@ -1,9 +1,12 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { isMockMode, PLAYFAB_TITLE_ID } from "@/lib/playfab/config";
-import { createSessionCookies } from "@/lib/playfab/session";
+import { createSessionCookies, hasActivePlayFabBan } from "@/lib/playfab/session";
 import { findMockAccount } from "@/lib/playfab/mock-accounts";
 import { isValidEmail, isValidUsername } from "@/lib/validation";
 import type { SessionData, AuthResponse } from "@/lib/playfab/types";
+import { getPlayFabContactEmail, syncPlayFabContactEmail } from "@/lib/playfab/contact-email";
+import { resolvePlayFabLogin } from "@/lib/playfab/credential-verification";
+import { isEmailLoginIdentityStoreConfigured, saveEmailLoginAlias } from "@/lib/playfab/email-login-identities";
 
 export const Route = createFileRoute("/api/auth/login")({
   server: {
@@ -70,7 +73,46 @@ export const Route = createFileRoute("/api/auth/login")({
           } else {
             // Real mode: call PlayFab LoginWithEmailAddress
             const titleId = PLAYFAB_TITLE_ID || "D4EA4";
-            const loginWithUsername = !isValidEmail(identifier);
+            let loginWithUsername = !isValidEmail(identifier);
+            let playFabIdentifier = identifier;
+            let resolvedProfileEmail = "";
+
+            // A renamed app username or contact email is resolved to the
+            // account's canonical PlayFab username, then the supplied password
+            // is still checked by PlayFab. The replaced identifier is rejected
+            // before login so it cannot remain valid through this website.
+            if (process.env["PLAYFAB_SECRET_KEY"]?.trim()) {
+              try {
+                const resolution = await resolvePlayFabLogin(identifier);
+                if (resolution) {
+                  resolvedProfileEmail = resolution.profileMetadata.email ?? "";
+                  const normalizedIdentifier = identifier.toLowerCase();
+                  const changedIdentifier = isValidEmail(identifier)
+                    ? resolution.profileMetadata.email
+                    : resolution.profileMetadata.username;
+                  const canonicalIdentifier = isValidEmail(identifier)
+                    ? resolution.account.email
+                    : resolution.account.username;
+                  if (
+                    changedIdentifier &&
+                    changedIdentifier.toLowerCase() !== normalizedIdentifier &&
+                    canonicalIdentifier?.toLowerCase() === normalizedIdentifier
+                  ) {
+                    return Response.json(
+                      { success: false, error: "That credential has been replaced. Use your updated username or email." } satisfies AuthResponse,
+                      { status: 401 },
+                    );
+                  }
+                  if (resolution.account.username) {
+                    loginWithUsername = true;
+                    playFabIdentifier = resolution.account.username;
+                  }
+                }
+              } catch (error) {
+                console.warn("[PlayFab] Could not resolve updated login identifier:", error);
+              }
+            }
+
             const playfabResponse = await fetch(
               `https://${titleId}.playfabapi.com/Client/${loginWithUsername ? "LoginWithPlayFab" : "LoginWithEmailAddress"}`,
               {
@@ -78,7 +120,7 @@ export const Route = createFileRoute("/api/auth/login")({
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({
                   TitleId: titleId,
-                  ...(loginWithUsername ? { Username: identifier } : { Email: identifier }),
+                  ...(loginWithUsername ? { Username: playFabIdentifier } : { Email: playFabIdentifier }),
                   Password: password,
                   InfoRequestParameters: {
                     GetPlayerProfile: true,
@@ -87,7 +129,6 @@ export const Route = createFileRoute("/api/auth/login")({
                 }),
               },
             );
-
             const pfResult = await playfabResponse.json();
 
             if (!playfabResponse.ok || pfResult.code !== 200) {
@@ -103,6 +144,17 @@ export const Route = createFileRoute("/api/auth/login")({
             const pfData = pfResult.data;
             const playFabId = pfData.PlayFabId;
             const sessionTicket = pfData.SessionTicket;
+            const banSecret = process.env["PLAYFAB_SECRET_KEY"]?.trim();
+            if (banSecret) {
+              try {
+                if (await hasActivePlayFabBan(playFabId, banSecret)) {
+                  return Response.json({ success: false, error: "This player account is banned." } satisfies AuthResponse, { status: 403 });
+                }
+              } catch (banError) {
+                console.error("[PlayFab] Could not verify account ban status:", banError);
+                return Response.json({ success: false, error: "Unable to verify this account status. Please try again." } satisfies AuthResponse, { status: 503 });
+              }
+            }
             const displayName =
               pfData.InfoResultPayload?.PlayerProfile?.DisplayName ??
               pfData.InfoResultPayload?.AccountInfo?.TitleInfo?.DisplayName ??
@@ -114,6 +166,10 @@ export const Route = createFileRoute("/api/auth/login")({
             // Determine admin role server-side via PlayFab admin tags
             let role: "admin" | "player" = "player";
             const secretKey = process.env["PLAYFAB_SECRET_KEY"];
+            const contactEmailOptions = {
+              playFabId,
+              ...(secretKey?.trim() ? { secretKey: secretKey.trim() } : {}),
+            };
 
             // If scope is explicitly admin, secret key is required to verify admin tags
             if (scope === "admin" && !secretKey) {
@@ -175,6 +231,34 @@ export const Route = createFileRoute("/api/auth/login")({
               );
             }
 
+            let sessionEmail = resolvedProfileEmail || accountEmail;
+            if (sessionEmail) {
+              let existingContactEmail: string | null = null;
+              try {
+                existingContactEmail = await getPlayFabContactEmail(sessionTicket);
+              } catch (contactEmailReadError) {
+                console.error("[PlayFab] Could not read login contact email:", contactEmailReadError);
+              }
+              if (resolvedProfileEmail) {
+                sessionEmail = resolvedProfileEmail;
+                if (existingContactEmail !== resolvedProfileEmail) {
+                  try {
+                    await syncPlayFabContactEmail(sessionTicket, resolvedProfileEmail, contactEmailOptions);
+                  } catch (contactEmailError) {
+                    console.error("[PlayFab] Could not refresh the updated contact email:", contactEmailError);
+                  }
+                }
+              } else if (existingContactEmail) {
+                sessionEmail = existingContactEmail;
+              } else {
+                try {
+                  await syncPlayFabContactEmail(sessionTicket, accountEmail, contactEmailOptions);
+                } catch (contactEmailError) {
+                  console.error("[PlayFab] Could not sync login contact email:", contactEmailError);
+                }
+              }
+            }
+
             session = {
               playFabId,
               sessionTicket,
@@ -182,9 +266,17 @@ export const Route = createFileRoute("/api/auth/login")({
               username: pfData.InfoResultPayload?.PlayerProfile?.DisplayName ??
                 pfData.InfoResultPayload?.AccountInfo?.Username ??
                 displayName,
+              playFabUsername: pfData.InfoResultPayload?.AccountInfo?.Username,
               displayName,
-              email: accountEmail,
+              email: sessionEmail,
             };
+            if (sessionEmail && isEmailLoginIdentityStoreConfigured()) {
+              try {
+                await saveEmailLoginAlias(sessionEmail, playFabId, role);
+              } catch (aliasError) {
+                console.warn("[Auth] Could not refresh the email sign-in alias:", aliasError);
+              }
+            }
           }
 
           // Set cookies

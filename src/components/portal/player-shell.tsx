@@ -18,6 +18,7 @@ import { useEffect, useRef, useState } from "react";
 import { NotificationBell } from "@/components/portal/notification-bell";
 import { useDisplayTheme } from "@/components/theme/display-theme-switcher";
 import { getProfileArtwork } from "@/lib/demo/profile-art";
+import type { NotificationBellPreferences } from "@/lib/demo/inbox";
 import { isMockMode } from "@/lib/playfab/config";
 import { usePlayerProfile, usePlayerProgression } from "@/lib/playfab/hooks";
 
@@ -30,6 +31,24 @@ const navigation = [
   { label: "Shop", href: "/portal/shop", icon: ShoppingBag },
   { label: "Settings", href: "/portal/settings", icon: Settings },
 ];
+
+type PlayerPreferences = NotificationBellPreferences & {
+  compactMode: boolean;
+  highContrast: boolean;
+  largeText: boolean;
+  productionUpdates: boolean;
+  friendUpdates: boolean;
+  transactions: boolean;
+};
+
+const defaultPlayerPreferences: PlayerPreferences = {
+  compactMode: false,
+  highContrast: false,
+  largeText: false,
+  productionUpdates: true,
+  friendUpdates: true,
+  transactions: true,
+};
 
 export function PlayerShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
@@ -47,7 +66,43 @@ export function PlayerShell({ children }: { children: React.ReactNode }) {
   const [confirmingSignOut, setConfirmingSignOut] = useState(false);
   const [accountOpen, setAccountOpen] = useState(false);
   const [scrolled, setScrolled] = useState(false);
+  const [playerPreferences, setPlayerPreferences] = useState(defaultPlayerPreferences);
   const accountRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const loadPlayerPreferences = () => {
+      try {
+        const stored = window.localStorage.getItem("player-preferences");
+        const parsed = stored ? JSON.parse(stored) as Partial<PlayerPreferences> & { friendRequests?: boolean } : {};
+        setPlayerPreferences({
+          ...defaultPlayerPreferences,
+          ...parsed,
+          compactMode: Boolean(parsed.compactMode),
+          highContrast: Boolean(parsed.highContrast),
+          largeText: Boolean(parsed.largeText),
+          productionUpdates: parsed.productionUpdates ?? defaultPlayerPreferences.productionUpdates,
+          friendUpdates: parsed.friendUpdates ?? parsed.friendRequests ?? defaultPlayerPreferences.friendUpdates,
+          transactions: parsed.transactions ?? defaultPlayerPreferences.transactions,
+        });
+      } catch {
+        setPlayerPreferences(defaultPlayerPreferences);
+      }
+    };
+
+    loadPlayerPreferences();
+    window.addEventListener("cos:player-preferences", loadPlayerPreferences);
+    window.addEventListener("storage", loadPlayerPreferences);
+    return () => {
+      window.removeEventListener("cos:player-preferences", loadPlayerPreferences);
+      window.removeEventListener("storage", loadPlayerPreferences);
+    };
+  }, []);
+
+  const preferenceClasses = [
+    playerPreferences.compactMode && "portal-compact",
+    playerPreferences.highContrast && "portal-high-contrast",
+    playerPreferences.largeText && "portal-large-text",
+  ].filter(Boolean).join(" ");
 
   useEffect(() => {
     const handleScroll = () => setScrolled(window.scrollY > 40);
@@ -76,7 +131,7 @@ export function PlayerShell({ children }: { children: React.ReactNode }) {
   }
 
   return (
-    <div className={`blueprint-sheet portal-theme ${portalModeClass} min-h-screen`}>
+    <div className={`blueprint-sheet portal-theme ${portalModeClass} ${preferenceClasses} min-h-screen`}>
       {/* TOP HEADER */}
       <header className={`player-header fixed inset-x-0 top-0 z-40 border-b text-navy shadow-lg ${scrolled ? "header-scrolled" : "header-at-top"}`}>
         <div className="mx-auto flex h-20 max-w-[1600px] items-center justify-between gap-6 px-6 sm:px-8 lg:px-10">
@@ -117,7 +172,7 @@ export function PlayerShell({ children }: { children: React.ReactNode }) {
 
           {/* Right side */}
           <div className="flex items-center gap-2 sm:gap-3">
-            <NotificationBell dark={displayTheme === "dark"} />
+            <NotificationBell dark={displayTheme === "dark"} preferences={playerPreferences} />
 
             {/* Account dropdown - desktop */}
             <div ref={accountRef} className="relative hidden md:block">
@@ -264,7 +319,7 @@ export function PlayerShell({ children }: { children: React.ReactNode }) {
       </div>
 
       {/* Page Content */}
-      <main className={`portal-theme blueprint-sheet ${portalModeClass} min-h-[calc(100vh-64px)] pt-20 text-navy`}>
+      <main className={`portal-theme blueprint-sheet ${portalModeClass} ${preferenceClasses} min-h-[calc(100vh-64px)] pt-20 text-navy`}>
         {children}
       </main>
 

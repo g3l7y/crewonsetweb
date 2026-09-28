@@ -11,12 +11,18 @@ export const Route = createFileRoute("/admin/ads/$id")({
 });
 
 import { useEffect, useRef, useState } from "react";
+import { isMockMode } from "@/lib/playfab/config";
+import { useAdminAds } from "@/lib/playfab/hooks";
+import type { AdEntry } from "@/lib/playfab/types";
 import Link from "@/components/next-compat/link";
 import {
   ArrowLeft,
   Banknote,
   BellRing,
   CalendarClock,
+  Check,
+  Copy,
+  ExternalLink,
   FileSignature,
   MapPin,
   MegaphoneOff,
@@ -24,7 +30,7 @@ import {
   MousePointerClick,
   Users,
 } from "lucide-react";
-import { adsStore, formatMoney, notificationsStore, uid, type ActiveAd } from "@/lib/demo/store";
+import { adsStore, applicationsStore, formatMoney, notificationsStore, uid, type ActiveAd } from "@/lib/demo/store";
 
 const statusStyles: Record<ActiveAd["status"], string> = {
   "On-going": "bg-[#2d9d8f]/15 text-[#4bc4b4]",
@@ -54,12 +60,42 @@ function splitCountdown(ms: number) {
   };
 }
 
+function fromServiceAd(ad: AdEntry): ActiveAd {
+  const status = ad.status === 'Done' ? 'Done' : ad.status === 'Expiring' ? 'Expiring' : ad.status === 'Expired' ? 'Expired' : 'On-going';
+  const startDate = ad.startDate || new Date().toISOString();
+  return {
+    id: ad.id,
+    applicationId: ad.applicationId,
+    brand: ad.brand || 'Brand promotion',
+    exactModel: ad.exactModel || ad.product || '',
+    productType: ad.productType || 'Other',
+    contract: ad.contract || 'Crew On Set brand promotion placement.',
+    startDate,
+    expiresAt: ad.expiresAt || ad.endDate || startDate,
+    status,
+    endedAt: ad.endedAt,
+    endReason: ad.endReason,
+    revenue: ad.revenue || 0,
+    clicks: ad.clicks || 0,
+    visits: ad.visits || 0,
+    impressions: ad.impressions || 0,
+    placement: ad.placement || 'Crew On Set production placement',
+    submittedLink: ad.submittedLink,
+    trackedLink: ad.trackedLink,
+    trackingEnabled: ad.trackingEnabled,
+  };
+}
+
 function AdDetailPage() {
   const { id } = Route.useParams();
-  const [ads, setAds] = adsStore.useStore();
+  const [localAds, setAds] = adsStore.useStore();
+  const [, setApplications] = applicationsStore.useStore();
+  const realAdsQuery = useAdminAds();
+  const ads = isMockMode() ? localAds : (realAdsQuery.data ?? []).map(fromServiceAd);
   const [notifications, setNotifications] = notificationsStore.useStore();
   const [now, setNow] = useState<number | null>(null);
   const [adminNotified, setAdminNotified] = useState(false);
+  const [trackingLinkCopied, setTrackingLinkCopied] = useState(false);
   const hasFiredExpiry = useRef(false);
 
   const ad = ads.find((a) => a.id === id);
@@ -75,7 +111,15 @@ function AdDetailPage() {
     const remaining = new Date(ad.expiresAt).getTime() - now;
     if (remaining <= 0 && ad.status !== "Done") {
       hasFiredExpiry.current = true;
-      setAds(ads.map((a) => (a.id === ad.id ? { ...a, status: "Done", endedAt: a.endedAt ?? new Date(ad.expiresAt).toISOString() } : a)));
+      if (!isMockMode()) {
+        void realAdsQuery.refetch();
+        return;
+      }
+      const completionAt = new Date(ad.expiresAt).toISOString();
+      setAds(ads.map((a) => (a.id === ad.id ? { ...a, status: "Done", endedAt: a.endedAt ?? completionAt } : a)));
+      setApplications((current) => current.map((application) => application.id === ad.applicationId
+        ? { ...application, status: "Done", promotionEndedAt: completionAt, promotionEndType: "expired" }
+        : application));
       setNotifications([
         {
           id: uid("ntf"),
@@ -90,7 +134,7 @@ function AdDetailPage() {
       ]);
       setAdminNotified(true);
     }
-  }, [ad, now, ads, notifications, setAds, setNotifications]);
+  }, [ad, now, ads, notifications, setAds, setApplications, setNotifications, realAdsQuery.refetch]);
 
   if (!ad) {
     return (
@@ -163,15 +207,47 @@ function AdDetailPage() {
             </div>
             <div>
               <p className="flex items-center gap-1.5 text-[9px] font-black uppercase tracking-wide !text-white/30">
-                <MapPin className="size-3" /> Placement
+                <MapPin className="size-3" /> Submitted Brand Link
               </p>
-              <p className="mt-1.5 text-sm font-bold !text-white/80">{ad.placement}</p>
+              {ad.submittedLink ? <a className="mt-1.5 inline-flex items-center gap-2 text-sm font-bold !text-white/80 hover:!text-white" href={ad.submittedLink} target="_blank" rel="noopener noreferrer"><ExternalLink className="size-3" /> Visit submitted brand link</a> : <p className="mt-1.5 text-sm font-bold !text-white/80">No submitted link</p>}
             </div>
             <div>
               <p className="text-[9px] font-black uppercase tracking-wide !text-white/30">Product Type</p>
               <p className="mt-1.5 text-sm font-bold !text-white/80">{ad.productType}</p>
             </div>
           </div>
+          {ad.trackedLink && (
+            <div className="mt-5 border-t border-white/[0.06] pt-4">
+              <p className="text-[9px] font-black uppercase tracking-wide !text-white/30">Game Click-Tracking URL</p>
+              <p className="mt-1 text-xs leading-relaxed !text-white/50">Set this as the click-through destination for the promotion image or button in the game. The click is recorded before the player is redirected to the submitted brand link.</p>
+              <div className="mt-2 flex flex-wrap items-center gap-3">
+                <code className="min-w-0 flex-1 break-all rounded-md bg-[#101923] p-3 text-xs !text-white/70">{ad.trackedLink}</code>
+                <button type="button" onClick={async () => {
+                  try {
+                    await navigator.clipboard.writeText(ad.trackedLink || "");
+                    setTrackingLinkCopied(true);
+                    window.setTimeout(() => setTrackingLinkCopied(false), 2_000);
+                  } catch {
+                    window.prompt("Copy this tracking URL for the in-game promotion:", ad.trackedLink);
+                  }
+                }} className="inline-flex shrink-0 items-center gap-2 rounded-md border border-white/10 px-3 py-2 text-[10px] font-black uppercase !text-white/70 hover:border-coral hover:!text-white">
+                  {trackingLinkCopied ? <Check className="size-3.5" /> : <Copy className="size-3.5" />}
+                  {trackingLinkCopied ? "Copied" : "Copy tracking URL"}
+                </button>
+              </div>
+            </div>
+          )}
+          {!isMockMode() && !ad.trackingEnabled && (
+            <div className="mt-5 rounded-md border border-[#d9a514]/30 bg-[#d9a514]/10 p-3 text-xs leading-relaxed !text-white/70">
+              Click tracking is not configured, so a tracked game link is not available. Add the <code className="font-bold">DATABASE_URL</code> Neon connection string to the Vercel environment and redeploy to enable durable click counts.
+            </div>
+          )}
+          {!isMockMode() && ad.status === "On-going" && ad.trackingEnabled && !ad.trackedLink && (
+            <div className="mt-5 rounded-md border border-[#d9a514]/30 bg-[#d9a514]/10 p-3 text-xs leading-relaxed !text-white/70">
+              This live promotion has no tracking token yet. A tracking link must be generated for the application before its popup ad can be enabled.
+            </div>
+          )}
+          {ad.endReason && <p className="mt-4 rounded-md border border-white/10 bg-white/[.03] p-3 text-xs leading-relaxed !text-white/65">Completion reason: {ad.endReason}</p>}
         </div>
 
         <div className="rounded-lg border border-white/[0.06] bg-[#182330] p-6 shadow-xl">

@@ -1,5 +1,6 @@
 import { playfabClientApi } from './client';
 import type { LeaderboardEntry } from './types';
+import { DEFAULT_PROFILE_PICTURE_URL, isManagedProfileAvatarUrl } from '../profile-avatar';
 
 /**
  * Get a global leaderboard.
@@ -11,13 +12,21 @@ export async function getGlobalLeaderboard(
   sessionTicket: string
 ): Promise<LeaderboardEntry[]> {
   try {
-    const data = await playfabClientApi<{
-      Leaderboard: any[];
-    }>('/Client/GetLeaderboard', {
-      StatisticName: statisticName,
-      StartPosition: startPosition,
-      MaxResultsCount: maxResults,
-    }, sessionTicket);
+    let data: { Leaderboard: any[] };
+    try {
+      data = await playfabClientApi<{ Leaderboard: any[] }>('/Client/GetLeaderboard', {
+        StatisticName: statisticName,
+        StartPosition: startPosition,
+        MaxResultsCount: maxResults,
+        ProfileConstraints: { ShowAvatarUrl: true },
+      }, sessionTicket);
+    } catch {
+      data = await playfabClientApi<{ Leaderboard: any[] }>('/Client/GetLeaderboard', {
+        StatisticName: statisticName,
+        StartPosition: startPosition,
+        MaxResultsCount: maxResults,
+      }, sessionTicket);
+    }
 
     return (data.Leaderboard || []).map((entry: any) => ({
       playFabId: entry.PlayFabId,
@@ -25,6 +34,7 @@ export async function getGlobalLeaderboard(
       displayName: entry.DisplayName || 'Unknown',
       statValue: entry.StatValue,
       position: entry.Position,
+      avatarUrl: isManagedProfileAvatarUrl(entry.Profile?.AvatarUrl) ? entry.Profile.AvatarUrl : DEFAULT_PROFILE_PICTURE_URL,
     })) as LeaderboardEntry[];
   } catch (error) {
     return [];
@@ -40,12 +50,19 @@ export async function getLeaderboardAroundPlayer(
   sessionTicket: string
 ): Promise<LeaderboardEntry[]> {
   try {
-    const data = await playfabClientApi<{
-      Leaderboard: any[];
-    }>('/Client/GetLeaderboardAroundPlayer', {
-      StatisticName: statisticName,
-      MaxResultsCount: maxResults,
-    }, sessionTicket);
+    let data: { Leaderboard: any[] };
+    try {
+      data = await playfabClientApi<{ Leaderboard: any[] }>('/Client/GetLeaderboardAroundPlayer', {
+        StatisticName: statisticName,
+        MaxResultsCount: maxResults,
+        ProfileConstraints: { ShowAvatarUrl: true },
+      }, sessionTicket);
+    } catch {
+      data = await playfabClientApi<{ Leaderboard: any[] }>('/Client/GetLeaderboardAroundPlayer', {
+        StatisticName: statisticName,
+        MaxResultsCount: maxResults,
+      }, sessionTicket);
+    }
 
     return (data.Leaderboard || []).map((entry: any) => ({
       playFabId: entry.PlayFabId,
@@ -53,6 +70,7 @@ export async function getLeaderboardAroundPlayer(
       displayName: entry.DisplayName || 'Unknown',
       statValue: entry.StatValue,
       position: entry.Position,
+      avatarUrl: isManagedProfileAvatarUrl(entry.Profile?.AvatarUrl) ? entry.Profile.AvatarUrl : DEFAULT_PROFILE_PICTURE_URL,
     })) as LeaderboardEntry[];
   } catch (error) {
     return [];

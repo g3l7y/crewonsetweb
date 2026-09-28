@@ -12,10 +12,12 @@ import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as AdminRouteImport } from './routes/admin'
 import { Route as AlmanacRouteImport } from './routes/almanac'
+import { Route as BrandPaymentResultRouteImport } from './routes/brand-payment-result'
 import { Route as ContactRouteImport } from './routes/contact'
 import { Route as DownloadRouteImport } from './routes/download'
 import { Route as FeaturesRouteImport } from './routes/features'
 import { Route as LoginRouteImport } from './routes/login'
+import { Route as PasswordRecoveryRouteImport } from './routes/password-recovery'
 import { Route as PortalRouteImport } from './routes/portal'
 import { Route as SignupRouteImport } from './routes/signup'
 import { Route as StoryRouteImport } from './routes/story'
@@ -32,8 +34,10 @@ import { Route as AdminPlayersRouteImport } from './routes/admin.players'
 import { Route as AdminSettingsRouteImport } from './routes/admin.settings'
 import { Route as AdminTransactionsRouteImport } from './routes/admin.transactions'
 import { Route as AdminLoginRouteImport } from './routes/admin_.login'
+import { Route as ApiBrandPromotionsRouteImport } from './routes/api/brand-promotions'
 import { Route as ApiMailRouteImport } from './routes/api/mail'
 import { Route as ApiNotificationsRouteImport } from './routes/api/notifications'
+import { Route as BrandPromotionsTokenRouteImport } from './routes/brand-promotions.$token'
 import { Route as PortalIndexRouteImport } from './routes/portal.index'
 import { Route as PortalAchievementsRouteImport } from './routes/portal.achievements'
 import { Route as PortalAlmanacRouteImport } from './routes/portal.almanac'
@@ -44,26 +48,48 @@ import { Route as PortalSettingsRouteImport } from './routes/portal.settings'
 import { Route as PortalShopRouteImport } from './routes/portal.shop'
 import { Route as AdminAdsIdRouteImport } from './routes/admin.ads.$id'
 import { Route as ApiAdminAccountRouteImport } from './routes/api/admin/account'
+import { Route as ApiAdminAdRevenueRouteImport } from './routes/api/admin/ad-revenue'
 import { Route as ApiAdminBugReportsRouteImport } from './routes/api/admin/bug-reports'
 import { Route as ApiAdminDataRouteImport } from './routes/api/admin/data'
 import { Route as ApiAdminPartnershipsRouteImport } from './routes/api/admin/partnerships'
 import { Route as ApiAdminPaymongoOrdersRouteImport } from './routes/api/admin/paymongo-orders'
+import { Route as ApiAdminPlayerMailRouteImport } from './routes/api/admin/player-mail'
 import { Route as ApiAdminPlayerReportsRouteImport } from './routes/api/admin/player-reports'
 import { Route as ApiAdminPlayersRouteImport } from './routes/api/admin/players'
+import { Route as ApiAdminSubmissionAttachmentsRouteImport } from './routes/api/admin/submission-attachments'
+import { Route as ApiAuthAvatarRouteImport } from './routes/api/auth/avatar'
 import { Route as ApiAuthCheckUsernameRouteImport } from './routes/api/auth/check-username'
 import { Route as ApiAuthGoogleRouteImport } from './routes/api/auth/google'
 import { Route as ApiAuthLoginRouteImport } from './routes/api/auth/login'
 import { Route as ApiAuthLogoutRouteImport } from './routes/api/auth/logout'
+import { Route as ApiAuthPlayerProfileRouteImport } from './routes/api/auth/player-profile'
 import { Route as ApiAuthProfileRouteImport } from './routes/api/auth/profile'
 import { Route as ApiAuthRegisterRouteImport } from './routes/api/auth/register'
 import { Route as ApiAuthSessionRouteImport } from './routes/api/auth/session'
+import { Route as ApiBrandPromotionsClickRouteImport } from './routes/api/brand-promotions.click'
+import { Route as ApiCronExpireBrandPromotionsRouteImport } from './routes/api/cron/expire-brand-promotions'
+import { Route as ApiPaymongoBrandStatusRouteImport } from './routes/api/paymongo/brand-status'
 import { Route as ApiPaymongoCheckoutRouteImport } from './routes/api/paymongo/checkout'
+import { Route as ApiPaymongoReturnRouteImport } from './routes/api/paymongo/return'
 import { Route as ApiPaymongoStatusRouteImport } from './routes/api/paymongo/status'
 import { Route as ApiPaymongoWebhookRouteImport } from './routes/api/paymongo/webhook'
 import { Route as ApiPlayfabClientRouteImport } from './routes/api/playfab/client'
+import { Route as ApiPlayfabProfileAvatarRouteImport } from './routes/api/playfab/profile-avatar'
+import { Route as ApiAuthEmailChangeCompleteRouteImport } from './routes/api/auth/email-change/complete'
+import { Route as ApiAuthEmailChangeRequestRouteImport } from './routes/api/auth/email-change/request'
+import { Route as ApiAuthEmailChangeVerifyRouteImport } from './routes/api/auth/email-change/verify'
+import { Route as ApiAuthPasswordRecoveryRequestRouteImport } from './routes/api/auth/password-recovery/request'
+import { Route as ApiAuthPasswordRecoveryResetRouteImport } from './routes/api/auth/password-recovery/reset'
+import { Route as ApiAuthPasswordRecoveryVerifyRouteImport } from './routes/api/auth/password-recovery/verify'
+import { Route as ApiAuthPasswordChangeRouteImport } from './routes/api/auth/password/change'
+import { Route as ApiAuthProfileSetupRouteImport } from './routes/api/auth/profile/setup'
+import { Route as ApiBrandUpdatesIdClickRouteImport } from './routes/api/brand-updates.$id.click'
+import { Route as ApiBrandUpdatesIdImpressionRouteImport } from './routes/api/brand-updates.$id.impression'
 import { Route as ApiPlayfabFriendsAddRouteImport } from './routes/api/playfab/friends/add'
 import { Route as ApiPlayfabFriendsRemoveRouteImport } from './routes/api/playfab/friends/remove'
+import { Route as ApiPlayfabFriendsRequestsRouteImport } from './routes/api/playfab/friends/requests'
 import { Route as ApiPlayfabPlayersSearchRouteImport } from './routes/api/playfab/players/search'
+import { Route as ApiAdminBrandUpdatesIdMetricsRouteImport } from './routes/api/admin/brand-updates.$id.metrics'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
@@ -78,6 +104,11 @@ const AdminRoute = AdminRouteImport.update({
 const AlmanacRoute = AlmanacRouteImport.update({
   id: '/almanac',
   path: '/almanac',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const BrandPaymentResultRoute = BrandPaymentResultRouteImport.update({
+  id: '/brand-payment-result',
+  path: '/brand-payment-result',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ContactRoute = ContactRouteImport.update({
@@ -98,6 +129,11 @@ const FeaturesRoute = FeaturesRouteImport.update({
 const LoginRoute = LoginRouteImport.update({
   id: '/login',
   path: '/login',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const PasswordRecoveryRoute = PasswordRecoveryRouteImport.update({
+  id: '/password-recovery',
+  path: '/password-recovery',
   getParentRoute: () => rootRouteImport,
 } as any)
 const PortalRoute = PortalRouteImport.update({
@@ -180,6 +216,11 @@ const AdminLoginRoute = AdminLoginRouteImport.update({
   path: '/admin/login',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiBrandPromotionsRoute = ApiBrandPromotionsRouteImport.update({
+  id: '/api/brand-promotions',
+  path: '/api/brand-promotions',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiMailRoute = ApiMailRouteImport.update({
   id: '/api/mail',
   path: '/api/mail',
@@ -188,6 +229,11 @@ const ApiMailRoute = ApiMailRouteImport.update({
 const ApiNotificationsRoute = ApiNotificationsRouteImport.update({
   id: '/api/notifications',
   path: '/api/notifications',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const BrandPromotionsTokenRoute = BrandPromotionsTokenRouteImport.update({
+  id: '/brand-promotions/$token',
+  path: '/brand-promotions/$token',
   getParentRoute: () => rootRouteImport,
 } as any)
 const PortalIndexRoute = PortalIndexRouteImport.update({
@@ -240,6 +286,11 @@ const ApiAdminAccountRoute = ApiAdminAccountRouteImport.update({
   path: '/api/admin/account',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiAdminAdRevenueRoute = ApiAdminAdRevenueRouteImport.update({
+  id: '/api/admin/ad-revenue',
+  path: '/api/admin/ad-revenue',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiAdminBugReportsRoute = ApiAdminBugReportsRouteImport.update({
   id: '/api/admin/bug-reports',
   path: '/api/admin/bug-reports',
@@ -260,6 +311,11 @@ const ApiAdminPaymongoOrdersRoute = ApiAdminPaymongoOrdersRouteImport.update({
   path: '/api/admin/paymongo-orders',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiAdminPlayerMailRoute = ApiAdminPlayerMailRouteImport.update({
+  id: '/api/admin/player-mail',
+  path: '/api/admin/player-mail',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiAdminPlayerReportsRoute = ApiAdminPlayerReportsRouteImport.update({
   id: '/api/admin/player-reports',
   path: '/api/admin/player-reports',
@@ -268,6 +324,17 @@ const ApiAdminPlayerReportsRoute = ApiAdminPlayerReportsRouteImport.update({
 const ApiAdminPlayersRoute = ApiAdminPlayersRouteImport.update({
   id: '/api/admin/players',
   path: '/api/admin/players',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiAdminSubmissionAttachmentsRoute =
+  ApiAdminSubmissionAttachmentsRouteImport.update({
+    id: '/api/admin/submission-attachments',
+    path: '/api/admin/submission-attachments',
+    getParentRoute: () => rootRouteImport,
+  } as any)
+const ApiAuthAvatarRoute = ApiAuthAvatarRouteImport.update({
+  id: '/api/auth/avatar',
+  path: '/api/auth/avatar',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ApiAuthCheckUsernameRoute = ApiAuthCheckUsernameRouteImport.update({
@@ -290,6 +357,11 @@ const ApiAuthLogoutRoute = ApiAuthLogoutRouteImport.update({
   path: '/api/auth/logout',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiAuthPlayerProfileRoute = ApiAuthPlayerProfileRouteImport.update({
+  id: '/api/auth/player-profile',
+  path: '/api/auth/player-profile',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiAuthProfileRoute = ApiAuthProfileRouteImport.update({
   id: '/api/auth/profile',
   path: '/api/auth/profile',
@@ -305,9 +377,30 @@ const ApiAuthSessionRoute = ApiAuthSessionRouteImport.update({
   path: '/api/auth/session',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiBrandPromotionsClickRoute = ApiBrandPromotionsClickRouteImport.update({
+  id: '/click',
+  path: '/click',
+  getParentRoute: () => ApiBrandPromotionsRoute,
+} as any)
+const ApiCronExpireBrandPromotionsRoute =
+  ApiCronExpireBrandPromotionsRouteImport.update({
+    id: '/api/cron/expire-brand-promotions',
+    path: '/api/cron/expire-brand-promotions',
+    getParentRoute: () => rootRouteImport,
+  } as any)
+const ApiPaymongoBrandStatusRoute = ApiPaymongoBrandStatusRouteImport.update({
+  id: '/api/paymongo/brand-status',
+  path: '/api/paymongo/brand-status',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiPaymongoCheckoutRoute = ApiPaymongoCheckoutRouteImport.update({
   id: '/api/paymongo/checkout',
   path: '/api/paymongo/checkout',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiPaymongoReturnRoute = ApiPaymongoReturnRouteImport.update({
+  id: '/api/paymongo/return',
+  path: '/api/paymongo/return',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ApiPaymongoStatusRoute = ApiPaymongoStatusRouteImport.update({
@@ -325,6 +418,68 @@ const ApiPlayfabClientRoute = ApiPlayfabClientRouteImport.update({
   path: '/api/playfab/client',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiPlayfabProfileAvatarRoute = ApiPlayfabProfileAvatarRouteImport.update({
+  id: '/api/playfab/profile-avatar',
+  path: '/api/playfab/profile-avatar',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiAuthEmailChangeCompleteRoute =
+  ApiAuthEmailChangeCompleteRouteImport.update({
+    id: '/api/auth/email-change/complete',
+    path: '/api/auth/email-change/complete',
+    getParentRoute: () => rootRouteImport,
+  } as any)
+const ApiAuthEmailChangeRequestRoute =
+  ApiAuthEmailChangeRequestRouteImport.update({
+    id: '/api/auth/email-change/request',
+    path: '/api/auth/email-change/request',
+    getParentRoute: () => rootRouteImport,
+  } as any)
+const ApiAuthEmailChangeVerifyRoute =
+  ApiAuthEmailChangeVerifyRouteImport.update({
+    id: '/api/auth/email-change/verify',
+    path: '/api/auth/email-change/verify',
+    getParentRoute: () => rootRouteImport,
+  } as any)
+const ApiAuthPasswordRecoveryRequestRoute =
+  ApiAuthPasswordRecoveryRequestRouteImport.update({
+    id: '/api/auth/password-recovery/request',
+    path: '/api/auth/password-recovery/request',
+    getParentRoute: () => rootRouteImport,
+  } as any)
+const ApiAuthPasswordRecoveryResetRoute =
+  ApiAuthPasswordRecoveryResetRouteImport.update({
+    id: '/api/auth/password-recovery/reset',
+    path: '/api/auth/password-recovery/reset',
+    getParentRoute: () => rootRouteImport,
+  } as any)
+const ApiAuthPasswordRecoveryVerifyRoute =
+  ApiAuthPasswordRecoveryVerifyRouteImport.update({
+    id: '/api/auth/password-recovery/verify',
+    path: '/api/auth/password-recovery/verify',
+    getParentRoute: () => rootRouteImport,
+  } as any)
+const ApiAuthPasswordChangeRoute = ApiAuthPasswordChangeRouteImport.update({
+  id: '/api/auth/password/change',
+  path: '/api/auth/password/change',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiAuthProfileSetupRoute = ApiAuthProfileSetupRouteImport.update({
+  id: '/setup',
+  path: '/setup',
+  getParentRoute: () => ApiAuthProfileRoute,
+} as any)
+const ApiBrandUpdatesIdClickRoute = ApiBrandUpdatesIdClickRouteImport.update({
+  id: '/api/brand-updates/$id/click',
+  path: '/api/brand-updates/$id/click',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiBrandUpdatesIdImpressionRoute =
+  ApiBrandUpdatesIdImpressionRouteImport.update({
+    id: '/api/brand-updates/$id/impression',
+    path: '/api/brand-updates/$id/impression',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 const ApiPlayfabFriendsAddRoute = ApiPlayfabFriendsAddRouteImport.update({
   id: '/api/playfab/friends/add',
   path: '/api/playfab/friends/add',
@@ -335,20 +490,34 @@ const ApiPlayfabFriendsRemoveRoute = ApiPlayfabFriendsRemoveRouteImport.update({
   path: '/api/playfab/friends/remove',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiPlayfabFriendsRequestsRoute =
+  ApiPlayfabFriendsRequestsRouteImport.update({
+    id: '/api/playfab/friends/requests',
+    path: '/api/playfab/friends/requests',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 const ApiPlayfabPlayersSearchRoute = ApiPlayfabPlayersSearchRouteImport.update({
   id: '/api/playfab/players/search',
   path: '/api/playfab/players/search',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiAdminBrandUpdatesIdMetricsRoute =
+  ApiAdminBrandUpdatesIdMetricsRouteImport.update({
+    id: '/api/admin/brand-updates/$id/metrics',
+    path: '/api/admin/brand-updates/$id/metrics',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/admin': typeof AdminRouteWithChildren
   '/almanac': typeof AlmanacRoute
+  '/brand-payment-result': typeof BrandPaymentResultRoute
   '/contact': typeof ContactRoute
   '/download': typeof DownloadRoute
   '/features': typeof FeaturesRoute
   '/login': typeof LoginRoute
+  '/password-recovery': typeof PasswordRecoveryRoute
   '/portal': typeof PortalRouteWithChildren
   '/signup': typeof SignupRoute
   '/story': typeof StoryRoute
@@ -364,8 +533,10 @@ export interface FileRoutesByFullPath {
   '/admin/settings': typeof AdminSettingsRoute
   '/admin/transactions': typeof AdminTransactionsRoute
   '/admin/login': typeof AdminLoginRoute
+  '/api/brand-promotions': typeof ApiBrandPromotionsRouteWithChildren
   '/api/mail': typeof ApiMailRoute
   '/api/notifications': typeof ApiNotificationsRoute
+  '/brand-promotions/$token': typeof BrandPromotionsTokenRoute
   '/portal/achievements': typeof PortalAchievementsRoute
   '/portal/almanac': typeof PortalAlmanacRoute
   '/portal/friends': typeof PortalFriendsRoute
@@ -377,34 +548,58 @@ export interface FileRoutesByFullPath {
   '/portal/': typeof PortalIndexRoute
   '/admin/ads/$id': typeof AdminAdsIdRoute
   '/api/admin/account': typeof ApiAdminAccountRoute
+  '/api/admin/ad-revenue': typeof ApiAdminAdRevenueRoute
   '/api/admin/bug-reports': typeof ApiAdminBugReportsRoute
   '/api/admin/data': typeof ApiAdminDataRoute
   '/api/admin/partnerships': typeof ApiAdminPartnershipsRoute
   '/api/admin/paymongo-orders': typeof ApiAdminPaymongoOrdersRoute
+  '/api/admin/player-mail': typeof ApiAdminPlayerMailRoute
   '/api/admin/player-reports': typeof ApiAdminPlayerReportsRoute
   '/api/admin/players': typeof ApiAdminPlayersRoute
+  '/api/admin/submission-attachments': typeof ApiAdminSubmissionAttachmentsRoute
+  '/api/auth/avatar': typeof ApiAuthAvatarRoute
   '/api/auth/check-username': typeof ApiAuthCheckUsernameRoute
   '/api/auth/google': typeof ApiAuthGoogleRoute
   '/api/auth/login': typeof ApiAuthLoginRoute
   '/api/auth/logout': typeof ApiAuthLogoutRoute
-  '/api/auth/profile': typeof ApiAuthProfileRoute
+  '/api/auth/player-profile': typeof ApiAuthPlayerProfileRoute
+  '/api/auth/profile': typeof ApiAuthProfileRouteWithChildren
   '/api/auth/register': typeof ApiAuthRegisterRoute
   '/api/auth/session': typeof ApiAuthSessionRoute
+  '/api/brand-promotions/click': typeof ApiBrandPromotionsClickRoute
+  '/api/cron/expire-brand-promotions': typeof ApiCronExpireBrandPromotionsRoute
+  '/api/paymongo/brand-status': typeof ApiPaymongoBrandStatusRoute
   '/api/paymongo/checkout': typeof ApiPaymongoCheckoutRoute
+  '/api/paymongo/return': typeof ApiPaymongoReturnRoute
   '/api/paymongo/status': typeof ApiPaymongoStatusRoute
   '/api/paymongo/webhook': typeof ApiPaymongoWebhookRoute
   '/api/playfab/client': typeof ApiPlayfabClientRoute
+  '/api/playfab/profile-avatar': typeof ApiPlayfabProfileAvatarRoute
+  '/api/auth/email-change/complete': typeof ApiAuthEmailChangeCompleteRoute
+  '/api/auth/email-change/request': typeof ApiAuthEmailChangeRequestRoute
+  '/api/auth/email-change/verify': typeof ApiAuthEmailChangeVerifyRoute
+  '/api/auth/password-recovery/request': typeof ApiAuthPasswordRecoveryRequestRoute
+  '/api/auth/password-recovery/reset': typeof ApiAuthPasswordRecoveryResetRoute
+  '/api/auth/password-recovery/verify': typeof ApiAuthPasswordRecoveryVerifyRoute
+  '/api/auth/password/change': typeof ApiAuthPasswordChangeRoute
+  '/api/auth/profile/setup': typeof ApiAuthProfileSetupRoute
+  '/api/brand-updates/$id/click': typeof ApiBrandUpdatesIdClickRoute
+  '/api/brand-updates/$id/impression': typeof ApiBrandUpdatesIdImpressionRoute
   '/api/playfab/friends/add': typeof ApiPlayfabFriendsAddRoute
   '/api/playfab/friends/remove': typeof ApiPlayfabFriendsRemoveRoute
+  '/api/playfab/friends/requests': typeof ApiPlayfabFriendsRequestsRoute
   '/api/playfab/players/search': typeof ApiPlayfabPlayersSearchRoute
+  '/api/admin/brand-updates/$id/metrics': typeof ApiAdminBrandUpdatesIdMetricsRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/almanac': typeof AlmanacRoute
+  '/brand-payment-result': typeof BrandPaymentResultRoute
   '/contact': typeof ContactRoute
   '/download': typeof DownloadRoute
   '/features': typeof FeaturesRoute
   '/login': typeof LoginRoute
+  '/password-recovery': typeof PasswordRecoveryRoute
   '/signup': typeof SignupRoute
   '/story': typeof StoryRoute
   '/team': typeof TeamRoute
@@ -419,8 +614,10 @@ export interface FileRoutesByTo {
   '/admin/settings': typeof AdminSettingsRoute
   '/admin/transactions': typeof AdminTransactionsRoute
   '/admin/login': typeof AdminLoginRoute
+  '/api/brand-promotions': typeof ApiBrandPromotionsRouteWithChildren
   '/api/mail': typeof ApiMailRoute
   '/api/notifications': typeof ApiNotificationsRoute
+  '/brand-promotions/$token': typeof BrandPromotionsTokenRoute
   '/portal/achievements': typeof PortalAchievementsRoute
   '/portal/almanac': typeof PortalAlmanacRoute
   '/portal/friends': typeof PortalFriendsRoute
@@ -432,36 +629,60 @@ export interface FileRoutesByTo {
   '/portal': typeof PortalIndexRoute
   '/admin/ads/$id': typeof AdminAdsIdRoute
   '/api/admin/account': typeof ApiAdminAccountRoute
+  '/api/admin/ad-revenue': typeof ApiAdminAdRevenueRoute
   '/api/admin/bug-reports': typeof ApiAdminBugReportsRoute
   '/api/admin/data': typeof ApiAdminDataRoute
   '/api/admin/partnerships': typeof ApiAdminPartnershipsRoute
   '/api/admin/paymongo-orders': typeof ApiAdminPaymongoOrdersRoute
+  '/api/admin/player-mail': typeof ApiAdminPlayerMailRoute
   '/api/admin/player-reports': typeof ApiAdminPlayerReportsRoute
   '/api/admin/players': typeof ApiAdminPlayersRoute
+  '/api/admin/submission-attachments': typeof ApiAdminSubmissionAttachmentsRoute
+  '/api/auth/avatar': typeof ApiAuthAvatarRoute
   '/api/auth/check-username': typeof ApiAuthCheckUsernameRoute
   '/api/auth/google': typeof ApiAuthGoogleRoute
   '/api/auth/login': typeof ApiAuthLoginRoute
   '/api/auth/logout': typeof ApiAuthLogoutRoute
-  '/api/auth/profile': typeof ApiAuthProfileRoute
+  '/api/auth/player-profile': typeof ApiAuthPlayerProfileRoute
+  '/api/auth/profile': typeof ApiAuthProfileRouteWithChildren
   '/api/auth/register': typeof ApiAuthRegisterRoute
   '/api/auth/session': typeof ApiAuthSessionRoute
+  '/api/brand-promotions/click': typeof ApiBrandPromotionsClickRoute
+  '/api/cron/expire-brand-promotions': typeof ApiCronExpireBrandPromotionsRoute
+  '/api/paymongo/brand-status': typeof ApiPaymongoBrandStatusRoute
   '/api/paymongo/checkout': typeof ApiPaymongoCheckoutRoute
+  '/api/paymongo/return': typeof ApiPaymongoReturnRoute
   '/api/paymongo/status': typeof ApiPaymongoStatusRoute
   '/api/paymongo/webhook': typeof ApiPaymongoWebhookRoute
   '/api/playfab/client': typeof ApiPlayfabClientRoute
+  '/api/playfab/profile-avatar': typeof ApiPlayfabProfileAvatarRoute
+  '/api/auth/email-change/complete': typeof ApiAuthEmailChangeCompleteRoute
+  '/api/auth/email-change/request': typeof ApiAuthEmailChangeRequestRoute
+  '/api/auth/email-change/verify': typeof ApiAuthEmailChangeVerifyRoute
+  '/api/auth/password-recovery/request': typeof ApiAuthPasswordRecoveryRequestRoute
+  '/api/auth/password-recovery/reset': typeof ApiAuthPasswordRecoveryResetRoute
+  '/api/auth/password-recovery/verify': typeof ApiAuthPasswordRecoveryVerifyRoute
+  '/api/auth/password/change': typeof ApiAuthPasswordChangeRoute
+  '/api/auth/profile/setup': typeof ApiAuthProfileSetupRoute
+  '/api/brand-updates/$id/click': typeof ApiBrandUpdatesIdClickRoute
+  '/api/brand-updates/$id/impression': typeof ApiBrandUpdatesIdImpressionRoute
   '/api/playfab/friends/add': typeof ApiPlayfabFriendsAddRoute
   '/api/playfab/friends/remove': typeof ApiPlayfabFriendsRemoveRoute
+  '/api/playfab/friends/requests': typeof ApiPlayfabFriendsRequestsRoute
   '/api/playfab/players/search': typeof ApiPlayfabPlayersSearchRoute
+  '/api/admin/brand-updates/$id/metrics': typeof ApiAdminBrandUpdatesIdMetricsRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/admin': typeof AdminRouteWithChildren
   '/almanac': typeof AlmanacRoute
+  '/brand-payment-result': typeof BrandPaymentResultRoute
   '/contact': typeof ContactRoute
   '/download': typeof DownloadRoute
   '/features': typeof FeaturesRoute
   '/login': typeof LoginRoute
+  '/password-recovery': typeof PasswordRecoveryRoute
   '/portal': typeof PortalRouteWithChildren
   '/signup': typeof SignupRoute
   '/story': typeof StoryRoute
@@ -477,8 +698,10 @@ export interface FileRoutesById {
   '/admin/settings': typeof AdminSettingsRoute
   '/admin/transactions': typeof AdminTransactionsRoute
   '/admin_/login': typeof AdminLoginRoute
+  '/api/brand-promotions': typeof ApiBrandPromotionsRouteWithChildren
   '/api/mail': typeof ApiMailRoute
   '/api/notifications': typeof ApiNotificationsRoute
+  '/brand-promotions/$token': typeof BrandPromotionsTokenRoute
   '/portal/achievements': typeof PortalAchievementsRoute
   '/portal/almanac': typeof PortalAlmanacRoute
   '/portal/friends': typeof PortalFriendsRoute
@@ -490,26 +713,48 @@ export interface FileRoutesById {
   '/portal/': typeof PortalIndexRoute
   '/admin/ads/$id': typeof AdminAdsIdRoute
   '/api/admin/account': typeof ApiAdminAccountRoute
+  '/api/admin/ad-revenue': typeof ApiAdminAdRevenueRoute
   '/api/admin/bug-reports': typeof ApiAdminBugReportsRoute
   '/api/admin/data': typeof ApiAdminDataRoute
   '/api/admin/partnerships': typeof ApiAdminPartnershipsRoute
   '/api/admin/paymongo-orders': typeof ApiAdminPaymongoOrdersRoute
+  '/api/admin/player-mail': typeof ApiAdminPlayerMailRoute
   '/api/admin/player-reports': typeof ApiAdminPlayerReportsRoute
   '/api/admin/players': typeof ApiAdminPlayersRoute
+  '/api/admin/submission-attachments': typeof ApiAdminSubmissionAttachmentsRoute
+  '/api/auth/avatar': typeof ApiAuthAvatarRoute
   '/api/auth/check-username': typeof ApiAuthCheckUsernameRoute
   '/api/auth/google': typeof ApiAuthGoogleRoute
   '/api/auth/login': typeof ApiAuthLoginRoute
   '/api/auth/logout': typeof ApiAuthLogoutRoute
-  '/api/auth/profile': typeof ApiAuthProfileRoute
+  '/api/auth/player-profile': typeof ApiAuthPlayerProfileRoute
+  '/api/auth/profile': typeof ApiAuthProfileRouteWithChildren
   '/api/auth/register': typeof ApiAuthRegisterRoute
   '/api/auth/session': typeof ApiAuthSessionRoute
+  '/api/brand-promotions/click': typeof ApiBrandPromotionsClickRoute
+  '/api/cron/expire-brand-promotions': typeof ApiCronExpireBrandPromotionsRoute
+  '/api/paymongo/brand-status': typeof ApiPaymongoBrandStatusRoute
   '/api/paymongo/checkout': typeof ApiPaymongoCheckoutRoute
+  '/api/paymongo/return': typeof ApiPaymongoReturnRoute
   '/api/paymongo/status': typeof ApiPaymongoStatusRoute
   '/api/paymongo/webhook': typeof ApiPaymongoWebhookRoute
   '/api/playfab/client': typeof ApiPlayfabClientRoute
+  '/api/playfab/profile-avatar': typeof ApiPlayfabProfileAvatarRoute
+  '/api/auth/email-change/complete': typeof ApiAuthEmailChangeCompleteRoute
+  '/api/auth/email-change/request': typeof ApiAuthEmailChangeRequestRoute
+  '/api/auth/email-change/verify': typeof ApiAuthEmailChangeVerifyRoute
+  '/api/auth/password-recovery/request': typeof ApiAuthPasswordRecoveryRequestRoute
+  '/api/auth/password-recovery/reset': typeof ApiAuthPasswordRecoveryResetRoute
+  '/api/auth/password-recovery/verify': typeof ApiAuthPasswordRecoveryVerifyRoute
+  '/api/auth/password/change': typeof ApiAuthPasswordChangeRoute
+  '/api/auth/profile/setup': typeof ApiAuthProfileSetupRoute
+  '/api/brand-updates/$id/click': typeof ApiBrandUpdatesIdClickRoute
+  '/api/brand-updates/$id/impression': typeof ApiBrandUpdatesIdImpressionRoute
   '/api/playfab/friends/add': typeof ApiPlayfabFriendsAddRoute
   '/api/playfab/friends/remove': typeof ApiPlayfabFriendsRemoveRoute
+  '/api/playfab/friends/requests': typeof ApiPlayfabFriendsRequestsRoute
   '/api/playfab/players/search': typeof ApiPlayfabPlayersSearchRoute
+  '/api/admin/brand-updates/$id/metrics': typeof ApiAdminBrandUpdatesIdMetricsRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -517,10 +762,12 @@ export interface FileRouteTypes {
     | '/'
     | '/admin'
     | '/almanac'
+    | '/brand-payment-result'
     | '/contact'
     | '/download'
     | '/features'
     | '/login'
+    | '/password-recovery'
     | '/portal'
     | '/signup'
     | '/story'
@@ -536,8 +783,10 @@ export interface FileRouteTypes {
     | '/admin/settings'
     | '/admin/transactions'
     | '/admin/login'
+    | '/api/brand-promotions'
     | '/api/mail'
     | '/api/notifications'
+    | '/brand-promotions/$token'
     | '/portal/achievements'
     | '/portal/almanac'
     | '/portal/friends'
@@ -549,34 +798,58 @@ export interface FileRouteTypes {
     | '/portal/'
     | '/admin/ads/$id'
     | '/api/admin/account'
+    | '/api/admin/ad-revenue'
     | '/api/admin/bug-reports'
     | '/api/admin/data'
     | '/api/admin/partnerships'
     | '/api/admin/paymongo-orders'
+    | '/api/admin/player-mail'
     | '/api/admin/player-reports'
     | '/api/admin/players'
+    | '/api/admin/submission-attachments'
+    | '/api/auth/avatar'
     | '/api/auth/check-username'
     | '/api/auth/google'
     | '/api/auth/login'
     | '/api/auth/logout'
+    | '/api/auth/player-profile'
     | '/api/auth/profile'
     | '/api/auth/register'
     | '/api/auth/session'
+    | '/api/brand-promotions/click'
+    | '/api/cron/expire-brand-promotions'
+    | '/api/paymongo/brand-status'
     | '/api/paymongo/checkout'
+    | '/api/paymongo/return'
     | '/api/paymongo/status'
     | '/api/paymongo/webhook'
     | '/api/playfab/client'
+    | '/api/playfab/profile-avatar'
+    | '/api/auth/email-change/complete'
+    | '/api/auth/email-change/request'
+    | '/api/auth/email-change/verify'
+    | '/api/auth/password-recovery/request'
+    | '/api/auth/password-recovery/reset'
+    | '/api/auth/password-recovery/verify'
+    | '/api/auth/password/change'
+    | '/api/auth/profile/setup'
+    | '/api/brand-updates/$id/click'
+    | '/api/brand-updates/$id/impression'
     | '/api/playfab/friends/add'
     | '/api/playfab/friends/remove'
+    | '/api/playfab/friends/requests'
     | '/api/playfab/players/search'
+    | '/api/admin/brand-updates/$id/metrics'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
     | '/almanac'
+    | '/brand-payment-result'
     | '/contact'
     | '/download'
     | '/features'
     | '/login'
+    | '/password-recovery'
     | '/signup'
     | '/story'
     | '/team'
@@ -591,8 +864,10 @@ export interface FileRouteTypes {
     | '/admin/settings'
     | '/admin/transactions'
     | '/admin/login'
+    | '/api/brand-promotions'
     | '/api/mail'
     | '/api/notifications'
+    | '/brand-promotions/$token'
     | '/portal/achievements'
     | '/portal/almanac'
     | '/portal/friends'
@@ -604,35 +879,59 @@ export interface FileRouteTypes {
     | '/portal'
     | '/admin/ads/$id'
     | '/api/admin/account'
+    | '/api/admin/ad-revenue'
     | '/api/admin/bug-reports'
     | '/api/admin/data'
     | '/api/admin/partnerships'
     | '/api/admin/paymongo-orders'
+    | '/api/admin/player-mail'
     | '/api/admin/player-reports'
     | '/api/admin/players'
+    | '/api/admin/submission-attachments'
+    | '/api/auth/avatar'
     | '/api/auth/check-username'
     | '/api/auth/google'
     | '/api/auth/login'
     | '/api/auth/logout'
+    | '/api/auth/player-profile'
     | '/api/auth/profile'
     | '/api/auth/register'
     | '/api/auth/session'
+    | '/api/brand-promotions/click'
+    | '/api/cron/expire-brand-promotions'
+    | '/api/paymongo/brand-status'
     | '/api/paymongo/checkout'
+    | '/api/paymongo/return'
     | '/api/paymongo/status'
     | '/api/paymongo/webhook'
     | '/api/playfab/client'
+    | '/api/playfab/profile-avatar'
+    | '/api/auth/email-change/complete'
+    | '/api/auth/email-change/request'
+    | '/api/auth/email-change/verify'
+    | '/api/auth/password-recovery/request'
+    | '/api/auth/password-recovery/reset'
+    | '/api/auth/password-recovery/verify'
+    | '/api/auth/password/change'
+    | '/api/auth/profile/setup'
+    | '/api/brand-updates/$id/click'
+    | '/api/brand-updates/$id/impression'
     | '/api/playfab/friends/add'
     | '/api/playfab/friends/remove'
+    | '/api/playfab/friends/requests'
     | '/api/playfab/players/search'
+    | '/api/admin/brand-updates/$id/metrics'
   id:
     | '__root__'
     | '/'
     | '/admin'
     | '/almanac'
+    | '/brand-payment-result'
     | '/contact'
     | '/download'
     | '/features'
     | '/login'
+    | '/password-recovery'
     | '/portal'
     | '/signup'
     | '/story'
@@ -648,8 +947,10 @@ export interface FileRouteTypes {
     | '/admin/settings'
     | '/admin/transactions'
     | '/admin_/login'
+    | '/api/brand-promotions'
     | '/api/mail'
     | '/api/notifications'
+    | '/brand-promotions/$token'
     | '/portal/achievements'
     | '/portal/almanac'
     | '/portal/friends'
@@ -661,64 +962,110 @@ export interface FileRouteTypes {
     | '/portal/'
     | '/admin/ads/$id'
     | '/api/admin/account'
+    | '/api/admin/ad-revenue'
     | '/api/admin/bug-reports'
     | '/api/admin/data'
     | '/api/admin/partnerships'
     | '/api/admin/paymongo-orders'
+    | '/api/admin/player-mail'
     | '/api/admin/player-reports'
     | '/api/admin/players'
+    | '/api/admin/submission-attachments'
+    | '/api/auth/avatar'
     | '/api/auth/check-username'
     | '/api/auth/google'
     | '/api/auth/login'
     | '/api/auth/logout'
+    | '/api/auth/player-profile'
     | '/api/auth/profile'
     | '/api/auth/register'
     | '/api/auth/session'
+    | '/api/brand-promotions/click'
+    | '/api/cron/expire-brand-promotions'
+    | '/api/paymongo/brand-status'
     | '/api/paymongo/checkout'
+    | '/api/paymongo/return'
     | '/api/paymongo/status'
     | '/api/paymongo/webhook'
     | '/api/playfab/client'
+    | '/api/playfab/profile-avatar'
+    | '/api/auth/email-change/complete'
+    | '/api/auth/email-change/request'
+    | '/api/auth/email-change/verify'
+    | '/api/auth/password-recovery/request'
+    | '/api/auth/password-recovery/reset'
+    | '/api/auth/password-recovery/verify'
+    | '/api/auth/password/change'
+    | '/api/auth/profile/setup'
+    | '/api/brand-updates/$id/click'
+    | '/api/brand-updates/$id/impression'
     | '/api/playfab/friends/add'
     | '/api/playfab/friends/remove'
+    | '/api/playfab/friends/requests'
     | '/api/playfab/players/search'
+    | '/api/admin/brand-updates/$id/metrics'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AdminRoute: typeof AdminRouteWithChildren
   AlmanacRoute: typeof AlmanacRoute
+  BrandPaymentResultRoute: typeof BrandPaymentResultRoute
   ContactRoute: typeof ContactRoute
   DownloadRoute: typeof DownloadRoute
   FeaturesRoute: typeof FeaturesRoute
   LoginRoute: typeof LoginRoute
+  PasswordRecoveryRoute: typeof PasswordRecoveryRoute
   PortalRoute: typeof PortalRouteWithChildren
   SignupRoute: typeof SignupRoute
   StoryRoute: typeof StoryRoute
   TeamRoute: typeof TeamRoute
   AdminLoginRoute: typeof AdminLoginRoute
+  ApiBrandPromotionsRoute: typeof ApiBrandPromotionsRouteWithChildren
   ApiMailRoute: typeof ApiMailRoute
   ApiNotificationsRoute: typeof ApiNotificationsRoute
+  BrandPromotionsTokenRoute: typeof BrandPromotionsTokenRoute
   ApiAdminAccountRoute: typeof ApiAdminAccountRoute
+  ApiAdminAdRevenueRoute: typeof ApiAdminAdRevenueRoute
   ApiAdminBugReportsRoute: typeof ApiAdminBugReportsRoute
   ApiAdminDataRoute: typeof ApiAdminDataRoute
   ApiAdminPartnershipsRoute: typeof ApiAdminPartnershipsRoute
   ApiAdminPaymongoOrdersRoute: typeof ApiAdminPaymongoOrdersRoute
+  ApiAdminPlayerMailRoute: typeof ApiAdminPlayerMailRoute
   ApiAdminPlayerReportsRoute: typeof ApiAdminPlayerReportsRoute
   ApiAdminPlayersRoute: typeof ApiAdminPlayersRoute
+  ApiAdminSubmissionAttachmentsRoute: typeof ApiAdminSubmissionAttachmentsRoute
+  ApiAuthAvatarRoute: typeof ApiAuthAvatarRoute
   ApiAuthCheckUsernameRoute: typeof ApiAuthCheckUsernameRoute
   ApiAuthGoogleRoute: typeof ApiAuthGoogleRoute
   ApiAuthLoginRoute: typeof ApiAuthLoginRoute
   ApiAuthLogoutRoute: typeof ApiAuthLogoutRoute
-  ApiAuthProfileRoute: typeof ApiAuthProfileRoute
+  ApiAuthPlayerProfileRoute: typeof ApiAuthPlayerProfileRoute
+  ApiAuthProfileRoute: typeof ApiAuthProfileRouteWithChildren
   ApiAuthRegisterRoute: typeof ApiAuthRegisterRoute
   ApiAuthSessionRoute: typeof ApiAuthSessionRoute
+  ApiCronExpireBrandPromotionsRoute: typeof ApiCronExpireBrandPromotionsRoute
+  ApiPaymongoBrandStatusRoute: typeof ApiPaymongoBrandStatusRoute
   ApiPaymongoCheckoutRoute: typeof ApiPaymongoCheckoutRoute
+  ApiPaymongoReturnRoute: typeof ApiPaymongoReturnRoute
   ApiPaymongoStatusRoute: typeof ApiPaymongoStatusRoute
   ApiPaymongoWebhookRoute: typeof ApiPaymongoWebhookRoute
   ApiPlayfabClientRoute: typeof ApiPlayfabClientRoute
+  ApiPlayfabProfileAvatarRoute: typeof ApiPlayfabProfileAvatarRoute
+  ApiAuthEmailChangeCompleteRoute: typeof ApiAuthEmailChangeCompleteRoute
+  ApiAuthEmailChangeRequestRoute: typeof ApiAuthEmailChangeRequestRoute
+  ApiAuthEmailChangeVerifyRoute: typeof ApiAuthEmailChangeVerifyRoute
+  ApiAuthPasswordRecoveryRequestRoute: typeof ApiAuthPasswordRecoveryRequestRoute
+  ApiAuthPasswordRecoveryResetRoute: typeof ApiAuthPasswordRecoveryResetRoute
+  ApiAuthPasswordRecoveryVerifyRoute: typeof ApiAuthPasswordRecoveryVerifyRoute
+  ApiAuthPasswordChangeRoute: typeof ApiAuthPasswordChangeRoute
+  ApiBrandUpdatesIdClickRoute: typeof ApiBrandUpdatesIdClickRoute
+  ApiBrandUpdatesIdImpressionRoute: typeof ApiBrandUpdatesIdImpressionRoute
   ApiPlayfabFriendsAddRoute: typeof ApiPlayfabFriendsAddRoute
   ApiPlayfabFriendsRemoveRoute: typeof ApiPlayfabFriendsRemoveRoute
+  ApiPlayfabFriendsRequestsRoute: typeof ApiPlayfabFriendsRequestsRoute
   ApiPlayfabPlayersSearchRoute: typeof ApiPlayfabPlayersSearchRoute
+  ApiAdminBrandUpdatesIdMetricsRoute: typeof ApiAdminBrandUpdatesIdMetricsRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -742,6 +1089,13 @@ declare module '@tanstack/react-router' {
       path: '/almanac'
       fullPath: '/almanac'
       preLoaderRoute: typeof AlmanacRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/brand-payment-result': {
+      id: '/brand-payment-result'
+      path: '/brand-payment-result'
+      fullPath: '/brand-payment-result'
+      preLoaderRoute: typeof BrandPaymentResultRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/contact': {
@@ -770,6 +1124,13 @@ declare module '@tanstack/react-router' {
       path: '/login'
       fullPath: '/login'
       preLoaderRoute: typeof LoginRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/password-recovery': {
+      id: '/password-recovery'
+      path: '/password-recovery'
+      fullPath: '/password-recovery'
+      preLoaderRoute: typeof PasswordRecoveryRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/portal': {
@@ -884,6 +1245,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AdminLoginRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/brand-promotions': {
+      id: '/api/brand-promotions'
+      path: '/api/brand-promotions'
+      fullPath: '/api/brand-promotions'
+      preLoaderRoute: typeof ApiBrandPromotionsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/mail': {
       id: '/api/mail'
       path: '/api/mail'
@@ -896,6 +1264,13 @@ declare module '@tanstack/react-router' {
       path: '/api/notifications'
       fullPath: '/api/notifications'
       preLoaderRoute: typeof ApiNotificationsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/brand-promotions/$token': {
+      id: '/brand-promotions/$token'
+      path: '/brand-promotions/$token'
+      fullPath: '/brand-promotions/$token'
+      preLoaderRoute: typeof BrandPromotionsTokenRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/portal/': {
@@ -968,6 +1343,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiAdminAccountRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/admin/ad-revenue': {
+      id: '/api/admin/ad-revenue'
+      path: '/api/admin/ad-revenue'
+      fullPath: '/api/admin/ad-revenue'
+      preLoaderRoute: typeof ApiAdminAdRevenueRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/admin/bug-reports': {
       id: '/api/admin/bug-reports'
       path: '/api/admin/bug-reports'
@@ -996,6 +1378,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiAdminPaymongoOrdersRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/admin/player-mail': {
+      id: '/api/admin/player-mail'
+      path: '/api/admin/player-mail'
+      fullPath: '/api/admin/player-mail'
+      preLoaderRoute: typeof ApiAdminPlayerMailRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/admin/player-reports': {
       id: '/api/admin/player-reports'
       path: '/api/admin/player-reports'
@@ -1008,6 +1397,20 @@ declare module '@tanstack/react-router' {
       path: '/api/admin/players'
       fullPath: '/api/admin/players'
       preLoaderRoute: typeof ApiAdminPlayersRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/admin/submission-attachments': {
+      id: '/api/admin/submission-attachments'
+      path: '/api/admin/submission-attachments'
+      fullPath: '/api/admin/submission-attachments'
+      preLoaderRoute: typeof ApiAdminSubmissionAttachmentsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/auth/avatar': {
+      id: '/api/auth/avatar'
+      path: '/api/auth/avatar'
+      fullPath: '/api/auth/avatar'
+      preLoaderRoute: typeof ApiAuthAvatarRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/api/auth/check-username': {
@@ -1038,6 +1441,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiAuthLogoutRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/auth/player-profile': {
+      id: '/api/auth/player-profile'
+      path: '/api/auth/player-profile'
+      fullPath: '/api/auth/player-profile'
+      preLoaderRoute: typeof ApiAuthPlayerProfileRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/auth/profile': {
       id: '/api/auth/profile'
       path: '/api/auth/profile'
@@ -1059,11 +1469,39 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiAuthSessionRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/brand-promotions/click': {
+      id: '/api/brand-promotions/click'
+      path: '/click'
+      fullPath: '/api/brand-promotions/click'
+      preLoaderRoute: typeof ApiBrandPromotionsClickRouteImport
+      parentRoute: typeof ApiBrandPromotionsRoute
+    }
+    '/api/cron/expire-brand-promotions': {
+      id: '/api/cron/expire-brand-promotions'
+      path: '/api/cron/expire-brand-promotions'
+      fullPath: '/api/cron/expire-brand-promotions'
+      preLoaderRoute: typeof ApiCronExpireBrandPromotionsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/paymongo/brand-status': {
+      id: '/api/paymongo/brand-status'
+      path: '/api/paymongo/brand-status'
+      fullPath: '/api/paymongo/brand-status'
+      preLoaderRoute: typeof ApiPaymongoBrandStatusRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/paymongo/checkout': {
       id: '/api/paymongo/checkout'
       path: '/api/paymongo/checkout'
       fullPath: '/api/paymongo/checkout'
       preLoaderRoute: typeof ApiPaymongoCheckoutRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/paymongo/return': {
+      id: '/api/paymongo/return'
+      path: '/api/paymongo/return'
+      fullPath: '/api/paymongo/return'
+      preLoaderRoute: typeof ApiPaymongoReturnRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/api/paymongo/status': {
@@ -1087,6 +1525,83 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiPlayfabClientRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/playfab/profile-avatar': {
+      id: '/api/playfab/profile-avatar'
+      path: '/api/playfab/profile-avatar'
+      fullPath: '/api/playfab/profile-avatar'
+      preLoaderRoute: typeof ApiPlayfabProfileAvatarRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/auth/email-change/complete': {
+      id: '/api/auth/email-change/complete'
+      path: '/api/auth/email-change/complete'
+      fullPath: '/api/auth/email-change/complete'
+      preLoaderRoute: typeof ApiAuthEmailChangeCompleteRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/auth/email-change/request': {
+      id: '/api/auth/email-change/request'
+      path: '/api/auth/email-change/request'
+      fullPath: '/api/auth/email-change/request'
+      preLoaderRoute: typeof ApiAuthEmailChangeRequestRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/auth/email-change/verify': {
+      id: '/api/auth/email-change/verify'
+      path: '/api/auth/email-change/verify'
+      fullPath: '/api/auth/email-change/verify'
+      preLoaderRoute: typeof ApiAuthEmailChangeVerifyRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/auth/password-recovery/request': {
+      id: '/api/auth/password-recovery/request'
+      path: '/api/auth/password-recovery/request'
+      fullPath: '/api/auth/password-recovery/request'
+      preLoaderRoute: typeof ApiAuthPasswordRecoveryRequestRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/auth/password-recovery/reset': {
+      id: '/api/auth/password-recovery/reset'
+      path: '/api/auth/password-recovery/reset'
+      fullPath: '/api/auth/password-recovery/reset'
+      preLoaderRoute: typeof ApiAuthPasswordRecoveryResetRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/auth/password-recovery/verify': {
+      id: '/api/auth/password-recovery/verify'
+      path: '/api/auth/password-recovery/verify'
+      fullPath: '/api/auth/password-recovery/verify'
+      preLoaderRoute: typeof ApiAuthPasswordRecoveryVerifyRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/auth/password/change': {
+      id: '/api/auth/password/change'
+      path: '/api/auth/password/change'
+      fullPath: '/api/auth/password/change'
+      preLoaderRoute: typeof ApiAuthPasswordChangeRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/auth/profile/setup': {
+      id: '/api/auth/profile/setup'
+      path: '/setup'
+      fullPath: '/api/auth/profile/setup'
+      preLoaderRoute: typeof ApiAuthProfileSetupRouteImport
+      parentRoute: typeof ApiAuthProfileRoute
+    }
+    '/api/brand-updates/$id/click': {
+      id: '/api/brand-updates/$id/click'
+      path: '/api/brand-updates/$id/click'
+      fullPath: '/api/brand-updates/$id/click'
+      preLoaderRoute: typeof ApiBrandUpdatesIdClickRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/brand-updates/$id/impression': {
+      id: '/api/brand-updates/$id/impression'
+      path: '/api/brand-updates/$id/impression'
+      fullPath: '/api/brand-updates/$id/impression'
+      preLoaderRoute: typeof ApiBrandUpdatesIdImpressionRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/playfab/friends/add': {
       id: '/api/playfab/friends/add'
       path: '/api/playfab/friends/add'
@@ -1101,11 +1616,25 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiPlayfabFriendsRemoveRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/playfab/friends/requests': {
+      id: '/api/playfab/friends/requests'
+      path: '/api/playfab/friends/requests'
+      fullPath: '/api/playfab/friends/requests'
+      preLoaderRoute: typeof ApiPlayfabFriendsRequestsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/playfab/players/search': {
       id: '/api/playfab/players/search'
       path: '/api/playfab/players/search'
       fullPath: '/api/playfab/players/search'
       preLoaderRoute: typeof ApiPlayfabPlayersSearchRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/admin/brand-updates/$id/metrics': {
+      id: '/api/admin/brand-updates/$id/metrics'
+      path: '/api/admin/brand-updates/$id/metrics'
+      fullPath: '/api/admin/brand-updates/$id/metrics'
+      preLoaderRoute: typeof ApiAdminBrandUpdatesIdMetricsRouteImport
       parentRoute: typeof rootRouteImport
     }
   }
@@ -1168,42 +1697,89 @@ const PortalRouteChildren: PortalRouteChildren = {
 const PortalRouteWithChildren =
   PortalRoute._addFileChildren(PortalRouteChildren)
 
+interface ApiBrandPromotionsRouteChildren {
+  ApiBrandPromotionsClickRoute: typeof ApiBrandPromotionsClickRoute
+}
+
+const ApiBrandPromotionsRouteChildren: ApiBrandPromotionsRouteChildren = {
+  ApiBrandPromotionsClickRoute: ApiBrandPromotionsClickRoute,
+}
+
+const ApiBrandPromotionsRouteWithChildren =
+  ApiBrandPromotionsRoute._addFileChildren(ApiBrandPromotionsRouteChildren)
+
+interface ApiAuthProfileRouteChildren {
+  ApiAuthProfileSetupRoute: typeof ApiAuthProfileSetupRoute
+}
+
+const ApiAuthProfileRouteChildren: ApiAuthProfileRouteChildren = {
+  ApiAuthProfileSetupRoute: ApiAuthProfileSetupRoute,
+}
+
+const ApiAuthProfileRouteWithChildren = ApiAuthProfileRoute._addFileChildren(
+  ApiAuthProfileRouteChildren,
+)
+
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AdminRoute: AdminRouteWithChildren,
   AlmanacRoute: AlmanacRoute,
+  BrandPaymentResultRoute: BrandPaymentResultRoute,
   ContactRoute: ContactRoute,
   DownloadRoute: DownloadRoute,
   FeaturesRoute: FeaturesRoute,
   LoginRoute: LoginRoute,
+  PasswordRecoveryRoute: PasswordRecoveryRoute,
   PortalRoute: PortalRouteWithChildren,
   SignupRoute: SignupRoute,
   StoryRoute: StoryRoute,
   TeamRoute: TeamRoute,
   AdminLoginRoute: AdminLoginRoute,
+  ApiBrandPromotionsRoute: ApiBrandPromotionsRouteWithChildren,
   ApiMailRoute: ApiMailRoute,
   ApiNotificationsRoute: ApiNotificationsRoute,
+  BrandPromotionsTokenRoute: BrandPromotionsTokenRoute,
   ApiAdminAccountRoute: ApiAdminAccountRoute,
+  ApiAdminAdRevenueRoute: ApiAdminAdRevenueRoute,
   ApiAdminBugReportsRoute: ApiAdminBugReportsRoute,
   ApiAdminDataRoute: ApiAdminDataRoute,
   ApiAdminPartnershipsRoute: ApiAdminPartnershipsRoute,
   ApiAdminPaymongoOrdersRoute: ApiAdminPaymongoOrdersRoute,
+  ApiAdminPlayerMailRoute: ApiAdminPlayerMailRoute,
   ApiAdminPlayerReportsRoute: ApiAdminPlayerReportsRoute,
   ApiAdminPlayersRoute: ApiAdminPlayersRoute,
+  ApiAdminSubmissionAttachmentsRoute: ApiAdminSubmissionAttachmentsRoute,
+  ApiAuthAvatarRoute: ApiAuthAvatarRoute,
   ApiAuthCheckUsernameRoute: ApiAuthCheckUsernameRoute,
   ApiAuthGoogleRoute: ApiAuthGoogleRoute,
   ApiAuthLoginRoute: ApiAuthLoginRoute,
   ApiAuthLogoutRoute: ApiAuthLogoutRoute,
-  ApiAuthProfileRoute: ApiAuthProfileRoute,
+  ApiAuthPlayerProfileRoute: ApiAuthPlayerProfileRoute,
+  ApiAuthProfileRoute: ApiAuthProfileRouteWithChildren,
   ApiAuthRegisterRoute: ApiAuthRegisterRoute,
   ApiAuthSessionRoute: ApiAuthSessionRoute,
+  ApiCronExpireBrandPromotionsRoute: ApiCronExpireBrandPromotionsRoute,
+  ApiPaymongoBrandStatusRoute: ApiPaymongoBrandStatusRoute,
   ApiPaymongoCheckoutRoute: ApiPaymongoCheckoutRoute,
+  ApiPaymongoReturnRoute: ApiPaymongoReturnRoute,
   ApiPaymongoStatusRoute: ApiPaymongoStatusRoute,
   ApiPaymongoWebhookRoute: ApiPaymongoWebhookRoute,
   ApiPlayfabClientRoute: ApiPlayfabClientRoute,
+  ApiPlayfabProfileAvatarRoute: ApiPlayfabProfileAvatarRoute,
+  ApiAuthEmailChangeCompleteRoute: ApiAuthEmailChangeCompleteRoute,
+  ApiAuthEmailChangeRequestRoute: ApiAuthEmailChangeRequestRoute,
+  ApiAuthEmailChangeVerifyRoute: ApiAuthEmailChangeVerifyRoute,
+  ApiAuthPasswordRecoveryRequestRoute: ApiAuthPasswordRecoveryRequestRoute,
+  ApiAuthPasswordRecoveryResetRoute: ApiAuthPasswordRecoveryResetRoute,
+  ApiAuthPasswordRecoveryVerifyRoute: ApiAuthPasswordRecoveryVerifyRoute,
+  ApiAuthPasswordChangeRoute: ApiAuthPasswordChangeRoute,
+  ApiBrandUpdatesIdClickRoute: ApiBrandUpdatesIdClickRoute,
+  ApiBrandUpdatesIdImpressionRoute: ApiBrandUpdatesIdImpressionRoute,
   ApiPlayfabFriendsAddRoute: ApiPlayfabFriendsAddRoute,
   ApiPlayfabFriendsRemoveRoute: ApiPlayfabFriendsRemoveRoute,
+  ApiPlayfabFriendsRequestsRoute: ApiPlayfabFriendsRequestsRoute,
   ApiPlayfabPlayersSearchRoute: ApiPlayfabPlayersSearchRoute,
+  ApiAdminBrandUpdatesIdMetricsRoute: ApiAdminBrandUpdatesIdMetricsRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

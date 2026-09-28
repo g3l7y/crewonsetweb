@@ -13,9 +13,12 @@ export const Route = createFileRoute("/admin/partnerships")({
   component: PartnershipsPage,
 });
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import Link from "@/components/next-compat/link";
+import { normalizeExternalHttpUrl } from "@/lib/external-url";
 import { PartnershipStatusDropdown } from "@/components/admin/partnership-status-dropdown";
+import { isMockMode } from "@/lib/playfab/config";
+import { topUpsStore } from "@/lib/admin-demo-data";
 import {
   Banknote,
   CalendarClock,
@@ -36,19 +39,21 @@ import {
   canAdvancePartnershipStatus,
   deleteSharedRecord,
   deleteSharedRecords,
-  updateSharedRecord,
+  updatePartnershipStatus,
   revenueStore,
   formatMoney,
   partnershipProductTypes,
   uid,
   type ActiveAd,
   type PartnershipApplication,
+  type RevenueRecord,
   type PartnershipStatus,
 } from "@/lib/demo/store";
 
-const statuses: PartnershipStatus[] = ["Pending", "Approved", "On-going", "Done", "Declined"];
+const statuses: PartnershipStatus[] = ["New", "Pending", "Approved", "On-going", "Done", "Declined"];
 
 const mockStatusStyles: Record<PartnershipStatus, string> = {
+  New: "bg-white/10 text-[#fefaef]",
   Pending: "bg-[#c96a2d]/15 text-[#f39a5a]",
   Approved: "bg-[#d9a514]/15 text-[#f3c747]",
   "On-going": "bg-[#3a7bd5]/15 text-[#7cb0ee]",
@@ -57,6 +62,8 @@ const mockStatusStyles: Record<PartnershipStatus, string> = {
 };
 
 const statusStyles = mockStatusStyles;
+
+const showLegacyAds = false;
 
 const adStatusStyles: Record<ActiveAd["status"], string> = {
   "On-going": "bg-[#3a7bd5]/15 text-[#7cb0ee]",
@@ -72,7 +79,36 @@ function formatDate(iso: string) {
   });
 }
 
-const showLegacyAds = false;
+
+
+function buildMockPromotionEnd(startDate: string, duration?: number, durationUnit?: string) {
+  const end = new Date(startDate);
+  const amount = Math.max(1, Math.round(Number(duration || 1)));
+  if (String(durationUnit || '').toLowerCase().startsWith('month')) end.setUTCMonth(end.getUTCMonth() + amount);
+  else end.setUTCDate(end.getUTCDate() + amount);
+  return end.toISOString();
+}
+
+function buildMockAd(application: PartnershipApplication, status: ActiveAd['status'] = 'On-going'): RevenueRecord {
+  const startDate = application.promotionStartedAt || application.paymentPaidAt || application.submittedAt;
+  return {
+    id: 'AD-' + application.id,
+    applicationId: application.id,
+    brand: application.brand,
+    exactModel: application.exactModel,
+    productType: application.productType,
+    contract: application.description || 'Crew On Set brand promotion placement.',
+    startDate,
+    expiresAt: application.promotionEndsAt || buildMockPromotionEnd(startDate, application.duration, application.durationUnit),
+    submittedLink: application.link,
+    status,
+    revenue: application.budget,
+    clicks: 0,
+    visits: 0,
+    impressions: 0,
+    placement: 'Crew On Set production placement',
+  };
+}
 
 function PartnershipsPage() {
   const [applications, setApplications] = applicationsStore.useStore();
@@ -88,6 +124,70 @@ function PartnershipsPage() {
 
   const [ads, setAds] = adsStore.useStore();
   const [revenue, setRevenue] = revenueStore.useStore();
+
+  useEffect(() => {
+    if (!isMockMode()) {
+      let active = true;
+      const refresh = async () => {
+        try {
+          const response = await fetch("/api/admin/partnerships", { cache: "no-store" });
+          if (!response.ok) return;
+          const body = await response.json() as { data?: PartnershipApplication[] };
+          if (!active || !Array.isArray(body.data)) return;
+          setApplications(body.data);
+          setSelected((current) => current
+            ? body.data?.find((application) => application.id === current.id) ?? current
+            : current);
+        } catch {
+          // Keep the current admin view usable when a background refresh fails.
+        }
+      };
+      void refresh();
+      const interval = window.setInterval(() => void refresh(), 30_000);
+      return () => {
+        active = false;
+        window.clearInterval(interval);
+      };
+    }
+
+    const expireMockPromotions = () => {
+      const now = Date.now();
+      setApplications((current) => {
+        let changed = false;
+        const next = current.map((application) => {
+          const endDate = application.promotionEndsAt || buildMockPromotionEnd(
+            application.promotionStartedAt || application.paymentPaidAt || application.submittedAt,
+            application.duration,
+            application.durationUnit,
+          );
+          if (application.status !== "On-going" || new Date(endDate).getTime() > now) return application;
+          changed = true;
+          return {
+            ...application,
+            status: "Done" as const,
+            promotionEndedAt: endDate,
+            promotionEndType: "expired" as const,
+          };
+        });
+        return changed ? next : current;
+      });
+      const expireAd = <T extends ActiveAd>(item: T): T =>
+        item.status !== "Done" && new Date(item.expiresAt).getTime() <= now
+          ? { ...item, status: "Done" as const, endedAt: item.endedAt || item.expiresAt } as T
+          : item;
+      setAds((current) => {
+        const next = current.map((item) => expireAd(item));
+        return next.some((item, index) => item !== current[index]) ? next : current;
+      });
+      setRevenue((current) => {
+        const next = current.map((item) => expireAd(item));
+        return next.some((item, index) => item !== current[index]) ? next : current;
+      });
+    };
+    expireMockPromotions();
+    const interval = window.setInterval(expireMockPromotions, 1_000);
+    return () => window.clearInterval(interval);
+  }, [setApplications, setAds, setRevenue]);
 
   const [adStatusFilter, setAdStatusFilter] = useState<ActiveAd["status"]>("On-going");
   const adStatusOptions: ActiveAd["status"][] = ["On-going", "Expiring", "Expired", "Done"];
@@ -146,92 +246,149 @@ function PartnershipsPage() {
     setBulkDeleteTarget(null);
   }
 
-  async function updateStatus(id: string, status: PartnershipStatus) {
-    const app = applications.find((a) => a.id === id);
-    if (app && !canAdvancePartnershipStatus(app.status, status)) return;
-    const previousStatus = app?.status;
-    const statusChangedToOngoing = status === "On-going" && previousStatus !== "On-going";
-    const transitionStartedAt = new Date().toISOString();
-    const transitionExpiresAt = app
-      ? new Date(
-          Date.now() + app.duration * (app.durationUnit === "Months" ? 30 : 1) * 86400000,
-        ).toISOString()
-      : "";
-    const next = applications.map((a) => (a.id === id ? { ...a, status } : a));
-    const updatedApplication = next.find((application) => application.id === id);
-    if (updatedApplication && !(await updateSharedRecord("cos.applications", updatedApplication))) return;
-    setApplications(next);
-    const matchedAd =
-      app &&
-      (ads.find((ad) => ad.applicationId === app.id) ??
-        ads.find((ad) => ad.brand === app.brand && ad.exactModel === app.exactModel));
-    if (app && status === "On-going" && !matchedAd) {
-      const newAd: ActiveAd = {
-          id: uid("AD"),
-          applicationId: app.id,
-          brand: app.brand,
-          exactModel: app.exactModel,
-          productType: app.productType,
-          contract:
-            app.description ||
-            `${app.duration} ${app.durationUnit.toLowerCase()} partnership placement.`,
-          startDate: transitionStartedAt,
-          expiresAt: transitionExpiresAt,
-          status: "On-going",
-          revenue: app.budget,
-          clicks: 0,
-          visits: 0,
-          impressions: 0,
-          placement: "Pending placement",
-        };
-      setAds([newAd, ...ads]);
-      setRevenue((current) => current.some((record) => record.applicationId === app.id) ? current : [{ ...newAd, applicationId: app.id }, ...current]);
-    } else if (matchedAd && (status === "On-going" || status === "Done")) {
-      const expiresAt = statusChangedToOngoing ? transitionExpiresAt : matchedAd.expiresAt;
-      const updatedAds: ActiveAd[] = ads.map((ad) => {
-        if (ad.id !== matchedAd.id) return ad;
-        const updated: ActiveAd = {
-          ...ad,
-          applicationId: app.id,
-          status: status === "On-going" ? "On-going" : "Done",
-          startDate: statusChangedToOngoing ? transitionStartedAt : ad.startDate,
-          expiresAt,
-        };
-        if (status === "Done") updated.endedAt = new Date().toISOString();
-        else delete updated.endedAt;
-        return updated;
-      });
-      setAds(updatedAds);
-      setRevenue((current) => {
-        const existing = current.find((record) => record.applicationId === app.id);
-        const updated: ActiveAd = {
-          ...matchedAd,
-          applicationId: app.id,
-          status: status === "On-going" ? "On-going" : "Done",
-          startDate: statusChangedToOngoing ? transitionStartedAt : matchedAd.startDate,
-          expiresAt,
-        };
-        if (status === "Done") updated.endedAt = new Date().toISOString();
-        else delete updated.endedAt;
-        const revenueRecord = { ...updated, applicationId: app.id };
-        return existing ? current.map((record) => record.applicationId === app.id ? { ...record, ...revenueRecord } : record) : [revenueRecord, ...current];
-      });
-    }
-    if (selected?.id === id) setSelected({ ...selected, status });
+  function showStatusMessage(message: string) {
+    setEmailConfirmation(message);
+    window.setTimeout(() => setEmailConfirmation(null), 5500);
+  }
 
-    if (app) {
-      setEmailConfirmation(
-        `Status saved for ${app.brand} — status set to "${status}". External email delivery is not configured.`,
+  async function updateStatus(id: string, status: PartnershipStatus) {
+    const app = applications.find((application) => application.id === id);
+    if (!app || !canAdvancePartnershipStatus(app.status, status)) return;
+    let completionReason: string | undefined;
+    let completionAt: string | undefined;
+    let endedEarly = false;
+    if (status === 'Done' && app.status === 'On-going') {
+      const promotionEnd = new Date(app.promotionEndsAt || buildMockPromotionEnd(
+        app.promotionStartedAt || app.submittedAt,
+        app.duration,
+        app.durationUnit,
+      ));
+      endedEarly = Date.now() < promotionEnd.getTime();
+      completionAt = endedEarly ? new Date().toISOString() : promotionEnd.toISOString();
+      if (endedEarly) {
+        const reason = window.prompt(
+          'This promotion is ending before its contract date. Enter the brand-side reason that will be included in the email.',
+          'The campaign materials and approvals required from your team were not provided by the agreed deadline.',
+        );
+        if (reason === null) return;
+        completionReason = reason.trim();
+        if (!completionReason) {
+          showStatusMessage('Enter a reason before ending the promotion early.');
+          return;
+        }
+      }
+    }
+    if (isMockMode() && status === 'Approved' && app.paymentStatus !== 'Paid') {
+      showStatusMessage('Complete the brand payment before approving this application.');
+      return;
+    }
+
+    let savedApplication: PartnershipApplication;
+    let emailWarning: string | undefined;
+    if (isMockMode()) {
+      const mockPaymentRequested = status === 'Pending' &&
+        app.paymentStatus !== 'Paid' &&
+        !app.paymentCheckoutUrl;
+      const promotionStartedAt = status === 'On-going'
+        ? app.promotionStartedAt || new Date().toISOString()
+        : app.promotionStartedAt;
+      savedApplication = {
+        ...app,
+        status,
+        ...(completionAt ? {
+          promotionEndedAt: completionAt,
+          promotionEndType: endedEarly ? 'ended-early' as const : 'expired' as const,
+          ...(completionReason ? { promotionEndReason: completionReason } : {}),
+        } : {}),
+        ...(mockPaymentRequested
+          ? {
+              paymentStatus: 'Pending' as const,
+              paymentId: app.paymentId || uid('BRAND-PAYMENT'),
+              paymentCheckoutUrl: window.location.origin + '/admin/partnerships?mock-payment=' + encodeURIComponent(app.id),
+              paymentAmount: app.budget,
+            }
+          : {}),
+        ...(status === 'On-going'
+          ? {
+              promotionStartedAt,
+              promotionEndsAt: app.promotionEndsAt || buildMockPromotionEnd(promotionStartedAt || new Date().toISOString(), app.duration, app.durationUnit),
+              brandPromotionToken: app.brandPromotionToken || uid('PROMO'),
+            }
+          : {}),
+      };
+    } else {
+      const result = await updatePartnershipStatus(app, status, completionReason);
+      if (!result.success || !result.data) {
+        showStatusMessage(result.error || 'The status change could not be saved.');
+        return;
+      }
+      savedApplication = result.data;
+      emailWarning = result.emailWarning;
+    }
+
+    setApplications((current) => current.map((item) => item.id === id ? savedApplication : item));
+    if (isMockMode() && status === 'On-going') {
+      const nextAd = buildMockAd(savedApplication, 'On-going');
+      setAds((current) => [nextAd, ...current.filter((item) => item.id !== nextAd.id)]);
+      setRevenue((current) => [nextAd, ...current.filter((item) => item.id !== nextAd.id)]);
+    } else if (isMockMode() && status === 'Done') {
+      setAds((current) => current.map((item) => item.applicationId === id ? { ...item, status: 'Done', endedAt: completionAt, endReason: completionReason } : item));
+      setRevenue((current) => current.map((item) => item.applicationId === id ? { ...item, status: 'Done', endedAt: completionAt, endReason: completionReason } : item));
+    }
+    if (selected?.id === id) setSelected(savedApplication);
+    if (emailWarning) {
+      showStatusMessage(emailWarning);
+      return;
+    }
+    if (savedApplication.status === 'Pending' && app.status === 'New') {
+      showStatusMessage(
+        isMockMode()
+          ? 'Mock payment email prepared for ' + app.email + '. Complete payment from the application details.'
+          : 'Payment email sent to ' + app.email + ' with the PayMongo Hosted Checkout link.',
       );
-      window.setTimeout(() => setEmailConfirmation(null), 4500);
+    } else {
+      showStatusMessage(
+        isMockMode()
+          ? 'Mock status saved for ' + app.brand + ': ' + status + '.'
+          : 'Status saved and email sent to ' + app.email + '.',
+      );
     }
   }
 
+  function completeMockPayment(id: string) {
+    if (!isMockMode()) return;
+    const app = applications.find((application) => application.id === id);
+    if (!app || app.status !== 'Pending' || app.paymentStatus !== 'Pending') return;
+    const paidAt = new Date().toISOString();
+    const paymentId = app.paymentId || uid('BRAND-PAYMENT');
+    const updatedApplication: PartnershipApplication = {
+      ...app,
+      paymentStatus: 'Paid',
+      paymentId,
+      paymentPaidAt: paidAt,
+      paymentAmount: app.budget,
+    };
+    setApplications((current) => current.map((item) => item.id === id ? updatedApplication : item));
+    setSelected(updatedApplication);
+    topUpsStore.set((current) => [
+      {
+        id: paymentId,
+        playerName: app.brand,
+        playerId: app.id,
+        date: paidAt.slice(0, 10),
+        time: new Date(paidAt).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: false }),
+        bank: 'PayMongo Hosted Checkout · Brand Partnership',
+        amount: app.budget,
+        status: 'Completed',
+      },
+      ...current.filter((row) => row.id !== paymentId),
+    ]);
+    showStatusMessage('Mock payment received for ' + app.brand + '. An admin notification and transaction entry were created.');
+  }
   return (
     <div className="admin-page h-full overflow-y-auto bg-[#101923] text-white">
       <header className="mb-8">
-        <p className="text-xs font-black tracking-[.18em] !text-coral">PARTNERSHIPS &amp; ADS</p>
-        <h1 className="admin-heading mt-2 !text-white">Partnerships &amp; Ads</h1>
+        <h1 className="admin-heading !text-white">Partnerships &amp; Ads</h1>
         <p className="admin-kicker !text-white/45">
           Review brand proposals and manage application approval status.
         </p>
@@ -545,7 +702,8 @@ function PartnershipsPage() {
           onClick={() => setSelected(null)}
         >
           <div
-            className="relative flex max-h-[90vh] w-full max-w-xl flex-col overflow-hidden rounded-xl border border-white/[.08] bg-[#151c28] shadow-2xl"
+            className="relative flex max-h-[85vh] w-full flex-col overflow-hidden rounded-xl border border-white/[.08] bg-[#151c28] shadow-2xl"
+            style={{ maxWidth: "32rem" }}
             onClick={(e) => e.stopPropagation()}
           >
             <button
@@ -555,13 +713,14 @@ function PartnershipsPage() {
               <X className="size-4" />
             </button>
 
-            <div className="border-b border-white/[.06] bg-[#0d121b] px-6 py-6">
+            <div className="border-b border-white/[.06] bg-[#0d121b] py-6 pl-6 pr-14">
               <p className="text-[10px] font-black uppercase tracking-[.2em] !text-coral">
                 {selected.id}
               </p>
               <h2 className="mt-1 text-2xl font-black uppercase !text-white">{selected.brand}</h2>
               <span
-                className={`mt-2 inline-block rounded px-2.5 py-1 text-[10px] font-black uppercase ${statusStyles[selected.status]}`}
+                data-status={selected.status}
+                className={`admin-partnership-status-label mt-2 inline-block rounded px-2.5 py-1 text-[10px] font-black uppercase ${statusStyles[selected.status]}`}
               >
                 {selected.status}
               </span>
@@ -588,9 +747,17 @@ function PartnershipsPage() {
                     <Link2 className="size-3.5" /> Link
                   </dt>
                   <dd className="mt-1.5 break-all text-sm font-bold !text-[#7cb0ee]">
-                    <a href={selected.link} target="_blank" rel="noreferrer">
-                    {selected.link || "Not provided"}
-                  </a>
+                    {selected.link ? (
+                      <a
+                        href={normalizeExternalHttpUrl(selected.link)}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                      >
+                        {selected.link}
+                      </a>
+                    ) : (
+                      "Not provided"
+                    )}
                   </dd>
                 </div>
                 <div className="sm:col-span-2">
@@ -612,13 +779,13 @@ function PartnershipsPage() {
                           <img
                             src={selected.attachmentUrl}
                             alt={selected.fileName || "Application attachment"}
-                            className="max-h-64 w-full rounded-md object-contain"
+                            className="max-h-56 w-full rounded-md object-contain"
                           />
                         ) : (
                           <iframe
                             src={selected.attachmentUrl}
                             title={selected.fileName || "Application PDF"}
-                            className="h-64 w-full rounded-md bg-white"
+                            className="h-56 w-full rounded-md bg-white"
                           />
                         )}
                         <a
@@ -670,6 +837,29 @@ function PartnershipsPage() {
                   </dd>
                 </div>
               </dl>
+              {selected.paymentStatus && (
+                <div className="mt-5 rounded-md border border-white/[.08] bg-white/[.03] p-4">
+                  <div className="flex flex-wrap items-center justify-between gap-3">
+                    <div>
+                      <p className="text-[9px] font-black uppercase tracking-wide !text-white/30">Payment</p>
+                      <p className="mt-1 text-sm font-black uppercase !text-white/80">{selected.paymentStatus}</p>
+                      <p className="mt-1 text-xs !text-white/45">{formatMoney(selected.paymentAmount ?? selected.budget)}</p>
+                    </div>
+                    {isMockMode() && selected.status === "Pending" && selected.paymentStatus === "Pending" && (
+                      <button
+                        type="button"
+                        onClick={() => completeMockPayment(selected.id)}
+                        className="rounded-md bg-[#d9a514] px-3 py-2 text-[10px] font-black uppercase text-[#101923]"
+                      >
+                        Complete payment
+                      </button>
+                    )}
+                  </div>
+                  {selected.paymentCheckoutUrl && (
+                    <p className="mt-3 break-all text-[10px] !text-white/35">Checkout link: {selected.paymentCheckoutUrl}</p>
+                  )}
+                </div>
+              )}
 
               <div className="mt-6 border-t border-white/[.06] pt-5">
                 <p className="text-[9px] font-black uppercase tracking-wide !text-white/30">
@@ -683,7 +873,7 @@ function PartnershipsPage() {
                   ariaLabel="Update partnership status"
                 />
 <p className="mt-3 text-[11px] leading-relaxed !text-white/40">
-                  Status changes are persisted to the real partnership record. Configure an email provider to notify the brand contact automatically.
+                  Status changes are validated and persisted. Pending requests send payment instructions, and approval requires a confirmed payment.
                 </p>
               </div>
             </div>

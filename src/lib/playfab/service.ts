@@ -5,7 +5,7 @@ import { PlayFabError, playfabClientApi } from './client';
 import { PLAYFAB_DATA_KEYS } from './constants';
 import { getPlayerProfile, updateDisplayName, getUserData, updateUserData } from './player';
 import { getPlayerProgression } from './progression';
-import { getVirtualCurrency } from './economy';
+import { getCcoinCurrencyCode, getVirtualCurrency } from './economy';
 import { getInventory } from './inventory';
 import { getAchievements } from './achievements';
 import { getKnowledge } from './almanac';
@@ -14,6 +14,7 @@ import { getTransactions } from './transactions';
 import { getNotifications } from './notifications';
 import { getGlobalLeaderboard, getLeaderboardAroundPlayer } from './leaderboard';
 import { getFriendsList } from './friends';
+import { DEFAULT_PROFILE_PICTURE_URL, isManagedProfileAvatarUrl } from '../profile-avatar';
 
 // Cached session ticket in memory for fast authenticated Client API calls
 let _cachedTicket: string | null = null;
@@ -26,7 +27,7 @@ type SessionIdentity = {
   email?: string;
 };
 
-type CosmeticCatalogCategory = 'Hair' | 'Tops' | 'Bottoms' | 'Eyeglasses';
+type CosmeticCatalogCategory = 'Hair' | 'Tops' | 'Bottoms' | 'Shoe Wear' | 'Accessories';
 
 function parseCatalogCustomData(value: unknown): Record<string, string> {
   const parsed = typeof value === 'string'
@@ -43,7 +44,8 @@ function parseCatalogCustomData(value: unknown): Record<string, string> {
 
 function normalizeCosmeticCategory(value: unknown): CosmeticCatalogCategory | null {
   const normalized = String(value ?? '').trim().toLowerCase();
-  if (normalized.includes('eyeglass') || normalized.includes('glass')) return 'Eyeglasses';
+  if (normalized.includes('shoe') || normalized.includes('footwear') || normalized.includes('boot') || normalized.includes('sneaker')) return 'Shoe Wear';
+  if (normalized.includes('accessor') || normalized.includes('eyeglass') || normalized.includes('glass') || normalized.includes('frame')) return 'Accessories';
   if (normalized.includes('hair')) return 'Hair';
   if (normalized === 'top' || normalized === 'tops' || normalized.includes('shirt')) return 'Tops';
   if (normalized === 'bottom' || normalized === 'bottoms' || normalized.includes('pant') || normalized.includes('trouser')) return 'Bottoms';
@@ -59,14 +61,14 @@ function mapPlayFabCatalogItem(item: Record<string, unknown>): InventoryItem | n
     ? item.VirtualCurrencyPrices as Record<string, unknown>
     : {};
   const tags = Array.isArray(item.Tags) ? item.Tags : [];
-  const category = normalizeCosmeticCategory(
-    item.ItemClass ?? customData.category ?? customData.Category ?? tags.join(' '),
-  );
+  const category = [customData.category, customData.Category, item.ItemClass, tags.join(' ')]
+    .map(normalizeCosmeticCategory)
+    .find((value): value is CosmeticCatalogCategory => value !== null) ?? null;
   if (!category) return null;
 
   const rarityValue = String(item.ItemRarity ?? customData.rarity ?? '').trim().toLowerCase();
   const rarity = ['common', 'uncommon', 'rare', 'epic', 'legendary'].includes(rarityValue) ? rarityValue : 'common';
-  const price = virtualCurrencyPrices.CC ?? virtualCurrencyPrices.cCoins ?? item.Price;
+  const price = virtualCurrencyPrices[getCcoinCurrencyCode()] ?? virtualCurrencyPrices.cCoins ?? item.Price;
 
   return {
     itemId,
@@ -198,7 +200,7 @@ function createRealService(): PlayFabService {
           email: sessionIdentity?.email ?? '',
           displayName: sessionIdentity?.displayName || sessionIdentity?.username || 'Player',
           username: sessionIdentity?.username || sessionIdentity?.displayName || 'player',
-          avatarUrl: null,
+          avatarUrl: DEFAULT_PROFILE_PICTURE_URL,
           role: 'cameraman' as const,
           crewId: 'CREW-001',
           bio: '',
@@ -213,8 +215,12 @@ function createRealService(): PlayFabService {
           const metadataRaw = (await getUserData(ticket, [PLAYFAB_DATA_KEYS.profile_metadata]))[PLAYFAB_DATA_KEYS.profile_metadata];
           if (metadataRaw) {
             try {
-              const metadata = JSON.parse(metadataRaw) as Pick<PlayerProfile, 'username' | 'bio' | 'socialLinks' | 'showStatus'>;
-              return { ...profile, ...metadata };
+              const metadata = JSON.parse(metadataRaw) as Pick<PlayerProfile, 'username' | 'bio' | 'avatarUrl' | 'socialLinks' | 'showStatus' | 'profileVisibility' | 'showCrewActivity'>;
+              return {
+                ...profile,
+                ...metadata,
+                avatarUrl: isManagedProfileAvatarUrl(metadata.avatarUrl) ? metadata.avatarUrl : DEFAULT_PROFILE_PICTURE_URL,
+              };
             } catch {
               // Ignore malformed optional profile metadata and keep the PlayFab profile.
             }
@@ -318,25 +324,31 @@ function createRealService(): PlayFabService {
       updateProfile: async (updates) => {
         const ticket = await resolveSessionTicket();
         if (!ticket) return;
+        const profileUpdates = updates as Partial<PlayerProfile>;
         if (updates.username) {
-          await updateDisplayName(ticket, updates.username);
+          if (!(await updateDisplayName(ticket, updates.username))) throw new Error('PlayFab could not update your username.');
         } else if (updates.displayName) {
-          await updateDisplayName(ticket, updates.displayName);
+          if (!(await updateDisplayName(ticket, updates.displayName))) throw new Error('PlayFab could not update your display name.');
         }
-        if ('bio' in updates || 'socialLinks' in updates || 'showStatus' in updates) {
+        if ('bio' in profileUpdates || 'avatarUrl' in profileUpdates || 'socialLinks' in profileUpdates || 'showStatus' in profileUpdates || 'profileVisibility' in profileUpdates || 'showCrewActivity' in profileUpdates) {
           const currentRaw = (await getUserData(ticket, [PLAYFAB_DATA_KEYS.profile_metadata]))[PLAYFAB_DATA_KEYS.profile_metadata];
-          let current: Partial<Pick<PlayerProfile, 'username' | 'bio' | 'socialLinks' | 'showStatus'>> = {};
+          let current: Partial<Pick<PlayerProfile, 'username' | 'bio' | 'avatarUrl' | 'socialLinks' | 'showStatus' | 'profileVisibility' | 'showCrewActivity'>> = {};
           if (currentRaw) {
             try { current = JSON.parse(currentRaw); } catch { /* replace malformed metadata */ }
           }
-          await updateUserData(ticket, {
+          const saved = await updateUserData(ticket, {
             [PLAYFAB_DATA_KEYS.profile_metadata]: JSON.stringify({
-              username: 'username' in updates ? updates.username ?? current.username ?? '' : current.username ?? '',
-              bio: 'bio' in updates ? updates.bio ?? '' : current.bio ?? '',
-              socialLinks: 'socialLinks' in updates ? updates.socialLinks ?? {} : current.socialLinks ?? {},
-              showStatus: 'showStatus' in updates ? updates.showStatus ?? true : current.showStatus ?? true,
+              ...current,
+              ...(profileUpdates.username !== undefined ? { username: profileUpdates.username } : {}),
+              ...(profileUpdates.bio !== undefined ? { bio: profileUpdates.bio } : {}),
+              ...(profileUpdates.avatarUrl !== undefined ? { avatarUrl: profileUpdates.avatarUrl } : {}),
+              ...(profileUpdates.socialLinks !== undefined ? { socialLinks: profileUpdates.socialLinks } : {}),
+              ...(profileUpdates.showStatus !== undefined ? { showStatus: profileUpdates.showStatus } : {}),
+              ...(profileUpdates.profileVisibility !== undefined ? { profileVisibility: profileUpdates.profileVisibility } : {}),
+              ...(profileUpdates.showCrewActivity !== undefined ? { showCrewActivity: profileUpdates.showCrewActivity } : {}),
             }),
           });
+          if (!saved) throw new Error('PlayFab could not save your profile metadata.');
         }
       },
 
@@ -382,7 +394,7 @@ function createRealService(): PlayFabService {
 
         const currency = typeof priceOrCurrency === 'string' ? priceOrCurrency : (currencyOrPrice as string);
         const price = typeof priceOrCurrency === 'number' ? priceOrCurrency : Number(currencyOrPrice);
-        const pfCurrency = currency === 'cCoins' ? 'CC' : 'BC';
+        const pfCurrency = currency === 'cCoins' ? getCcoinCurrencyCode() : 'BC';
 
         try {
           await playfabClientApi('/Client/PurchaseItem', {
@@ -444,7 +456,12 @@ function createRealService(): PlayFabService {
         const json = await res.json();
         return json.data ?? [];
       },
-      getAds: async () => [],
+      getAds: async () => {
+        const res = await fetch('/api/admin/ad-revenue');
+        if (!res.ok) throw new Error('Failed to fetch advertisement revenue');
+        const json = await res.json();
+        return json.data ?? [];
+      },
       getRevenue: async () => [],
       getGameBuilds: async () => [],
       getBuildHistory: async () => [],

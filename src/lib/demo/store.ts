@@ -9,6 +9,7 @@
 import { useEffect, useRef, useState } from "react";
 
 import { isMockMode } from "@/lib/playfab/config";
+import type { PlayerMailMessage } from "@/lib/playfab/types";
 
 /* ---------------------------------------------------------------- utilities */
 
@@ -20,6 +21,7 @@ const sharedEndpoints: Record<string, string> = {
   "cos.ads": "/api/admin/data?key=ads",
   "cos.revenue": "/api/admin/data?key=revenue",
   "cos.gameBuild": "/api/admin/data?key=gameBuild",
+  "cos.brandUpdates": "/api/admin/data?key=brandUpdates",
   "cos.buildHistory": "/api/admin/data?key=buildHistory",
   "cos.systemRequirements": "/api/admin/data?key=systemRequirements",
   "cos.buildInfo": "/api/admin/data?key=buildInfo",
@@ -33,12 +35,12 @@ const sharedEndpoints: Record<string, string> = {
 };
 
 export const reportStatusColors = {
-  New: "#F3C747",
   Investigating: "#F39A5A",
   Resolved: "#4BC4B4",
 } as const;
 
 export const partnershipStatusColors = {
+  New: "#FEFAEF",
   Pending: "#F39A5A",
   Approved: "#F3C747",
   "On-going": "#7CB0EE",
@@ -46,7 +48,14 @@ export const partnershipStatusColors = {
   Declined: "#FF6248",
 } as const;
 
-export const partnershipProductTypes = ["Camera", "Lens", "Lights", "Audio", "Software", "Other"] as const;
+export const partnershipProductTypes = [
+  "Camera",
+  "Lens",
+  "Lights",
+  "Audio",
+  "Software",
+  "Other",
+] as const;
 
 async function responseError(response: Response): Promise<string> {
   try {
@@ -57,21 +66,37 @@ async function responseError(response: Response): Promise<string> {
   }
 }
 
-export async function insertSharedRecord<T extends { id: string }>(key: string, item: T, onError?: (message: string) => void) {
+export async function insertSharedRecord<T extends { id: string }>(
+  key: string,
+  item: T,
+  onError?: (message: string) => void,
+  attachment?: File | null,
+) {
   const endpoint = sharedEndpoints[key];
   if (!endpoint) return false;
   if (isMockMode()) return true;
 
   try {
     const record = item as Record<string, unknown>;
-    const response = await fetch(endpoint, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        ...record,
-        attachmentName: record["attachmentName"] ?? record["fileName"],
-      }),
-    });
+    let response: Response;
+    if (attachment) {
+      const form = new FormData();
+      for (const [key, value] of Object.entries(record)) {
+        if (value === undefined || value === null || key === "attachmentUrl") continue;
+        form.append(key, String(value));
+      }
+      form.append("attachment", attachment, attachment.name);
+      response = await fetch(endpoint, { method: "POST", body: form });
+    } else {
+      response = await fetch(endpoint, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          ...record,
+          attachmentName: record["attachmentName"] ?? record["fileName"],
+        }),
+      });
+    }
     if (!response.ok) {
       const message = await responseError(response);
       console.error("[Crew On Set] Failed to create shared record.", { endpoint, message });
@@ -86,7 +111,11 @@ export async function insertSharedRecord<T extends { id: string }>(key: string, 
   }
 }
 
-export async function updateSharedRecord<T extends { id: string }>(key: string, item: T) {
+export async function updateSharedRecord<T extends { id: string }>(
+  key: string,
+  item: T,
+  onError?: (message: string) => void,
+) {
   const endpoint = sharedEndpoints[key];
   if (!endpoint) return false;
   if (isMockMode()) return true;
@@ -98,19 +127,61 @@ export async function updateSharedRecord<T extends { id: string }>(key: string, 
       body: JSON.stringify(item),
     });
     if (!response.ok) {
+      const message = await responseError(response);
       console.error("[Crew On Set] Failed to update shared record.", {
         endpoint,
-        message: await responseError(response),
+        message,
       });
+      onError?.(message);
       return false;
     }
     return true;
   } catch (error) {
     console.error("[Crew On Set] Failed to update shared record.", { endpoint, error });
+    onError?.("The request could not be completed.");
     return false;
   }
 }
 
+export async function updatePartnershipStatus(
+  application: PartnershipApplication,
+  status: PartnershipStatus,
+  completionReason?: string,
+): Promise<{
+  success: boolean;
+  error?: string;
+  data?: PartnershipApplication;
+  emailWarning?: string;
+}> {
+  if (isMockMode()) return { success: true, data: { ...application, status } };
+  const endpoint = sharedEndpoints["cos.applications"];
+  if (!endpoint) return { success: false, error: "The status endpoint is unavailable." };
+  try {
+    const response = await fetch(endpoint, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        id: application.id,
+        status,
+        ...(completionReason ? { completionReason } : {}),
+      }),
+    });
+    const body = (await response.json().catch(() => ({}))) as {
+      error?: string;
+      emailWarning?: string;
+      data?: PartnershipApplication;
+    };
+    if (!response.ok)
+      return { success: false, error: body.error || "The status change could not be saved." };
+    return {
+      success: true,
+      ...(body.data ? { data: body.data } : {}),
+      ...(body.emailWarning ? { emailWarning: body.emailWarning } : {}),
+    };
+  } catch {
+    return { success: false, error: "The status change could not be completed." };
+  }
+}
 export async function deleteSharedRecord(key: string, id: string) {
   return deleteSharedRecords(key, [id]);
 }
@@ -145,7 +216,7 @@ async function loadSharedTable<T>(key: string) {
   if (!endpoint || isMockMode()) return null;
 
   try {
-    const response = await fetch(endpoint);
+    const response = await fetch(endpoint, { cache: "no-store" });
     if (!response.ok) {
       console.error("[Crew On Set] Failed to load shared records.", {
         endpoint,
@@ -203,17 +274,60 @@ function write<T>(key: string, value: T) {
 }
 
 function reconcileExpired<T>(key: string, items: T[], now = Date.now()) {
-  if (key !== "cos.ads" && key !== "cos.applications") return items;
+  if (!isMockMode() || (key !== "cos.ads" && key !== "cos.applications" && key !== "cos.revenue"))
+    return items;
   let changed = false;
   const next = items.map((item) => {
-    const record = item as T & { status?: string; expiresAt?: string; endedAt?: string };
-    if (record.status !== "Done" && record.expiresAt && new Date(record.expiresAt).getTime() <= now) {
+    const record = item as T & {
+      status?: string;
+      expiresAt?: string;
+      endedAt?: string;
+      promotionEndsAt?: string;
+      promotionStartedAt?: string;
+      promotionEndedAt?: string;
+      paymentPaidAt?: string;
+      submittedAt?: string;
+      duration?: number;
+      durationUnit?: string;
+      promotionEndType?: string;
+    };
+    const isApplication = key === "cos.applications";
+    let expiresAt = record.expiresAt || record.promotionEndsAt;
+    if (!expiresAt && isApplication && record.status === "On-going") {
+      const end = new Date(
+        record.promotionStartedAt || record.paymentPaidAt || record.submittedAt || now,
+      );
+      const amount = Math.max(1, Math.round(Number(record.duration || 1)));
+      if (
+        String(record.durationUnit || "")
+          .toLowerCase()
+          .startsWith("month")
+      )
+        end.setUTCMonth(end.getUTCMonth() + amount);
+      else end.setUTCDate(end.getUTCDate() + amount);
+      expiresAt = end.toISOString();
+    }
+    if (
+      record.status !== "Done" &&
+      (!isApplication || record.status === "On-going") &&
+      expiresAt &&
+      new Date(expiresAt).getTime() <= now
+    ) {
       changed = true;
-      return { ...record, status: "Done", endedAt: record.endedAt ?? new Date(record.expiresAt).toISOString() } as T;
+      const endedAt = isApplication
+        ? new Date(expiresAt).toISOString()
+        : (record.endedAt ?? new Date(expiresAt).toISOString());
+      return {
+        ...record,
+        status: "Done",
+        endedAt,
+        ...(isApplication ? { promotionEndedAt: endedAt, promotionEndType: "expired" } : {}),
+      } as T;
     }
     return item;
   });
-  if (changed && isMockMode()) write(key, next);
+  if (!changed) return items;
+  if (isMockMode()) write(key, next);
   return next;
 }
 
@@ -251,19 +365,30 @@ export function createStore<T>(key: string, seed: T[]) {
     useEffect(() => {
       let active = true;
       setItems(reconcileExpired(key, get()));
-      if (usesServerApi) {
+      const refresh = () => {
         void loadSharedTable<T>(key).then((remoteItems) => {
           if (active && !localWriteRef.current && remoteItems) {
             serverItems = reconcileExpired(key, remoteItems);
             setItems(serverItems);
           }
         });
+      };
+      if (usesServerApi) {
+        refresh();
       }
       const sync = () => setItems(get());
       window.addEventListener(event, sync);
       window.addEventListener("storage", sync);
+      const expiryInterval =
+        isMockMode() && (key === "cos.applications" || key === "cos.ads" || key === "cos.revenue")
+          ? window.setInterval(() => setItems((current) => reconcileExpired(key, current)), 1_000)
+          : undefined;
+      const sharedRefreshInterval =
+        usesServerApi && key === "cos.topUps" ? window.setInterval(refresh, 15_000) : undefined;
       return () => {
         active = false;
+        if (expiryInterval !== undefined) window.clearInterval(expiryInterval);
+        if (sharedRefreshInterval !== undefined) window.clearInterval(sharedRefreshInterval);
         window.removeEventListener(event, sync);
         window.removeEventListener("storage", sync);
       };
@@ -302,6 +427,8 @@ export type PlayerNotification = {
   read: boolean;
   /** In-app destination this notification links to when clicked. */
   href?: string;
+  senderUsername?: string | undefined;
+  adminMessage?: boolean | undefined;
   /** Optional mock recipient identity for player-specific in-app messages. */
   recipientUsername?: string | undefined;
   recipientEmail?: string | undefined;
@@ -338,19 +465,33 @@ const seedNotifications: PlayerNotification[] = [
   {
     id: "ntf-1003",
     title: "New friend request",
-    body: "GAFFER_GEM wants to join your crew roster.",
+    body: "FRAMEHUNTER wants to join your crew roster.",
     createdAt: "2026-08-25T14:05:00.000Z",
     kind: "friend",
     read: true,
     channel: "notification",
     href: "/portal/friends",
+    recipientUsername: "CAMERA_PRO",
+    target: { kind: "players", playerIds: ["COS-2847-CP"] },
+  },
+  {
+    id: "ntf-1007",
+    title: "New friend request",
+    body: "CUTMASTER wants to join your crew roster.",
+    createdAt: "2026-08-24T10:10:00.000Z",
+    kind: "friend",
+    read: true,
+    channel: "notification",
+    href: "/portal/friends",
+    recipientUsername: "CAMERA_PRO",
+    target: { kind: "players", playerIds: ["COS-2847-CP"] },
   },
   {
     id: "ntf-1004",
     title: "C-Coin top-up confirmed",
     body: "1,200 C-Coins were added to your wallet. Receipt sent to your crew email.",
     createdAt: "2026-08-23T07:30:00.000Z",
-    kind: "shop",
+    kind: "transaction",
     read: true,
     channel: "notification",
     href: "/portal/shop",
@@ -375,6 +516,8 @@ const seedNotifications: PlayerNotification[] = [
     read: true,
     channel: "notification",
     href: "/portal/inbox?tab=mail",
+    senderUsername: "ADMINISTRATOR",
+    adminMessage: true,
     recipientUsername: "CAMERA_PRO",
     target: { kind: "players", playerIds: ["COS-2847-CP"] },
   },
@@ -387,17 +530,7 @@ export const notificationsStore = createStore<PlayerNotification>(
 
 /* --------------------------------------------------------------------- mail */
 
-export type PlayerMail = {
-  id: string;
-  threadId: string;
-  subject: string;
-  body: string;
-  senderUsername: string;
-  recipientUsername: string;
-  createdAt: string;
-  read: boolean;
-  kind: "admin" | "friend";
-};
+export type PlayerMail = PlayerMailMessage;
 
 const seedPlayerMail: PlayerMail[] = [
   {
@@ -421,6 +554,7 @@ const seedPlayerMail: PlayerMail[] = [
     createdAt: "2026-08-20T15:30:00.000Z",
     read: true,
     kind: "admin",
+    adminMessage: true,
   },
 ];
 
@@ -430,75 +564,63 @@ export function addReportFeedback(args: {
   recipientUsername: string;
   recipientPlayerId?: string;
   reportId: string;
-  status: string;
-  body?: string;
+  subject: string;
+  body: string;
 }) {
+  if (!isMockMode()) return;
   const createdAt = new Date().toISOString();
-  const threadId = "thread-" + args.reportId;
-  const body = args.body ?? "Your report " + args.reportId + " is now marked " + args.status + ".";
+  const threadId = "admin-" + (args.recipientPlayerId ?? args.recipientUsername);
+  const messageId = "mock-report-" + args.reportId + "-investigating";
+  const noticeId = messageId + "-notice";
   const target = {
     kind: "players" as const,
-    playerIds: args.recipientPlayerId ? [args.recipientPlayerId] : [],
+    playerIds: [args.recipientPlayerId ?? args.recipientUsername],
   };
   const feedbackNotification: PlayerNotification = {
-    id: uid("ntf"),
-    title: "Report feedback: " + args.reportId,
-    body: "Your report was updated. Open Mail to read the admin feedback.",
+    id: noticeId,
+    title: "New message from Administrator",
+    body: "The admin team sent you a message: " + args.subject + ". Open your Inbox to read it.",
     createdAt,
     kind: "report",
     channel: "notification",
+    adminMessage: true,
     read: false,
-    href: "/portal/inbox?tab=mail",
+    href: "/portal/inbox?tab=mail&contact=admin",
     recipientUsername: args.recipientUsername,
     target,
   };
 
-  if (isMockMode()) {
-    notificationsStore.set([feedbackNotification, ...notificationsStore.get()]);
-    playerMailStore.set([
-      {
-        id: uid("mail"),
-        threadId,
-        subject: "Report feedback: " + args.reportId,
-        body,
-        senderUsername: "ADMINISTRATOR",
-        recipientUsername: args.recipientUsername,
-        createdAt,
-        read: false,
-        kind: "admin",
-      },
-      ...playerMailStore.get(),
-    ]);
-    return;
-  }
-
   notificationsStore.set([
     feedbackNotification,
+    ...notificationsStore.get().filter((item) => item.id !== noticeId),
+  ]);
+  playerMailStore.set([
     {
-      id: uid("mail"),
-      title: "Report feedback: " + args.reportId,
-      body,
-      createdAt,
-      kind: "report",
-      channel: "mail",
-      read: false,
-      href: "/portal/inbox?tab=mail",
+      id: messageId,
+      threadId,
+      subject: args.subject,
+      body: args.body,
+      senderUsername: "ADMINISTRATOR",
       recipientUsername: args.recipientUsername,
-      target,
+      createdAt,
+      read: false,
+      kind: "admin",
+      adminMessage: true,
     },
-    ...notificationsStore.get(),
+    ...playerMailStore.get().filter((item) => item.id !== messageId),
   ]);
 }
 /* --------------------------------------------------- partnership applications */
 
-export type PartnershipStatus = "Pending" | "Approved" | "On-going" | "Done" | "Declined";
+export type PartnershipStatus = "New" | "Pending" | "Approved" | "On-going" | "Done" | "Declined";
 
 const partnershipStatusTransitions: Record<PartnershipStatus, PartnershipStatus[]> = {
-  Pending: ["Pending", "Approved", "On-going", "Done", "Declined"],
-  Approved: ["Approved", "On-going", "Done"],
-  "On-going": ["On-going", "Done"],
-  Done: ["Done"],
-  Declined: ["Declined"],
+  New: ["New", "Pending", "Declined"],
+  Pending: ["Pending", "Approved"],
+  Approved: ["Approved", "Pending", "On-going"],
+  "On-going": ["On-going", "Pending", "Done"],
+  Done: ["Done", "Pending"],
+  Declined: ["Declined", "Pending"],
 };
 
 export function canAdvancePartnershipStatus(
@@ -526,6 +648,19 @@ export type PartnershipApplication = {
   status: PartnershipStatus;
   archived?: boolean;
   archivedAt?: string;
+  paymentStatus?: "Pending" | "Paid";
+  paymentId?: string;
+  paymentCheckoutUrl?: string;
+  paymentAmount?: number;
+  paymentPaidAt?: string;
+  brandPromotionToken?: string;
+  promotionStartedAt?: string;
+  promotionEndsAt?: string;
+  promotionEndedAt?: string;
+  promotionEndType?: "expired" | "ended-early";
+  promotionEndReason?: string;
+  promotionCompletionEmailSentAt?: string;
+  adminNotes?: string;
 };
 
 const seedApplications: PartnershipApplication[] = [
@@ -541,7 +676,7 @@ const seedApplications: PartnershipApplication[] = [
     durationUnit: "Months",
     email: "partners@northlineoptics.example",
     submittedAt: "2026-08-24T10:22:00.000Z",
-    status: "Pending",
+    status: "New",
   },
   {
     id: "APP-4818",
@@ -611,7 +746,7 @@ export const applicationsStore = createStore<PartnershipApplication>(
 export type ActiveAd = {
   id: string;
   /** Stable source application relationship; avoids fragile brand matching. */
-  applicationId?: string;
+  applicationId?: string | undefined;
   brand: string;
   exactModel: string;
   productType: string;
@@ -621,7 +756,8 @@ export type ActiveAd = {
   expiresAt: string;
   status: "On-going" | "Expiring" | "Expired" | "Done";
   /** Set when an administrator finishes an advertisement early. */
-  endedAt?: string;
+  endedAt?: string | undefined;
+  endReason?: string | undefined;
   archived?: boolean;
   archivedAt?: string;
   revenue: number;
@@ -630,6 +766,9 @@ export type ActiveAd = {
   /** Ad displays / impressions served for this placement. */
   impressions: number;
   placement: string;
+  submittedLink?: string | undefined;
+  trackedLink?: string | undefined;
+  trackingEnabled?: boolean | undefined;
 };
 
 const seedAds: ActiveAd[] = [
@@ -948,6 +1087,9 @@ export const gameBuildStore = createStore<GameBuild>("cos.gameBuild", [
   },
 ]);
 
+export type BrandUpdate = { id: string; url: string; notes: string; publishedAt: string };
+export const brandUpdatesStore = createStore<BrandUpdate>("cos.brandUpdates", []);
+
 /** Archive of previously uploaded builds, newest first. */
 export const buildHistoryStore = createStore<GameBuild>("cos.buildHistory", []);
 
@@ -1070,16 +1212,13 @@ export type AdminNotification = {
   createdAt: string;
 };
 
-export const adminNotificationsStore = createStore<AdminNotification>(
-  "cos.adminNotifications",
-  [],
-);
+export const adminNotificationsStore = createStore<AdminNotification>("cos.adminNotifications", []);
 
 /* --------------------------------------------------------- equipped loadout */
 
-export type LoadoutSlot = "Hair" | "Tops" | "Bottoms" | "Eyeglasses";
+export type LoadoutSlot = "Hair" | "Tops" | "Bottoms" | "Shoe Wear" | "Accessories";
 
-export const loadoutSlots: LoadoutSlot[] = ["Hair", "Tops", "Bottoms", "Eyeglasses"];
+export const loadoutSlots: LoadoutSlot[] = ["Hair", "Tops", "Bottoms", "Shoe Wear", "Accessories"];
 
 export type LoadoutPiece = {
   slot: LoadoutSlot;
@@ -1098,7 +1237,7 @@ export const loadoutStore = createStore<LoadoutPiece>("cos.loadout", [
     gradient: "from-sky-400 to-blue-600",
   },
   {
-    slot: "Eyeglasses",
+    slot: "Accessories",
     itemName: "Round Ink Frames",
     initials: "RI",
     gradient: "from-slate-400 to-slate-600",

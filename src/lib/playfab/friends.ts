@@ -1,14 +1,18 @@
 import { playfabClientApi } from './client';
 import type { FriendInfo } from './types';
+import { DEFAULT_PROFILE_PICTURE_URL, isManagedProfileAvatarUrl } from '../profile-avatar';
 
 /**
  * Get the player's friends list.
  */
 export async function getFriendsList(sessionTicket: string): Promise<FriendInfo[]> {
   try {
-    const data = await playfabClientApi<{
-      Friends: any[];
-    }>('/Client/GetFriendsList', {}, sessionTicket);
+    let data: { Friends: any[] };
+    try {
+      data = await playfabClientApi<{ Friends: any[] }>('/Client/GetFriendsList', { ProfileConstraints: { ShowAvatarUrl: true } }, sessionTicket);
+    } catch {
+      data = await playfabClientApi<{ Friends: any[] }>('/Client/GetFriendsList', {}, sessionTicket);
+    }
 
     return (data.Friends || []).map((friend: any) => ({
       playFabId: friend.FriendPlayFabId,
@@ -20,6 +24,9 @@ export async function getFriendsList(sessionTicket: string): Promise<FriendInfo[
       level: 1,
       online: Boolean(friend.IsOnline ?? friend.Online ?? false),
       showStatus: typeof friend.ShowStatus === 'boolean' ? friend.ShowStatus : undefined,
+      avatarUrl: isManagedProfileAvatarUrl(friend.Profile?.AvatarUrl ?? friend.TitleInfo?.AvatarUrl)
+        ? friend.Profile?.AvatarUrl ?? friend.TitleInfo?.AvatarUrl
+        : DEFAULT_PROFILE_PICTURE_URL,
       tags: friend.Tags || [],
     })) as FriendInfo[];
   } catch (error) {

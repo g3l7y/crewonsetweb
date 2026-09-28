@@ -8,6 +8,8 @@ export type MockAccount = {
   displayName: string;
   email: string;
   password: string;
+  googleProfileSetup?: boolean;
+  googleProfileSetupPending?: boolean;
 };
 
 function accountKey(value: string) {
@@ -60,6 +62,8 @@ export function findMockAccount(identifier: string) {
   return (
     Array.from(mockAccounts.values()).find(
       (account) =>
+        accountKey(account.username) === normalizedIdentifier ||
+        accountKey(account.email) === normalizedIdentifier ||
         accountKey(account.username) === aliasedIdentifier ||
         accountKey(account.email) === aliasedIdentifier,
     ) ?? null
@@ -77,6 +81,13 @@ export function isMockUsernameTaken(username: string) {
   );
 }
 
+export function isMockEmailTaken(email: string) {
+  const normalizedEmail = accountKey(email);
+  return Array.from(mockAccounts.values()).some(
+    (account) => accountKey(account.email) === normalizedEmail,
+  );
+}
+
 export function updateMockAccountUsername(sessionTicket: string, username: string) {
   const account = Array.from(mockAccounts.values()).find(
     (candidate) => candidate.sessionTicket === sessionTicket,
@@ -84,7 +95,10 @@ export function updateMockAccountUsername(sessionTicket: string, username: strin
   if (!account) return { success: false as const, error: "Session expired. Please sign in again." };
 
   if (accountKey(account.username) !== accountKey(username) && isMockUsernameTaken(username)) {
-    return { success: false as const, error: "That username is already in use. Please choose another." };
+    return {
+      success: false as const,
+      error: "That username is already in use. Please choose another.",
+    };
   }
 
   mockAccounts.delete(accountKey(account.username));
@@ -95,7 +109,7 @@ export function updateMockAccountUsername(sessionTicket: string, username: strin
 }
 
 export function registerMockAccount(email: string, password: string, username: string) {
-  if (isMockUsernameTaken(username)) return null;
+  if (isMockUsernameTaken(username) || isMockEmailTaken(email)) return null;
 
   const suffix = Date.now().toString(36) + "-" + Math.random().toString(36).slice(2, 7);
   const account: MockAccount = {
@@ -112,8 +126,47 @@ export function registerMockAccount(email: string, password: string, username: s
   return account;
 }
 
+export function updateMockAccountEmail(sessionTicket: string, email: string) {
+  const account = getMockAccountBySessionTicket(sessionTicket);
+  if (!account) return { success: false as const, error: "Session expired. Please sign in again." };
+  const conflict = Array.from(mockAccounts.values()).some(
+    (candidate) =>
+      candidate.sessionTicket !== sessionTicket &&
+      accountKey(candidate.email) === accountKey(email),
+  );
+  if (conflict)
+    return {
+      success: false as const,
+      error: "That email is already in use. Please choose another.",
+    };
+  account.email = email;
+  return { success: true as const };
+}
+
+export function updateMockAccountPassword(sessionTicket: string, password: string) {
+  const account = getMockAccountBySessionTicket(sessionTicket);
+  if (!account) return { success: false as const, error: "Session expired. Please sign in again." };
+  account.password = password;
+  return { success: true as const };
+}
+
 export function getMockAccountBySessionTicket(sessionTicket: string) {
-  return Array.from(mockAccounts.values()).find(
-    (account) => account.sessionTicket === sessionTicket,
-  ) ?? null;
+  return (
+    Array.from(mockAccounts.values()).find((account) => account.sessionTicket === sessionTicket) ??
+    null
+  );
+}
+
+export function getMockAccountByPlayFabId(playFabId: string) {
+  return (
+    Array.from(mockAccounts.values()).find((account) => account.playFabId === playFabId) ?? null
+  );
+}
+
+export function markMockGoogleProfileSetup(sessionTicket: string) {
+  const account = getMockAccountBySessionTicket(sessionTicket);
+  if (!account || account.role !== "player") return false;
+  account.googleProfileSetup = true;
+  account.googleProfileSetupPending = false;
+  return true;
 }

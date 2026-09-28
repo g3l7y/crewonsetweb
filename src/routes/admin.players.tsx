@@ -20,11 +20,14 @@ import {
   players as initialPlayers,
   getPlayerAccountInfo,
   getPlayerActivity,
-  getPlayerProductionStats,
   getPlayerTransactions,
   topUpsStore,
 } from "@/lib/admin-demo-data";
 import { notificationsStore, uid } from "@/lib/demo/store";
+import { isMockMode } from "@/lib/playfab/config";
+import { DEFAULT_PROFILE_PICTURE_URL } from "@/lib/profile-avatar";
+import { useAdminPlayer, useAdminPlayers } from "@/lib/playfab/hooks";
+import type { AdminPlayerDetails, PlayerProfile } from "@/lib/playfab/types";
 
 export const Route = createFileRoute("/admin/players")({
   head: () => ({
@@ -41,10 +44,10 @@ export const Route = createFileRoute("/admin/players")({
   component: PlayersPage,
 });
 
-type PlayerStatus = "Active" | "Inactive" | "Banned";
+type PlayerStatus = "Active" | "Banned";
 
 type Player = {
-  id: number;
+  id: string;
   username: string;
   email: string;
   status: PlayerStatus;
@@ -52,6 +55,7 @@ type Player = {
   score: number;
   role?: string;
   bannedUntil?: string | null;
+  avatarUrl: string;
 };
 
 type SortKey = "playtime" | "score" | "joined" | "gamesPlayed";
@@ -79,13 +83,11 @@ const filterOptions = ["Joined Date", "Level", "Production Score", "Playtime"];
 
 const statusStyles: Record<PlayerStatus, string> = {
   Active: "admin-player-status-active text-[#54c9b8]",
-  Inactive: "admin-player-status-inactive text-white/40",
   Banned: "admin-player-status-banned text-[#ff6248]",
 };
 
 const statusDotStyles: Record<PlayerStatus, string> = {
   Active: "bg-[#39b7a5]",
-  Inactive: "admin-player-status-dot-inactive bg-white/25",
   Banned: "bg-[#ff6248]",
 };
 
@@ -127,14 +129,38 @@ function getPlaytime(score: number) {
   return `${hours}h ${minutes}m`;
 }
 
-function getInitials(username: string) {
-  const clean = username.replace(/[^a-zA-Z0-9]/g, "");
-
-  if (!clean) {
-    return "PL";
+function formatJoinedDate(value: string) {
+  if (!value) {
+    return "—";
   }
 
-  return clean.slice(0, 2).toUpperCase();
+  const parsed = new Date(value);
+
+  if (Number.isNaN(parsed.getTime())) {
+    return value;
+  }
+
+  return new Intl.DateTimeFormat("en-US", {
+    month: "short",
+    day: "2-digit",
+    year: "numeric",
+  }).format(parsed);
+}
+
+function mapPlayFabPlayer(player: PlayerProfile): Player {
+  const id = player.playFabId || player.id || player.username;
+  const username = player.username || player.displayName || `Player ${id}`;
+
+  return {
+    id,
+    username,
+    email: player.email || "—",
+    status: player.adminStatus === "Banned" ? "Banned" : "Active",
+    joined: formatJoinedDate(player.joinedAt),
+    score: 0,
+    role: player.primaryRole || player.role || "Player",
+    avatarUrl: player.avatarUrl || DEFAULT_PROFILE_PICTURE_URL,
+  };
 }
 
 /* =========================================================
@@ -175,6 +201,8 @@ function getPlayerDateValue(joined: string) {
    ========================================================= */
 
 function PlayersPage() {
+  const mockMode = isMockMode();
+  const realPlayersQuery = useAdminPlayers(!mockMode);
   /* =======================================================
      PLAYER DATA
      ======================================================= */
@@ -292,7 +320,7 @@ function PlayersPage() {
     });
   }
 
-  function handleRowClick(id: number) {
+  function handleRowClick(id: string) {
     if (isDragging.current) {
       return;
     }
@@ -300,20 +328,51 @@ function PlayersPage() {
     togglePlayerSelection(id);
   }
 
-  const [selectedPlayers, setSelectedPlayers] = useState<number[]>([]);
+  const [selectedPlayers, setSelectedPlayers] = useState<string[]>([]);
 
   const [selectedPlayer, setSelectedPlayer] = useState<Player | null>(null);
+  const realPlayerDetailQuery = useAdminPlayer(
+    !mockMode && selectedPlayer ? selectedPlayer.id : "",
+  );
   const [topUps] = topUpsStore.useStore();
   const selectedPlayerTransactions = useMemo(
     () => (selectedPlayer ? getPlayerTransactions(selectedPlayer.username) : []),
     [selectedPlayer, topUps],
   );
+  const livePlayerDetail =
+    realPlayerDetailQuery.data && "profile" in realPlayerDetailQuery.data
+      ? (realPlayerDetailQuery.data as AdminPlayerDetails)
+      : null;
+  const displayProfile = livePlayerDetail?.profile;
+  const displayScore =
+    livePlayerDetail?.career?.productionScore ?? (mockMode ? (selectedPlayer?.score ?? 0) : 0);
+  const displayGamesPlayed =
+    livePlayerDetail?.career?.gamesPlayed ??
+    (mockMode && selectedPlayer ? getGamesPlayed(selectedPlayer.score) : 0);
+  const displayPlaytime =
+    livePlayerDetail?.career?.playtime ??
+    (mockMode && selectedPlayer ? getPlaytime(selectedPlayer.score) : "0h 0m");
+  const displayLevel =
+    livePlayerDetail?.progression.level ??
+    (mockMode && selectedPlayer ? getLevel(selectedPlayer.score) : 1);
+  const displayActivity =
+    livePlayerDetail?.activity ??
+    (mockMode && selectedPlayer
+      ? getPlayerActivity(selectedPlayer.id, selectedPlayer.username)
+      : []);
+  const displayTransactions =
+    livePlayerDetail?.transactions ?? (mockMode ? selectedPlayerTransactions : []);
+  const displayAccount =
+    livePlayerDetail?.accountInfo ??
+    (mockMode && selectedPlayer ? getPlayerAccountInfo(selectedPlayer.id) : null);
 
   const [contactPlayer, setContactPlayer] = useState<Player | null>(null);
 
   const [contactSubject, setContactSubject] = useState("");
 
   const [contactMessage, setContactMessage] = useState("");
+  const [actionError, setActionError] = useState("");
+  const [isActionBusy, setIsActionBusy] = useState(false);
 
   /* =======================================================
      SORTING
@@ -341,12 +400,12 @@ function PlayersPage() {
     | {
         type: "delete" | "reset";
 
-        id: number;
+        id: string;
       }
     | {
         type: "mass-delete" | "mass-reset";
 
-        ids: number[];
+        ids: string[];
       }
     | null
   >(null);
@@ -356,16 +415,32 @@ function PlayersPage() {
      ========================================================= */
 
   useEffect(() => {
+    if (!mockMode) {
+      return;
+    }
+
     setPlayerList(
       initialPlayers.map(
         (player) =>
           ({
             ...player,
+            id: String(player.id),
+            status: player.status === "Banned" ? "Banned" : "Active",
+            avatarUrl: DEFAULT_PROFILE_PICTURE_URL,
           }) as Player,
       ),
     );
-  }, []);
+  }, [mockMode]);
 
+  useEffect(() => {
+    if (mockMode || !realPlayersQuery.data) {
+      return;
+    }
+
+    setPlayerList(realPlayersQuery.data.map((player) => mapPlayFabPlayer(player)));
+    setSelectedPlayers([]);
+    setSelectedPlayer(null);
+  }, [mockMode, realPlayersQuery.data]);
   /* =========================================================
      APPLY SEARCH + FILTERS
 
@@ -606,7 +681,11 @@ function PlayersPage() {
 
   const sortedPlayers = useMemo(() => {
     if (!sortKey) {
-      return filteredPlayers;
+      return [...filteredPlayers].sort((a, b) => {
+        const aTime = Date.parse(a.joined) || 0;
+        const bTime = Date.parse(b.joined) || 0;
+        return bTime - aTime;
+      });
     }
 
     return [...filteredPlayers].sort((a, b) => {
@@ -685,7 +764,7 @@ function PlayersPage() {
     sortedPlayers.length > 0 &&
     sortedPlayers.every((player) => selectedPlayers.includes(player.id));
 
-  function togglePlayerSelection(id: number) {
+  function togglePlayerSelection(id: string) {
     setSelectedPlayers((current) =>
       current.includes(id) ? current.filter((playerId) => playerId !== id) : [...current, id],
     );
@@ -715,55 +794,104 @@ function PlayersPage() {
      PLAYER ACTIONS
      ========================================================= */
 
-  function deletePlayer(id: number) {
-    setPlayerList((current) => current.filter((player) => player.id !== id));
+  async function runPlayerAction(
+    action: "status" | "reset" | "delete",
+    ids: string[],
+    options: { status?: PlayerStatus; bannedUntil?: string | null } = {},
+  ): Promise<boolean> {
+    const targetIds = new Set(ids.filter(Boolean));
+    if (targetIds.size === 0) return false;
 
-    setSelectedPlayers((current) => current.filter((playerId) => playerId !== id));
+    setActionError("");
+    setIsActionBusy(true);
 
-    if (selectedPlayer?.id === id) {
-      setSelectedPlayer(null);
+    try {
+      if (mockMode) {
+        setPlayerList((current) => {
+          if (action === "delete") return current.filter((player) => !targetIds.has(player.id));
+          return current.map((player) => {
+            if (!targetIds.has(player.id)) return player;
+            if (action === "reset")
+              return { ...player, score: 0, status: "Active", bannedUntil: null };
+            return {
+              ...player,
+              status: options.status ?? player.status,
+              bannedUntil: options.status === "Banned" ? (options.bannedUntil ?? null) : null,
+            };
+          });
+        });
+
+        if (action === "delete") {
+          setSelectedPlayers((current) => current.filter((id) => !targetIds.has(id)));
+          setSelectedPlayer((current) => (current && targetIds.has(current.id) ? null : current));
+        } else if (selectedPlayer && targetIds.has(selectedPlayer.id)) {
+          setSelectedPlayer((current) => {
+            if (!current) return current;
+            if (action === "reset")
+              return { ...current, score: 0, status: "Active", bannedUntil: null };
+            return {
+              ...current,
+              status: options.status ?? current.status,
+              bannedUntil: options.status === "Banned" ? (options.bannedUntil ?? null) : null,
+            };
+          });
+        }
+        return true;
+      }
+
+      const response = await fetch("/api/admin/players", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          action,
+          ids: Array.from(targetIds),
+          ...(options.status ? { status: options.status } : {}),
+          ...(options.bannedUntil ? { bannedUntil: options.bannedUntil } : {}),
+        }),
+      });
+      const payload = (await response.json().catch(() => null)) as {
+        success?: boolean;
+        error?: string;
+      } | null;
+      if (!response.ok || payload?.success === false) {
+        throw new Error(payload?.error || "The player action could not be completed.");
+      }
+
+      await realPlayersQuery.refetch();
+      if (action === "delete") {
+        setSelectedPlayers((current) => current.filter((id) => !targetIds.has(id)));
+        setSelectedPlayer((current) => (current && targetIds.has(current.id) ? null : current));
+      } else if (selectedPlayer && targetIds.has(selectedPlayer.id)) {
+        await realPlayerDetailQuery.refetch();
+      }
+      return true;
+    } catch (error) {
+      setActionError(
+        error instanceof Error ? error.message : "The player action could not be completed.",
+      );
+      return false;
+    } finally {
+      setIsActionBusy(false);
     }
   }
 
-  function resetPlayer(id: number) {
-    setPlayerList((current) =>
-      current.map((player) =>
-        player.id === id
-          ? {
-              ...player,
-              score: 0,
-              status: "Active",
-              bannedUntil: null,
-            }
-          : player,
-      ),
-    );
+  function deletePlayer(id: string) {
+    return runPlayerAction("delete", [id]);
   }
 
-  function deleteSelectedPlayers() {
-    setPlayerList((current) => current.filter((player) => !selectedPlayers.includes(player.id)));
-
-    setSelectedPlayers([]);
-
-    setSelectedPlayer(null);
+  function resetPlayer(id: string) {
+    return runPlayerAction("reset", [id]);
   }
 
-  function resetSelectedPlayers() {
-    setPlayerList((current) =>
-      current.map((player) =>
-        selectedPlayers.includes(player.id)
-          ? {
-              ...player,
-              score: 0,
-              status: "Active",
-              bannedUntil: null,
-            }
-          : player,
-      ),
-    );
+  function deleteSelectedPlayers(ids = selectedPlayers) {
+    return runPlayerAction("delete", ids);
   }
 
-  function submitContactPlayer(event: FormEvent<HTMLFormElement>) {
+  function resetSelectedPlayers(ids = selectedPlayers) {
+    return runPlayerAction("reset", ids);
+  }
+
+  async function submitContactPlayer(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
 
     if (!contactPlayer || !contactSubject.trim() || !contactMessage.trim()) {
@@ -772,25 +900,65 @@ function PlayersPage() {
 
     const player = contactPlayer;
 
-    notificationsStore.set([
-      {
-        id: uid("ntf"),
-        title: contactSubject.trim(),
-        body: contactMessage.trim(),
-        createdAt: new Date().toISOString(),
-        kind: "system",
-        channel: "mail",
-        read: false,
-        href: "/portal/inbox?tab=mail",
-        recipientUsername: player.username,
-        recipientEmail: player.email,
-        target: {
-          kind: "players",
-          playerIds: [String(player.id)],
+    const subject = contactSubject.trim();
+    const body = contactMessage.trim();
+    const createdAt = new Date().toISOString();
+    const href = "/portal/inbox?tab=mail&contact=admin";
+    if (mockMode) {
+      const id = uid("admin-mail");
+      const target = { kind: "players" as const, playerIds: [String(player.id)] };
+      notificationsStore.set([
+        {
+          id: id + "-notice",
+          title: "New message from Administrator",
+          body: "The admin team sent you a message: " + subject + ". Open your Inbox to read it.",
+          createdAt,
+          kind: "system",
+          channel: "notification",
+          read: false,
+          href,
+          recipientUsername: player.username,
+          recipientEmail: player.email,
+          target,
+          senderUsername: "ADMINISTRATOR",
+          adminMessage: true,
         },
-      },
-      ...notificationsStore.get(),
-    ]);
+        {
+          id,
+          title: subject,
+          body,
+          createdAt,
+          kind: "system",
+          channel: "mail",
+          read: false,
+          href,
+          recipientUsername: player.username,
+          recipientEmail: player.email,
+          target,
+          senderUsername: "ADMINISTRATOR",
+          adminMessage: true,
+        },
+        ...notificationsStore.get(),
+      ]);
+    } else {
+      try {
+        const response = await fetch("/api/admin/player-mail", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          credentials: "include",
+          body: JSON.stringify({
+            recipientPlayerId: String(player.id),
+            subject,
+            body,
+          }),
+        });
+        const result = (await response.json().catch(() => null)) as { error?: string } | null;
+        if (!response.ok) throw new Error(result?.error || "The message could not be sent.");
+      } catch (error) {
+        setActionError(error instanceof Error ? error.message : "The message could not be sent.");
+        return;
+      }
+    }
 
     setContactPlayer(null);
     setContactSubject("");
@@ -802,19 +970,12 @@ function PlayersPage() {
      ========================================================= */
 
   function applyBulkStatus() {
-    setPlayerList((current) =>
-      current.map((player) =>
-        selectedPlayers.includes(player.id)
-          ? {
-              ...player,
-              status: bulkStatus,
-              bannedUntil: bulkStatus === "Banned" ? bulkBanUntil : null,
-            }
-          : player,
-      ),
-    );
-
-    setShowBulkStatus(false);
+    void runPlayerAction("status", selectedPlayers, {
+      status: bulkStatus,
+      bannedUntil: bulkStatus === "Banned" ? bulkBanUntil : null,
+    }).then((success) => {
+      if (success) setShowBulkStatus(false);
+    });
   }
 
   /* =========================================================
@@ -851,26 +1012,22 @@ function PlayersPage() {
      ========================================================= */
 
   return (
-    <div className="admin-player-management flex h-full min-h-0 flex-col overflow-hidden bg-[#0d1217] text-white">
+    <div className="admin-page admin-player-management flex h-full min-h-0 flex-col overflow-hidden bg-[#0d1217] text-white">
       {/* =====================================================
           PAGE HEADER
           ===================================================== */}
 
-      <header className="shrink-0 border-b border-white/[.06] px-5 pb-6 pt-7">
-        <p className="text-xs font-black tracking-[.18em] text-[#ff6248]">COMMUNITY</p>
+      <header className="mb-8 shrink-0">
+        <h1 className="admin-heading !text-white">Player Management</h1>
 
-        <h1 className="admin-heading mt-2 !text-white">
-          Player Management
-        </h1>
-
-        <p className="mt-2 text-sm text-white/40">Search, review, and manage registered players.</p>
+        <p className="admin-kicker !text-white/45">Search, review, and manage registered players.</p>
       </header>
 
       {/* =====================================================
           SEARCH + FILTER BAR
           ===================================================== */}
 
-      <section className="shrink-0 px-4 py-4">
+      <section className="shrink-0 py-4">
         <div className="rounded-lg border border-white/[.07] bg-[#151c21] p-4">
           <div className="flex flex-col gap-3 xl:flex-row xl:items-center">
             {/* =================================================
@@ -1066,8 +1223,6 @@ function PlayersPage() {
 
                         <option>Active</option>
 
-                        <option>Inactive</option>
-
                         <option>Banned</option>
                       </select>
 
@@ -1212,9 +1367,9 @@ function PlayersPage() {
           PLAYER TABLE
           ===================================================== */}
 
-      <section className="min-h-0 flex-1 overflow-hidden px-4 pb-4">
+      <section className="min-h-0 flex-1 overflow-hidden pb-4">
         <div className="h-full overflow-hidden rounded-lg border border-white/[.07] bg-[#11171b]">
-          <div className="admin-player-table-scroll h-full overflow-auto">
+          <div className="admin-player-table-scroll h-full min-h-[20rem] overflow-auto">
             <table className="min-w-[1450px] w-full border-collapse">
               <thead className="sticky top-0 z-20">
                 <tr className="border-b border-white/[.06] bg-[#151c21]">
@@ -1306,8 +1461,8 @@ function PlayersPage() {
 
                       <td className="px-4 py-3">
                         <div className="flex items-center gap-3">
-                          <div className="grid size-8 shrink-0 place-items-center rounded-full border border-white/10 bg-[#222b31] text-[9px] font-black text-white/55">
-                            {getInitials(player.username)}
+                          <div className="size-8 shrink-0 overflow-hidden rounded-full border border-white/10 bg-[#222b31]">
+                            <img src={player.avatarUrl || DEFAULT_PROFILE_PICTURE_URL} alt={player.username + " avatar"} className="size-full object-cover" />
                           </div>
 
                           <div className="min-w-0">
@@ -1430,6 +1585,7 @@ function PlayersPage() {
           ===================================================== */}
 
       <section className="shrink-0 border-t border-white/[.07] bg-[#171f23] px-4 py-3">
+        {actionError && <p className="mb-2 text-xs font-bold text-[#ff6248]">{actionError}</p>}
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div className="flex items-center gap-3">
             <span className="text-xs font-bold text-white/50">
@@ -1462,20 +1618,22 @@ function PlayersPage() {
                 </button>
 
                 {showBulkStatus && (
-                  <div className="absolute bottom-11 right-0 z-50 w-52 rounded-lg border border-white/10 bg-[#151c21] p-3 shadow-2xl">
+                  <div className="absolute bottom-11 right-0 z-50 w-56 rounded-lg border border-white/10 bg-[#151c21] p-3 shadow-2xl">
                     <p className="mb-2 text-[9px] font-black uppercase tracking-wider text-white/30">
                       Set status
                     </p>
 
-                    {(["Active", "Inactive", "Banned"] as PlayerStatus[]).map((option) => (
+                    {(["Active", "Banned"] as PlayerStatus[]).map((option) => (
                       <button
                         key={option}
                         onClick={() => setBulkStatus(option)}
-                        className="flex w-full items-center gap-3 rounded-md px-3 py-2 text-left hover:bg-white/[.04]"
+                        className="flex w-full min-w-0 items-center gap-3 rounded-md px-3 py-2 text-left hover:bg-white/[.04]"
                       >
                         <span className={`size-2 rounded-full ${statusDotStyles[option]}`} />
 
-                        <span className={`text-xs font-bold ${statusStyles[option]}`}>
+                        <span
+                          className={`whitespace-nowrap text-xs font-bold ${statusStyles[option]}`}
+                        >
                           {option}
                         </span>
 
@@ -1516,6 +1674,7 @@ function PlayersPage() {
 
                     <button
                       onClick={applyBulkStatus}
+                      disabled={isActionBusy}
                       className="mt-2 w-full rounded-md bg-[#ff6248] py-2 text-[10px] font-black uppercase text-white"
                     >
                       Apply
@@ -1585,8 +1744,12 @@ function PlayersPage() {
             <div className="shrink-0 border-b border-white/[.06] bg-[#0d121b] px-8 py-7">
               <div className="flex items-center gap-5">
                 <div className="relative">
-                  <div className="grid size-[105px] place-items-center rounded-2xl border-2 border-[#f5c431] bg-[#202a3a] text-3xl font-black text-white/70">
-                    {getInitials(selectedPlayer.username)}
+                  <div className="size-[105px] overflow-hidden rounded-2xl border-2 border-[#f5c431] bg-[#202a3a]">
+                    <img
+                      src={displayProfile?.avatarUrl || selectedPlayer.avatarUrl || DEFAULT_PROFILE_PICTURE_URL}
+                      alt={selectedPlayer.username + " avatar"}
+                      className="size-full object-cover"
+                    />
                   </div>
 
                   <span
@@ -1608,14 +1771,13 @@ function PlayersPage() {
                   </div>
 
                   <p className="mt-2 text-xs font-black uppercase tracking-wide text-[#f5c431]">
-                    {selectedPlayer.role || "Player"}
+                    {displayProfile?.role || selectedPlayer.role || "Player"}
                   </p>
 
                   <div className="mt-3 flex gap-3 text-[10px] font-black uppercase text-white/25">
-                    <span>LEVEL {getLevel(selectedPlayer.score)}</span>
+                    <span>LEVEL {displayLevel}</span>
 
                     <span>•</span>
-
                   </div>
                 </div>
               </div>
@@ -1637,8 +1799,8 @@ function PlayersPage() {
 
                     <h3 className="mt-3 text-2xl font-black uppercase text-white">BIO</h3>
 
-                    <p className="mt-4 text-sm leading-7 text-white/40">
-                      This player has not added a biography yet.
+                    <p className="mt-4 whitespace-pre-wrap text-sm leading-7 text-white/40">
+                      {displayProfile?.bio?.trim() || "This player has not added a biography yet."}
                     </p>
                   </section>
 
@@ -1653,7 +1815,7 @@ function PlayersPage() {
                     <div className="mt-5 grid gap-4 sm:grid-cols-2">
                       <div className="rounded-xl border border-white/[.07] bg-[#1c2636] p-5">
                         <p className="text-3xl font-black text-white">
-                          {selectedPlayer.score.toLocaleString()}
+                          {displayScore.toLocaleString()}
                         </p>
 
                         <p className="mt-1 text-[9px] font-black uppercase tracking-wide text-white/30">
@@ -1662,9 +1824,7 @@ function PlayersPage() {
                       </div>
 
                       <div className="rounded-xl border border-white/[.07] bg-[#1c2636] p-5">
-                        <p className="text-3xl font-black text-white">
-                          {getGamesPlayed(selectedPlayer.score)}
-                        </p>
+                        <p className="text-3xl font-black text-white">{displayGamesPlayed}</p>
 
                         <p className="mt-1 text-[9px] font-black uppercase tracking-wide text-white/30">
                           Games Played
@@ -1677,9 +1837,7 @@ function PlayersPage() {
                         PLAYTIME
                       </p>
 
-                      <p className="mt-2 text-lg font-black text-white/75">
-                        {getPlaytime(selectedPlayer.score)}
-                      </p>
+                      <p className="mt-2 text-lg font-black text-white/75">{displayPlaytime}</p>
                     </div>
                   </section>
 
@@ -1746,24 +1904,22 @@ function PlayersPage() {
                     </h3>
 
                     <div className="mt-5 space-y-3">
-                      {getPlayerActivity(selectedPlayer.id, selectedPlayer.username).map(
-                        (entry) => (
-                          <div
-                            key={entry.id}
-                            className="rounded-xl border border-white/[.07] bg-[#1c2636] p-4"
-                          >
-                            <div className="flex flex-wrap items-center justify-between gap-2">
-                              <p className="text-xs font-black uppercase text-white/75">
-                                {entry.label}
-                              </p>
+                      {displayActivity.map((entry) => (
+                        <div
+                          key={entry.id}
+                          className="rounded-xl border border-white/[.07] bg-[#1c2636] p-4"
+                        >
+                          <div className="flex flex-wrap items-center justify-between gap-2">
+                            <p className="text-xs font-black uppercase text-white/75">
+                              {entry.label}
+                            </p>
 
-                              <p className="text-[9px] text-white/25">{entry.timestamp}</p>
-                            </div>
-
-                            <p className="mt-1.5 text-xs text-white/45">{entry.detail}</p>
+                            <p className="text-[9px] text-white/25">{entry.timestamp}</p>
                           </div>
-                        ),
-                      )}
+
+                          <p className="mt-1.5 text-xs text-white/45">{entry.detail}</p>
+                        </div>
+                      ))}
                     </div>
                   </section>
 
@@ -1778,7 +1934,7 @@ function PlayersPage() {
                     </h3>
 
                     <div className="mt-5 space-y-3">
-                      {selectedPlayerTransactions.map((tx) => (
+                      {displayTransactions.map((tx) => (
                         <div
                           key={tx.id}
                           className="rounded-xl border border-white/[.07] bg-[#1c2636] p-4"
@@ -1822,10 +1978,15 @@ function PlayersPage() {
                   <div className="admin-player-profile-info-card mt-6 overflow-hidden rounded-xl border border-white/[.07]">
                     {[
                       ["Name", selectedPlayer.username],
-                      ["Email", selectedPlayer.email],
-                      ["Joined", selectedPlayer.joined],
-                      ["Current Role", selectedPlayer.role || "Player"],
-                      ["Level", `Level ${getLevel(selectedPlayer.score)}`],
+                      ["Email", displayProfile?.email || selectedPlayer.email],
+                      [
+                        "Joined",
+                        displayProfile?.joinedAt
+                          ? formatJoinedDate(displayProfile.joinedAt)
+                          : selectedPlayer.joined,
+                      ],
+                      ["Current Role", displayProfile?.role || selectedPlayer.role || "Player"],
+                      ["Level", `Level ${displayLevel}`],
                     ].map(([label, value], index, rows) => (
                       <div
                         key={label}
@@ -1867,67 +2028,25 @@ function PlayersPage() {
                   </div>
 
                   <div className="admin-player-profile-info-card mt-6 overflow-hidden rounded-xl border border-white/[.07]">
-                    {(() => {
-                      const account = getPlayerAccountInfo(selectedPlayer.id);
-
-                      const rows = [
-                        ["Platform", account.platform],
-                        ["Device", account.device],
-                        ["Login Method", account.loginMethod],
-                        ["Two-Factor Auth", account.twoFactor],
-                        ["Last Login", account.lastLogin],
-                      ];
-
-                      return rows.map(([label, value], index) => (
+                    {displayAccount ? (
+                      [
+                        ["Platform", displayAccount.platform],
+                        ["Device", displayAccount.device],
+                        ["Login Method", displayAccount.loginMethod],
+                        ["Two-Factor Auth", displayAccount.twoFactor],
+                        ["Last Login", displayAccount.lastLogin],
+                      ].map(([label, value], index, rows) => (
                         <div
                           key={label}
-                          className={`p-4 ${
-                            index < rows.length - 1 ? "border-b border-white/[.07]" : ""
-                          }`}
+                          className={`p-4 ${index < rows.length - 1 ? "border-b border-white/[.07]" : ""}`}
                         >
                           <p className="text-[8px] font-black uppercase text-white/25">{label}</p>
-
                           <p className="mt-2 text-xs font-bold text-white/60">{value}</p>
                         </div>
-                      ));
-                    })()}
-                  </div>
-
-                  {/* PRODUCTION STATISTICS */}
-
-                  <div className="admin-player-profile-section-heading mt-8 flex items-center gap-3">
-                    <span className="h-6 w-1 rounded-full bg-[#ff6248]" />
-
-                    <h3 className="text-[9px] font-black uppercase tracking-[.18em] text-[#ff6248]">
-                      Production Statistics
-                    </h3>
-                  </div>
-
-                  <div className="admin-player-profile-info-card mt-6 overflow-hidden rounded-xl border border-white/[.07]">
-                    {(() => {
-                      const stats = getPlayerProductionStats(selectedPlayer.score);
-
-                      const rows = [
-                        ["Productions Completed", stats.productionsCompleted.toLocaleString()],
-                        ["Average Crew Rating", `${stats.averageRating.toFixed(1)} / 5`],
-                        ["On-Time Wrap Rate", `${stats.onTimeWrapRate}%`],
-                        ["Favorite Role", stats.favoriteRole],
-                        ["Best Set", stats.bestSet],
-                      ];
-
-                      return rows.map(([label, value], index) => (
-                        <div
-                          key={label}
-                          className={`p-4 ${
-                            index < rows.length - 1 ? "border-b border-white/[.07]" : ""
-                          }`}
-                        >
-                          <p className="text-[8px] font-black uppercase text-white/25">{label}</p>
-
-                          <p className="mt-2 text-xs font-bold text-white/60">{value}</p>
-                        </div>
-                      ));
-                    })()}
+                      ))
+                    ) : (
+                      <p className="p-4 text-xs text-white/40">Account information is loading.</p>
+                    )}
                   </div>
                 </aside>
               </div>
@@ -1962,9 +2081,7 @@ function PlayersPage() {
                   Contact Player
                 </p>
 
-                <h3 className="mt-2 text-xl font-black uppercase text-white">
-                  Send a message
-                </h3>
+                <h3 className="mt-2 text-xl font-black uppercase text-white">Send a message</h3>
 
                 <p className="mt-2 text-sm text-white/50">
                   Send a direct Mail message to {contactPlayer.username}.
@@ -1989,7 +2106,6 @@ function PlayersPage() {
 
               <label className="block text-[10px] font-black uppercase tracking-wider text-white/50">
                 Subject
-
                 <input
                   name="subject"
                   value={contactSubject}
@@ -2003,7 +2119,6 @@ function PlayersPage() {
 
               <label className="block text-[10px] font-black uppercase tracking-wider text-white/50">
                 Message
-
                 <textarea
                   name="message"
                   value={contactMessage}
@@ -2066,13 +2181,13 @@ function PlayersPage() {
                 "This permanently removes the player from the roster."}
 
               {confirmAction.type === "reset" &&
-                "This resets the player's production score and restores their status to Active."}
+                "This permanently clears the player's progression, statistics, inventory, currencies, production history, achievements, and C-Coin payment records."}
 
               {confirmAction.type === "mass-delete" &&
                 "This permanently removes all selected players from the roster."}
 
               {confirmAction.type === "mass-reset" &&
-                "This resets the production score and status for all selected players."}
+                "This permanently clears all stored progression, statistics, inventory, currencies, history, achievements, and C-Coin payment records for the selected players."}
             </p>
 
             <div className="mt-6 flex justify-end gap-2">
@@ -2084,24 +2199,20 @@ function PlayersPage() {
               </button>
 
               <button
+                disabled={isActionBusy}
                 onClick={() => {
-                  if (confirmAction.type === "delete") {
-                    deletePlayer(confirmAction.id);
-                  }
-
-                  if (confirmAction.type === "reset") {
-                    resetPlayer(confirmAction.id);
-                  }
-
-                  if (confirmAction.type === "mass-delete") {
-                    deleteSelectedPlayers();
-                  }
-
-                  if (confirmAction.type === "mass-reset") {
-                    resetSelectedPlayers();
-                  }
-
-                  setConfirmAction(null);
+                  const action = confirmAction;
+                  void (async () => {
+                    const success =
+                      action.type === "delete"
+                        ? await deletePlayer(action.id)
+                        : action.type === "reset"
+                          ? await resetPlayer(action.id)
+                          : action.type === "mass-delete"
+                            ? await deleteSelectedPlayers(action.ids)
+                            : await resetSelectedPlayers(action.ids);
+                    if (success) setConfirmAction(null);
+                  })();
                 }}
                 className={`rounded-md px-4 py-2 text-xs font-black uppercase ${
                   confirmAction.type === "delete" || confirmAction.type === "mass-delete"

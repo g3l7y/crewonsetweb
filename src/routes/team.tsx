@@ -46,7 +46,7 @@ const team = [
   {
     number: "01",
     name: "Princess Angela Cartel",
-    role: "Technical Writer",
+    role: "Technical Writer, Web Developer",
     icon: Coffee,
     image: "/assets/team-princess.png",
     imagePosition: "member-one",
@@ -57,7 +57,7 @@ const team = [
   {
     number: "02",
     name: "Mc Kelvin Bocateja",
-    role: "Programmer",
+    role: "Lead Programmer",
     icon: Code2,
     image: "/assets/team-kelvin.png",
     imagePosition: "member-two",
@@ -348,7 +348,7 @@ function TeamPage() {
                 onClick={previousMember}
                 aria-label="Previous team member"
               >
-                <ArrowRight />
+                <ArrowRight className="crew-arrow-icon-left" />
               </button>
 
               {/* NEXT */}
@@ -462,7 +462,7 @@ function TeamPage() {
                       onClick={previousMember}
                       aria-label="Previous member"
                     >
-                      <ArrowRight />
+                      <ArrowRight className="crew-arrow-icon-left" />
                     </button>
 
                     <button
@@ -678,16 +678,6 @@ function TeamPage() {
 
                     </div>
                   ))}
-
-                  <div className="tool-card tool-more">
-
-                    <strong>+</strong>
-
-                    <span>
-                      MORE
-                    </span>
-
-                  </div>
 
                 </div>
 

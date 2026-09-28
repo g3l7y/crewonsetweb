@@ -16,6 +16,7 @@ import { useEffect, useMemo, useState } from "react";
 import type { MouseEvent, ReactNode } from "react";
 import {
   Ban,
+  Award,
   Check,
   Copy,
   ExternalLink,
@@ -29,19 +30,31 @@ import {
   Users,
   UserX,
   Twitter,
+  Youtube,
   X,
 } from "lucide-react";
+import type { Achievement } from "@/lib/playfab/types";
 import {
+  friendRequestsStore,
   friendRosterStore,
   getVisiblePlayerStatus,
 } from "@/lib/demo/friends";
+import { notificationsStore, uid } from "@/lib/demo/store";
 import { getProfileArtwork } from "@/lib/demo/profile-art";
+import {
+  formatSocialUsername,
+  getSocialProfileUrl,
+  type SocialPlatform,
+} from "@/lib/profile-socials";
 import { isMockMode } from "@/lib/playfab/config";
 import {
   useAddFriend,
+  useFriendRequests,
   useFriends,
   usePlayerProfile,
+  useNotifications,
   useRemoveFriend,
+  useRespondToFriendRequest,
   useSearchPlayers,
   type PlayerSearchResult,
 } from "@/lib/playfab/hooks";
@@ -51,6 +64,7 @@ type Socials = {
   facebook?: string;
   twitter?: string;
   linkedin?: string;
+  youtube?: string;
 };
 
 type CareerOverview = {
@@ -71,9 +85,13 @@ type Friend = {
   joinedDate: string;
   socials: Socials;
   career: CareerOverview;
+  profileVisible?: boolean;
+  showCrewActivity?: boolean;
+  achievements?: Achievement[];
 };
 
 type FriendRequest = {
+  id: string;
   name: string;
   level: number;
   role: string;
@@ -81,6 +99,7 @@ type FriendRequest = {
 };
 
 type SentRequest = {
+  id: string;
   name: string;
   level: number;
   role: string;
@@ -90,17 +109,9 @@ type SentRequest = {
 
 type Player = Friend;
 
-type RelationshipState =
-  | "available"
-  | "friend"
-  | "pending"
-  | "incoming"
-  | "blocked";
+type RelationshipState = "available" | "friend" | "pending" | "incoming" | "blocked";
 
-function samePlayer(
-  left: Pick<Player, "crewId" | "name">,
-  right: Pick<Player, "crewId" | "name">,
-) {
+function samePlayer(left: Pick<Player, "crewId" | "name">, right: Pick<Player, "crewId" | "name">) {
   if (left.crewId && right.crewId && left.crewId === right.crewId) {
     return true;
   }
@@ -134,7 +145,7 @@ const initialFriends: Friend[] = [
     role: "Sound Mixer",
     online: true,
     crewId: "COS-1942-BM",
-    profileImage: "/assets/team-kelvin.png",
+    profileImage: getProfileArtwork("DIRECTOR_X"),
     bio: "Sound enthusiast focused on clean production audio and creating immersive soundscapes for every project.",
     joinedDate: "March 14, 2024",
     socials: {
@@ -145,11 +156,7 @@ const initialFriends: Friend[] = [
     career: {
       productionsCompleted: 87,
       yearsExperience: 6,
-      specialties: [
-        "Production Sound",
-        "Boom Operation",
-        "Location Recording",
-      ],
+      specialties: ["Production Sound", "Boom Operation", "Location Recording"],
     },
   },
   {
@@ -158,7 +165,7 @@ const initialFriends: Friend[] = [
     role: "Camera Operator",
     online: true,
     crewId: "COS-7381-DD",
-    profileImage: "/assets/team-rae.png",
+    profileImage: getProfileArtwork("LIGHT_MASTER"),
     bio: "Camera operator who loves dynamic movement, practical lighting, and finding the perfect shot.",
     joinedDate: "July 22, 2024",
     socials: {
@@ -169,11 +176,7 @@ const initialFriends: Friend[] = [
     career: {
       productionsCompleted: 62,
       yearsExperience: 4,
-      specialties: [
-        "Camera Operation",
-        "Gimbal",
-        "Steadicam",
-      ],
+      specialties: ["Camera Operation", "Gimbal", "Steadicam"],
     },
   },
   {
@@ -182,7 +185,7 @@ const initialFriends: Friend[] = [
     role: "Lighting Artist",
     online: false,
     crewId: "COS-4920-LL",
-    profileImage: "/assets/team-princess.png",
+    profileImage: getProfileArtwork("EDIT_KING"),
     bio: "Lighting artist creating cinematic atmosphere through color, contrast, and carefully controlled light.",
     joinedDate: "November 3, 2023",
     socials: {
@@ -192,11 +195,7 @@ const initialFriends: Friend[] = [
     career: {
       productionsCompleted: 74,
       yearsExperience: 5,
-      specialties: [
-        "Lighting Design",
-        "Color",
-        "Practical Lighting",
-      ],
+      specialties: ["Lighting Design", "Color", "Practical Lighting"],
     },
   },
   {
@@ -205,7 +204,7 @@ const initialFriends: Friend[] = [
     role: "Prop Master",
     online: false,
     crewId: "COS-6157-PM",
-    profileImage: "/assets/team-joseph.png",
+    profileImage: getProfileArtwork("SCENE_SETTER"),
     bio: "Prop master specializing in detailed environments, practical props, and believable production worlds.",
     joinedDate: "January 9, 2024",
     socials: {
@@ -215,51 +214,8 @@ const initialFriends: Friend[] = [
     career: {
       productionsCompleted: 51,
       yearsExperience: 7,
-      specialties: [
-        "Props",
-        "Set Dressing",
-        "Production Design",
-      ],
+      specialties: ["Props", "Set Dressing", "Production Design"],
     },
-  },
-];
-
-const initialRequests: FriendRequest[] = [
-  {
-    name: "FRAMEHUNTER",
-    level: 27,
-    role: "Director",
-    crewId: "COS-3812-FH",
-  },
-  {
-    name: "CUTMASTER",
-    level: 22,
-    role: "Editor",
-    crewId: "COS-7291-CM",
-  },
-];
-
-const initialSentRequests: SentRequest[] = [
-  {
-    name: "GAFFER_GEM",
-    level: 24,
-    role: "Gaffer",
-    crewId: "COS-8873-GG",
-    sentDate: "August 20, 2026",
-  },
-  {
-    name: "SLATEQUEEN",
-    level: 19,
-    role: "Script Supervisor",
-    crewId: "COS-2295-SQ",
-    sentDate: "August 17, 2026",
-  },
-  {
-    name: "TRACKSHOT",
-    level: 45,
-    role: "Dolly Grip",
-    crewId: "COS-6604-TS",
-    sentDate: "August 9, 2026",
   },
 ];
 
@@ -270,7 +226,7 @@ const searchablePlayers: Player[] = [
     role: "Director",
     online: true,
     crewId: "COS-3812-FH",
-    profileImage: "/assets/director.png",
+    profileImage: getProfileArtwork("FRAMEHUNTER"),
     bio: "Director focused on character-driven stories and strong visual composition.",
     joinedDate: "February 18, 2025",
     socials: {
@@ -279,11 +235,7 @@ const searchablePlayers: Player[] = [
     career: {
       productionsCompleted: 23,
       yearsExperience: 3,
-      specialties: [
-        "Direction",
-        "Storytelling",
-        "Visual Development",
-      ],
+      specialties: ["Direction", "Storytelling", "Visual Development"],
     },
   },
   {
@@ -301,11 +253,7 @@ const searchablePlayers: Player[] = [
     career: {
       productionsCompleted: 18,
       yearsExperience: 2,
-      specialties: [
-        "Editing",
-        "Color Grading",
-        "Post Production",
-      ],
+      specialties: ["Editing", "Color Grading", "Post Production"],
     },
   },
   {
@@ -323,11 +271,7 @@ const searchablePlayers: Player[] = [
     career: {
       productionsCompleted: 103,
       yearsExperience: 8,
-      specialties: [
-        "Cinematography",
-        "Camera",
-        "Lighting",
-      ],
+      specialties: ["Cinematography", "Camera", "Lighting"],
     },
   },
   {
@@ -344,11 +288,7 @@ const searchablePlayers: Player[] = [
     career: {
       productionsCompleted: 69,
       yearsExperience: 5,
-      specialties: [
-        "Boom Operation",
-        "Production Sound",
-        "Location Audio",
-      ],
+      specialties: ["Boom Operation", "Production Sound", "Location Audio"],
     },
   },
   {
@@ -365,11 +305,7 @@ const searchablePlayers: Player[] = [
     career: {
       productionsCompleted: 34,
       yearsExperience: 4,
-      specialties: [
-        "Storyboarding",
-        "Concept Art",
-        "Pre-production",
-      ],
+      specialties: ["Storyboarding", "Concept Art", "Pre-production"],
     },
   },
   {
@@ -387,11 +323,7 @@ const searchablePlayers: Player[] = [
     career: {
       productionsCompleted: 58,
       yearsExperience: 6,
-      specialties: [
-        "1st AC",
-        "Focus Pulling",
-        "Camera Department",
-      ],
+      specialties: ["1st AC", "Focus Pulling", "Camera Department"],
     },
   },
 ];
@@ -424,6 +356,7 @@ function FriendsPage() {
 
   const mockMode = isMockMode();
   const [demoFriends, setDemoFriends] = friendRosterStore.useStore();
+  const [storedFriendRequests, setStoredFriendRequests] = friendRequestsStore.useStore();
   const [search, setSearch] = useState("");
   const [addSearch, setAddSearch] = useState("");
   const friendsQuery = useFriends();
@@ -431,25 +364,29 @@ function FriendsPage() {
   const globalPlayersQuery = useSearchPlayers(search, !mockMode);
   const addPlayersQuery = useSearchPlayers(addSearch, !mockMode);
   const addFriendMutation = useAddFriend();
+  const friendRequestsQuery = useFriendRequests();
+  const respondToFriendRequestMutation = useRespondToFriendRequest();
   const removeFriendMutation = useRemoveFriend();
-  const realFriends = useMemo<Friend[]>(() =>
-    (friendsQuery.data ?? []).map((friend) => ({
-      name: friend.username || friend.displayName,
-      level: friend.level ?? 1,
-      role: String(friend.role ?? "Crew Member"),
-      online: friend.online ?? false,
-      showStatus: friend.showStatus,
-      crewId: friend.playFabId,
-      profileImage: friend.avatarUrl,
-      bio: "Crew profile synced from PlayFab.",
-      joinedDate: "—",
-      socials: {},
-      career: {
-        productionsCompleted: 0,
-        yearsExperience: 0,
-        specialties: [String(friend.role ?? "Crew Member")],
-      },
-    })),
+  const realNotificationsQuery = useNotifications();
+  const realFriends = useMemo<Friend[]>(
+    () =>
+      (friendsQuery.data ?? []).map((friend) => ({
+        name: friend.username || friend.displayName,
+        level: friend.level ?? 1,
+        role: String(friend.role ?? "Crew Member"),
+        online: friend.online ?? false,
+        showStatus: friend.showStatus,
+        crewId: friend.playFabId,
+        profileImage: friend.avatarUrl,
+        bio: "Crew profile synced from PlayFab.",
+        joinedDate: "—",
+        socials: {},
+        career: {
+          productionsCompleted: 0,
+          yearsExperience: 0,
+          specialties: [String(friend.role ?? "Crew Member")],
+        },
+      })),
     [friendsQuery.data],
   );
   const [realFriendState, setRealFriendState] = useState<Friend[]>([]);
@@ -467,32 +404,114 @@ function FriendsPage() {
     }
   };
 
-  const [requests, setRequests] =
-    useState<FriendRequest[]>(mockMode ? initialRequests : []);
+  const [blocked, setBlocked] = useState<Player[]>([]);
 
-  const [sentRequests, setSentRequests] =
-    useState<SentRequest[]>(mockMode ? initialSentRequests : []);
-
-  const [blocked, setBlocked] =
-    useState<Player[]>([]);
-
-  const [blockedFriends, setBlockedFriends] =
-    useState<Record<string, Friend>>({});
+  const [blockedFriends, setBlockedFriends] = useState<Record<string, Friend>>({});
 
   const currentUsername =
-    profileQuery.data?.username || profileQuery.data?.displayName || (mockMode ? "CAMERA_PRO" : "PLAYER");
+    profileQuery.data?.username ||
+    profileQuery.data?.displayName ||
+    (mockMode ? "CAMERA_PRO" : "PLAYER");
+  const currentPlayerId =
+    profileQuery.data?.playFabId || (mockMode ? "MOCK-PLAYER-001" : "");
+  const currentRequestKey = mockMode
+    ? "mock:" + currentUsername.trim().toLowerCase()
+    : currentPlayerId;
+  const requests = useMemo<FriendRequest[]>(() => {
+    const shared = mockMode
+      ? storedFriendRequests
+          .filter(
+            (request) =>
+              request.status === "pending" && request.recipientPlayFabId === currentRequestKey,
+          )
+          .map((request) => ({
+            id: request.id,
+            name: request.senderUsername,
+            level: request.senderLevel,
+            role: request.senderRole,
+            crewId: request.senderPlayFabId,
+          }))
+      : (friendRequestsQuery.data?.incoming ?? []).map((request) => ({
+          id: request.id,
+          name: request.senderUsername,
+          level: request.senderLevel,
+          role: request.senderRole,
+          crewId: request.senderPlayFabId,
+        }));
+    return shared;
+  }, [currentRequestKey, friendRequestsQuery.data?.incoming, mockMode, storedFriendRequests]);
+  const sentRequests = useMemo<SentRequest[]>(() => {
+    const shared = mockMode
+      ? storedFriendRequests
+          .filter(
+            (request) =>
+              request.status === "pending" && request.senderPlayFabId === currentRequestKey,
+          )
+          .map((request) => ({
+            id: request.id,
+            name: request.recipientUsername,
+            level: request.recipientLevel,
+            role: request.recipientRole,
+            crewId: request.recipientPlayFabId,
+            sentDate: new Date(request.createdAt).toLocaleDateString(),
+          }))
+      : (friendRequestsQuery.data?.outgoing ?? []).map((request) => ({
+          id: request.id,
+          name: request.recipientUsername,
+          level: request.recipientLevel,
+          role: request.recipientRole,
+          crewId: request.recipientPlayFabId,
+          sentDate: new Date(request.createdAt).toLocaleDateString(),
+        }));
+    return shared;
+  }, [currentRequestKey, friendRequestsQuery.data?.outgoing, mockMode, storedFriendRequests]);
+
+  function recordFriendActivity(
+    title: string,
+    body: string,
+    recipientUsername = currentUsername,
+    recipientPlayerId: string | null | undefined = profileQuery.data?.playFabId,
+  ) {
+    if (mockMode) {
+      notificationsStore.set([
+        {
+          id: uid("friend-activity"),
+          title,
+          body,
+          createdAt: new Date().toISOString(),
+          kind: "friend",
+          channel: "notification",
+          read: false,
+          href: "/portal/friends",
+          recipientUsername,
+          ...(recipientPlayerId
+            ? { target: { kind: "players" as const, playerIds: [recipientPlayerId] } }
+            : {}),
+        },
+        ...notificationsStore.get(),
+      ]);
+      return;
+    }
+    if (recipientUsername.toLowerCase() !== currentUsername.toLowerCase()) return;
+    void fetch("/api/notifications", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      credentials: "include",
+      body: JSON.stringify({ kind: "friend", title, body }),
+    }).then(() => realNotificationsQuery.refetch());
+  }
 
   const [copied, setCopied] = useState(false);
   const [message, setMessage] = useState("");
 
-  const [openMenu, setOpenMenu] =
-    useState<string | null>(null);
+  const [openMenu, setOpenMenu] = useState<string | null>(null);
 
-  const [removeTarget, setRemoveTarget] =
-    useState<Friend | null>(null);
+  const [removeTarget, setRemoveTarget] = useState<Friend | null>(null);
 
-  const [selectedProfile, setSelectedProfile] =
-    useState<{ player: Friend; canViewStatus: boolean } | null>(null);
+  const [selectedProfile, setSelectedProfile] = useState<{
+    player: Friend;
+    canViewStatus: boolean;
+  } | null>(null);
 
   const allPlayers = useMemo<Player[]>(() => {
     const candidates = mockMode
@@ -521,14 +540,7 @@ function FriendsPage() {
     });
 
     return Array.from(uniquePlayers.values());
-  }, [
-    blocked,
-    currentUsername,
-    friends,
-    mockMode,
-    requests,
-    sentRequests,
-  ]);
+  }, [blocked, currentUsername, friends, mockMode, requests, sentRequests]);
 
   const globalSearchResults = useMemo(() => {
     const query = search.trim().toLowerCase();
@@ -543,8 +555,7 @@ function FriendsPage() {
 
     return allPlayers.filter(
       (player) =>
-        player.name.toLowerCase().includes(query) ||
-        player.role.toLowerCase().includes(query)
+        player.name.toLowerCase().includes(query) || player.role.toLowerCase().includes(query),
     );
   }, [allPlayers, globalPlayersQuery.data, mockMode, search]);
 
@@ -557,8 +568,7 @@ function FriendsPage() {
 
     return friends.filter(
       (friend) =>
-        friend.name.toLowerCase().includes(query) ||
-        friend.role.toLowerCase().includes(query)
+        friend.name.toLowerCase().includes(query) || friend.role.toLowerCase().includes(query),
     );
   }, [friends, search]);
 
@@ -591,8 +601,7 @@ function FriendsPage() {
 
       return (
         !connectedPlayerNames.has(playerKey) &&
-        (player.name.toLowerCase().includes(query) ||
-          player.role.toLowerCase().includes(query))
+        (player.name.toLowerCase().includes(query) || player.role.toLowerCase().includes(query))
       );
     });
   }, [
@@ -668,16 +677,12 @@ function FriendsPage() {
     const relationship = getRelationship(player);
 
     if (relationship === "friend") {
-      setMessage(
-        `${player.name} is already your friend.`
-      );
+      setMessage(`${player.name} is already your friend.`);
       return;
     }
 
     if (relationship === "blocked") {
-      setMessage(
-        `Unblock ${player.name} before adding them.`
-      );
+      setMessage(`Unblock ${player.name} before adding them.`);
       return;
     }
 
@@ -692,40 +697,75 @@ function FriendsPage() {
     }
 
     if (!mockMode) {
-      void addFriendMutation.mutateAsync(player.crewId).then(() => {
-        setFriends((current) => [...current, player]);
-        setMessage(player.name + " has been added to your friends.");
-        setAddSearch("");
-      }).catch(() => {
-        setMessage("PlayFab could not add this friend.");
-      });
+      void addFriendMutation
+        .mutateAsync({
+          friendPlayFabId: player.crewId,
+          username: player.name,
+          level: player.level,
+          role: player.role,
+        })
+        .then(() => {
+          void realNotificationsQuery.refetch();
+          setMessage("Friend request sent to " + player.name + ".");
+          setAddSearch("");
+        })
+        .catch((error: Error) => {
+          setMessage(error.message || "Could not send a friend request to " + player.name + ".");
+        });
       return;
     }
 
-    setSentRequests((current) => [
-      ...current,
+    const requestId = uid("friend-request");
+    const senderKey = "mock:" + currentUsername.trim().toLowerCase();
+    const recipientKey = "mock:" + player.name.trim().toLowerCase();
+    setStoredFriendRequests((current) => [
       {
-        name: player.name,
-        level: player.level,
-        role: player.role,
-        crewId: player.crewId,
-        sentDate: "Just now",
+        id: requestId,
+        senderPlayFabId: senderKey,
+        senderUsername: currentUsername,
+        senderLevel: 1,
+        senderRole: String(profileQuery.data?.primaryRole ?? "Crew Member"),
+        recipientPlayFabId: recipientKey,
+        recipientUsername: player.name,
+        recipientLevel: player.level,
+        recipientRole: player.role,
+        createdAt: new Date().toISOString(),
+        status: "pending",
       },
+      ...current,
     ]);
 
-    setMessage(
-      `Friend request sent to ${player.name}.`
+    recordFriendActivity(
+      "Friend request sent",
+      "You sent a friend request to " + player.name + ".",
     );
+    recordFriendActivity(
+      "New friend request",
+      currentUsername + " sent you a friend request.",
+      player.name,
+      null,
+    );
+
+    setMessage(`Friend request sent to ${player.name}.`);
 
     setAddSearch("");
   }
 
-  function cancelSentRequest(name: string) {
-    setSentRequests((current) =>
-      current.filter((request) => request.name !== name)
-    );
+  function cancelSentRequest(request: SentRequest) {
+    if (!mockMode) {
+      void respondToFriendRequestMutation
+        .mutateAsync({ requestId: request.id, action: "cancel" })
+        .then(() => setMessage("Friend request to " + request.name + " was cancelled."))
+        .catch((error: Error) => setMessage(error.message));
+      return;
+    }
 
-    setMessage(`Friend request to ${name} was cancelled.`);
+    setStoredFriendRequests((current) =>
+      current.map((item) =>
+        item.id === request.id ? { ...item, status: "cancelled" } : item,
+      ),
+    );
+    setMessage("Friend request to " + request.name + " was cancelled.");
   }
 
   function requestRemoveFriend(friend: Friend) {
@@ -746,17 +786,11 @@ function FriendsPage() {
       });
     }
 
-    setFriends((current) =>
-      current.filter(
-        (friend) => friend.name !== name
-      )
-    );
+    setFriends((current) => current.filter((friend) => friend.name !== name));
 
     setRemoveTarget(null);
 
-    setMessage(
-      `${name} has been removed from your friends.`
-    );
+    setMessage(`${name} has been removed from your friends.`);
   }
 
   function cancelRemoveFriend() {
@@ -775,18 +809,10 @@ function FriendsPage() {
       [friend.name]: friend,
     }));
 
-    setFriends((current) =>
-      current.filter(
-        (item) => item.name !== friend.name
-      )
-    );
+    setFriends((current) => current.filter((item) => item.name !== friend.name));
 
     setBlocked((current) => {
-      if (
-        current.some(
-          (item) => item.name === friend.name
-        )
-      ) {
+      if (current.some((item) => item.name === friend.name)) {
         return current;
       }
 
@@ -795,35 +821,21 @@ function FriendsPage() {
 
     setOpenMenu(null);
 
-    setMessage(
-      `${friend.name} has been blocked.`
-    );
+    setMessage(`${friend.name} has been blocked.`);
   }
 
   function unblockPlayer(name: string) {
-    const originalFriend =
-      blockedFriends[name];
+    const originalFriend = blockedFriends[name];
 
-    setBlocked((current) =>
-      current.filter(
-        (player) => player.name !== name
-      )
-    );
+    setBlocked((current) => current.filter((player) => player.name !== name));
 
     if (originalFriend) {
       setFriends((current) => {
-        if (
-          current.some(
-            (friend) => friend.name === name
-          )
-        ) {
+        if (current.some((friend) => friend.name === name)) {
           return current;
         }
 
-        return [
-          ...current,
-          originalFriend,
-        ];
+        return [...current, originalFriend];
       });
 
       setBlockedFriends((current) => {
@@ -834,25 +846,27 @@ function FriendsPage() {
         return updated;
       });
 
-      setMessage(
-        `${name} has been unblocked and added back to your friends.`
-      );
+      setMessage(`${name} has been unblocked and added back to your friends.`);
 
       return;
     }
 
-    setMessage(
-      `${name} has been unblocked.`
-    );
+    setMessage(`${name} has been unblocked.`);
   }
 
-  function acceptRequest(
-    request: FriendRequest
-  ) {
-    const player =
-      searchablePlayers.find(
-        (item) => item.name === request.name
-      );
+  function acceptRequest(request: FriendRequest) {
+    if (!mockMode) {
+      void respondToFriendRequestMutation
+        .mutateAsync({ requestId: request.id, action: "accept" })
+        .then(() => {
+          void realNotificationsQuery.refetch();
+          setMessage(request.name + " is now your friend.");
+        })
+        .catch((error: Error) => setMessage(error.message));
+      return;
+    }
+
+    const player = searchablePlayers.find((item) => item.name === request.name);
 
     const friend: Friend = player ?? {
       ...request,
@@ -868,38 +882,51 @@ function FriendsPage() {
     };
 
     setFriends((current) => {
-      if (
-        current.some(
-          (item) => item.name === friend.name
-        )
-      ) {
+      if (current.some((item) => item.name === friend.name)) {
         return current;
       }
 
       return [...current, friend];
     });
 
-    setRequests((current) =>
-      current.filter(
-        (item) => item.name !== request.name
-      )
+    setStoredFriendRequests((current) =>
+      current.map((item) =>
+        item.id === request.id ? { ...item, status: "accepted" } : item,
+      ),
     );
 
-    setMessage(
-      `${request.name} is now your friend.`
+    recordFriendActivity(
+      "Friend request accepted",
+      "You accepted " + request.name + "'s friend request.",
     );
+    recordFriendActivity(
+      "Friend request accepted",
+      currentUsername + " accepted your friend request.",
+      request.name,
+      null,
+    );
+
+    setMessage(`${request.name} is now your friend.`);
   }
 
   function declineRequest(name: string) {
-    setRequests((current) =>
-      current.filter(
-        (request) => request.name !== name
-      )
-    );
+    const request = requests.find((item) => item.name === name);
+    if (!request) return;
 
-    setMessage(
-      `Friend request from ${name} declined.`
+    if (!mockMode) {
+      void respondToFriendRequestMutation
+        .mutateAsync({ requestId: request.id, action: "decline" })
+        .then(() => setMessage("Friend request from " + name + " declined."))
+        .catch((error: Error) => setMessage(error.message));
+      return;
+    }
+
+    setStoredFriendRequests((current) =>
+      current.map((item) =>
+        item.id === request.id ? { ...item, status: "declined" } : item,
+      ),
     );
+    setMessage("Friend request from " + name + " declined.");
   }
 
   function changeTab(nextTab: string) {
@@ -915,38 +942,23 @@ function FriendsPage() {
         onClick={() => setOpenMenu(null)}
       >
         <div className="portal-title-container mx-auto max-w-[1500px] pb-12 pt-8 sm:pt-10">
-
           {/* =====================================================
               HEADER
           ===================================================== */}
 
           <header className="portal-title-header flex flex-col justify-between gap-5 sm:flex-row sm:items-end">
-
             <div>
-
-              <p className="portal-title-eyebrow text-xs font-black tracking-[.18em] text-coral">
-                SOCIAL HUB
-              </p>
-
-              <h1 className="portal-title-heading mt-2 text-4xl font-black uppercase tracking-tight text-white sm:text-5xl">
+              <h1 className="portal-title-heading text-4xl font-black uppercase tracking-tight text-white sm:text-5xl">
                 Friends
               </h1>
-
             </div>
 
-            <label
-              className="relative"
-              onClick={(event) =>
-                event.stopPropagation()
-              }
-            >
+            <label className="relative" onClick={(event) => event.stopPropagation()}>
               <Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-white/25" />
 
               <input
                 value={search}
-                onChange={(event) =>
-                  setSearch(event.target.value)
-                }
+                onChange={(event) => setSearch(event.target.value)}
                 className="friends-player-search w-full rounded-md border border-white/10 bg-[#151c29] px-4 py-3 pl-10 text-sm text-white outline-none placeholder:text-white/25 focus:border-coral sm:w-72"
                 placeholder="Find a player"
               />
@@ -959,11 +971,7 @@ function FriendsPage() {
                 >
                   {globalSearchResults.length === 0 ? (
                     <p className="px-3 py-3 text-xs text-white/40">
-                      No players found for{" "}
-                      <strong className="text-white/70">
-                        {search}
-                      </strong>
-                      .
+                      No players found for <strong className="text-white/70">{search}</strong>.
                     </p>
                   ) : (
                     globalSearchResults.map((player) => {
@@ -981,10 +989,7 @@ function FriendsPage() {
                           }}
                           className="flex w-full items-center gap-3 rounded-md px-3 py-2 text-left transition hover:bg-white/[0.06]"
                         >
-                          <PlayerAvatar
-                            player={player}
-                            canViewStatus={isFriend}
-                          />
+                          <PlayerAvatar player={player} canViewStatus={isFriend} />
 
                           <span className="min-w-0">
                             <span className="block truncate text-sm font-black text-white">
@@ -1001,7 +1006,6 @@ function FriendsPage() {
                 </div>
               )}
             </label>
-
           </header>
 
           {/* =====================================================
@@ -1009,50 +1013,38 @@ function FriendsPage() {
           ===================================================== */}
 
           <div className="mt-7 flex gap-5 overflow-x-auto border-b border-white/[0.07]">
+            {["Friends", "Add Friends", "Sent Requests", "Friend Requests", "Blocked"].map(
+              (item) => (
+                <button
+                  key={item}
+                  type="button"
+                  onClick={() => changeTab(item)}
+                  className={`friends-tab whitespace-nowrap border-b-2 pb-3 text-xs font-black uppercase tracking-[0.1em] transition ${
+                    tab === item
+                      ? "border-coral text-white"
+                      : "border-transparent text-white/35 hover:text-white/70"
+                  }`}
+                >
+                  {item}
 
-            {[
-              "Friends",
-              "Add Friends",
-              "Sent Requests",
-              "Friend Requests",
-              "Blocked",
-            ].map((item) => (
-              <button
-                key={item}
-                type="button"
-                onClick={() =>
-                  changeTab(item)
-                }
-                className={`friends-tab whitespace-nowrap border-b-2 pb-3 text-xs font-black uppercase tracking-[0.1em] transition ${
-                  tab === item
-                    ? "border-coral text-white"
-                    : "border-transparent text-white/35 hover:text-white/70"
-                }`}
-              >
-                {item}
-
-                {item === "Friend Requests" &&
-                  requests.length > 0 && (
+                  {item === "Friend Requests" && requests.length > 0 && (
                     <span className="ml-2 rounded-full bg-coral px-2 py-0.5 text-[9px] text-white">
                       {requests.length}
                     </span>
                   )}
 
-                {item === "Sent Requests" &&
-                  sentRequests.length > 0 && (
+                  {item === "Sent Requests" && sentRequests.length > 0 && (
                     <span className="ml-2 rounded-full bg-white/15 px-2 py-0.5 text-[9px] text-white">
                       {sentRequests.length}
                     </span>
                   )}
 
-                {item === "Friends" && (
-                  <span className="ml-2 text-[10px] text-white/25">
-                    {friends.length}
-                  </span>
-                )}
-              </button>
-            ))}
-
+                  {item === "Friends" && (
+                    <span className="ml-2 text-[10px] text-white/25">{friends.length}</span>
+                  )}
+                </button>
+              ),
+            )}
           </div>
 
           {/* =====================================================
@@ -1062,17 +1054,13 @@ function FriendsPage() {
           {message && (
             <div
               className="mt-4 flex items-center justify-between rounded-md border border-white/[0.07] bg-[#151c29] px-4 py-3 text-sm font-bold text-white"
-              onClick={(event) =>
-                event.stopPropagation()
-              }
+              onClick={(event) => event.stopPropagation()}
             >
               <span>{message}</span>
 
               <button
                 type="button"
-                onClick={() =>
-                  setMessage("")
-                }
+                onClick={() => setMessage("")}
                 className="text-white/30 hover:text-white"
               >
                 <X className="size-4" />
@@ -1086,30 +1074,18 @@ function FriendsPage() {
 
           {tab === "Friends" && (
             <section className="mt-7">
-
               <div className="flex items-center gap-3">
-
                 <Users className="size-5 text-coral" />
 
-                <h2 className="text-2xl font-black uppercase text-white">
-                  Your Friends
-                </h2>
+                <h2 className="text-2xl font-black uppercase text-white">Your Friends</h2>
 
-                <span className="text-xs text-white/30">
-                  {friends.length}
-                </span>
-
+                <span className="text-xs text-white/30">{friends.length}</span>
               </div>
 
               <div className="friends-list-scroll player-account-scroll-list mt-4 overflow-hidden rounded-2xl border border-white/[0.07] bg-[#151c29]">
-
                 {filteredFriends.length === 0 ? (
                   <EmptyState
-                    title={
-                      search
-                        ? "No players found"
-                        : "No friends yet"
-                    }
+                    title={search ? "No players found" : "No friends yet"}
                     description={
                       search
                         ? "Try another username."
@@ -1117,43 +1093,23 @@ function FriendsPage() {
                     }
                   />
                 ) : (
-                  filteredFriends.map(
-                    (friend) => (
-                      <FriendRow
-                        key={friend.name}
-                        friend={friend}
-                        menuOpen={
-                          openMenu ===
-                          friend.name
-                        }
-                        onProfile={() =>
-                          openProfile(friend, true)
-                        }
-                        onMenu={(event) => {
-                          event.stopPropagation();
+                  filteredFriends.map((friend) => (
+                    <FriendRow
+                      key={friend.name}
+                      friend={friend}
+                      menuOpen={openMenu === friend.name}
+                      onProfile={() => openProfile(friend, true)}
+                      onMenu={(event) => {
+                        event.stopPropagation();
 
-                          setOpenMenu(
-                            openMenu ===
-                              friend.name
-                              ? null
-                              : friend.name
-                          );
-                        }}
-                        onRemove={() =>
-                          requestRemoveFriend(
-                            friend
-                          )
-                        }
-                        onBlock={() =>
-                          blockFriend(friend)
-                        }
-                      />
-                    )
-                  )
+                        setOpenMenu(openMenu === friend.name ? null : friend.name);
+                      }}
+                      onRemove={() => requestRemoveFriend(friend)}
+                      onBlock={() => blockFriend(friend)}
+                    />
+                  ))
                 )}
-
               </div>
-
             </section>
           )}
 
@@ -1163,40 +1119,24 @@ function FriendsPage() {
 
           {tab === "Add Friends" && (
             <section className="mt-7 overflow-hidden rounded-2xl border border-white/[0.07] bg-[#151c29]">
-
               <div className="grid lg:grid-cols-[1fr_300px]">
-
                 <div className="p-6 sm:p-8">
-
                   <div className="flex items-center gap-3">
-
                     <div className="grid size-11 place-items-center rounded-md bg-yellow text-[#0d121c]">
                       <UserPlus className="size-5" />
                     </div>
 
                     <div>
+                      <h2 className="text-2xl font-black uppercase text-white">Add Friends</h2>
 
-                      <h2 className="text-2xl font-black uppercase text-white">
-                        Add Friends
-                      </h2>
-
-                      <p className="text-sm text-white/40">
-                        Search by username
-                      </p>
-
+                      <p className="text-sm text-white/40">Search by username</p>
                     </div>
-
                   </div>
 
                   <div className="mt-6 flex flex-col gap-2 sm:flex-row">
-
                     <input
                       value={addSearch}
-                      onChange={(event) =>
-                        setAddSearch(
-                          event.target.value
-                        )
-                      }
+                      onChange={(event) => setAddSearch(event.target.value)}
                       onKeyDown={(event) => {
                         if (event.key === "Enter" && !addSearch.trim()) {
                           setMessage("Enter a username to search.");
@@ -1216,120 +1156,82 @@ function FriendsPage() {
                       <Search className="size-4" />
                       SEARCH
                     </button>
-
                   </div>
 
                   {addSearch && (
                     <div className="player-account-scroll-list mt-5 space-y-2">
-
                       {searchResults.length === 0 ? (
                         <div className="rounded-md border border-white/[0.07] px-4 py-5 text-sm text-white/40">
                           No players found for{" "}
-                          <strong className="text-white/70">
-                            {addSearch}
-                          </strong>
-                          .
+                          <strong className="text-white/70">{addSearch}</strong>.
                         </div>
                       ) : (
-                        searchResults.map(
-                          (player) => {
-                            const relationship = getRelationship(player);
-                            const isFriend = relationship === "friend";
-                            const canAdd = relationship === "available";
+                        searchResults.map((player) => {
+                          const relationship = getRelationship(player);
+                          const isFriend = relationship === "friend";
+                          const canAdd = relationship === "available";
 
-                            return (
-                              <div
-                                key={
-                                  player.name
-                                }
-                                onClick={() =>
-                                  openProfile(player, isFriend)
-                                }
-                                className="flex cursor-pointer items-center gap-3 rounded-lg border border-white/[0.07] bg-white/[0.02] p-3 transition hover:bg-white/[0.04]"
-                              >
-                                <PlayerAvatar
-                                  player={
-                                    player
-                                  }
-                                  canViewStatus={isFriend}
-                                />
+                          return (
+                            <div
+                              key={player.name}
+                              onClick={() => openProfile(player, isFriend)}
+                              className="flex cursor-pointer items-center gap-3 rounded-lg border border-white/[0.07] bg-white/[0.02] p-3 transition hover:bg-white/[0.04]"
+                            >
+                              <PlayerAvatar player={player} canViewStatus={isFriend} />
 
-                                <div className="min-w-0 flex-1">
+                              <div className="min-w-0 flex-1">
+                                <h3 className="truncate font-black text-white">{player.name}</h3>
 
-                                  <h3 className="truncate font-black text-white">
-                                    {player.name}
-                                  </h3>
-
-                                  <p className="text-xs text-white/40">
-                                    Level{" "}
-                                    {player.level}
-                                  </p>
-
-                                </div>
-
-                                <button
-                                  type="button"
-                                  disabled={!canAdd}
-                                  onClick={(event) => {
-                                    event.stopPropagation();
-                                    addFriend(
-                                      player
-                                    );
-                                  }}
-                                  className={`rounded-md px-3 py-2 text-[10px] font-black ${
-                                    !canAdd
-                                      ? "cursor-not-allowed bg-white/[0.06] text-white/25"
-                                      : "bg-coral text-white hover:opacity-90"
-                                  }`}
-                                >
-                                  {relationship === "friend"
-                                    ? "CREW MATE"
-                                    : relationship === "pending"
-                                      ? "REQUEST SENT"
-                                      : relationship === "incoming"
-                                        ? "REQUEST RECEIVED"
-                                        : relationship === "blocked"
-                                          ? "BLOCKED"
-                                          : "ADD"}
-                                </button>
-
+                                <p className="text-xs text-white/40">Level {player.level}</p>
                               </div>
-                            );
-                          }
-                        )
-                      )}
 
+                              <button
+                                type="button"
+                                disabled={!canAdd}
+                                onClick={(event) => {
+                                  event.stopPropagation();
+                                  addFriend(player);
+                                }}
+                                className={`rounded-md px-3 py-2 text-[10px] font-black ${
+                                  !canAdd
+                                    ? "cursor-not-allowed bg-white/[0.06] text-white/25"
+                                    : "bg-coral text-white hover:opacity-90"
+                                }`}
+                              >
+                                {relationship === "friend"
+                                  ? "CREW MATE"
+                                  : relationship === "pending"
+                                    ? "REQUEST SENT"
+                                    : relationship === "incoming"
+                                      ? "REQUEST RECEIVED"
+                                      : relationship === "blocked"
+                                        ? "BLOCKED"
+                                        : "ADD"}
+                              </button>
+                            </div>
+                          );
+                        })
+                      )}
                     </div>
                   )}
-
                 </div>
 
                 <aside className="border-t border-white/[0.07] bg-[#0d121c] p-6 text-white lg:border-l lg:border-t-0">
-
                   <p className="text-[10px] font-black uppercase tracking-wider text-white/35">
                     Your Username
                   </p>
 
-                  <p className="mt-2 text-xl font-black text-yellow">
-                    {currentUsername}
-                  </p>
+                  <p className="mt-2 text-xl font-black text-yellow">{currentUsername}</p>
 
                   <div className="mt-5 flex gap-2">
-
                     <button
                       type="button"
                       onClick={copyUsername}
                       className="flex flex-1 items-center justify-center gap-2 rounded-md bg-white/[0.06] px-3 py-2 text-xs font-bold hover:bg-white/10"
                     >
-                      {copied ? (
-                        <Check className="size-4" />
-                      ) : (
-                        <Copy className="size-4" />
-                      )}
+                      {copied ? <Check className="size-4" /> : <Copy className="size-4" />}
 
-                      {copied
-                        ? "COPIED"
-                        : "COPY"}
+                      {copied ? "COPIED" : "COPY"}
                     </button>
 
                     <button
@@ -1340,13 +1242,9 @@ function FriendsPage() {
                     >
                       <Share2 className="size-4" />
                     </button>
-
                   </div>
-
                 </aside>
-
               </div>
-
             </section>
           )}
 
@@ -1356,23 +1254,15 @@ function FriendsPage() {
 
           {tab === "Sent Requests" && (
             <section className="mt-7">
-
               <div className="flex items-center gap-3">
-
                 <Share2 className="size-5 text-coral" />
 
-                <h2 className="text-2xl font-black uppercase text-white">
-                  Sent Requests
-                </h2>
+                <h2 className="text-2xl font-black uppercase text-white">Sent Requests</h2>
 
-                <span className="text-xs text-white/30">
-                  {sentRequests.length}
-                </span>
-
+                <span className="text-xs text-white/30">{sentRequests.length}</span>
               </div>
 
               <div className="friends-list-scroll player-account-scroll-list mt-4 overflow-hidden rounded-2xl border border-white/[0.07] bg-[#151c29]">
-
                 {sentRequests.length === 0 ? (
                   <EmptyState
                     title="No outgoing requests"
@@ -1385,46 +1275,33 @@ function FriendsPage() {
                       onClick={() => openProfile(resolveProfile(request))}
                       className="flex cursor-pointer items-center gap-4 border-b border-white/[0.06] p-4 transition last:border-b-0 hover:bg-white/[0.025] sm:p-5"
                     >
-
-                      <PlayerAvatar
-                        player={resolveProfile(request)}
-                        showStatus={false}
-                      />
+                      <PlayerAvatar player={resolveProfile(request)} showStatus={false} />
 
                       <div className="min-w-0 flex-1">
+                        <h3 className="truncate font-black text-white">{request.name}</h3>
 
-                        <h3 className="truncate font-black text-white">
-                          {request.name}
-                        </h3>
-
-                        <p className="text-xs text-white/40">
-                          Level {request.level}
-                        </p>
+                        <p className="text-xs text-white/40">Level {request.level}</p>
 
                         <p className="mt-0.5 text-[10px] uppercase tracking-wide text-white/25">
                           Sent {request.sentDate}
                         </p>
-
                       </div>
 
                       <button
                         type="button"
                         onClick={(event) => {
                           event.stopPropagation();
-                          cancelSentRequest(request.name);
+                          cancelSentRequest(request);
                         }}
                         className="inline-flex items-center gap-1.5 rounded-md border border-white/10 px-3 py-2 text-[11px] font-black uppercase tracking-wide text-white/50 transition hover:border-coral hover:text-coral"
                       >
                         <X className="size-3.5" />
                         Cancel
                       </button>
-
                     </article>
                   ))
                 )}
-
               </div>
-
             </section>
           )}
 
@@ -1434,98 +1311,61 @@ function FriendsPage() {
 
           {tab === "Friend Requests" && (
             <section className="mt-7">
-
               <div className="flex items-center gap-3">
-
                 <UserPlus className="size-5 text-coral" />
 
-                <h2 className="text-2xl font-black uppercase text-white">
-                  Friend Requests
-                </h2>
+                <h2 className="text-2xl font-black uppercase text-white">Friend Requests</h2>
 
-                <span className="text-xs text-white/30">
-                  {requests.length}
-                </span>
-
+                <span className="text-xs text-white/30">{requests.length}</span>
               </div>
 
               <div className="friends-list-scroll player-account-scroll-list mt-4 overflow-hidden rounded-2xl border border-white/[0.07] bg-[#151c29]">
-
                 {requests.length === 0 ? (
-                  <EmptyState
-                    title="No friend requests"
-                    description="You're all caught up."
-                  />
+                  <EmptyState title="No friend requests" description="You're all caught up." />
                 ) : (
-                  requests.map(
-                    (request) => (
-                      <article
-                        key={
-                          request.name
-                        }
-                        onClick={() =>
-                          openProfile(resolveProfile(request))
-                        }
-                        className="flex cursor-pointer items-center gap-4 border-b border-white/[0.06] p-4 transition last:border-b-0 hover:bg-white/[0.025] sm:p-5"
-                      >
+                  requests.map((request) => (
+                    <article
+                      key={request.name}
+                      onClick={() => openProfile(resolveProfile(request))}
+                      className="flex cursor-pointer items-center gap-4 border-b border-white/[0.06] p-4 transition last:border-b-0 hover:bg-white/[0.025] sm:p-5"
+                    >
+                      <PlayerAvatar player={resolveProfile(request)} showStatus={false} />
 
-                        <PlayerAvatar
-                          player={resolveProfile(request)}
-                          showStatus={false}
-                        />
+                      <div className="min-w-0 flex-1">
+                        <h3 className="truncate font-black text-white">{request.name}</h3>
 
-                        <div className="min-w-0 flex-1">
+                        <p className="text-xs text-white/40">Level {request.level}</p>
+                      </div>
 
-                          <h3 className="truncate font-black text-white">
-                            {request.name}
-                          </h3>
+                      <div className="flex gap-2">
+                        <button
+                          type="button"
+                          onClick={(event) => {
+                            event.stopPropagation();
+                            acceptRequest(request);
+                          }}
+                          className="grid size-9 place-items-center rounded-md bg-coral text-white"
+                          title="Accept request"
+                        >
+                          <Check className="size-4" />
+                        </button>
 
-                          <p className="text-xs text-white/40">
-                            Level{" "}
-                            {request.level}
-                          </p>
-
-                        </div>
-
-                        <div className="flex gap-2">
-
-                          <button
-                            type="button"
-                            onClick={(event) => {
-                              event.stopPropagation();
-                              acceptRequest(
-                                request
-                              );
-                            }}
-                            className="grid size-9 place-items-center rounded-md bg-coral text-white"
-                            title="Accept request"
-                          >
-                            <Check className="size-4" />
-                          </button>
-
-                          <button
-                            type="button"
-                            onClick={(event) => {
-                              event.stopPropagation();
-                              declineRequest(
-                                request.name
-                              );
-                            }}
-                            className="grid size-9 place-items-center rounded-md border border-white/10 text-white/35 hover:border-coral hover:text-coral"
-                            title="Decline request"
-                          >
-                            <X className="size-4" />
-                          </button>
-
-                        </div>
-
-                      </article>
-                    )
-                  )
+                        <button
+                          type="button"
+                          onClick={(event) => {
+                            event.stopPropagation();
+                            declineRequest(request.name);
+                          }}
+                          className="grid size-9 place-items-center rounded-md border border-white/10 text-white/35 hover:border-coral hover:text-coral"
+                          title="Decline request"
+                        >
+                          <X className="size-4" />
+                        </button>
+                      </div>
+                    </article>
+                  ))
                 )}
-
               </div>
-
             </section>
           )}
 
@@ -1535,23 +1375,15 @@ function FriendsPage() {
 
           {tab === "Blocked" && (
             <section className="mt-7">
-
               <div className="flex items-center gap-3">
-
                 <Ban className="size-5 text-coral" />
 
-                <h2 className="text-2xl font-black uppercase text-white">
-                  Blocked Players
-                </h2>
+                <h2 className="text-2xl font-black uppercase text-white">Blocked Players</h2>
 
-                <span className="text-xs text-white/30">
-                  {blocked.length}
-                </span>
-
+                <span className="text-xs text-white/30">{blocked.length}</span>
               </div>
 
               <div className="friends-list-scroll player-account-scroll-list mt-4 overflow-hidden rounded-2xl border border-white/[0.07] bg-[#151c29]">
-
                 {blocked.length === 0 ? (
                   <EmptyState
                     className="blocked-empty-state"
@@ -1559,58 +1391,36 @@ function FriendsPage() {
                     description="Players you block will appear here."
                   />
                 ) : (
-                  blocked.map(
-                    (player) => (
-                      <article
-                        key={
-                          player.name
-                        }
-                        onClick={() =>
-                          openProfile(player)
-                        }
-                        className="flex cursor-pointer items-center gap-4 border-b border-white/[0.06] p-4 transition last:border-b-0 hover:bg-white/[0.025] sm:p-5"
+                  blocked.map((player) => (
+                    <article
+                      key={player.name}
+                      onClick={() => openProfile(player)}
+                      className="flex cursor-pointer items-center gap-4 border-b border-white/[0.06] p-4 transition last:border-b-0 hover:bg-white/[0.025] sm:p-5"
+                    >
+                      <PlayerAvatar player={player} />
+
+                      <div className="min-w-0 flex-1">
+                        <h3 className="truncate font-black text-white">{player.name}</h3>
+
+                        <p className="text-xs text-white/40">Level {player.level}</p>
+                      </div>
+
+                      <button
+                        type="button"
+                        onClick={(event) => {
+                          event.stopPropagation();
+                          unblockPlayer(player.name);
+                        }}
+                        className="rounded-md border border-white/10 px-3 py-2 text-[10px] font-black text-white/45 hover:border-coral hover:text-coral"
                       >
-
-                        <PlayerAvatar
-                          player={player}
-                        />
-
-                        <div className="min-w-0 flex-1">
-
-                          <h3 className="truncate font-black text-white">
-                            {player.name}
-                          </h3>
-
-                          <p className="text-xs text-white/40">
-                            Level{" "}
-                            {player.level}
-                          </p>
-
-                        </div>
-
-                        <button
-                          type="button"
-                          onClick={(event) => {
-                            event.stopPropagation();
-                            unblockPlayer(
-                              player.name
-                            );
-                          }}
-                          className="rounded-md border border-white/10 px-3 py-2 text-[10px] font-black text-white/45 hover:border-coral hover:text-coral"
-                        >
-                          UNBLOCK
-                        </button>
-
-                      </article>
-                    )
-                  )
+                        UNBLOCK
+                      </button>
+                    </article>
+                  ))
                 )}
-
               </div>
-
             </section>
           )}
-
         </div>
       </div>
 
@@ -1640,34 +1450,24 @@ function FriendsPage() {
         >
           <div
             className="w-full max-w-md rounded-2xl border border-white/10 bg-[#151c29] p-6 text-white shadow-2xl shadow-black/50 sm:p-7"
-            onClick={(event) =>
-              event.stopPropagation()
-            }
+            onClick={(event) => event.stopPropagation()}
           >
-
             <div className="grid size-12 place-items-center rounded-md bg-coral/10 text-coral">
               <UserX className="size-5" />
             </div>
 
-            <h2 className="mt-5 text-xl font-black uppercase text-white">
-              Remove Friend?
-            </h2>
+            <h2 className="mt-5 text-xl font-black uppercase text-white">Remove Friend?</h2>
 
             <p className="mt-2 text-sm leading-6 text-white/45">
               Are you sure you want to remove{" "}
-              <strong className="text-white">
-                {removeTarget.name}
-              </strong>{" "}
-              from your friends list?
+              <strong className="text-white">{removeTarget.name}</strong> from your friends list?
             </p>
 
             <p className="mt-2 text-xs text-white/25">
-              You can send them another friend
-              request later.
+              You can send them another friend request later.
             </p>
 
             <div className="mt-7 flex gap-3">
-
               <button
                 type="button"
                 onClick={cancelRemoveFriend}
@@ -1683,9 +1483,7 @@ function FriendsPage() {
               >
                 REMOVE
               </button>
-
             </div>
-
           </div>
         </div>
       )}
@@ -1698,7 +1496,7 @@ function FriendsPage() {
 ========================================================= */
 
 function PlayerProfile({
-  player,
+  player: initialPlayer,
   canViewStatus,
   relationship,
   onAdd,
@@ -1712,12 +1510,72 @@ function PlayerProfile({
   isAdding: boolean;
   onClose: () => void;
 }) {
+  const [livePlayer, setLivePlayer] = useState<Friend>(initialPlayer);
+
+  useEffect(() => {
+    let active = true;
+    setLivePlayer(initialPlayer);
+
+    if (isMockMode() || !initialPlayer.crewId) {
+      return () => {
+        active = false;
+      };
+    }
+
+    void fetch(`/api/auth/player-profile?playFabId=${encodeURIComponent(initialPlayer.crewId)}`, {
+      credentials: "include",
+    })
+      .then(async (response) => {
+        if (!response.ok) return null;
+        return (await response.json()) as {
+          success?: boolean;
+          profile?: {
+            username?: string;
+            avatarUrl?: string | null;
+            profileVisible?: boolean;
+            showCrewActivity?: boolean;
+            bio?: string;
+            socialLinks?: Socials;
+            achievements?: Achievement[];
+            joinedAt?: string | null;
+          };
+        };
+      })
+      .then((result) => {
+        if (!active || !result?.success || !result.profile) return;
+        const remote = result.profile;
+        setLivePlayer((current) => ({
+          ...current,
+          name: remote.username || current.name,
+          profileImage: remote.avatarUrl || current.profileImage,
+          profileVisible: remote.profileVisible ?? true,
+          showCrewActivity: remote.showCrewActivity ?? true,
+          bio: remote.profileVisible === false ? "" : remote.bio ?? current.bio,
+          joinedDate: remote.joinedAt
+            ? new Date(remote.joinedAt).toLocaleDateString("en-US", {
+                month: "long",
+                day: "numeric",
+                year: "numeric",
+              })
+            : current.joinedDate,
+          socials: remote.profileVisible === false ? {} : remote.socialLinks ?? {},
+          achievements: remote.profileVisible !== false && remote.showCrewActivity !== false
+            ? remote.achievements ?? []
+            : [],
+        }));
+      })
+      .catch(() => {
+        // Keep the list data as a graceful fallback when the public profile is unavailable.
+      });
+
+    return () => {
+      active = false;
+    };
+  }, [initialPlayer]);
+
+  const player = livePlayer;
   const profileImage = player.profileImage ?? getProfileArtwork(player.name);
-  const visibleStatus = getVisiblePlayerStatus(
-    player.online,
-    player.showStatus,
-    canViewStatus,
-  );
+  const visibleStatus = getVisiblePlayerStatus(player.online, player.showStatus, canViewStatus);
 
   return (
     <div
@@ -1726,13 +1584,9 @@ function PlayerProfile({
     >
       <div
         className="mx-auto flex min-h-full w-full max-w-5xl items-center justify-center py-4 sm:py-8"
-        onClick={(event) =>
-          event.stopPropagation()
-        }
+        onClick={(event) => event.stopPropagation()}
       >
-
         <div className="relative w-full overflow-hidden rounded-2xl border border-white/[0.09] bg-[#151c29] shadow-[0_30px_100px_rgba(0,0,0,0.55)]">
-
           {/* =================================================
               CLOSE BUTTON
           ================================================= */}
@@ -1751,19 +1605,15 @@ function PlayerProfile({
           ================================================= */}
 
           <div className="relative overflow-hidden border-b border-white/[0.07] bg-[#0d121c] px-6 pb-7 pt-7 sm:px-9 sm:pb-8 sm:pt-8">
-
             <div className="pointer-events-none absolute -right-24 -top-24 size-72 rounded-full bg-coral/[0.06] blur-3xl" />
 
             <div className="pointer-events-none absolute -bottom-32 left-1/3 size-72 rounded-full bg-yellow/[0.035] blur-3xl" />
 
             <div className="relative flex flex-col gap-6 sm:flex-row sm:items-center">
-
               {/* PROFILE IMAGE */}
 
               <div className="relative mx-auto shrink-0 sm:mx-0">
-
                 <div className="size-28 overflow-hidden rounded-2xl border-[3px] border-yellow bg-[#151c29] shadow-[0_10px_30px_rgba(0,0,0,0.35)] sm:size-32">
-
                   {profileImage ? (
                     <img
                       src={profileImage}
@@ -1772,32 +1622,24 @@ function PlayerProfile({
                     />
                   ) : (
                     <div className="grid h-full w-full place-items-center text-2xl font-black text-yellow">
-                      {player.name
-                        .slice(0, 2)
-                        .toUpperCase()}
+                      {player.name.slice(0, 2).toUpperCase()}
                     </div>
                   )}
-
                 </div>
 
                 {visibleStatus && (
                   <span
                     className={`absolute bottom-2 right-2 size-5 rounded-full border-[3px] border-[#0d121c] ${
-                      visibleStatus === "Online"
-                        ? "bg-[#2d9d8f]"
-                        : "bg-white/20"
+                      visibleStatus === "Online" ? "bg-[#2d9d8f]" : "bg-white/20"
                     }`}
                   />
                 )}
-
               </div>
 
               {/* PLAYER NAME */}
 
               <div className="min-w-0 flex-1 text-center sm:text-left">
-
-                  <div className="flex flex-wrap items-center justify-center gap-2 sm:justify-start">
-
+                <div className="flex flex-wrap items-center justify-center gap-2 sm:justify-start">
                   <h2 className="text-3xl font-black uppercase tracking-tight text-white sm:text-4xl">
                     {player.name}
                   </h2>
@@ -1813,14 +1655,10 @@ function PlayerProfile({
                       {visibleStatus}
                     </span>
                   )}
-
                 </div>
 
                 <div className="mt-3 flex flex-wrap items-center justify-center gap-x-4 gap-y-1 text-[10px] font-bold uppercase tracking-wider text-white/30 sm:justify-start">
-
-                  <span>
-                    Level {player.level}
-                  </span>
+                  <span>Level {player.level}</span>
 
                   {relationship === "available" && (
                     <button
@@ -1858,11 +1696,8 @@ function PlayerProfile({
                       BLOCKED
                     </span>
                   )}
-
                 </div>
-
               </div>
-
             </div>
           </div>
 
@@ -1871,175 +1706,62 @@ function PlayerProfile({
           ================================================= */}
 
           <div className="grid lg:grid-cols-[1fr_290px]">
-
             {/* LEFT */}
 
             <div className="p-6 sm:p-8 lg:p-9">
+              {player.profileVisible === false ? (
+                <section className="rounded-xl border border-white/[0.07] bg-white/[0.025] p-6">
+                  <h3 className="text-lg font-black uppercase tracking-tight text-white">Profile details are private</h3>
+                  <p className="mt-2 text-sm leading-6 text-white/50">This player has turned off profile visibility.</p>
+                </section>
+              ) : (
+                <>
+                  <section>
+                    <p className="text-[10px] font-black uppercase tracking-[0.18em] text-coral">About</p>
+                    <h3 className="mt-2 text-2xl font-black uppercase tracking-tight text-white">Bio</h3>
+                    <p className="mt-3 max-w-2xl whitespace-pre-wrap text-sm leading-7 text-white/50">{player.bio || "No bio added."}</p>
+                  </section>
 
-              {/* ABOUT */}
+                  {player.showCrewActivity !== false && (
+                    <section className="mt-9">
+                      <div className="flex items-center gap-3">
+                        <div className="h-7 w-1 rounded-full bg-coral" />
+                        <h3 className="text-2xl font-black uppercase tracking-tight text-white">Unlocked Achievements</h3>
+                      </div>
+                      {player.achievements?.length ? (
+                        <div className="mt-5 grid gap-2 sm:grid-cols-2">
+                          {player.achievements.map((achievement) => (
+                            <div key={achievement.id} className="flex items-center gap-3 rounded-xl border border-white/[0.07] bg-[#1b2433] p-4">
+                              <Award className="size-5 shrink-0 text-yellow" />
+                              <span className="text-sm font-bold text-white/75">{achievement.name || achievement.title}</span>
+                            </div>
+                          ))}
+                        </div>
+                      ) : (
+                        <p className="mt-4 text-sm text-white/35">No achievements unlocked yet.</p>
+                      )}
+                    </section>
+                  )}
 
-              <section>
-
-                <p className="text-[10px] font-black uppercase tracking-[0.18em] text-coral">
-                  About
-                </p>
-
-                <h3 className="mt-2 text-2xl font-black uppercase tracking-tight text-white">
-                  Bio
-                </h3>
-
-                <p className="mt-3 max-w-2xl text-sm leading-7 text-white/50">
-                  {player.bio}
-                </p>
-
-              </section>
-
-              {/* CAREER */}
-
-              <section className="mt-9">
-
-                <div className="flex items-center gap-3">
-
-                  <div className="h-7 w-1 rounded-full bg-coral" />
-
-                  <h3 className="text-2xl font-black uppercase tracking-tight text-white">
-                    Career Overview
-                  </h3>
-
-                </div>
-
-                {/* CAREER STATS */}
-
-                <div className="mt-5 grid gap-3 sm:grid-cols-2">
-
-                  <div className="rounded-xl border border-white/[0.07] bg-[#1b2433] p-5 transition hover:border-white/[0.12]">
-
-                    <p className="text-3xl font-black tracking-tight text-white">
-                      {player.career.productionsCompleted}
-                    </p>
-
-                    <p className="mt-1 text-[9px] font-black uppercase tracking-[0.12em] text-white/30">
-                      Productions Completed
-                    </p>
-
-                  </div>
-
-                  <div className="rounded-xl border border-white/[0.07] bg-[#1b2433] p-5 transition hover:border-white/[0.12]">
-
-                    <p className="text-3xl font-black tracking-tight text-white">
-                      {player.career.yearsExperience}
-                    </p>
-
-                    <p className="mt-1 text-[9px] font-black uppercase tracking-[0.12em] text-white/30">
-                      Years Experience
-                    </p>
-
-                  </div>
-
-                </div>
-
-                {/* SPECIALTIES */}
-
-                <div className="mt-3 rounded-xl border border-white/[0.07] bg-[#1b2433] p-5">
-
-                  <p className="text-[9px] font-black uppercase tracking-[0.14em] text-white/30">
-                    Specialties
-                  </p>
-
-                  <div className="mt-3 flex flex-wrap gap-2">
-
-                    {player.career.specialties.map(
-                      (specialty) => (
-                        <span
-                          key={specialty}
-                          className="rounded-md border border-white/[0.06] bg-[#252f40] px-3 py-2 text-[9px] font-black uppercase tracking-wide text-white/55"
-                        >
-                          {specialty}
-                        </span>
-                      )
+                  <section className="mt-9">
+                    <div className="flex items-center gap-3">
+                      <div className="h-7 w-1 rounded-full bg-coral" />
+                      <h3 className="text-2xl font-black uppercase tracking-tight text-white">Socials</h3>
+                    </div>
+                    {Object.values(player.socials).some(Boolean) ? (
+                      <div className="mt-5 grid gap-2 sm:grid-cols-2 xl:grid-cols-3">
+                        {player.socials.instagram && <SocialLink icon={<Instagram className="size-4" />} label="Instagram" username={player.socials.instagram} />}
+                        {player.socials.facebook && <SocialLink icon={<Facebook className="size-4" />} label="Facebook" username={player.socials.facebook} />}
+                        {player.socials.twitter && <SocialLink icon={<Twitter className="size-4" />} label="Twitter" username={player.socials.twitter} />}
+                        {player.socials.linkedin && <SocialLink icon={<Linkedin className="size-4" />} label="LinkedIn" username={player.socials.linkedin} />}
+                        {player.socials.youtube && <SocialLink icon={<Youtube className="size-4" />} label="YouTube" username={player.socials.youtube} />}
+                      </div>
+                    ) : (
+                      <p className="mt-4 text-sm text-white/30">No social accounts linked.</p>
                     )}
-
-                  </div>
-
-                </div>
-
-              </section>
-
-              {/* SOCIALS */}
-
-              <section className="mt-9">
-
-                <div className="flex items-center gap-3">
-
-                  <div className="h-7 w-1 rounded-full bg-coral" />
-
-                  <h3 className="text-2xl font-black uppercase tracking-tight text-white">
-                    Socials
-                  </h3>
-
-                </div>
-
-                {Object.keys(player.socials).length ===
-                0 ? (
-                  <p className="mt-4 text-sm text-white/30">
-                    No social accounts linked.
-                  </p>
-                ) : (
-                  <div className="mt-5 grid gap-2 sm:grid-cols-2 xl:grid-cols-3">
-
-                    {player.socials.instagram && (
-                      <SocialLink
-                        icon={
-                          <Instagram className="size-4" />
-                        }
-                        label="Instagram"
-                        username={
-                          player.socials.instagram
-                        }
-                      />
-                    )}
-
-                    {player.socials.facebook && (
-                      <SocialLink
-                        icon={
-                          <Facebook className="size-4" />
-                        }
-                        label="Facebook"
-                        username={
-                          player.socials.facebook
-                        }
-                      />
-                    )}
-
-                    {player.socials.twitter && (
-                      <SocialLink
-                        icon={
-                          <Twitter className="size-4" />
-                        }
-                        label="Twitter"
-                        username={
-                          player.socials.twitter
-                        }
-                      />
-                    )}
-
-                    {player.socials.linkedin && (
-                      <SocialLink
-                        icon={
-                          <Linkedin className="size-4" />
-                        }
-                        label="LinkedIn"
-                        username={
-                          player.socials.linkedin
-                        }
-                      />
-                    )}
-
-                  </div>
-                )}
-
-              </section>
-
+                  </section>
+                </>
+              )}
             </div>
 
             {/* =================================================
@@ -2047,33 +1769,20 @@ function PlayerProfile({
             ================================================= */}
 
             <aside className="border-t border-white/[0.07] bg-[#0d121c] p-6 sm:p-8 lg:border-l lg:border-t-0">
-
               <div className="flex items-center gap-3">
-
                 <div className="h-6 w-1 rounded-full bg-coral" />
 
                 <p className="text-[10px] font-black uppercase tracking-[0.16em] text-coral">
                   Player Information
                 </p>
-
               </div>
 
               <div className="mt-6 overflow-hidden rounded-xl border border-white/[0.07] bg-[#151c29]">
+                <ProfileDetail label="Name" value={player.name} />
 
-                <ProfileDetail
-                  label="Name"
-                  value={player.name}
-                />
+                <ProfileDetail label="Joined" value={player.joinedDate} />
 
-                <ProfileDetail
-                  label="Joined"
-                  value={player.joinedDate}
-                />
-
-                <ProfileDetail
-                  label="Level"
-                  value={`Level ${player.level}`}
-                />
+                <ProfileDetail label="Level" value={`Level ${player.level}`} />
 
                 {visibleStatus && (
                   <ProfileDetail
@@ -2082,13 +1791,9 @@ function PlayerProfile({
                     status={visibleStatus === "Online"}
                   />
                 )}
-
               </div>
-
             </aside>
-
           </div>
-
         </div>
       </div>
     </div>
@@ -2110,44 +1815,29 @@ function FriendRow({
   friend: Friend;
   menuOpen: boolean;
   onProfile: () => void;
-  onMenu: (
-    event: MouseEvent<HTMLButtonElement>
-  ) => void;
+  onMenu: (event: MouseEvent<HTMLButtonElement>) => void;
   onRemove: () => void;
   onBlock: () => void;
 }) {
-  const visibleStatus = getVisiblePlayerStatus(
-    friend.online,
-    friend.showStatus,
-    true,
-  );
+  const visibleStatus = getVisiblePlayerStatus(friend.online, friend.showStatus, true);
 
   return (
     <article
       onClick={onProfile}
       className="relative flex cursor-pointer items-center gap-4 border-b border-white/[0.06] p-4 transition last:border-b-0 hover:bg-white/[0.025] sm:p-5"
     >
-
       <PlayerAvatar player={friend} canViewStatus />
 
       <div className="min-w-0 flex-1">
+        <h3 className="truncate font-black text-white">{friend.name}</h3>
 
-        <h3 className="truncate font-black text-white">
-          {friend.name}
-        </h3>
-
-        <p className="text-xs text-white/40">
-          Level {friend.level}
-        </p>
-
+        <p className="text-xs text-white/40">Level {friend.level}</p>
       </div>
 
       {visibleStatus && (
         <span
           className={`hidden text-[10px] font-black uppercase sm:block ${
-            visibleStatus === "Online"
-              ? "text-[#55b8aa]"
-              : "text-white/25"
+            visibleStatus === "Online" ? "text-[#55b8aa]" : "text-white/25"
           }`}
         >
           {visibleStatus}
@@ -2178,11 +1868,8 @@ function FriendRow({
       {menuOpen && (
         <div
           className="absolute right-4 top-[calc(100%-8px)] z-20 w-44 overflow-hidden rounded-lg border border-white/10 bg-[#151c29] shadow-2xl shadow-black/40"
-          onClick={(event) =>
-            event.stopPropagation()
-          }
+          onClick={(event) => event.stopPropagation()}
         >
-
           <button
             type="button"
             onClick={onRemove}
@@ -2200,10 +1887,8 @@ function FriendRow({
             <Ban className="size-4" />
             Block Player
           </button>
-
         </div>
       )}
-
     </article>
   );
 }
@@ -2228,7 +1913,6 @@ function PlayerAvatar({
 
   return (
     <div className="relative grid size-12 shrink-0 place-items-center overflow-hidden rounded-full bg-[#0d121c] text-xs font-black text-yellow">
-
       {profileImage ? (
         <img
           src={profileImage}
@@ -2236,21 +1920,16 @@ function PlayerAvatar({
           className="h-full w-full object-cover"
         />
       ) : (
-        player.name
-          .slice(0, 2)
-          .toUpperCase()
+        player.name.slice(0, 2).toUpperCase()
       )}
 
       {visibleStatus && (
         <span
           className={`absolute bottom-0 right-0 size-3 rounded-full border-2 border-[#151c29] ${
-            visibleStatus === "Online"
-              ? "bg-[#2d9d8f]"
-              : "bg-white/20"
+            visibleStatus === "Online" ? "bg-[#2d9d8f]" : "bg-white/20"
           }`}
         />
       )}
-
     </div>
   );
 }
@@ -2270,23 +1949,13 @@ function ProfileDetail({
 }) {
   return (
     <div className="border-b border-white/[0.06] px-5 py-4 last:border-b-0">
-
-      <p className="text-[9px] font-black uppercase tracking-[0.12em] text-white/25">
-        {label}
-      </p>
+      <p className="text-[9px] font-black uppercase tracking-[0.12em] text-white/25">{label}</p>
 
       <div className="mt-1.5 flex items-center gap-2">
+        {status && <span className="size-2 rounded-full bg-[#2d9d8f]" />}
 
-        {status && (
-          <span className="size-2 rounded-full bg-[#2d9d8f]" />
-        )}
-
-        <p className="text-xs font-black text-white/75">
-          {value}
-        </p>
-
+        <p className="text-xs font-black text-white/75">{value}</p>
       </div>
-
     </div>
   );
 }
@@ -2306,31 +1975,24 @@ function SocialLink({
 }) {
   return (
     <a
-      href="#"
-      onClick={(event) =>
-        event.preventDefault()
-      }
+      href={getSocialProfileUrl(label.toLowerCase() as SocialPlatform, username)}
+      target="_blank"
+      rel="noreferrer"
       className="group flex items-center gap-3 rounded-md border border-white/[0.07] bg-white/[0.025] px-4 py-3 transition hover:border-coral hover:bg-white/[0.04]"
     >
-
-      <span className="text-white/35 transition group-hover:text-coral">
-        {icon}
-      </span>
+      <span className="text-white/35 transition group-hover:text-coral">{icon}</span>
 
       <span className="min-w-0">
-
         <span className="block text-[9px] font-black uppercase tracking-wider text-white/25">
           {label}
         </span>
 
         <span className="mt-0.5 block truncate text-xs font-black text-white/75">
-          @{username}
+          {formatSocialUsername(label.toLowerCase() as SocialPlatform, username)}
         </span>
-
       </span>
 
       <ExternalLink className="ml-auto size-3 shrink-0 text-white/15 group-hover:text-coral" />
-
     </a>
   );
 }
@@ -2350,17 +2012,11 @@ function EmptyState({
 }) {
   return (
     <div className={`friends-empty-state px-6 py-14 text-center ${className ?? ""}`}>
-
       <Users className="mx-auto size-8 text-white/15" />
 
-      <h3 className="mt-3 text-sm font-black uppercase text-white">
-        {title}
-      </h3>
+      <h3 className="mt-3 text-sm font-black uppercase text-white">{title}</h3>
 
-      <p className="mt-1 text-xs text-white/30">
-        {description}
-      </p>
-
+      <p className="mt-1 text-xs text-white/30">{description}</p>
     </div>
   );
 }

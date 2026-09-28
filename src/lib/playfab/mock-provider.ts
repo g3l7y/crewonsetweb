@@ -32,6 +32,7 @@ import type {
   ItemRarity,
 } from './types';
 import { cosmeticCatalog } from '@/lib/demo/portal-shop';
+import { DEFAULT_PROFILE_PICTURE_URL } from '@/lib/profile-avatar';
 
 // Helper for simulated delay
 function delay(ms: number): Promise<void> {
@@ -63,13 +64,43 @@ let MOCK_PLAYER_PROFILE: PlayerProfile = {
   email: 'player@crewonset.com',
   displayName: 'CAMERA_PRO',
   username: 'CAMERA_PRO',
-  avatarUrl: '/assets/crew-set-illustration.png',
+  avatarUrl: DEFAULT_PROFILE_PICTURE_URL,
   primaryRole: 'cameraman',
   crewId: 'COS-2847-CP',
   joinedAt: '2025-03-14T08:00:00Z',
   lastLoginAt: new Date().toISOString(),
 };
 
+type StoredMockProfileMetadata = Pick<PlayerProfile, 'bio' | 'avatarUrl' | 'socialLinks' | 'showStatus' | 'profileVisibility' | 'showCrewActivity'>;
+const MOCK_PROFILE_METADATA_KEY = 'cos.profile.metadata';
+
+function getStoredMockProfileMetadata(): StoredMockProfileMetadata {
+  if (typeof window === 'undefined') return {};
+  try {
+    const raw = window.localStorage.getItem(MOCK_PROFILE_METADATA_KEY);
+    if (!raw) return {};
+    const metadata = JSON.parse(raw) as StoredMockProfileMetadata;
+    const savedAvatar = typeof metadata.avatarUrl === 'string' &&
+      (metadata.avatarUrl === DEFAULT_PROFILE_PICTURE_URL || metadata.avatarUrl.startsWith('data:image/'))
+      ? metadata.avatarUrl
+      : undefined;
+    return {
+      ...(typeof metadata.bio === 'string' ? { bio: metadata.bio } : {}),
+      ...(savedAvatar ? { avatarUrl: savedAvatar } : {}),
+      ...(metadata.socialLinks ? { socialLinks: metadata.socialLinks } : {}),
+      ...(typeof metadata.showStatus === 'boolean' ? { showStatus: metadata.showStatus } : {}),
+      ...(typeof metadata.profileVisibility === 'boolean' ? { profileVisibility: metadata.profileVisibility } : {}),
+      ...(typeof metadata.showCrewActivity === 'boolean' ? { showCrewActivity: metadata.showCrewActivity } : {}),
+    };
+  } catch {
+    return {};
+  }
+}
+
+function persistMockProfileMetadata(metadata: StoredMockProfileMetadata) {
+  if (typeof window === 'undefined') return;
+  window.localStorage.setItem(MOCK_PROFILE_METADATA_KEY, JSON.stringify(metadata));
+}
 function getStoredMockProfileAccount(): { username: string; email: string } | null {
   if (typeof window === 'undefined') return null;
   try {
@@ -123,7 +154,8 @@ const MOCK_INVENTORY: InventoryItem[] = [
 let MOCK_LOADOUT: Loadout = {
   Hair: 'hair-soft-crop',
   Tops: 'top-coral-tee',
-  Eyeglasses: 'glasses-round-ink',
+  ShoeWear: 'shoe-studio-boots',
+  Accessories: 'glasses-round-ink',
 };
 
 const MOCK_ACHIEVEMENTS: Achievement[] = [
@@ -438,16 +470,16 @@ const MOCK_ROLE_STATISTICS: RoleStatistics[] = [
 ];
 
 const MOCK_LEADERBOARDS: LeaderboardEntry[] = [
-  { playFabId: 'PF-002', displayName: 'DIRECTOR_X', position: 1, statValue: 312450, avatarUrl: '/assets/crew-set-illustration.png' },
-  { playFabId: 'MOCK-PLAYER-001', displayName: 'CAMERA_PRO', position: 2, statValue: 276820, avatarUrl: '/assets/crew-set-illustration.png' },
-  { playFabId: 'PF-003', displayName: 'LIGHT_MASTER', position: 3, statValue: 245600, avatarUrl: '/assets/crew-set-illustration.png' },
-  { playFabId: 'PF-004', displayName: 'EDIT_KING', position: 4, statValue: 198300, avatarUrl: '/assets/crew-set-illustration.png' },
-  { playFabId: 'PF-005', displayName: 'SCENE_SETTER', position: 5, statValue: 187650, avatarUrl: '/assets/crew-set-illustration.png' },
-  { playFabId: 'PF-006', displayName: 'FOCUS_PULLER', position: 6, statValue: 176200, avatarUrl: '/assets/crew-set-illustration.png' },
-  { playFabId: 'PF-007', displayName: 'BOOM_OPERATOR', position: 7, statValue: 165800, avatarUrl: '/assets/crew-set-illustration.png' },
-  { playFabId: 'PF-008', displayName: 'GRIP_MASTER', position: 8, statValue: 154300, avatarUrl: '/assets/crew-set-illustration.png' },
-  { playFabId: 'PF-009', displayName: 'SLATE_RUNNER', position: 9, statValue: 143900, avatarUrl: '/assets/crew-set-illustration.png' },
-  { playFabId: 'PF-010', displayName: 'DOLLY_GRIP', position: 10, statValue: 132500, avatarUrl: '/assets/crew-set-illustration.png' },
+  { playFabId: 'PF-002', displayName: 'DIRECTOR_X', position: 1, statValue: 312450, avatarUrl: DEFAULT_PROFILE_PICTURE_URL },
+  { playFabId: 'MOCK-PLAYER-001', displayName: 'CAMERA_PRO', position: 2, statValue: 276820, avatarUrl: DEFAULT_PROFILE_PICTURE_URL },
+  { playFabId: 'PF-003', displayName: 'LIGHT_MASTER', position: 3, statValue: 245600, avatarUrl: DEFAULT_PROFILE_PICTURE_URL },
+  { playFabId: 'PF-004', displayName: 'EDIT_KING', position: 4, statValue: 198300, avatarUrl: DEFAULT_PROFILE_PICTURE_URL },
+  { playFabId: 'PF-005', displayName: 'SCENE_SETTER', position: 5, statValue: 187650, avatarUrl: DEFAULT_PROFILE_PICTURE_URL },
+  { playFabId: 'PF-006', displayName: 'FOCUS_PULLER', position: 6, statValue: 176200, avatarUrl: DEFAULT_PROFILE_PICTURE_URL },
+  { playFabId: 'PF-007', displayName: 'BOOM_OPERATOR', position: 7, statValue: 165800, avatarUrl: DEFAULT_PROFILE_PICTURE_URL },
+  { playFabId: 'PF-008', displayName: 'GRIP_MASTER', position: 8, statValue: 154300, avatarUrl: DEFAULT_PROFILE_PICTURE_URL },
+  { playFabId: 'PF-009', displayName: 'SLATE_RUNNER', position: 9, statValue: 143900, avatarUrl: DEFAULT_PROFILE_PICTURE_URL },
+  { playFabId: 'PF-010', displayName: 'DOLLY_GRIP', position: 10, statValue: 132500, avatarUrl: DEFAULT_PROFILE_PICTURE_URL },
 ];
 
 const MOCK_FRIENDS: FriendInfo[] = [
@@ -550,7 +582,7 @@ const MOCK_ADMIN_NOTIFS: AdminNotification[] = [
 const MOCK_SHOP_CATALOG: InventoryItem[] = cosmeticCatalog.map((item) => ({
   itemId: item.id,
   displayName: item.name,
-  category: "costumes",
+  category: item.category,
   rarity: item.rarity.toLowerCase() as ItemRarity,
   price: item.price,
   currency: 'cCoins',
@@ -623,12 +655,15 @@ export function createMockService(): PlayFabService {
       async getProfile(): Promise<PlayerProfile> {
         await randomDelay();
         const account = getStoredMockProfileAccount();
-        if (!account) return { ...MOCK_PLAYER_PROFILE };
+        const metadata = getStoredMockProfileMetadata();
         return {
           ...MOCK_PLAYER_PROFILE,
-          displayName: account.username,
-          username: account.username,
-          email: account.email || MOCK_PLAYER_PROFILE.email,
+          ...metadata,
+          ...(account ? {
+            displayName: account.username,
+            username: account.username,
+            email: account.email || MOCK_PLAYER_PROFILE.email,
+          } : {}),
         };
       },
       async getProgression(): Promise<PlayerProgression> {
@@ -674,7 +709,19 @@ export function createMockService(): PlayFabService {
       async updateProfile(updates: Partial<PlayerProfile>): Promise<PlayerProfile> {
         await randomDelay();
         MOCK_PLAYER_PROFILE = { ...MOCK_PLAYER_PROFILE, ...updates };
-        return { ...MOCK_PLAYER_PROFILE };
+        if ('bio' in updates || 'avatarUrl' in updates || 'socialLinks' in updates || 'showStatus' in updates || 'profileVisibility' in updates || 'showCrewActivity' in updates) {
+          const current = getStoredMockProfileMetadata();
+          persistMockProfileMetadata({
+            ...current,
+            ...(updates.bio !== undefined ? { bio: updates.bio } : {}),
+            ...(updates.avatarUrl !== undefined ? { avatarUrl: updates.avatarUrl } : {}),
+            ...(updates.socialLinks !== undefined ? { socialLinks: updates.socialLinks } : {}),
+            ...(updates.showStatus !== undefined ? { showStatus: updates.showStatus } : {}),
+            ...(updates.profileVisibility !== undefined ? { profileVisibility: updates.profileVisibility } : {}),
+            ...(updates.showCrewActivity !== undefined ? { showCrewActivity: updates.showCrewActivity } : {}),
+          });
+        }
+        return { ...MOCK_PLAYER_PROFILE, ...getStoredMockProfileMetadata() };
       },
       async updateLoadout(loadout: Loadout): Promise<Loadout> {
         await randomDelay();
@@ -690,11 +737,19 @@ export function createMockService(): PlayFabService {
     leaderboard: {
       async getGlobal(_stat: string, maxResults = 10): Promise<LeaderboardEntry[]> {
         await randomDelay();
-        return MOCK_LEADERBOARDS.slice(0, maxResults);
+        const currentAvatar = getStoredMockProfileMetadata().avatarUrl || DEFAULT_PROFILE_PICTURE_URL;
+        return MOCK_LEADERBOARDS.slice(0, maxResults).map((entry) => ({
+          ...entry,
+          avatarUrl: entry.playFabId === MOCK_PLAYER_PROFILE.playFabId ? currentAvatar : DEFAULT_PROFILE_PICTURE_URL,
+        }));
       },
       async getAroundPlayer(_stat: string, maxResults = 5): Promise<LeaderboardEntry[]> {
         await randomDelay();
-        return MOCK_LEADERBOARDS.slice(0, maxResults);
+        const currentAvatar = getStoredMockProfileMetadata().avatarUrl || DEFAULT_PROFILE_PICTURE_URL;
+        return MOCK_LEADERBOARDS.slice(0, maxResults).map((entry) => ({
+          ...entry,
+          avatarUrl: entry.playFabId === MOCK_PLAYER_PROFILE.playFabId ? currentAvatar : DEFAULT_PROFILE_PICTURE_URL,
+        }));
       },
     },
 
@@ -740,17 +795,25 @@ export function createMockService(): PlayFabService {
     admin: {
       async getPlayers(): Promise<PlayerProfile[]> {
         await randomDelay();
+        const currentAvatar = getStoredMockProfileMetadata().avatarUrl || DEFAULT_PROFILE_PICTURE_URL;
         return Array.from({ length: 8 }).map((_, i) => ({
           ...MOCK_PLAYER_PROFILE,
           playFabId: `MOCK-PLAYER-00${i + 1}`,
           displayName: `PLAYER_${i + 1}`,
           username: `PLAYER_${i + 1}`,
+          avatarUrl: i === 0 ? currentAvatar : DEFAULT_PROFILE_PICTURE_URL,
         }));
       },
-      async getPlayer(_id: string) {
+      async getPlayer(id: string) {
         await randomDelay();
+        const isCurrentPlayer = id === MOCK_PLAYER_PROFILE.playFabId;
         return {
-          profile: MOCK_PLAYER_PROFILE,
+          profile: {
+            ...MOCK_PLAYER_PROFILE,
+            ...(isCurrentPlayer ? getStoredMockProfileMetadata() : {}),
+            avatarUrl: isCurrentPlayer ? getStoredMockProfileMetadata().avatarUrl || DEFAULT_PROFILE_PICTURE_URL : DEFAULT_PROFILE_PICTURE_URL,
+            playFabId: id,
+          },
           progression: MOCK_PROGRESSION,
           wallet: MOCK_WALLET,
           inventory: MOCK_INVENTORY,

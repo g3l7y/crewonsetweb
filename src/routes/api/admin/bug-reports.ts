@@ -8,6 +8,12 @@ import {
   deleteWebsiteRecords,
 } from '@/lib/playfab/websiteData';
 import type { BugReport } from '@/lib/playfab/types';
+import { persistAdminPlayerMessage } from '@/lib/playfab/admin-player-message';
+import { buildReportInvestigationMessage } from '@/lib/report-investigation-message';
+import {
+  parseSubmissionRequest,
+  uploadSubmissionAttachment,
+} from '@/lib/playfab/submission-attachments';
 
 function getSecretKey(): string {
   const key = process.env['PLAYFAB_SECRET_KEY'];
@@ -43,16 +49,8 @@ export const Route = createFileRoute('/api/admin/bug-reports')({
       POST: async ({ request }) => {
         try {
           const session = await validateSessionFromRequest(request);
-          const body = await request.json();
-          const {
-            category,
-            description,
-            email,
-            attachmentName,
-            attachmentUrl,
-            attachmentType,
-            page,
-          } = body as Record<string, string>;
+          const { fields, attachment } = await parseSubmissionRequest(request);
+          const { category, description, email, attachmentName, attachmentType } = fields;
 
           if (!category || !description) {
             return Response.json(
@@ -61,16 +59,31 @@ export const Route = createFileRoute('/api/admin/bug-reports')({
             );
           }
 
+          const id = uid('BUG');
+          let uploadedAttachment: { attachmentUrl: string; fileName: string } | undefined;
+          if (attachment) {
+            try {
+              uploadedAttachment = await uploadSubmissionAttachment(
+                id,
+                attachment,
+                getSecretKey(),
+              );
+            } catch (error) {
+              const message = error instanceof Error ? error.message : 'Attachment upload failed.';
+              return Response.json({ error: message }, { status: 400 });
+            }
+          }
+
           const report: BugReport = {
-            id: uid('BUG'),
+            id,
             playerId: session?.playFabId ?? 'anonymous',
             playerName: session?.username || session?.displayName || 'Anonymous',
             category,
             description,
             email: email || session?.email || '',
-            attachmentName: attachmentName || undefined,
-            attachmentUrl: attachmentUrl || undefined,
-            attachmentType: attachmentType || undefined,
+            attachmentName: attachment?.name || attachmentName || undefined,
+            attachmentUrl: uploadedAttachment?.attachmentUrl || undefined,
+            attachmentType: attachment?.type || attachmentType || undefined,
             submittedAt: new Date().toISOString(),
             status: 'New',
           };
@@ -108,6 +121,46 @@ export const Route = createFileRoute('/api/admin/bug-reports')({
             return Response.json({ error: 'Report ID is required.' }, { status: 400 });
           }
 
+          const allowedStatuses = ['New', 'Investigating', 'Resolved'];
+          if (status !== undefined && !allowedStatuses.includes(status)) {
+            return Response.json({ error: 'Invalid bug report status.' }, { status: 400 });
+          }
+          const secretKey = getSecretKey();
+          const reports = await getWebsiteRecords<BugReport>(WEBSITE_DATA_KEYS.bugReports, secretKey);
+          const current = reports.find((report) => report.id === id);
+          if (!current) return Response.json({ error: 'Report not found.' }, { status: 404 });
+
+          if (status !== undefined) {
+            const order: Record<string, number> = { New: 0, Investigating: 1, Resolved: 2 };
+            if ((order[status] ?? -1) < (order[current.status] ?? -1)) {
+              return Response.json({ error: 'Bug report statuses can only move forward.' }, { status: 409 });
+            }
+            if (current.status === 'New' && status === 'Investigating') {
+              const playerId = current.playerId?.trim();
+              if (!playerId || playerId === 'anonymous') {
+                return Response.json(
+                  { error: 'This report is not linked to a player account, so an Inbox update cannot be delivered.' },
+                  { status: 409 },
+                );
+              }
+              const message = buildReportInvestigationMessage({
+                kind: 'bug',
+                reportId: current.id,
+                category: current.category,
+              });
+              const saved = await persistAdminPlayerMessage({
+                id: 'report-' + current.id + '-investigating',
+                subject: message.subject,
+                body: message.body,
+                recipientPlayerId: playerId,
+                recipientUsername: current.playerName || 'Player',
+                kind: 'report',
+                secretKey,
+              });
+              if (!saved) return Response.json({ error: 'Could not save the player Inbox update. The report status was not changed.' }, { status: 500 });
+            }
+          }
+
           const success = await updateWebsiteRecord<BugReport>(
             WEBSITE_DATA_KEYS.bugReports,
             id,
@@ -116,7 +169,7 @@ export const Route = createFileRoute('/api/admin/bug-reports')({
               ...(status !== undefined ? { status } : {}),
               ...(adminNotes !== undefined ? { adminNotes } : {}),
             }),
-            getSecretKey(),
+            secretKey,
           );
 
           if (!success) {
