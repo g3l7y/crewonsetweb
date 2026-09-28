@@ -12,12 +12,13 @@ export const Route = createFileRoute("/admin/game")({
   component: GamePage,
 });
 
-import { FormEvent, useEffect, useState } from "react";
+import { FormEvent, useEffect, useRef, useState } from "react";
 import { Check, ChevronDown, ListChecks, Mail, UploadCloud, X } from "lucide-react";
 import { players } from "@/lib/admin-demo-data";
 import { useAdminPlayers } from "@/lib/playfab/hooks";
 import { isMockMode } from "@/lib/playfab/config";
 import { isValidEmail } from "@/lib/validation";
+import { saveMockInstaller } from "@/lib/game-download";
 import {
   brandUpdatesStore,
   buildInfoStore,
@@ -94,6 +95,9 @@ function GamePage() {
     () => buildInfoStore.get()[0] ?? (isMockMode() ? seedBuildInfo : emptyBuildInfo),
   );
   const [savedMessage, setSavedMessage] = useState("");
+  const [installerFile, setInstallerFile] = useState<File | null>(null);
+  const [savingRequirements, setSavingRequirements] = useState(false);
+  const installerInputRef = useRef<HTMLInputElement>(null);
   const [composerMessage, setComposerMessage] = useState("");
 
   useEffect(() => {
@@ -136,11 +140,7 @@ function GamePage() {
     };
   }, [brandUpdates]);
 
-  function updateRequirement(
-    id: string,
-    field: "minimum" | "recommended",
-    value: string,
-  ) {
+  function updateRequirement(id: string, field: "minimum" | "recommended", value: string) {
     setRequirements((current) =>
       current.map((row) => (row.id === id ? { ...row, [field]: value } : row)),
     );
@@ -162,21 +162,89 @@ function GamePage() {
     ]);
   }
 
-  function saveRequirements() {
-    const now = new Date().toISOString();
-    const osRequirement = requirements.find((row) => row.label.toLowerCase() === "os");
-    const nextBuild: GameBuild = {
-      ...buildDraft,
-      minWindows: osRequirement?.minimum ?? buildDraft.minWindows,
-      releasedAt: now,
-    };
-    systemRequirementsStore.set(requirements);
-    buildInfoStore.set([buildInfo]);
-    gameBuildStore.set([nextBuild]);
-    setBuildDraft(nextBuild);
-    notifyRequirementsUpdated();
-    setSavedMessage("Saved — all game pages updated and players notified.");
-    window.setTimeout(() => setSavedMessage(""), 3000);
+  async function saveRequirements() {
+    if (installerFile && !installerFile.name.toLowerCase().endsWith(".exe")) {
+      setSavedMessage("Choose a Windows .exe installer file.");
+      return;
+    }
+
+    setSavingRequirements(true);
+    setSavedMessage("");
+    let downloadUrl = buildDraft.downloadUrl;
+    let installerFileName = buildDraft.installerFileName;
+    try {
+      if (installerFile) {
+        installerFileName = installerFile.name;
+        if (isMockMode()) {
+          await saveMockInstaller(installerFile);
+          downloadUrl = "mock-installer://current";
+        } else {
+          setSavedMessage("Uploading installer to secure storage…");
+          const initResponse = await fetch("/api/admin/game-installer", {
+            method: "POST",
+            credentials: "include",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ action: "initiate" }),
+          });
+          const initResult = (await initResponse.json()) as {
+            error?: string;
+            data?: { fileName: string; uploadUrl: string; profileVersion: number };
+          };
+          if (!initResponse.ok || !initResult.data) {
+            throw new Error(initResult.error || "Could not start the installer upload.");
+          }
+
+          const uploaded = await fetch(initResult.data.uploadUrl, {
+            method: "PUT",
+            headers: { "Content-Type": installerFile.type || "application/octet-stream" },
+            body: installerFile,
+          });
+          if (!uploaded.ok) throw new Error("The installer could not be uploaded to PlayFab.");
+
+          const finalizeResponse = await fetch("/api/admin/game-installer", {
+            method: "POST",
+            credentials: "include",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              action: "finalize",
+              fileName: initResult.data.fileName,
+              profileVersion: initResult.data.profileVersion,
+            }),
+          });
+          const finalizeResult = (await finalizeResponse.json()) as { error?: string };
+          if (!finalizeResponse.ok) {
+            throw new Error(
+              finalizeResult.error || "The uploaded installer could not be published.",
+            );
+          }
+
+          downloadUrl = `/api/game-installer?file=${encodeURIComponent(initResult.data.fileName)}&name=${encodeURIComponent(installerFile.name)}`;
+        }
+      }
+
+      const now = new Date().toISOString();
+      const osRequirement = requirements.find((row) => row.label.toLowerCase() === "os");
+      const nextBuild: GameBuild = {
+        ...buildDraft,
+        installerFileName,
+        downloadUrl,
+        minWindows: osRequirement?.minimum ?? buildDraft.minWindows,
+        releasedAt: now,
+      };
+      systemRequirementsStore.set(requirements);
+      buildInfoStore.set([buildInfo]);
+      gameBuildStore.set([nextBuild]);
+      setBuildDraft(nextBuild);
+      notifyRequirementsUpdated();
+      setInstallerFile(null);
+      if (installerInputRef.current) installerInputRef.current.value = "";
+      setSavedMessage("Saved — all game pages updated and players notified.");
+      window.setTimeout(() => setSavedMessage(""), 3000);
+    } catch (error) {
+      setSavedMessage(error instanceof Error ? error.message : "Changes could not be saved.");
+    } finally {
+      setSavingRequirements(false);
+    }
   }
 
   function resetRequirements() {
@@ -184,7 +252,6 @@ function GamePage() {
     setBuildInfo({ ...seedBuildInfo });
     systemRequirementsStore.set(seedSystemRequirements);
     buildInfoStore.set([seedBuildInfo]);
-    setRequirements(seedSystemRequirements.map((row) => ({ ...row })));
     notifyRequirementsUpdated();
     setSavedMessage("Reset to defaults.");
     window.setTimeout(() => setSavedMessage(""), 3000);
@@ -540,7 +607,10 @@ function GamePage() {
                     <input
                       value={buildDraft.buildNumber}
                       onChange={(event) =>
-                        setBuildDraft((current) => ({ ...current, buildNumber: event.target.value }))
+                        setBuildDraft((current) => ({
+                          ...current,
+                          buildNumber: event.target.value,
+                        }))
                       }
                       placeholder="950"
                       className="mt-1.5 w-full rounded-md border border-white/10 bg-[#182330] px-3 py-2 text-sm font-bold !text-white outline-none focus:border-coral"
@@ -551,30 +621,41 @@ function GamePage() {
                     <input
                       value={buildDraft.installerFileName}
                       onChange={(event) =>
-                        setBuildDraft((current) => ({ ...current, installerFileName: event.target.value }))
+                        setBuildDraft((current) => ({
+                          ...current,
+                          installerFileName: event.target.value,
+                        }))
                       }
                       placeholder="CrewOnSet-0.9.5.exe"
                       className="mt-1.5 w-full rounded-md border border-white/10 bg-[#182330] px-3 py-2 text-sm font-bold !text-white outline-none focus:border-coral"
                     />
                   </label>
                   <label className="form-label !text-white/50 sm:col-span-2">
-                    DOWNLOAD FILE URL
+                    UPLOAD WINDOWS INSTALLER (.EXE)
                     <input
-                      type="url"
-                      value={buildDraft.downloadUrl}
-                      onChange={(event) =>
-                        setBuildDraft((current) => ({ ...current, downloadUrl: event.target.value }))
-                      }
-                      placeholder="https://.../installer.exe"
-                      className="mt-1.5 w-full rounded-md border border-white/10 bg-[#182330] px-3 py-2 text-sm font-bold !text-white outline-none focus:border-coral"
+                      ref={installerInputRef}
+                      type="file"
+                      accept=".exe,application/vnd.microsoft.portable-executable,application/octet-stream"
+                      onChange={(event) => setInstallerFile(event.currentTarget.files?.[0] ?? null)}
+                      className="mt-1.5 w-full rounded-md border border-white/10 bg-[#182330] px-3 py-2 text-sm font-bold !text-white file:mr-3 file:rounded file:border-0 file:bg-coral file:px-3 file:py-2 file:text-xs file:font-black file:text-white"
                     />
+                    <span className="mt-1 block text-xs normal-case tracking-normal !text-white/40">
+                      {installerFile
+                        ? `Ready to upload: ${installerFile.name} (${(installerFile.size / 1024 / 1024).toFixed(1)} MB)`
+                        : buildDraft.installerFileName
+                          ? `Current installer: ${buildDraft.installerFileName}`
+                          : "Choose the .exe file players should download."}
+                    </span>
                   </label>
                   <label className="form-label !text-white/50 sm:col-span-2">
                     RELEASE NOTES
                     <textarea
                       value={buildDraft.releaseNotes}
                       onChange={(event) =>
-                        setBuildDraft((current) => ({ ...current, releaseNotes: event.target.value }))
+                        setBuildDraft((current) => ({
+                          ...current,
+                          releaseNotes: event.target.value,
+                        }))
                       }
                       rows={4}
                       className="mt-1.5 w-full resize-y rounded-md border border-white/10 bg-[#182330] px-3 py-2 text-sm font-bold !text-white outline-none focus:border-coral"
@@ -587,9 +668,10 @@ function GamePage() {
                 <button
                   type="button"
                   onClick={saveRequirements}
+                  disabled={savingRequirements}
                   className="inline-flex items-center gap-2 rounded-md bg-coral px-4 py-2 text-xs font-black uppercase text-white transition hover:bg-coral-dark"
                 >
-                  Save Changes
+                  {savingRequirements ? "Publishing…" : "Save Changes"}
                 </button>
 
                 <button
@@ -677,7 +759,10 @@ function GamePage() {
           aria-label="Brand updates and mail forms"
         >
           {(
-            [["brand", "Brand Updates"], ["mail", "Mail"]] as const
+            [
+              ["brand", "Brand Updates"],
+              ["mail", "Mail"],
+            ] as const
           ).map(([tab, label]) => {
             const active = composerTab === tab;
             return (
