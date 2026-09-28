@@ -617,10 +617,10 @@ export type PartnershipStatus = "New" | "Pending" | "Approved" | "On-going" | "D
 const partnershipStatusTransitions: Record<PartnershipStatus, PartnershipStatus[]> = {
   New: ["New", "Pending", "Declined"],
   Pending: ["Pending", "Approved"],
-  Approved: ["Approved", "Pending", "On-going"],
-  "On-going": ["On-going", "Pending", "Done"],
-  Done: ["Done", "Pending"],
-  Declined: ["Declined", "Pending"],
+  Approved: ["Approved", "On-going"],
+  "On-going": ["On-going", "Done"],
+  Done: ["Done"],
+  Declined: ["Declined"],
 };
 
 export function canAdvancePartnershipStatus(
