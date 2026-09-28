@@ -1,6 +1,6 @@
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { isMockMode } from './config';
-import { getPlayFabService } from './service';
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { getPlayFabService } from "./service";
+import { isMockMode } from "./config";
 import type {
   PlayerProfile,
   PlayerProgression,

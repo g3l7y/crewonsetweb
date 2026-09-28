@@ -29,6 +29,7 @@ import { isMockMode } from "@/lib/playfab/config";
 import { isValidEmail } from "@/lib/validation";
 import {
   buildHistoryStore,
+  brandUpdatesStore,
   buildInfoStore,
   gameBuildStore,
   installStepsStore,
@@ -71,7 +72,9 @@ function GamePage() {
         username: player.username || player.displayName,
         email: player.email,
       }));
-  const [composerTab, setComposerTab] = useState<"game" | "mail">("game");
+  const [composerTab, setComposerTab] = useState<"game" | "brand" | "mail">("game");
+  const [brandUrl, setBrandUrl] = useState("");
+  const [brandNotes, setBrandNotes] = useState("");
   const [mailTo, setMailTo] = useState("");
   const [mailSubject, setMailSubject] = useState("");
   const [mailBody, setMailBody] = useState("");
@@ -89,6 +92,10 @@ function GamePage() {
   const [requirementsOpen, setRequirementsOpen] = useState(false);
   const [remoteRequirements] = systemRequirementsStore.useStore();
   const [remoteBuildInfoRows] = buildInfoStore.useStore();
+  const [brandUpdates] = brandUpdatesStore.useStore();
+  const [brandMetrics, setBrandMetrics] = useState<
+    Record<string, { clicks: number; visits: number; impressions: number }>
+  >({});
   const [remoteInstallSteps] = installStepsStore.useStore();
   const [requirements, setRequirements] = useState<SystemRequirementRow[]>(() =>
     systemRequirementsStore.get(),
@@ -110,6 +117,34 @@ function GamePage() {
       setBuildInfo({ ...remoteBuildInfoRows[0] });
     }
   }, [remoteBuildInfoRows, buildInfo.version]);
+
+  useEffect(() => {
+    if (isMockMode()) return;
+    let active = true;
+    void Promise.all(
+      brandUpdates.map(async (update) => {
+        const response = await fetch(
+          `/api/admin/brand-updates/${encodeURIComponent(update.id)}/metrics`,
+          { credentials: "include", cache: "no-store" },
+        );
+        if (!response.ok) return null;
+        const body = (await response.json()) as {
+          data?: { clicks: number; visits: number; impressions: number };
+        };
+        return body.data ? ([update.id, body.data] as const) : null;
+      }),
+    )
+      .then((rows) => {
+        if (active)
+          setBrandMetrics(
+            Object.fromEntries(rows.filter((row): row is NonNullable<typeof row> => row !== null)),
+          );
+      })
+      .catch(() => undefined);
+    return () => {
+      active = false;
+    };
+  }, [brandUpdates]);
 
   function updateRequirement(
     id: string,
@@ -135,6 +170,19 @@ function GamePage() {
   function saveRequirements() {
     systemRequirementsStore.set(requirements);
     buildInfoStore.set([buildInfo]);
+    notificationsStore.set([
+      {
+        id: uid("requirements"),
+        title: "System requirements updated",
+        body: "The latest system requirements are available. Open the Download page to review them and get the game.",
+        createdAt: new Date().toISOString(),
+        kind: "announcement",
+        read: false,
+        href: "/portal#play-now",
+        target: { kind: "all" },
+      },
+      ...notificationsStore.get(),
+    ]);
     setSavedMessage("Saved — Download page updated.");
     window.setTimeout(() => setSavedMessage(""), 3000);
   }
@@ -214,6 +262,55 @@ function GamePage() {
   function resetBuildDraft() {
     const current = gameBuildStore.get()[0];
     if (current) setBuildDraft({ ...current });
+  }
+
+  function publishBrandUpdate(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    const url = brandUrl.trim();
+    try {
+      const parsed = new URL(url);
+      if (!["http:", "https:"].includes(parsed.protocol)) throw new Error("Invalid URL");
+    } catch {
+      setComposerMessage("Enter a valid https:// brand URL.");
+      return;
+    }
+    const update = {
+      id: uid("brand-update"),
+      url,
+      notes: brandNotes.trim(),
+      publishedAt: new Date().toISOString(),
+    };
+    brandUpdatesStore.set([update, ...brandUpdatesStore.get()]);
+    if (!isMockMode()) {
+      void fetch(`/api/admin/brand-updates/${encodeURIComponent(update.id)}/metrics`, {
+        method: "POST",
+        credentials: "include",
+      });
+    }
+    notificationsStore.set([
+      {
+        id: uid("brand-notice"),
+        title: "New brand update",
+        body: update.notes || "A new brand update is available.",
+        createdAt: update.publishedAt,
+        kind: "announcement",
+        read: false,
+        href: isMockMode()
+          ? update.url
+          : `${window.location.origin}/api/brand-updates/${encodeURIComponent(update.id)}/click`,
+        target: { kind: "all" },
+      },
+      ...notificationsStore.get(),
+    ]);
+    logAdminActivity({
+      kind: "game",
+      label: "Brand update published",
+      detail: update.notes || url,
+    });
+    setBrandUrl("");
+    setBrandNotes("");
+    setComposerMessage("Brand update published and players notified.");
+    window.setTimeout(() => setComposerMessage(""), 3000);
   }
 
   function resetMailForm() {
@@ -616,6 +713,45 @@ function GamePage() {
         </div>
       </section>
 
+      {brandUpdates.length > 0 && (
+        <section className="mt-6 rounded-lg border border-white/[0.06] bg-[#182330] p-5 shadow-xl">
+          <h2 className="font-black uppercase !text-white">Published Brand Updates</h2>
+          <div className="mt-4 space-y-3">
+            {brandUpdates.map((update) => {
+              const metrics = brandMetrics[update.id];
+              return (
+                <article
+                  key={update.id}
+                  className="rounded-md border border-white/10 bg-[#101923] p-4"
+                >
+                  <a
+                    href={update.url}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="break-all text-sm font-bold text-yellow hover:underline"
+                  >
+                    {update.url}
+                  </a>
+                  <p className="mt-2 whitespace-pre-line text-sm text-white/65">
+                    {update.notes || "No notes."}
+                  </p>
+                  <p className="mt-2 text-[10px] uppercase tracking-wider text-white/35">
+                    Published {new Date(update.publishedAt).toLocaleString()}
+                  </p>
+                  <p className="mt-2 text-[10px] font-bold uppercase tracking-wider text-white/45">
+                    {metrics
+                      ? `${metrics.impressions} impressions · ${metrics.clicks} clicks · ${metrics.visits} visits`
+                      : isMockMode()
+                        ? "Mock tracking active"
+                        : "Loading metrics…"}
+                  </p>
+                </article>
+              );
+            })}
+          </div>
+        </section>
+      )}
+
       {/* RECENT UPLOADS */}
       <section className="mt-6">
         <h2 className="mb-4 text-lg font-black uppercase !text-white">Recent Uploads</h2>
@@ -685,7 +821,7 @@ function GamePage() {
       <section className="mt-6 rounded-lg border border-white/[0.06] bg-[#182330] p-5 shadow-xl">
         <div className="mb-5 flex items-start gap-3">
           <div className="grid size-9 shrink-0 place-items-center rounded-md bg-coral text-white">
-            {composerTab === "game" ? (
+            {composerTab !== "mail" ? (
               <UploadCloud className="size-4.5" />
             ) : (
               <Mail className="size-4.5" />
@@ -693,11 +829,17 @@ function GamePage() {
           </div>
           <div className="min-w-0">
             <h2 className="font-black uppercase !text-white">
-              {composerTab === "game" ? "New Game Release" : "Mail"}
+              {composerTab === "mail"
+                ? "Mail"
+                : composerTab === "brand"
+                  ? "Brand Updates"
+                  : "New Game Release"}
             </h2>
             <p className="text-xs !text-white/35">
-              {composerTab === "game"
-                ? "Publish a new build and update the release details shown to players."
+              {composerTab !== "mail"
+                ? composerTab === "brand"
+                  ? "Publish a brand link and notify players when it is available."
+                  : "Publish a new build and update release details shown to players."
                 : "Send status feedback to players who submitted reports or brands with applications."}
             </p>
           </div>
@@ -710,7 +852,8 @@ function GamePage() {
         >
           {(
             [
-              ["game", "Game Updates"],
+              ["game", "Game Release"],
+              ["brand", "Brand Updates"],
               ["mail", "Mail"],
             ] as const
           ).map(([tab, label]) => {
@@ -734,7 +877,53 @@ function GamePage() {
           })}
         </div>
 
-        {composerTab === "game" ? (
+        {composerTab === "brand" ? (
+          <form onSubmit={publishBrandUpdate} className="grid gap-4">
+            <label className="block text-[10px] font-black uppercase tracking-wider !text-white/45">
+              Brand URL
+              <input
+                value={brandUrl}
+                onChange={(event) => setBrandUrl(event.target.value)}
+                type="url"
+                required
+                placeholder="https://brand.example/campaign"
+                className="admin-input mt-2 w-full rounded-md border border-white/10 bg-[#101923] px-3 py-2.5 text-sm font-bold !text-white outline-none transition placeholder:!text-white/25 focus:border-coral"
+              />
+            </label>
+            <label className="block text-[10px] font-black uppercase tracking-wider !text-white/45">
+              Notes
+              <textarea
+                value={brandNotes}
+                onChange={(event) => setBrandNotes(event.target.value)}
+                rows={6}
+                placeholder="What should players know about this brand update?"
+                className="admin-input mt-2 min-h-[140px] w-full resize-y rounded-md border border-white/10 bg-[#101923] px-3 py-2.5 text-sm font-bold !text-white outline-none transition placeholder:!text-white/25 focus:border-coral"
+              />
+            </label>
+            <div className="flex flex-wrap items-center gap-2">
+              <button
+                type="submit"
+                className="inline-flex items-center gap-2 rounded-md bg-[#d9a514] px-5 py-2.5 text-xs font-black uppercase text-[#101923] transition hover:bg-[#e6b62b]"
+              >
+                <UploadCloud className="size-4" />
+                Publish Brand Update
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setBrandUrl("");
+                  setBrandNotes("");
+                }}
+                className="rounded-md border border-white/10 px-4 py-2.5 text-xs font-black uppercase !text-white/60 transition hover:!text-white"
+              >
+                Reset
+              </button>
+              {composerMessage && (
+                <span className="text-xs font-bold !text-[#4bc4b4]">{composerMessage}</span>
+              )}
+            </div>
+          </form>
+        ) : composerTab === "game" ? (
           <form onSubmit={submitUpload} className="grid gap-4">
             <div className="grid gap-4 sm:grid-cols-2">
               {(

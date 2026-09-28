@@ -25,7 +25,7 @@ type PlayFabSessionResult = {
  */
 function buildCookie(name: string, value: string, maxAge: number): string {
   const secure = process.env['NODE_ENV'] === 'production' ? '; Secure' : '';
-  return `${name}=${encodeURIComponent(value)}; Path=/; HttpOnly; SameSite=Strict; Max-Age=${maxAge}${secure}`;
+  return `${name}=${encodeURIComponent(value)}; Path=/; HttpOnly; SameSite=Lax; Max-Age=${maxAge}${secure}`;
 }
 
 function expireCookie(name: string): string {
@@ -38,7 +38,7 @@ function expireCookie(name: string): string {
  * Returns an array of Set-Cookie header values.
  */
 export function createSessionCookies(session: SessionData): string[] {
-  const maxAge = 60 * 60 * 8; // Keep the mock-preview browser session for 8 hours.
+  const maxAge = 60 * 60 * 24 * 30; // Keep the browser session for 30 days; PlayFab still validates the ticket.
   const sessionValue = JSON.stringify({
     sessionTicket: session.sessionTicket,
     playFabId: session.playFabId,

@@ -21,6 +21,7 @@ const sharedEndpoints: Record<string, string> = {
   "cos.ads": "/api/admin/data?key=ads",
   "cos.revenue": "/api/admin/data?key=revenue",
   "cos.gameBuild": "/api/admin/data?key=gameBuild",
+  "cos.brandUpdates": "/api/admin/data?key=brandUpdates",
   "cos.buildHistory": "/api/admin/data?key=buildHistory",
   "cos.systemRequirements": "/api/admin/data?key=systemRequirements",
   "cos.buildInfo": "/api/admin/data?key=buildInfo",
@@ -1085,6 +1086,9 @@ export const gameBuildStore = createStore<GameBuild>("cos.gameBuild", [
     releasedAt: "2026-08-27T00:00:00.000Z",
   },
 ]);
+
+export type BrandUpdate = { id: string; url: string; notes: string; publishedAt: string };
+export const brandUpdatesStore = createStore<BrandUpdate>("cos.brandUpdates", []);
 
 /** Archive of previously uploaded builds, newest first. */
 export const buildHistoryStore = createStore<GameBuild>("cos.buildHistory", []);

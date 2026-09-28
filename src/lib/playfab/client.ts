@@ -61,7 +61,7 @@ export async function playfabClientApi<T = unknown>(
   const response = await fetch(`${PLAYFAB_API_BASE}${path}`, {
     method: 'POST',
     headers,
-    body: JSON.stringify({ ...body, TitleId: PLAYFAB_TITLE_ID }),
+    body: JSON.stringify(body),
   });
 
   const json = await response.json();

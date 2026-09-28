@@ -30,7 +30,7 @@ function belongsToSession(item: NotificationRecord, session: SessionData): boole
     recipientUsername?: string;
     recipientEmail?: string;
   };
-  if (record.target?.kind === "all") return false;
+  if (record.target?.kind === "all") return true;
   if (record.target?.kind === "players") {
     return Boolean(record.target.playerIds?.includes(session.playFabId));
   }

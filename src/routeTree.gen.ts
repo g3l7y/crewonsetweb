@@ -83,10 +83,13 @@ import { Route as ApiAuthPasswordRecoveryResetRouteImport } from './routes/api/a
 import { Route as ApiAuthPasswordRecoveryVerifyRouteImport } from './routes/api/auth/password-recovery/verify'
 import { Route as ApiAuthPasswordChangeRouteImport } from './routes/api/auth/password/change'
 import { Route as ApiAuthProfileSetupRouteImport } from './routes/api/auth/profile/setup'
+import { Route as ApiBrandUpdatesIdClickRouteImport } from './routes/api/brand-updates.$id.click'
+import { Route as ApiBrandUpdatesIdImpressionRouteImport } from './routes/api/brand-updates.$id.impression'
 import { Route as ApiPlayfabFriendsAddRouteImport } from './routes/api/playfab/friends/add'
 import { Route as ApiPlayfabFriendsRemoveRouteImport } from './routes/api/playfab/friends/remove'
 import { Route as ApiPlayfabFriendsRequestsRouteImport } from './routes/api/playfab/friends/requests'
 import { Route as ApiPlayfabPlayersSearchRouteImport } from './routes/api/playfab/players/search'
+import { Route as ApiAdminBrandUpdatesIdMetricsRouteImport } from './routes/api/admin/brand-updates.$id.metrics'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
@@ -466,6 +469,17 @@ const ApiAuthProfileSetupRoute = ApiAuthProfileSetupRouteImport.update({
   path: '/setup',
   getParentRoute: () => ApiAuthProfileRoute,
 } as any)
+const ApiBrandUpdatesIdClickRoute = ApiBrandUpdatesIdClickRouteImport.update({
+  id: '/api/brand-updates/$id/click',
+  path: '/api/brand-updates/$id/click',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiBrandUpdatesIdImpressionRoute =
+  ApiBrandUpdatesIdImpressionRouteImport.update({
+    id: '/api/brand-updates/$id/impression',
+    path: '/api/brand-updates/$id/impression',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 const ApiPlayfabFriendsAddRoute = ApiPlayfabFriendsAddRouteImport.update({
   id: '/api/playfab/friends/add',
   path: '/api/playfab/friends/add',
@@ -487,6 +501,12 @@ const ApiPlayfabPlayersSearchRoute = ApiPlayfabPlayersSearchRouteImport.update({
   path: '/api/playfab/players/search',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiAdminBrandUpdatesIdMetricsRoute =
+  ApiAdminBrandUpdatesIdMetricsRouteImport.update({
+    id: '/api/admin/brand-updates/$id/metrics',
+    path: '/api/admin/brand-updates/$id/metrics',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -563,10 +583,13 @@ export interface FileRoutesByFullPath {
   '/api/auth/password-recovery/verify': typeof ApiAuthPasswordRecoveryVerifyRoute
   '/api/auth/password/change': typeof ApiAuthPasswordChangeRoute
   '/api/auth/profile/setup': typeof ApiAuthProfileSetupRoute
+  '/api/brand-updates/$id/click': typeof ApiBrandUpdatesIdClickRoute
+  '/api/brand-updates/$id/impression': typeof ApiBrandUpdatesIdImpressionRoute
   '/api/playfab/friends/add': typeof ApiPlayfabFriendsAddRoute
   '/api/playfab/friends/remove': typeof ApiPlayfabFriendsRemoveRoute
   '/api/playfab/friends/requests': typeof ApiPlayfabFriendsRequestsRoute
   '/api/playfab/players/search': typeof ApiPlayfabPlayersSearchRoute
+  '/api/admin/brand-updates/$id/metrics': typeof ApiAdminBrandUpdatesIdMetricsRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -641,10 +664,13 @@ export interface FileRoutesByTo {
   '/api/auth/password-recovery/verify': typeof ApiAuthPasswordRecoveryVerifyRoute
   '/api/auth/password/change': typeof ApiAuthPasswordChangeRoute
   '/api/auth/profile/setup': typeof ApiAuthProfileSetupRoute
+  '/api/brand-updates/$id/click': typeof ApiBrandUpdatesIdClickRoute
+  '/api/brand-updates/$id/impression': typeof ApiBrandUpdatesIdImpressionRoute
   '/api/playfab/friends/add': typeof ApiPlayfabFriendsAddRoute
   '/api/playfab/friends/remove': typeof ApiPlayfabFriendsRemoveRoute
   '/api/playfab/friends/requests': typeof ApiPlayfabFriendsRequestsRoute
   '/api/playfab/players/search': typeof ApiPlayfabPlayersSearchRoute
+  '/api/admin/brand-updates/$id/metrics': typeof ApiAdminBrandUpdatesIdMetricsRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -722,10 +748,13 @@ export interface FileRoutesById {
   '/api/auth/password-recovery/verify': typeof ApiAuthPasswordRecoveryVerifyRoute
   '/api/auth/password/change': typeof ApiAuthPasswordChangeRoute
   '/api/auth/profile/setup': typeof ApiAuthProfileSetupRoute
+  '/api/brand-updates/$id/click': typeof ApiBrandUpdatesIdClickRoute
+  '/api/brand-updates/$id/impression': typeof ApiBrandUpdatesIdImpressionRoute
   '/api/playfab/friends/add': typeof ApiPlayfabFriendsAddRoute
   '/api/playfab/friends/remove': typeof ApiPlayfabFriendsRemoveRoute
   '/api/playfab/friends/requests': typeof ApiPlayfabFriendsRequestsRoute
   '/api/playfab/players/search': typeof ApiPlayfabPlayersSearchRoute
+  '/api/admin/brand-updates/$id/metrics': typeof ApiAdminBrandUpdatesIdMetricsRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -804,10 +833,13 @@ export interface FileRouteTypes {
     | '/api/auth/password-recovery/verify'
     | '/api/auth/password/change'
     | '/api/auth/profile/setup'
+    | '/api/brand-updates/$id/click'
+    | '/api/brand-updates/$id/impression'
     | '/api/playfab/friends/add'
     | '/api/playfab/friends/remove'
     | '/api/playfab/friends/requests'
     | '/api/playfab/players/search'
+    | '/api/admin/brand-updates/$id/metrics'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -882,10 +914,13 @@ export interface FileRouteTypes {
     | '/api/auth/password-recovery/verify'
     | '/api/auth/password/change'
     | '/api/auth/profile/setup'
+    | '/api/brand-updates/$id/click'
+    | '/api/brand-updates/$id/impression'
     | '/api/playfab/friends/add'
     | '/api/playfab/friends/remove'
     | '/api/playfab/friends/requests'
     | '/api/playfab/players/search'
+    | '/api/admin/brand-updates/$id/metrics'
   id:
     | '__root__'
     | '/'
@@ -962,10 +997,13 @@ export interface FileRouteTypes {
     | '/api/auth/password-recovery/verify'
     | '/api/auth/password/change'
     | '/api/auth/profile/setup'
+    | '/api/brand-updates/$id/click'
+    | '/api/brand-updates/$id/impression'
     | '/api/playfab/friends/add'
     | '/api/playfab/friends/remove'
     | '/api/playfab/friends/requests'
     | '/api/playfab/players/search'
+    | '/api/admin/brand-updates/$id/metrics'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -1021,10 +1059,13 @@ export interface RootRouteChildren {
   ApiAuthPasswordRecoveryResetRoute: typeof ApiAuthPasswordRecoveryResetRoute
   ApiAuthPasswordRecoveryVerifyRoute: typeof ApiAuthPasswordRecoveryVerifyRoute
   ApiAuthPasswordChangeRoute: typeof ApiAuthPasswordChangeRoute
+  ApiBrandUpdatesIdClickRoute: typeof ApiBrandUpdatesIdClickRoute
+  ApiBrandUpdatesIdImpressionRoute: typeof ApiBrandUpdatesIdImpressionRoute
   ApiPlayfabFriendsAddRoute: typeof ApiPlayfabFriendsAddRoute
   ApiPlayfabFriendsRemoveRoute: typeof ApiPlayfabFriendsRemoveRoute
   ApiPlayfabFriendsRequestsRoute: typeof ApiPlayfabFriendsRequestsRoute
   ApiPlayfabPlayersSearchRoute: typeof ApiPlayfabPlayersSearchRoute
+  ApiAdminBrandUpdatesIdMetricsRoute: typeof ApiAdminBrandUpdatesIdMetricsRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -1547,6 +1588,20 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiAuthProfileSetupRouteImport
       parentRoute: typeof ApiAuthProfileRoute
     }
+    '/api/brand-updates/$id/click': {
+      id: '/api/brand-updates/$id/click'
+      path: '/api/brand-updates/$id/click'
+      fullPath: '/api/brand-updates/$id/click'
+      preLoaderRoute: typeof ApiBrandUpdatesIdClickRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/brand-updates/$id/impression': {
+      id: '/api/brand-updates/$id/impression'
+      path: '/api/brand-updates/$id/impression'
+      fullPath: '/api/brand-updates/$id/impression'
+      preLoaderRoute: typeof ApiBrandUpdatesIdImpressionRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/playfab/friends/add': {
       id: '/api/playfab/friends/add'
       path: '/api/playfab/friends/add'
@@ -1573,6 +1628,13 @@ declare module '@tanstack/react-router' {
       path: '/api/playfab/players/search'
       fullPath: '/api/playfab/players/search'
       preLoaderRoute: typeof ApiPlayfabPlayersSearchRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/admin/brand-updates/$id/metrics': {
+      id: '/api/admin/brand-updates/$id/metrics'
+      path: '/api/admin/brand-updates/$id/metrics'
+      fullPath: '/api/admin/brand-updates/$id/metrics'
+      preLoaderRoute: typeof ApiAdminBrandUpdatesIdMetricsRouteImport
       parentRoute: typeof rootRouteImport
     }
   }
@@ -1711,10 +1773,13 @@ const rootRouteChildren: RootRouteChildren = {
   ApiAuthPasswordRecoveryResetRoute: ApiAuthPasswordRecoveryResetRoute,
   ApiAuthPasswordRecoveryVerifyRoute: ApiAuthPasswordRecoveryVerifyRoute,
   ApiAuthPasswordChangeRoute: ApiAuthPasswordChangeRoute,
+  ApiBrandUpdatesIdClickRoute: ApiBrandUpdatesIdClickRoute,
+  ApiBrandUpdatesIdImpressionRoute: ApiBrandUpdatesIdImpressionRoute,
   ApiPlayfabFriendsAddRoute: ApiPlayfabFriendsAddRoute,
   ApiPlayfabFriendsRemoveRoute: ApiPlayfabFriendsRemoveRoute,
   ApiPlayfabFriendsRequestsRoute: ApiPlayfabFriendsRequestsRoute,
   ApiPlayfabPlayersSearchRoute: ApiPlayfabPlayersSearchRoute,
+  ApiAdminBrandUpdatesIdMetricsRoute: ApiAdminBrandUpdatesIdMetricsRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

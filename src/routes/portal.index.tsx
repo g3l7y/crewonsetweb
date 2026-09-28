@@ -21,7 +21,7 @@ export const Route = createFileRoute("/portal/")({
 import Image from "@/components/next-compat/image";
 import Link from "@/components/next-compat/link";
 import { getProfileArtwork } from "@/lib/demo/profile-art";
-import { useMemo } from "react";
+import { useEffect, useMemo } from "react";
 import {
   Clock3,
   Film,
@@ -41,7 +41,8 @@ import {
   Settings2,
 } from "lucide-react";
 import { cosmeticCatalog, ownedItemsStore } from "@/lib/demo/portal-shop";
-import { gameBuildStore, notificationsStore } from "@/lib/demo/store";
+import { brandUpdatesStore, gameBuildStore, notificationsStore } from "@/lib/demo/store";
+import { getInstallerDownloadUrl } from "@/lib/game-download";
 import {
   dedupeNotifications,
   isRecentPlayerActivity,
@@ -178,9 +179,19 @@ function PlayerDashboardPage() {
   const productionLogsQuery = useProductionLogs();
   const realNotificationsQuery = useNotifications();
   const [gameBuilds] = gameBuildStore.useStore();
+  const [brandUpdates] = brandUpdatesStore.useStore();
   const [demoNotifications] = notificationsStore.useStore();
   const currentBuild = gameBuilds[0];
-  const playNowHref = currentBuild?.downloadUrl?.trim() || "notes://";
+  const playNowHref = getInstallerDownloadUrl(currentBuild?.downloadUrl);
+  const featuredBrandUpdate = brandUpdates[0];
+  useEffect(() => {
+    if (featuredBrandUpdate && !mockMode) {
+      void fetch(`/api/brand-updates/${encodeURIComponent(featuredBrandUpdate.id)}/impression`, {
+        method: "POST",
+        credentials: "include",
+      });
+    }
+  }, [featuredBrandUpdate?.id, mockMode]);
 
   const displayName = profileQuery.data?.username || profileQuery.data?.displayName || "CAMERA_PRO";
   const displayAvatar = mockMode
@@ -424,14 +435,31 @@ function PlayerDashboardPage() {
             </h2>
             <p className="mt-4 text-lg text-white/75">Miss your crew? Play the game now.</p>
             <a
+              id="play-now"
               href={playNowHref}
-              target="_blank"
-              rel="noreferrer"
+              download={currentBuild?.installerFileName || true}
               className="latest-update-play-button mt-7 inline-flex items-center gap-2 rounded-md bg-coral px-5 py-3 text-sm font-black text-white transition hover:bg-coral-dark"
             >
               <Play className="size-4 fill-current" />
               PLAY NOW
             </a>
+            {featuredBrandUpdate && (
+              <a
+                href={
+                  mockMode
+                    ? featuredBrandUpdate.url
+                    : `/api/brand-updates/${encodeURIComponent(featuredBrandUpdate.id)}/click`
+                }
+                className="mt-4 block max-w-xl rounded-lg border border-white/15 bg-black/25 p-4 text-sm text-white transition hover:border-yellow/60"
+              >
+                <span className="block text-[10px] font-black uppercase tracking-widest text-yellow">
+                  Brand Update
+                </span>
+                <span className="mt-1 block font-bold">
+                  {featuredBrandUpdate.notes || "Visit our featured brand"}
+                </span>
+              </a>
+            )}
           </div>
         </section>
 

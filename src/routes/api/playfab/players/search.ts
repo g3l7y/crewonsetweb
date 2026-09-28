@@ -39,6 +39,9 @@ export const Route = createFileRoute('/api/playfab/players/search')({
           return Response.json({ success: true, data: [] });
         }
 
+        // A username created by this app is stored as the title display name.
+        // Username is included as a fallback for accounts created directly in
+        // PlayFab with a PlayFab username.
         for (const lookup of [{ TitleDisplayName: query }, { Username: query }]) {
           try {
             const playfabResponse = await fetch(`${PLAYFAB_API_BASE}/Client/GetAccountInfo`, {

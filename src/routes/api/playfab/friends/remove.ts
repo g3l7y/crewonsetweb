@@ -18,7 +18,10 @@ export const Route = createFileRoute('/api/playfab/friends/remove')({
         }
 
         const success = await removeFriend(session.sessionTicket, friendPlayFabId);
-        return Response.json({ success }, { status: success ? 200 : 400 });
+        return Response.json(
+          { success },
+          { status: success ? 200 : 400 },
+        );
       },
     },
   },
