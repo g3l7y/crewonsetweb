@@ -585,7 +585,12 @@ function InboxPage() {
     playerMailStore.set([
       {
         id: "mail-" + Date.now(),
-        threadId: "thread-" + friend.name.toLowerCase(),
+        threadId:
+          "thread-" +
+          [currentUsername, friend.name]
+            .map((username) => username.trim().toLowerCase())
+            .sort()
+            .join("-"),
         subject: "Message from " + currentUsername,
         body: message.trim(),
         senderUsername: currentUsername,

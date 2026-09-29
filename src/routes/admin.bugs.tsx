@@ -16,7 +16,7 @@ import { useMemo, useState } from "react";
 import { Bug, Eye, Search, Trash2, X } from "lucide-react";
 import { ReportStatusDropdown } from "@/components/admin/report-status-dropdown";
 import { isMockMode } from "@/lib/playfab/config";
-import { buildReportInvestigationMessage } from "@/lib/report-investigation-message";
+import { buildReportStatusMessage } from "@/lib/report-investigation-message";
 import {
   bugCategories,
   addReportFeedback,
@@ -77,16 +77,18 @@ function BugReportsPage() {
     const updated = { ...bug, status: next };
     if (!(await updateSharedRecord("cos.bugReports", updated, setStatusError))) return;
     setBugs((current) => current.map((b) => (b.id === bug.id ? updated : b)));
-    if (mockMode && bug.status === "New" && next === "Investigating") {
-      const message = buildReportInvestigationMessage({
+    if (mockMode && bug.status !== next) {
+      const message = buildReportStatusMessage({
         kind: "bug",
         reportId: bug.id,
         category: bug.category,
+        status: next,
       });
       addReportFeedback({
         recipientUsername: bug.playerName,
         recipientPlayerId: bug.playerId,
         reportId: bug.id,
+        status: next,
         subject: message.subject,
         body: message.body,
       });
