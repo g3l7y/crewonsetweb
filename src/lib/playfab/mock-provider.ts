@@ -509,6 +509,107 @@ const MOCK_NOTIFICATIONS: PlayerNotification[] = [
   { id: 'ntf-3', title: 'Daily Login Reward', body: 'Claimed 500 B-Coins daily reward.', kind: 'reward', read: true, createdAt: '2026-08-25T08:00:00Z' },
 ];
 
+const MOCK_PLAYER_ADMIN_STATE_KEY = 'cos.mock.adminPlayerState';
+let mockPlayerAdminStatus: 'Active' | 'Banned' = 'Active';
+let mockPlayerDeleted = false;
+let mockPlayerWasReset = false;
+let mockPlayerResetApplied = false;
+
+function readMockPlayerAdminState() {
+  if (typeof window === 'undefined') return;
+  try {
+    const saved = JSON.parse(window.localStorage.getItem(MOCK_PLAYER_ADMIN_STATE_KEY) || '{}') as {
+      status?: 'Active' | 'Banned'; deleted?: boolean;
+      reset?: boolean;
+    };
+    mockPlayerAdminStatus = saved.status === 'Banned' ? 'Banned' : 'Active';
+    mockPlayerDeleted = saved.deleted === true;
+    mockPlayerWasReset = saved.reset === true;
+    if (mockPlayerWasReset && !mockPlayerResetApplied) resetMockPlayerAccountData(false);
+  } catch {
+    mockPlayerAdminStatus = 'Active';
+    mockPlayerDeleted = false;
+    mockPlayerWasReset = false;
+  }
+}
+
+function saveMockPlayerAdminState() {
+  if (typeof window !== 'undefined') {
+    window.localStorage.setItem(MOCK_PLAYER_ADMIN_STATE_KEY, JSON.stringify({
+      status: mockPlayerAdminStatus,
+      deleted: mockPlayerDeleted,
+      reset: mockPlayerWasReset,
+    }));
+  }
+}
+
+export function getMockPlayerAdminStatus(): 'Active' | 'Banned' {
+  readMockPlayerAdminState();
+  return mockPlayerAdminStatus;
+}
+
+export function isMockPlayerAccountDeleted() {
+  readMockPlayerAdminState();
+  return mockPlayerDeleted;
+}
+
+export function isMockPlayerAccountReset() {
+  readMockPlayerAdminState();
+  return mockPlayerWasReset;
+}
+
+export function setMockPlayerAdminStatus(status: 'Active' | 'Banned') {
+  mockPlayerAdminStatus = status;
+  saveMockPlayerAdminState();
+}
+
+export function deleteMockPlayerAccount() {
+  mockPlayerDeleted = true;
+  mockPlayerAdminStatus = 'Banned';
+  saveMockPlayerAdminState();
+}
+
+export function resetMockPlayerAccountData(persist = true) {
+  Object.assign(MOCK_PROGRESSION, {
+    level: 1,
+    currentXp: 0,
+    xpToNextLevel: 10000,
+    totalXp: 0,
+    highestLevelUnlocked: 1,
+    completedLevels: [],
+    completedStages: {},
+    tutorialProgress: 0,
+    tutorialsCompleted: false,
+    campaignCompleted: false,
+    multiplayerUnlocked: false,
+  });
+  MOCK_WALLET.bCoins = 0;
+  MOCK_WALLET.cCoins = 0;
+  MOCK_INVENTORY.splice(0);
+  MOCK_ACHIEVEMENTS.splice(0);
+  MOCK_KNOWLEDGE.splice(0);
+  MOCK_PRODUCTION_LOGS.splice(0);
+  MOCK_TRANSACTIONS.splice(0);
+  MOCK_NOTIFICATIONS.splice(0);
+  MOCK_LOADOUT = {};
+  for (const statistics of MOCK_ROLE_STATISTICS) {
+    for (const key of Object.keys(statistics) as Array<keyof RoleStatistics>) {
+      if (typeof statistics[key] === 'number') Object.assign(statistics, { [key]: 0 });
+    }
+  }
+  const playerLeaderboardEntry = MOCK_LEADERBOARDS.find(
+    (entry) => entry.playFabId === 'MOCK-PLAYER-001',
+  );
+  if (playerLeaderboardEntry) {
+    playerLeaderboardEntry.statValue = 0;
+    MOCK_LEADERBOARDS.sort((left, right) => right.statValue - left.statValue);
+    MOCK_LEADERBOARDS.forEach((entry, index) => { entry.position = index + 1; });
+  }
+  mockPlayerWasReset = true;
+  mockPlayerResetApplied = true;
+  if (persist) saveMockPlayerAdminState();
+}
+
 // Admin Mock Seeds
 let MOCK_BUG_REPORTS: BugReport[] = [
   { id: 'BR-001', playerName: 'CAMERA_PRO', playerId: 'COS-2847-CP', category: 'Camera/Rigging', description: 'Gimbal axis slips when rotating beyond 90 degrees.', email: 'player@crewonset.com', submittedAt: '2026-08-25T10:00:00Z', status: 'New' },
@@ -599,6 +700,7 @@ export function createMockService(): PlayFabService {
     auth: {
       async login({ email, password }: LoginRequest): Promise<AuthResponse> {
         await randomDelay();
+        readMockPlayerAdminState();
         if (email === 'admin@crewonset.com' && password === 'admin') {
           mockSession = {
             playFabId: 'MOCK-ADMIN-001',
@@ -609,6 +711,8 @@ export function createMockService(): PlayFabService {
           return { success: true, destination: '/admin', session: mockSession };
         }
         if (email === 'player@crewonset.com' && password === 'player') {
+          if (mockPlayerDeleted) return { success: false, error: 'This player account no longer exists.' };
+          if (mockPlayerAdminStatus === 'Banned') return { success: false, error: 'This player account is banned.' };
           mockSession = {
             playFabId: 'MOCK-PLAYER-001',
             role: 'player',
@@ -617,6 +721,8 @@ export function createMockService(): PlayFabService {
           };
           return { success: true, destination: '/portal', session: mockSession };
         }
+        if (mockPlayerDeleted) return { success: false, error: 'This player account no longer exists.' };
+        if (mockPlayerAdminStatus === 'Banned') return { success: false, error: 'This player account is banned.' };
         // General demo fallback
         mockSession = {
           playFabId: 'MOCK-PLAYER-001',
@@ -642,6 +748,8 @@ export function createMockService(): PlayFabService {
       },
       async getSession(): Promise<SessionData | null> {
         await randomDelay();
+        readMockPlayerAdminState();
+        if (mockSession?.playFabId === 'MOCK-PLAYER-001' && (mockPlayerDeleted || mockPlayerAdminStatus === 'Banned')) return null;
         return mockSession;
       },
       async isAdmin(): Promise<boolean> {

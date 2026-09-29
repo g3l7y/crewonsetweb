@@ -72,5 +72,14 @@ export async function persistAdminPlayerMessage(args: {
   const nextNotifications = [notice, ...notifications.filter((item) => item.id !== notice.id)];
   const mailSaved = await setWebsiteRecords(WEBSITE_DATA_KEYS.playerMail, nextMail, args.secretKey);
   if (!mailSaved) return false;
-  return setWebsiteRecords(WEBSITE_DATA_KEYS.notifications, nextNotifications, args.secretKey);
+  const notificationSaved = await setWebsiteRecords(
+    WEBSITE_DATA_KEYS.notifications,
+    nextNotifications,
+    args.secretKey,
+  );
+  if (notificationSaved) return true;
+
+  // Do not report a successful send if only the Mail tab received it.
+  await setWebsiteRecords(WEBSITE_DATA_KEYS.playerMail, mail, args.secretKey);
+  return false;
 }

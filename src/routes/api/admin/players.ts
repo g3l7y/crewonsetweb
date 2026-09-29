@@ -9,6 +9,7 @@ import { mapDataToProductionLogs } from '@/lib/playfab/productions';
 import {
   WEBSITE_DATA_KEYS,
   getWebsiteRecords,
+  setWebsiteRecords,
 } from '@/lib/playfab/websiteData';
 import type {
   AdminPlayerActivity,
@@ -540,6 +541,31 @@ async function resetPlayerData(playerId: string, secretKey: string): Promise<voi
     if (amount > 0) await playFabServerRequest('/Server/SubtractUserVirtualCurrency', { PlayFabId: playerId, VirtualCurrency: currency, Amount: amount }, secretKey);
   }
 
+  await clearPlayerInboxRecords(playerId, secretKey);
+
+}
+
+async function clearPlayerInboxRecords(playerId: string, secretKey: string): Promise<void> {
+  const inboxCollections = [
+    WEBSITE_DATA_KEYS.notifications,
+    WEBSITE_DATA_KEYS.playerNotifications,
+    WEBSITE_DATA_KEYS.playerMail,
+  ];
+
+  for (const collectionKey of inboxCollections) {
+    const records = await getWebsiteRecords<Record<string, unknown> & { id: string }>(
+      collectionKey,
+      secretKey,
+    );
+    const remaining = records.filter((record) => {
+      const target = record['target'] as { kind?: string; playerIds?: string[] } | undefined;
+      return !(target?.kind === 'players' && target.playerIds?.includes(playerId));
+    });
+    if (remaining.length !== records.length) {
+      const saved = await setWebsiteRecords(collectionKey, remaining, secretKey);
+      if (!saved) throw new Error(`Could not clear the player's ${collectionKey} records.`);
+    }
+  }
 }
 
 async function deletePlayerAccount(playerId: string, secretKey: string): Promise<void> {
@@ -571,7 +597,7 @@ export const Route = createFileRoute('/api/admin/players')({
         const secretKey = getSecretKey();
         if (!secretKey) return Response.json({ success: false, error: 'PLAYFAB_SECRET_KEY is not configured on the server.' }, { status: 503 });
         try {
-          const body = await request.json() as { action?: string; ids?: unknown; id?: unknown; status?: unknown; bannedUntil?: unknown };
+          const body = await request.json() as { action?: string; ids?: unknown; id?: unknown; status?: unknown };
           const ids = Array.from(new Set([
             ...(Array.isArray(body.ids) ? body.ids : []),
             ...(typeof body.id === 'string' ? [body.id] : []),
@@ -582,17 +608,16 @@ export const Route = createFileRoute('/api/admin/players')({
             if (body.status === 'Active') {
               await Promise.all(ids.map((id) => playFabServerRequest('/Server/RevokeAllBansForUser', { PlayFabId: id }, secretKey)));
             } else {
-              const until = typeof body.bannedUntil === 'string' ? Date.parse(body.bannedUntil) : NaN;
-              if (typeof body.bannedUntil === 'string' && Number.isNaN(until)) return Response.json({ success: false, error: 'Choose a valid ban expiry.' }, { status: 400 });
-              const duration = Number.isFinite(until) ? Math.max(1, Math.ceil((until - Date.now()) / 3600000)) : undefined;
               await playFabServerRequest('/Server/BanUsers', {
-                Bans: ids.map((id) => ({ PlayFabId: id, Reason: 'Account banned by a studio administrator.', ...(duration ? { DurationInHours: duration } : {}) })),
+                Bans: ids.map((id) => ({ PlayFabId: id, Reason: 'Account banned by a studio administrator.' })),
               }, secretKey);
             }
           } else if (body.action === 'reset') {
-            await Promise.all(ids.map((id) => resetPlayerData(id, secretKey)));
+            // These resets also update shared inbox collections. Serialize them
+            // so bulk resets cannot overwrite one another's cleanup writes.
+            for (const id of ids) await resetPlayerData(id, secretKey);
           } else if (body.action === 'delete') {
-            await Promise.all(ids.map((id) => deletePlayerAccount(id, secretKey)));
+            for (const id of ids) await deletePlayerAccount(id, secretKey);
           } else {
             return Response.json({ success: false, error: 'Unsupported player action.' }, { status: 400 });
           }

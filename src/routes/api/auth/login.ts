@@ -145,15 +145,16 @@ export const Route = createFileRoute("/api/auth/login")({
             const playFabId = pfData.PlayFabId;
             const sessionTicket = pfData.SessionTicket;
             const banSecret = process.env["PLAYFAB_SECRET_KEY"]?.trim();
-            if (banSecret) {
-              try {
-                if (await hasActivePlayFabBan(playFabId, banSecret)) {
-                  return Response.json({ success: false, error: "This player account is banned." } satisfies AuthResponse, { status: 403 });
-                }
-              } catch (banError) {
-                console.error("[PlayFab] Could not verify account ban status:", banError);
-                return Response.json({ success: false, error: "Unable to verify this account status. Please try again." } satisfies AuthResponse, { status: 503 });
+            if (!banSecret) {
+              return Response.json({ success: false, error: "Account status verification is not configured." } satisfies AuthResponse, { status: 503 });
+            }
+            try {
+              if (await hasActivePlayFabBan(playFabId, banSecret)) {
+                return Response.json({ success: false, error: "This player account is banned." } satisfies AuthResponse, { status: 403 });
               }
+            } catch (banError) {
+              console.error("[PlayFab] Could not verify account ban status:", banError);
+              return Response.json({ success: false, error: "Unable to verify this account status. Please try again." } satisfies AuthResponse, { status: 503 });
             }
             const displayName =
               pfData.InfoResultPayload?.PlayerProfile?.DisplayName ??
