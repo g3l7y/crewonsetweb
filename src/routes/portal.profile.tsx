@@ -36,7 +36,7 @@ import {
   transactionsStore,
 } from "@/lib/demo/store";
 import { CosmeticArt } from "@/components/portal/cosmetic-art";
-import { cosmeticCatalog, ownedItemsStore } from "@/lib/demo/portal-shop";
+import { cosmeticCatalog, equippedItemsStore, ownedItemsStore } from "@/lib/demo/portal-shop";
 import { getProfileArtwork } from "@/lib/demo/profile-art";
 import { DEFAULT_PROFILE_PICTURE_URL } from "@/lib/profile-avatar";
 import { readImageAsDataUrl, savePlayerAvatar } from "@/lib/profile-avatar-client";
@@ -80,6 +80,7 @@ function CrewProfilePage() {
   const mockMode = isMockMode();
   const [transactions] = transactionsStore.useStore();
   const [ownedIds] = ownedItemsStore.useStore();
+  const [demoEquippedItems] = equippedItemsStore.useStore();
   const profileQuery = usePlayerProfile();
   const achievementsQuery = useAchievements();
   const progressionQuery = usePlayerProgression();
@@ -112,6 +113,9 @@ function CrewProfilePage() {
         description: remote.description ?? "",
         assetKey: remote.customData?.assetKey ?? "",
         imageUrl: remote.customData?.imageUrl ?? "",
+        imagePath: cosmeticCatalog.find((candidate) =>
+          candidate.id === remote.itemId || candidate.assetKey === (remote.customData?.assetKey ?? "")
+        )?.imagePath,
       };
     })
     .filter((item): item is (typeof cosmeticCatalog)[number] => item !== null), [catalogQuery.data]);
@@ -120,13 +124,11 @@ function CrewProfilePage() {
   );
   const ownedItems = mockMode ? demoOwnedItems : realOwnedItems;
 
-  const demoEquippedBySlot = {
-    Hair: demoOwnedItems.find((item) => item.category === "Hair"),
-    Tops: demoOwnedItems.find((item) => item.category === "Tops"),
-    Bottoms: demoOwnedItems.find((item) => item.category === "Bottoms"),
-    "Shoe Wear": demoOwnedItems.find((item) => item.category === "Shoe Wear"),
-    Accessories: demoOwnedItems.find((item) => item.category === "Accessories"),
-  };
+  const demoEquippedBySlot = Object.fromEntries(
+    cosmeticCatalog.map((item) => [item.category, item.id]).filter(([slot, id]) =>
+      demoEquippedItems[slot as string] === id && ownedIds.includes(id as string)
+    ).map(([slot, id]) => [slot, demoOwnedItems.find((item) => item.id === id)]),
+  );
   const realLoadout = loadoutQuery.data ?? {};
   const realEquippedBySlot = {
     Hair: realOwnedItems.find((item) => item.id === (realLoadout.Hair ?? realLoadout.hair)),
@@ -744,7 +746,7 @@ function CrewProfilePage() {
                       {piece ? (
                         <>
                           <div className="size-14 overflow-hidden rounded-full border border-white/10 bg-[#0d121c]">
-                            {piece.imageUrl ? <img src={piece.imageUrl} alt="" className="size-full object-cover" /> : piece.assetKey ? <CosmeticArt item={piece} className="size-full" /> : <div className="size-full" aria-hidden="true" />}
+                            {piece.imageUrl ? <img src={piece.imageUrl} alt="" className="size-full object-cover" /> : piece.assetKey || piece.imagePath ? <CosmeticArt item={piece} className="size-full" /> : <div className="size-full" aria-hidden="true" />}
                           </div>
 
                           {piece.name && <p className="truncate text-xs font-bold text-white">{piece.name}</p>}

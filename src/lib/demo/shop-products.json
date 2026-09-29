@@ -1,0 +1,292 @@
+[
+  {
+    "id": "hair-chestnut-bun",
+    "name": "Chestnut Studio Bun",
+    "category": "Hair",
+    "price": 450,
+    "rarity": "Common",
+    "description": "A neat high bun with loose face-framing strands, made for a long day on set.",
+    "assetKey": "hair-1",
+    "imagePath": "/shop/hair/hair1.png"
+  },
+  {
+    "id": "hair-golden-curtains",
+    "name": "Golden Curtain Cut",
+    "category": "Hair",
+    "price": 700,
+    "rarity": "Rare",
+    "description": "Long golden locks part into soft curtain bangs with a bold silhouette.",
+    "assetKey": "hair-2",
+    "imagePath": "/shop/hair/hair2.png"
+  },
+  {
+    "id": "hair-low-tie",
+    "name": "Low-Tied Chestnut",
+    "category": "Hair",
+    "price": 550,
+    "rarity": "Common",
+    "description": "A practical low ponytail with a tidy center part and loose side locks.",
+    "assetKey": "hair-3",
+    "imagePath": "/shop/hair/hair3.png"
+  },
+  {
+    "id": "hair-swept-fringe",
+    "name": "Swept Chestnut Fringe",
+    "category": "Hair",
+    "price": 550,
+    "rarity": "Common",
+    "description": "A layered short cut with sweeping bangs and a relaxed finish.",
+    "assetKey": "hair-4",
+    "imagePath": "/shop/hair/hair4.png"
+  },
+  {
+    "id": "hair-center-fringe",
+    "name": "Center-Part Shag",
+    "category": "Hair",
+    "price": 650,
+    "rarity": "Rare",
+    "description": "A full, center-parted fringe with chunky layers for extra character.",
+    "assetKey": "hair-5",
+    "imagePath": "/shop/hair/hair5.png"
+  },
+  {
+    "id": "hair-tousled-fringe",
+    "name": "Tousled Chestnut Crop",
+    "category": "Hair",
+    "price": 650,
+    "rarity": "Rare",
+    "description": "A textured crop with sweeping, piecey bangs and a playful edge.",
+    "assetKey": "hair-6",
+    "imagePath": "/shop/hair/hair6.png"
+  },
+  {
+    "id": "top-utility-vest",
+    "name": "Set Utility Vest",
+    "category": "Tops",
+    "price": 850,
+    "rarity": "Epic",
+    "description": "A dark utility shirt layered with a brown multi-pocket crew vest.",
+    "assetKey": "top-1",
+    "imagePath": "/shop/tops/shirt1.png"
+  },
+  {
+    "id": "top-open-collar",
+    "name": "Open-Collar Layer",
+    "category": "Tops",
+    "price": 650,
+    "rarity": "Rare",
+    "description": "A clean short-sleeve overshirt worn open over a bright crew tee.",
+    "assetKey": "top-2",
+    "imagePath": "/shop/tops/shirt2.png"
+  },
+  {
+    "id": "top-white-tee",
+    "name": "Fresh White Crew Tee",
+    "category": "Tops",
+    "price": 350,
+    "rarity": "Common",
+    "description": "A crisp white crew-neck T-shirt with dark contrast sleeve bands.",
+    "assetKey": "top-3",
+    "imagePath": "/shop/tops/shirt3.png"
+  },
+  {
+    "id": "top-field-jacket",
+    "name": "Brown Field Jacket",
+    "category": "Tops",
+    "price": 900,
+    "rarity": "Epic",
+    "description": "A rugged brown jacket with generous pockets over a dark base layer.",
+    "assetKey": "top-4",
+    "imagePath": "/shop/tops/shirt4.png"
+  },
+  {
+    "id": "top-charcoal-vneck",
+    "name": "Charcoal V-Neck",
+    "category": "Tops",
+    "price": 400,
+    "rarity": "Common",
+    "description": "A simple charcoal V-neck tee, an easy staple between takes.",
+    "assetKey": "top-5",
+    "imagePath": "/shop/tops/shirt5.png"
+  },
+  {
+    "id": "bottom-wide-slate",
+    "name": "Slate Wide-Leg Trousers",
+    "category": "Bottoms",
+    "price": 700,
+    "rarity": "Rare",
+    "description": "Relaxed slate trousers with a wide, flowing leg and clean waistband.",
+    "assetKey": "bottom-1",
+    "imagePath": "/shop/bottoms/pants1.png"
+  },
+  {
+    "id": "bottom-tan-cargo",
+    "name": "Tan Cargo Pants",
+    "category": "Bottoms",
+    "price": 850,
+    "rarity": "Epic",
+    "description": "Roomy tan cargos with oversized side pockets for a utility look.",
+    "assetKey": "bottom-2",
+    "imagePath": "/shop/bottoms/pants2.png"
+  },
+  {
+    "id": "bottom-teal-joggers",
+    "name": "Teal Cuff Joggers",
+    "category": "Bottoms",
+    "price": 650,
+    "rarity": "Rare",
+    "description": "Easy teal joggers gathered at the ankle for comfortable studio days.",
+    "assetKey": "bottom-3",
+    "imagePath": "/shop/bottoms/pants3.png"
+  },
+  {
+    "id": "bottom-coral-shorts",
+    "name": "Coral Track Shorts",
+    "category": "Bottoms",
+    "price": 500,
+    "rarity": "Common",
+    "description": "Bright red-coral athletic shorts with crisp white side panels.",
+    "assetKey": "bottom-4",
+    "imagePath": "/shop/bottoms/pants4.png"
+  },
+  {
+    "id": "bottom-slate-cargo",
+    "name": "Slate Cargo Trousers",
+    "category": "Bottoms",
+    "price": 900,
+    "rarity": "Epic",
+    "description": "Tapered dark cargos with bright utility pockets at each thigh.",
+    "assetKey": "bottom-5",
+    "imagePath": "/shop/bottoms/pants5.png"
+  },
+  {
+    "id": "bottom-brown-tailored",
+    "name": "Brown Tailored Trousers",
+    "category": "Bottoms",
+    "price": 650,
+    "rarity": "Rare",
+    "description": "Straight brown trousers with a belt and subtle pressed seams.",
+    "assetKey": "bottom-6",
+    "imagePath": "/shop/bottoms/pants6.png"
+  },
+  {
+    "id": "shoe-platform-boots",
+    "name": "Lace-Up Platform Boots",
+    "category": "Shoe Wear",
+    "price": 950,
+    "rarity": "Epic",
+    "description": "Chunky ankle boots with contrast laces and a sturdy platform sole.",
+    "assetKey": "shoe-1",
+    "imagePath": "/shop/shoe-wear/shoes1.png"
+  },
+  {
+    "id": "shoe-buckle-flats",
+    "name": "Buckle Strap Flats",
+    "category": "Shoe Wear",
+    "price": 600,
+    "rarity": "Rare",
+    "description": "Rounded black flats with a polished buckle strap.",
+    "assetKey": "shoe-2",
+    "imagePath": "/shop/shoe-wear/shoes2.png"
+  },
+  {
+    "id": "shoe-slip-ons",
+    "name": "Everyday Slip-Ons",
+    "category": "Shoe Wear",
+    "price": 450,
+    "rarity": "Common",
+    "description": "Lightweight charcoal slip-ons with a bright, flexible sole.",
+    "assetKey": "shoe-3",
+    "imagePath": "/shop/shoe-wear/shoes3.png"
+  },
+  {
+    "id": "shoe-red-sneakers",
+    "name": "Red Lace-Up Sneakers",
+    "category": "Shoe Wear",
+    "price": 700,
+    "rarity": "Rare",
+    "description": "Red sneakers with white laces and a cushioned studio-ready sole.",
+    "assetKey": "shoe-4",
+    "imagePath": "/shop/shoe-wear/shoes4.png"
+  },
+  {
+    "id": "shoe-green-sandals",
+    "name": "Green Buckle Sandals",
+    "category": "Shoe Wear",
+    "price": 550,
+    "rarity": "Common",
+    "description": "Comfortable green double-strap sandals with secure buckles.",
+    "assetKey": "shoe-5",
+    "imagePath": "/shop/shoe-wear/shoes5.png"
+  },
+  {
+    "id": "shoe-charcoal-slides",
+    "name": "Charcoal Studio Slides",
+    "category": "Shoe Wear",
+    "price": 400,
+    "rarity": "Common",
+    "description": "Simple charcoal slides for the quick break between setups.",
+    "assetKey": "shoe-6",
+    "imagePath": "/shop/shoe-wear/shoes6.png"
+  },
+  {
+    "id": "accessory-utility-belt",
+    "name": "Utility Belt",
+    "category": "Accessories",
+    "price": 600,
+    "rarity": "Rare",
+    "description": "A sturdy dark belt with segmented panels and a clean buckle.",
+    "assetKey": "accessory-1",
+    "imagePath": "/shop/accessories/accessory1.png"
+  },
+  {
+    "id": "accessory-set-gloves",
+    "name": "Set Crew Gloves",
+    "category": "Accessories",
+    "price": 450,
+    "rarity": "Common",
+    "description": "A pair of practical dark gloves for handling gear between takes.",
+    "assetKey": "accessory-2",
+    "imagePath": "/shop/accessories/accessory2.png"
+  },
+  {
+    "id": "accessory-crew-backpack",
+    "name": "Crew Gear Backpack",
+    "category": "Accessories",
+    "price": 850,
+    "rarity": "Epic",
+    "description": "A compact charcoal backpack with reinforced pockets and straps.",
+    "assetKey": "accessory-3",
+    "imagePath": "/shop/accessories/accessory3.png"
+  },
+  {
+    "id": "accessory-call-sheet-pass",
+    "name": "Call Sheet Pass",
+    "category": "Accessories",
+    "price": 500,
+    "rarity": "Common",
+    "description": "A crew ID badge on a lanyard, ready for your next call time.",
+    "assetKey": "accessory-4",
+    "imagePath": "/shop/accessories/accessory4.png"
+  },
+  {
+    "id": "accessory-rectangular-frames",
+    "name": "Rectangular Studio Frames",
+    "category": "Accessories",
+    "price": 650,
+    "rarity": "Rare",
+    "description": "Bold rectangular frames with a simple, clean dark outline.",
+    "assetKey": "accessory-5",
+    "imagePath": "/shop/accessories/accessory5.png"
+  },
+  {
+    "id": "accessory-face-mask",
+    "name": "On-Set Face Mask",
+    "category": "Accessories",
+    "price": 450,
+    "rarity": "Common",
+    "description": "A dark protective face mask with comfortable ear loops.",
+    "assetKey": "accessory-6",
+    "imagePath": "/shop/accessories/accessory6.png"
+  }
+]
