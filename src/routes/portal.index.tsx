@@ -319,6 +319,11 @@ function PlayerDashboardPage() {
               : rarityValue === "legendary"
                 ? "Legendary"
                 : "Common";
+        const assetKey = remote.customData?.assetKey ?? "";
+        const imageUrl = remote.customData?.imageUrl ?? "";
+        const bundledAsset = cosmeticCatalog.find(
+          (candidate) => candidate.id === remote.itemId || candidate.assetKey === assetKey,
+        );
         return {
           id: remote.itemId,
           name: remote.displayName ?? "",
@@ -326,8 +331,9 @@ function PlayerDashboardPage() {
           price: remote.price ?? 0,
           rarity,
           description: remote.description ?? "",
-          assetKey: remote.customData?.assetKey ?? "",
-          imageUrl: remote.customData?.imageUrl ?? "",
+          assetKey,
+          imageUrl,
+          imagePath: bundledAsset?.imagePath,
           placeholder:
             !remote.displayName &&
             !remote.description &&
@@ -614,8 +620,8 @@ function PlayerDashboardPage() {
                     className="rounded-lg border border-white/10 bg-white/[0.03] p-3 text-center"
                   >
                     {item.imageUrl ? (
-                      <img className="owned-item-art" src={item.imageUrl} alt="" />
-                    ) : item.assetKey ? (
+                      <img className="owned-item-art" src={item.imageUrl} alt={`${item.name} cosmetic`} />
+                    ) : item.assetKey || item.imagePath ? (
                       <CosmeticArt item={item} className="owned-item-art" />
                     ) : (
                       <div className="owned-item-art shop-art-placeholder" aria-hidden="true" />
