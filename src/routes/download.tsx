@@ -59,7 +59,10 @@ function DownloadPage() {
   const currentBuild = mockMode ? gameBuilds[0] : publishedBuildQuery.data;
   const [steps] = installStepsStore.useStore();
   const downloadHref = getInstallerDownloadUrl(currentBuild?.downloadUrl);
-  const displayedVersion = currentBuild ? `Version ${currentBuild.version}` : buildInfo?.version;
+  const publishedVersion =
+    currentBuild?.version?.trim() ||
+    buildInfo?.version?.trim().replace(/^version\s+/i, "");
+  const displayedVersion = publishedVersion ? `Version ${publishedVersion}` : undefined;
   const displayedWindowsRequirement = currentBuild?.minWindows || buildInfo?.platform;
 
   return (
@@ -156,10 +159,10 @@ function DownloadPage() {
                 changes as the studio grows.
               </p>
 
-              {currentBuild?.version?.trim() && (
+              {publishedVersion && (
                 <p className="download-card mt-4 rounded-md border border-[#fefaef]/80 bg-[#fefaef] px-4 py-3 text-sm leading-relaxed text-[#0a0e19]/75">
                   <span className="font-black uppercase tracking-wider text-yellow">
-                    Version {currentBuild.version.trim()}
+                    Version {publishedVersion}
                   </span>
                   {currentBuild.releaseNotes?.trim() && <> — {currentBuild.releaseNotes.trim()}</>}
                 </p>
