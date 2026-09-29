@@ -568,13 +568,14 @@ export function addReportFeedback(args: {
   recipientUsername: string;
   recipientPlayerId?: string;
   reportId: string;
+  status: "Investigating" | "Resolved";
   subject: string;
   body: string;
 }) {
   if (!isMockMode()) return;
   const createdAt = new Date().toISOString();
   const threadId = "admin-" + (args.recipientPlayerId ?? args.recipientUsername);
-  const messageId = "mock-report-" + args.reportId + "-investigating";
+  const messageId = uid("mock-report-mail");
   const noticeId = messageId + "-notice";
   const target = {
     kind: "players" as const,
@@ -582,8 +583,8 @@ export function addReportFeedback(args: {
   };
   const feedbackNotification: PlayerNotification = {
     id: noticeId,
-    title: "New message from Administrator",
-    body: "The admin team sent you a message: " + args.subject + ". Open your Inbox to read it.",
+    title: "Report status updated",
+    body: "Your report " + args.reportId + " is now " + args.status + ". The admin team sent you a message: " + args.subject + ". Open your Inbox to read it.",
     createdAt,
     kind: "report",
     channel: "notification",
@@ -596,7 +597,7 @@ export function addReportFeedback(args: {
 
   notificationsStore.set([
     feedbackNotification,
-    ...notificationsStore.get().filter((item) => item.id !== noticeId),
+    ...notificationsStore.get(),
   ]);
   playerMailStore.set([
     {
@@ -611,7 +612,7 @@ export function addReportFeedback(args: {
       kind: "admin",
       adminMessage: true,
     },
-    ...playerMailStore.get().filter((item) => item.id !== messageId),
+    ...playerMailStore.get(),
   ]);
 }
 /* --------------------------------------------------- partnership applications */

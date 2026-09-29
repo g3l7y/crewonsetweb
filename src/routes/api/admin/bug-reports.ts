@@ -9,7 +9,7 @@ import {
 } from '@/lib/playfab/websiteData';
 import type { BugReport } from '@/lib/playfab/types';
 import { persistAdminPlayerMessage } from '@/lib/playfab/admin-player-message';
-import { buildReportInvestigationMessage } from '@/lib/report-investigation-message';
+import { buildReportStatusMessage } from '@/lib/report-investigation-message';
 import {
   parseSubmissionRequest,
   uploadSubmissionAttachment,
@@ -135,7 +135,7 @@ export const Route = createFileRoute('/api/admin/bug-reports')({
             if ((order[status] ?? -1) < (order[current.status] ?? -1)) {
               return Response.json({ error: 'Bug report statuses can only move forward.' }, { status: 409 });
             }
-            if (current.status === 'New' && status === 'Investigating') {
+            if (current.status !== status && status !== 'New') {
               const playerId = current.playerId?.trim();
               if (!playerId || playerId === 'anonymous') {
                 return Response.json(
@@ -143,13 +143,14 @@ export const Route = createFileRoute('/api/admin/bug-reports')({
                   { status: 409 },
                 );
               }
-              const message = buildReportInvestigationMessage({
+              const message = buildReportStatusMessage({
                 kind: 'bug',
                 reportId: current.id,
                 category: current.category,
+                status: status as 'Investigating' | 'Resolved',
               });
               const saved = await persistAdminPlayerMessage({
-                id: 'report-' + current.id + '-investigating',
+                id: `report-${current.id}-${status}-${Date.now()}`,
                 subject: message.subject,
                 body: message.body,
                 recipientPlayerId: playerId,
