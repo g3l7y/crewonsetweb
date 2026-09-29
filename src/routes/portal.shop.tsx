@@ -107,7 +107,6 @@ function ShopPage() {
   const [transactions, setTransactions] = transactionsStore.useStore();
   const paymentResult = searchParams.get("payment");
   const paymentReference = searchParams.get("reference");
-  const [paymentBusy, setPaymentBusy] = useState(false);
   const [paymentNotice, setPaymentNotice] = useState<{
     status: "success" | "failure" | "pending";
     coins: number;
@@ -237,7 +236,6 @@ function ShopPage() {
     let cancelled = false;
     setCheckoutOpen(false);
     setPaymentNotice(null);
-    setPaymentBusy(true);
 
     async function reconcileReturn() {
       const maxAttempts = resultKind === "cancelled" ? 1 : 20;
@@ -361,7 +359,6 @@ function ShopPage() {
             "We are still confirming your payment. C-Coins have not been delivered yet; please check back shortly.",
         });
       }
-      setPaymentBusy(false);
     }
 
     void reconcileReturn().catch((error) => {
@@ -374,7 +371,6 @@ function ShopPage() {
             ? error.message + " C-Coins have not been marked as delivered."
             : "We could not confirm the payment yet. C-Coins have not been marked as delivered.",
       });
-      setPaymentBusy(false);
     });
 
     return () => {
@@ -709,7 +705,11 @@ function ShopPage() {
                   onClick={() => setSelectedItem(item)}
                   aria-label={`View ${item.name} details`}
                 >
-                  <CosmeticArt item={item} />
+                  {item.imageUrl ? (
+                    <img className="shop-live-image" src={item.imageUrl} alt={`${item.name} cosmetic`} />
+                  ) : (
+                    <CosmeticArt item={item} />
+                  )}
                   <span className="owned-mark">
                     <Check />
                   </span>
@@ -987,7 +987,7 @@ function ShopPage() {
         </div>
       )}
 
-      {(paymentBusy || paymentNotice) && (
+      {paymentNotice && (
         <div className="shop-modal-backdrop">
           <section
             className={
@@ -1011,29 +1011,21 @@ function ShopPage() {
               )}
             </div>
             <p className="portal-kicker">
-              {paymentBusy
-                ? "PAYMENT CONFIRMATION"
-                : paymentNotice?.status === "success"
-                  ? "PAYMENT RECEIVED"
-                  : paymentNotice?.status === "failure"
-                    ? "PAYMENT NOT COMPLETED"
-                    : "PAYMENT PENDING"}
+              {paymentNotice.status === "success"
+                ? "PAYMENT RECEIVED"
+                : paymentNotice.status === "failure"
+                  ? "PAYMENT NOT COMPLETED"
+                  : "PAYMENT PENDING"}
             </p>
             <h2 id="payment-return-title">
-              {paymentBusy
-                ? "Confirming your payment"
-                : paymentNotice?.status === "success"
-                  ? "C-Coins delivered"
-                  : paymentNotice?.status === "failure"
-                    ? "No C-Coins were added"
-                    : "Confirmation in progress"}
+              {paymentNotice.status === "success"
+                ? "C-Coins delivered"
+                : paymentNotice.status === "failure"
+                  ? "No C-Coins were added"
+                  : "Confirmation in progress"}
             </h2>
-            <p>
-              {paymentBusy
-                ? "We are securely checking your payment. Your wallet will update only after confirmation."
-                : paymentNotice?.message}
-            </p>
-            {!paymentBusy && paymentNotice?.status === "pending" && paymentReference && (
+            <p>{paymentNotice.message}</p>
+            {paymentNotice.status === "pending" && paymentReference && (
               <button
                 type="button"
                 className="shop-secondary-button"
@@ -1042,18 +1034,16 @@ function ShopPage() {
                 Check payment again
               </button>
             )}
-            {!paymentBusy && (
-              <button
-                type="button"
-                className="shop-primary-button"
-                onClick={() => {
-                  cleanPaymentReturnUrl();
-                  setPaymentNotice(null);
-                }}
-              >
-                Return to Shop
-              </button>
-            )}
+            <button
+              type="button"
+              className="shop-primary-button"
+              onClick={() => {
+                cleanPaymentReturnUrl();
+                setPaymentNotice(null);
+              }}
+            >
+              Return to Shop
+            </button>
           </section>
         </div>
       )}
