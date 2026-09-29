@@ -53,7 +53,12 @@ export const Route = createFileRoute("/api/mail")({
                 id: record.id,
                 threadId:
                   record.threadId ||
-                  (adminMessage ? `admin-${session.playFabId}` : `thread-${record.senderUsername}`),
+                  (adminMessage
+                    ? `admin-${session.playFabId}`
+                    : `thread-${[record.senderUsername, record.recipientUsername]
+                        .map((username) => username.trim().toLowerCase())
+                        .sort()
+                        .join("-")}`),
                 subject: record.title || "Message",
                 body: record.body || "",
                 senderUsername: adminMessage

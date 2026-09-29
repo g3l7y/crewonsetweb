@@ -18,29 +18,37 @@ const playerCategoryCopy: Record<string, string> = {
   Other: "Our moderation team is reviewing the conduct described in your report and will assess the information provided.",
 };
 
-export function buildReportInvestigationMessage(args: {
+export function buildReportStatusMessage(args: {
   kind: ReportInvestigationKind;
   reportId: string;
   category: string;
+  status: "Investigating" | "Resolved";
 }) {
   const category = args.category.trim() || "Other";
   const isBug = args.kind === "bug";
-  const subject = isBug
-    ? "Update on your bug report"
-    : "Update on your player conduct report";
+  const subject = isBug ? "Update on your bug report" : "Update on your player conduct report";
   const detail = (isBug ? bugCategoryCopy : playerCategoryCopy)[category]
     ?? (isBug ? bugCategoryCopy["Other"] : playerCategoryCopy["Other"]);
-  const privacyNote = isBug
-    ? "We will review the report and any supporting information. We will share an update if further information is needed."
+  const privacyNote = args.status === "Resolved"
+    ? isBug
+      ? "Thank you for helping us improve Crew On Set."
+      : "To protect everyone’s privacy, we cannot share details of any action taken regarding another account."
+    : isBug
+      ? "We will review the report and any supporting information. We will share an update if further information is needed."
     : "To protect everyone’s privacy, we cannot share details of any action taken regarding another account.";
+  const detailUpdate = args.status === "Resolved"
+    ? isBug
+      ? "Our team has completed its review of the issue you reported."
+      : "Our moderation team has completed its review. To protect everyone’s privacy, we cannot share details of any action taken regarding another account."
+    : detail;
   const body = [
     "Hello,",
     "",
     "Thank you for taking the time to contact the Crew On Set team. Your " +
       (isBug ? "bug report" : "player conduct report") +
-      " (" + args.reportId + ") has been moved to Investigating.",
+      " (" + args.reportId + ") " + (args.status === "Resolved" ? "has been marked Resolved." : "has been moved to Investigating."),
     "",
-    detail,
+    detailUpdate,
     privacyNote,
     "",
     "No further action is needed from you at this time. If you have important additional information, please submit it through the appropriate report form.",

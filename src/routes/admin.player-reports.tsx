@@ -14,7 +14,7 @@ import { useMemo, useState } from "react";
 import { Eye, FileText, Search, Trash2, UserRound, X } from "lucide-react";
 import { ReportStatusDropdown } from "@/components/admin/report-status-dropdown";
 import { isMockMode } from "@/lib/playfab/config";
-import { buildReportInvestigationMessage } from "@/lib/report-investigation-message";
+import { buildReportStatusMessage } from "@/lib/report-investigation-message";
 import {
   canAdvanceReportStatus,
   addReportFeedback,
@@ -73,16 +73,18 @@ function PlayerReportsRouteComponent() {
     if (!(await updateSharedRecord("cos.playerReports", updated, setStatusError))) return;
     setReports((current) => current.map((item) => (item.id === report.id ? updated : item)));
     if (selected?.id === report.id) setSelected(updated);
-    if (mockMode && report.status === "New" && next === "Investigating") {
-      const message = buildReportInvestigationMessage({
+    if (mockMode && report.status !== next) {
+      const message = buildReportStatusMessage({
         kind: "player",
         reportId: report.id,
         category: report.reportType,
+        status: next,
       });
       addReportFeedback({
         recipientUsername: report.reporterName,
         recipientPlayerId: report.reporterId,
         reportId: report.id,
+        status: next,
         subject: message.subject,
         body: message.body,
       });
