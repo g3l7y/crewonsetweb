@@ -1,7 +1,7 @@
 import type { CosmeticItem } from "@/lib/demo/portal-shop";
 
 type CosmeticArtProps = {
-  item: Pick<CosmeticItem, "assetKey" | "name" | "category">;
+  item: Pick<CosmeticItem, "assetKey" | "name" | "category" | "imagePath">;
   className?: string;
 };
 
@@ -14,6 +14,9 @@ const GREEN = "#5B8C68";
 const PLUM = "#7E6AA8";
 
 export function CosmeticArt({ item, className = "" }: CosmeticArtProps) {
+  if (item.imagePath) {
+    return <img className={`cosmetic-image ${className}`} src={item.imagePath} alt={`${item.name}, ${item.category} cosmetic`} />;
+  }
   return (
     <div className={`cosmetic-art ${className}`} role="img" aria-label={`${item.name}, ${item.category} cosmetic`}>
       <svg viewBox="0 0 240 190" aria-hidden="true" focusable="false">

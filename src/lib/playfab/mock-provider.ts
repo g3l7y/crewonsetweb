@@ -152,10 +152,9 @@ const MOCK_INVENTORY: InventoryItem[] = [
 ];
 
 let MOCK_LOADOUT: Loadout = {
-  Hair: 'hair-soft-crop',
-  Tops: 'top-coral-tee',
-  ShoeWear: 'shoe-studio-boots',
-  Accessories: 'glasses-round-ink',
+  Hair: 'hair-chestnut-bun',
+  Tops: 'top-utility-vest',
+  Accessories: 'accessory-rectangular-frames',
 };
 
 const MOCK_ACHIEVEMENTS: Achievement[] = [

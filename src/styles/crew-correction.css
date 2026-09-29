@@ -833,6 +833,13 @@ textarea:focus-visible {
   width: 100%;
 }
 
+.cosmetic-image {
+  display: block;
+  width: 100%;
+  height: auto;
+  object-fit: contain;
+}
+
 .cosmetic-art svg {
   display: block;
   width: 100%;
@@ -841,6 +848,10 @@ textarea:focus-visible {
 
 .shop-art-button .cosmetic-art {
   min-height: 12.5rem;
+}
+
+.shop-art-button .cosmetic-image {
+  height: 12.5rem;
 }
 
 .cos-rarity {
