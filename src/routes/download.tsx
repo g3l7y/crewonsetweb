@@ -62,6 +62,7 @@ function DownloadPage() {
   const publishedVersion =
     currentBuild?.version?.trim() ||
     buildInfo?.version?.trim().replace(/^version\s+/i, "");
+  const releaseNotes = currentBuild?.releaseNotes?.trim();
   const displayedVersion = publishedVersion ? `Version ${publishedVersion}` : undefined;
   const displayedWindowsRequirement = currentBuild?.minWindows || buildInfo?.platform;
 
@@ -164,7 +165,7 @@ function DownloadPage() {
                   <span className="font-black uppercase tracking-wider text-yellow">
                     Version {publishedVersion}
                   </span>
-                  {currentBuild.releaseNotes?.trim() && <> — {currentBuild.releaseNotes.trim()}</>}
+                  {releaseNotes && <> — {releaseNotes}</>}
                 </p>
               )}
 
