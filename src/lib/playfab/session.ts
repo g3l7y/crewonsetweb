@@ -160,30 +160,22 @@ export async function validateSessionFromRequest(
     }
 
     if (!accountResponse || !accountResult) return null;
-    if (!accountResponse.ok || accountResult.code !== 200) {
-      // A temporary PlayFab/network failure must not erase a valid browser
-      // session. The ticket is still the credential used for every protected
-      // PlayFab request. Admin requests remain fail-closed because their role
-      // must be checked against the server-side tag on every request.
-      const errorText = String(accountResult?.error ?? accountResult?.errorMessage ?? '').toLowerCase();
-      const definitelyInvalid = accountResponse.status === 401 || accountResponse.status === 403 ||
-        /not.?authenticated|invalid.?session|session.?ticket/.test(errorText);
-      if (!options.requireAdmin && !definitelyInvalid) return parsed;
-      return null;
-    }
+    // Do not honor a cached session when PlayFab cannot verify the account and
+    // its current ban state. This keeps a banned account from using protected
+    // website endpoints during a provider outage.
+    if (!accountResponse.ok || accountResult.code !== 200) return null;
 
     const account = accountResult.data?.AccountInfo;
     const playFabId = account?.PlayFabId;
     if (!playFabId) return null;
 
-    const secretKey = process.env['PLAYFAB_SECRET_KEY'];
-    if (secretKey) {
-      try {
-        if (await hasActivePlayFabBan(playFabId, secretKey)) return null;
-      } catch {
-        // Real-mode moderation must fail closed when ban status cannot be verified.
-        return null;
-      }
+    const secretKey = process.env['PLAYFAB_SECRET_KEY']?.trim();
+    if (!secretKey) return null;
+    try {
+      if (await hasActivePlayFabBan(playFabId, secretKey)) return null;
+    } catch {
+      // Real-mode moderation must fail closed when ban status cannot be verified.
+      return null;
     }
 
     let role: 'admin' | 'player' = 'player';

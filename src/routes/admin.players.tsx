@@ -23,10 +23,25 @@ import {
   getPlayerTransactions,
   topUpsStore,
 } from "@/lib/admin-demo-data";
-import { notificationsStore, uid } from "@/lib/demo/store";
+import {
+  notificationsStore,
+  playerMailStore,
+  transactionsStore,
+  uid,
+  walletStore,
+} from "@/lib/demo/store";
+import { equippedItemsStore, ownedItemsStore } from "@/lib/demo/portal-shop";
 import { isMockMode } from "@/lib/playfab/config";
 import { DEFAULT_PROFILE_PICTURE_URL } from "@/lib/profile-avatar";
 import { useAdminPlayer, useAdminPlayers } from "@/lib/playfab/hooks";
+import {
+  deleteMockPlayerAccount,
+  getMockPlayerAdminStatus,
+  isMockPlayerAccountDeleted,
+  isMockPlayerAccountReset,
+  resetMockPlayerAccountData,
+  setMockPlayerAdminStatus,
+} from "@/lib/playfab/mock-provider";
 import type { AdminPlayerDetails, PlayerProfile } from "@/lib/playfab/types";
 
 export const Route = createFileRoute("/admin/players")({
@@ -101,16 +116,6 @@ function getLevel(score: number) {
 
 function getGamesPlayed(score: number) {
   return Math.max(1, Math.floor(score / 35));
-}
-
-function getDefaultBanUntil() {
-  const date = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
-
-  const pad = (value: number) => String(value).padStart(2, "0");
-
-  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}T${pad(
-    date.getHours(),
-  )}:${pad(date.getMinutes())}`;
 }
 
 function getPlaytimeMinutes(score: number) {
@@ -344,24 +349,27 @@ function PlayersPage() {
       ? (realPlayerDetailQuery.data as AdminPlayerDetails)
       : null;
   const displayProfile = livePlayerDetail?.profile;
+  const mockPlayerWasReset =
+    mockMode && selectedPlayer?.id === "MOCK-PLAYER-001" && isMockPlayerAccountReset();
   const displayScore =
     livePlayerDetail?.career?.productionScore ?? (mockMode ? (selectedPlayer?.score ?? 0) : 0);
   const displayGamesPlayed =
-    livePlayerDetail?.career?.gamesPlayed ??
+    (mockPlayerWasReset ? 0 : livePlayerDetail?.career?.gamesPlayed) ??
     (mockMode && selectedPlayer ? getGamesPlayed(selectedPlayer.score) : 0);
   const displayPlaytime =
-    livePlayerDetail?.career?.playtime ??
+    (mockPlayerWasReset ? "0h 0m" : livePlayerDetail?.career?.playtime) ??
     (mockMode && selectedPlayer ? getPlaytime(selectedPlayer.score) : "0h 0m");
   const displayLevel =
-    livePlayerDetail?.progression.level ??
+    (mockPlayerWasReset ? 1 : livePlayerDetail?.progression.level) ??
     (mockMode && selectedPlayer ? getLevel(selectedPlayer.score) : 1);
   const displayActivity =
-    livePlayerDetail?.activity ??
+    (mockPlayerWasReset ? [] : livePlayerDetail?.activity) ??
     (mockMode && selectedPlayer
       ? getPlayerActivity(selectedPlayer.id, selectedPlayer.username)
       : []);
   const displayTransactions =
-    livePlayerDetail?.transactions ?? (mockMode ? selectedPlayerTransactions : []);
+    (mockPlayerWasReset ? [] : livePlayerDetail?.transactions) ??
+    (mockMode ? selectedPlayerTransactions : []);
   const displayAccount =
     livePlayerDetail?.accountInfo ??
     (mockMode && selectedPlayer ? getPlayerAccountInfo(selectedPlayer.id) : null);
@@ -390,7 +398,6 @@ function PlayersPage() {
 
   const [bulkStatus, setBulkStatus] = useState<PlayerStatus>("Active");
 
-  const [bulkBanUntil, setBulkBanUntil] = useState(getDefaultBanUntil());
 
   /* =======================================================
      CONFIRMATION
@@ -420,7 +427,18 @@ function PlayersPage() {
     }
 
     setPlayerList(
-      initialPlayers.map(
+      [
+        {
+          id: "MOCK-PLAYER-001",
+          username: "CAMERA_PRO",
+          email: "player@crewonset.com",
+          status: getMockPlayerAdminStatus(),
+          joined: "Mar 14, 2025",
+          score: isMockPlayerAccountReset() ? 0 : 276820,
+          role: "Cameraman",
+          avatarUrl: DEFAULT_PROFILE_PICTURE_URL,
+        },
+        ...initialPlayers.map(
         (player) =>
           ({
             ...player,
@@ -428,7 +446,8 @@ function PlayersPage() {
             status: player.status === "Banned" ? "Banned" : "Active",
             avatarUrl: DEFAULT_PROFILE_PICTURE_URL,
           }) as Player,
-      ),
+        ),
+      ].filter((player) => player.id !== "MOCK-PLAYER-001" || !isMockPlayerAccountDeleted()),
     );
   }, [mockMode]);
 
@@ -797,7 +816,7 @@ function PlayersPage() {
   async function runPlayerAction(
     action: "status" | "reset" | "delete",
     ids: string[],
-    options: { status?: PlayerStatus; bannedUntil?: string | null } = {},
+    options: { status?: PlayerStatus } = {},
   ): Promise<boolean> {
     const targetIds = new Set(ids.filter(Boolean));
     if (targetIds.size === 0) return false;
@@ -807,16 +826,36 @@ function PlayersPage() {
 
     try {
       if (mockMode) {
+        if (targetIds.has("MOCK-PLAYER-001")) {
+          if (action === "status") setMockPlayerAdminStatus(options.status ?? "Active");
+          if (action === "delete") deleteMockPlayerAccount();
+          if (action === "reset") {
+            resetMockPlayerAccountData();
+            walletStore.set([0]);
+            ownedItemsStore.set([]);
+            equippedItemsStore.set([]);
+            transactionsStore.set([]);
+            notificationsStore.set([]);
+            playerMailStore.set([]);
+            topUpsStore.set((current) =>
+              current.filter(
+                (topUp) =>
+                  topUp.playerId !== "MOCK-PLAYER-001" &&
+                  topUp.playerName.toUpperCase() !== "CAMERA_PRO",
+              ),
+            );
+          }
+        }
         setPlayerList((current) => {
           if (action === "delete") return current.filter((player) => !targetIds.has(player.id));
           return current.map((player) => {
             if (!targetIds.has(player.id)) return player;
             if (action === "reset")
-              return { ...player, score: 0, status: "Active", bannedUntil: null };
+              return { ...player, score: 0, bannedUntil: null };
             return {
               ...player,
               status: options.status ?? player.status,
-              bannedUntil: options.status === "Banned" ? (options.bannedUntil ?? null) : null,
+              bannedUntil: null,
             };
           });
         });
@@ -828,11 +867,11 @@ function PlayersPage() {
           setSelectedPlayer((current) => {
             if (!current) return current;
             if (action === "reset")
-              return { ...current, score: 0, status: "Active", bannedUntil: null };
+              return { ...current, score: 0, bannedUntil: null };
             return {
               ...current,
               status: options.status ?? current.status,
-              bannedUntil: options.status === "Banned" ? (options.bannedUntil ?? null) : null,
+              bannedUntil: null,
             };
           });
         }
@@ -846,7 +885,6 @@ function PlayersPage() {
           action,
           ids: Array.from(targetIds),
           ...(options.status ? { status: options.status } : {}),
-          ...(options.bannedUntil ? { bannedUntil: options.bannedUntil } : {}),
         }),
       });
       const payload = (await response.json().catch(() => null)) as {
@@ -972,7 +1010,6 @@ function PlayersPage() {
   function applyBulkStatus() {
     void runPlayerAction("status", selectedPlayers, {
       status: bulkStatus,
-      bannedUntil: bulkStatus === "Banned" ? bulkBanUntil : null,
     }).then((success) => {
       if (success) setShowBulkStatus(false);
     });
@@ -1645,30 +1682,10 @@ function PlayersPage() {
 
                     {bulkStatus === "Banned" && (
                       <div className="mt-2 border-t border-white/[.06] pt-3">
-                        <label className="block">
-                          <span className="text-[9px] font-black uppercase tracking-[.12em] text-white/35">
-                            Banned Until
-                          </span>
-
-                          <input
-                            type="datetime-local"
-                            value={bulkBanUntil}
-                            min={(() => {
-                              const now = new Date();
-                              const pad = (value: number) => String(value).padStart(2, "0");
-
-                              return `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(
-                                now.getDate(),
-                              )}T${pad(now.getHours())}:${pad(now.getMinutes())}`;
-                            })()}
-                            onChange={(event) => setBulkBanUntil(event.target.value)}
-                            className="mt-1.5 h-9 w-full rounded-md border border-white/10 bg-[#0d1217] px-2.5 text-[10px] font-bold text-white/70 outline-none transition focus:border-[#ff6248]/60 focus:ring-1 focus:ring-[#ff6248]/20"
-                          />
-
-                          <p className="mt-1.5 text-[8px] leading-4 text-white/25">
-                            Select the exact date and time when the ban expires.
-                          </p>
-                        </label>
+                        <p className="text-[9px] leading-4 text-white/40">
+                          This is a permanent ban. The player cannot sign in until an admin sets
+                          their status to Active.
+                        </p>
                       </div>
                     )}
 
@@ -2181,13 +2198,13 @@ function PlayersPage() {
                 "This permanently removes the player from the roster."}
 
               {confirmAction.type === "reset" &&
-                "This permanently clears the player's progression, statistics, inventory, currencies, production history, achievements, and C-Coin payment records."}
+                "This permanently clears the player's level, statistics, owned items, currencies, production history, achievements, and player inbox messages. Payment receipts remain in the admin transaction ledger."}
 
               {confirmAction.type === "mass-delete" &&
                 "This permanently removes all selected players from the roster."}
 
               {confirmAction.type === "mass-reset" &&
-                "This permanently clears all stored progression, statistics, inventory, currencies, history, achievements, and C-Coin payment records for the selected players."}
+                "This permanently clears the selected players' levels, statistics, owned items, currencies, production history, achievements, and player inbox messages. Payment receipts remain in the admin transaction ledger."}
             </p>
 
             <div className="mt-6 flex justify-end gap-2">
@@ -2203,14 +2220,16 @@ function PlayersPage() {
                 onClick={() => {
                   const action = confirmAction;
                   void (async () => {
-                    const success =
-                      action.type === "delete"
+                    let success = false;
+                    if ("id" in action) {
+                      success = action.type === "delete"
                         ? await deletePlayer(action.id)
-                        : action.type === "reset"
-                          ? await resetPlayer(action.id)
-                          : action.type === "mass-delete"
-                            ? await deleteSelectedPlayers(action.ids)
-                            : await resetSelectedPlayers(action.ids);
+                        : await resetPlayer(action.id);
+                    } else {
+                      success = action.type === "mass-delete"
+                        ? await deleteSelectedPlayers(action.ids)
+                        : await resetSelectedPlayers(action.ids);
+                    }
                     if (success) setConfirmAction(null);
                   })();
                 }}

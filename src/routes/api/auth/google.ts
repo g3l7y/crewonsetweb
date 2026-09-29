@@ -110,27 +110,31 @@ export const Route = createFileRoute("/api/auth/google")({
 
           const pfData = pfResult.data;
           const banSecret = process.env["PLAYFAB_SECRET_KEY"]?.trim();
-          if (banSecret) {
-            try {
-              if (await hasActivePlayFabBan(pfData.PlayFabId, banSecret)) {
-                return Response.json(
-                  {
-                    success: false,
-                    error: "This player account is banned.",
-                  } satisfies AuthResponse,
-                  { status: 403 },
-                );
-              }
-            } catch (banError) {
-              console.error("[PlayFab] Could not verify account ban status:", banError);
+          if (!banSecret) {
+            return Response.json(
+              { success: false, error: "Account status verification is not configured." } satisfies AuthResponse,
+              { status: 503 },
+            );
+          }
+          try {
+            if (await hasActivePlayFabBan(pfData.PlayFabId, banSecret)) {
               return Response.json(
                 {
                   success: false,
-                  error: "Unable to verify this account status. Please try again.",
+                  error: "This player account is banned.",
                 } satisfies AuthResponse,
-                { status: 503 },
+                { status: 403 },
               );
             }
+          } catch (banError) {
+            console.error("[PlayFab] Could not verify account ban status:", banError);
+            return Response.json(
+              {
+                success: false,
+                error: "Unable to verify this account status. Please try again.",
+              } satisfies AuthResponse,
+              { status: 503 },
+            );
           }
           const accountInfo = pfData.InfoResultPayload?.AccountInfo;
           const playerProfile = pfData.InfoResultPayload?.PlayerProfile;
