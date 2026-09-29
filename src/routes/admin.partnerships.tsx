@@ -66,6 +66,7 @@ const statusStyles = mockStatusStyles;
 const showLegacyAds = false;
 
 const adStatusStyles: Record<ActiveAd["status"], string> = {
+  Approved: "bg-[#d9a514]/15 text-[#e1b42b]",
   "On-going": "bg-[#3a7bd5]/15 text-[#7cb0ee]",
   Expiring: "bg-[#d9a514]/15 text-[#e1b42b]",
   Expired: "bg-coral/15 text-coral",
@@ -98,8 +99,10 @@ function buildMockAd(application: PartnershipApplication, status: ActiveAd['stat
     exactModel: application.exactModel,
     productType: application.productType,
     contract: application.description || 'Crew On Set brand promotion placement.',
-    startDate,
-    expiresAt: application.promotionEndsAt || buildMockPromotionEnd(startDate, application.duration, application.durationUnit),
+    ...(status === 'Approved' ? {} : {
+      startDate,
+      expiresAt: application.promotionEndsAt || buildMockPromotionEnd(startDate, application.duration, application.durationUnit),
+    }),
     submittedLink: application.link,
     status,
     revenue: application.budget,
@@ -172,7 +175,7 @@ function PartnershipsPage() {
         return changed ? next : current;
       });
       const expireAd = <T extends ActiveAd>(item: T): T =>
-        item.status !== "Done" && new Date(item.expiresAt).getTime() <= now
+        item.status !== "Done" && item.status !== "Approved" && item.expiresAt && new Date(item.expiresAt).getTime() <= now
           ? { ...item, status: "Done" as const, endedAt: item.endedAt || item.expiresAt } as T
           : item;
       setAds((current) => {
@@ -295,6 +298,7 @@ function PartnershipsPage() {
       savedApplication = {
         ...app,
         status,
+        ...(status === 'Approved' ? { brandPromotionToken: app.brandPromotionToken || uid('PROMO') } : {}),
         ...(completionAt ? {
           promotionEndedAt: completionAt,
           promotionEndType: endedEarly ? 'ended-early' as const : 'expired' as const,
@@ -334,6 +338,10 @@ function PartnershipsPage() {
     } else if (isMockMode() && status === 'Done') {
       setAds((current) => current.map((item) => item.applicationId === id ? { ...item, status: 'Done', endedAt: completionAt, endReason: completionReason } : item));
       setRevenue((current) => current.map((item) => item.applicationId === id ? { ...item, status: 'Done', endedAt: completionAt, endReason: completionReason } : item));
+    } else if (isMockMode() && status === 'Approved') {
+      const nextAd = buildMockAd(savedApplication, 'Approved');
+      setAds((current) => [nextAd, ...current.filter((item) => item.id !== nextAd.id)]);
+      setRevenue((current) => [nextAd, ...current.filter((item) => item.id !== nextAd.id)]);
     }
     if (selected?.id === id) setSelected(savedApplication);
     if (emailWarning) {
@@ -623,8 +631,8 @@ function PartnershipsPage() {
                       <p className="text-[10px] !text-white/35">{ad.id}</p></div></div>
                     </td>
                     <td className="px-5 py-4 text-sm !text-white/55">{ad.exactModel}</td>
-                    <td className="px-5 py-4 text-sm !text-white/50">{formatDate(ad.startDate)}</td>
-                    <td className="px-5 py-4 text-sm !text-white/50">{formatDate(ad.expiresAt)}</td>
+                    <td className="px-5 py-4 text-sm !text-white/50">{ad.startDate ? formatDate(ad.startDate) : "—"}</td>
+                    <td className="px-5 py-4 text-sm !text-white/50">{ad.expiresAt ? formatDate(ad.expiresAt) : "—"}</td>
                     <td className="px-5 py-4">
                       <span
                         className={`rounded px-2.5 py-1 text-[10px] font-black uppercase ${adStatusStyles[ad.status]}`}

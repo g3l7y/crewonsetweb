@@ -36,11 +36,9 @@ export const Route = createFileRoute('/api/paymongo/brand-status')({
           }
 
           if (payment.status === 'fulfilled') {
-            return Response.json({
-              success: true,
-              status: 'Paid',
-              amount: payment.amountInCentavos / 100,
-            });
+            const result = await markPartnershipPaymentPaid(payment, 'return:' + payment.id, playfabSecret);
+            if (!result.updated && !result.alreadyPaid) return Response.json({ error: 'Payment was received but could not be recorded.' }, { status: 500 });
+            return Response.json({ success: true, status: 'Paid', amount: payment.amountInCentavos / 100 });
           }
 
           if (payment.status === 'failed') {

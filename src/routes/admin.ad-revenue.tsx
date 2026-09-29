@@ -58,8 +58,7 @@ function findAdForApplication(app: PartnershipApplication, ads: ActiveAd[]) {
 }
 
 function fromServiceAd(ad: AdEntry): ActiveAd {
-  const status = ad.status === 'Done' ? 'Done' : ad.status === 'Expiring' ? 'Expiring' : ad.status === 'Expired' ? 'Expired' : 'On-going';
-  const startDate = ad.startDate || new Date().toISOString();
+  const status = ad.status === 'Approved' ? 'Approved' : ad.status === 'Done' ? 'Done' : ad.status === 'Expiring' ? 'Expiring' : ad.status === 'Expired' ? 'Expired' : 'On-going';
   return {
     id: ad.id,
     applicationId: ad.applicationId,
@@ -67,8 +66,8 @@ function fromServiceAd(ad: AdEntry): ActiveAd {
     exactModel: ad.exactModel || ad.product || '',
     productType: ad.productType || 'Other',
     contract: ad.contract || 'Crew On Set brand promotion placement.',
-    startDate,
-    expiresAt: ad.expiresAt || ad.endDate || startDate,
+    startDate: ad.startDate,
+    expiresAt: ad.expiresAt || ad.endDate,
     status,
     revenue: ad.revenue || 0,
     clicks: ad.clicks || 0,
@@ -77,6 +76,7 @@ function fromServiceAd(ad: AdEntry): ActiveAd {
     placement: ad.placement || 'Crew On Set production placement',
     submittedLink: ad.submittedLink,
     trackedLink: ad.trackedLink,
+    monitoringUrl: ad.monitoringUrl,
     endedAt: ad.endedAt,
     endReason: ad.endReason,
   };
@@ -334,9 +334,11 @@ function AdRevenuePage() {
                     </span>
                     {ad ? (
                       <div className="text-right text-[10px] font-bold uppercase tracking-wide !text-white/45">
-                        <p>Live Date: {formatDate(ad.startDate)}</p>
-                        <p>Scheduled End: {formatDate(ad.expiresAt)}</p>
-                        {ad.status === "Done" && ad.endedAt && new Date(ad.endedAt).getTime() < new Date(ad.expiresAt).getTime() && <p className="text-[#f39a5a]">Actual End: {formatDate(ad.endedAt)} · Ended early</p>}
+                        {ad.status === "Approved" ? <p>Placement not started</p> : <>
+                          {ad.startDate && <p>Live Date: {formatDate(ad.startDate)}</p>}
+                          {ad.expiresAt && <p>Scheduled End: {formatDate(ad.expiresAt)}</p>}
+                          {ad.status === "Done" && ad.endedAt && ad.expiresAt && new Date(ad.endedAt).getTime() < new Date(ad.expiresAt).getTime() && <p className="text-[#f39a5a]">Actual End: {formatDate(ad.endedAt)} · Ended early</p>}
+                        </>}
                       </div>
                     ) : (
                       <span className="text-[10px] font-bold uppercase tracking-wide !text-[#e1b42b]">
@@ -344,6 +346,7 @@ function AdRevenuePage() {
                       </span>
                     )}
                   </div>
+                  {ad?.monitoringUrl && <a href={ad.monitoringUrl} target="_blank" rel="noreferrer" className="mt-3 inline-block text-[10px] font-bold text-coral hover:underline">Open brand monitoring tracker</a>}
                 </article>
               );
             })}

@@ -22,7 +22,7 @@ export const Route = createFileRoute("/admin/notifications")({
 });
 
 import { useMemo } from "react";
-import { Bell, Bug, CheckCheck, ChevronRight, CircleDollarSign, Flag } from "lucide-react";
+import { Bell, Bug, CheckCheck, ChevronRight, CircleDollarSign, Flag, HandCoins } from "lucide-react";
 import { useRouter } from "@/components/next-compat/navigation";
 import { alertReadStore, bugReportsStore, playerReportsStore } from "@/lib/demo/store";
 import { buildAlerts, type AdminAlert } from "@/components/admin/admin-alerts";
@@ -33,6 +33,7 @@ const iconByKind: Record<AdminAlert["kind"], typeof Bug> = {
   bug: Bug,
   "player-report": Flag,
   transaction: CircleDollarSign,
+  partnership: HandCoins,
 };
 
 function NotificationsPage() {
@@ -58,14 +59,25 @@ function NotificationsPage() {
     () => (mockMode ? demoTransactions : (liveTransactionsQuery.data ?? [])),
     [demoTransactions, liveTransactionsQuery.data, mockMode],
   );
+  const partnershipNotificationsQuery = useQuery({
+    queryKey: ["admin", "partnership-notifications"],
+    queryFn: async () => {
+      const response = await fetch("/api/admin/data?key=notifications", { credentials: "include", cache: "no-store" });
+      if (!response.ok) return [];
+      const result = (await response.json().catch(() => ({}))) as { data?: unknown };
+      return Array.isArray(result.data) ? result.data as Array<{ id: string; title: string; body: string; href?: string; createdAt: string }> : [];
+    },
+    enabled: !mockMode && Boolean(sessionQuery.data),
+    refetchInterval: mockMode ? false : 15_000,
+  });
   const [bugs] = bugReportsStore.useStore();
   const [playerReports] = playerReportsStore.useStore();
   const [readIds, setReadIds] = alertReadStore.useStore();
   const router = useRouter();
 
   const alerts = useMemo(
-    () => buildAlerts(bugs, playerReports, transactions),
-    [bugs, playerReports, transactions],
+    () => buildAlerts(bugs, playerReports, transactions, mockMode ? [] : partnershipNotificationsQuery.data),
+    [bugs, playerReports, transactions, mockMode, partnershipNotificationsQuery.data],
   );
   const unreadCount = alerts.filter((alert) => !readIds.includes(alert.id)).length;
 

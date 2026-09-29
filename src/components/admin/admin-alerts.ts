@@ -5,7 +5,7 @@ export type AdminAlert = {
   id: string;
   title: string;
   body: string;
-  kind: "bug" | "player-report" | "transaction";
+  kind: "bug" | "player-report" | "transaction" | "partnership";
   /** In-app destination this alert links to when clicked. */
   href: string;
   /** Used to keep the bell and the full Notifications page in newest-first order. */
@@ -30,6 +30,7 @@ export function buildAlerts(
   bugs: BugReport[] = [],
   playerReports: PlayerReport[] = [],
   transactions: TopUpRecord[] = [],
+  partnershipNotifications: Array<{ id: string; title: string; body: string; href?: string; createdAt: string }> = [],
 ): AdminAlert[] {
   const alerts: AdminAlert[] = [];
 
@@ -72,6 +73,15 @@ export function buildAlerts(
         createdAt: transactionTimestamp(transaction),
       });
     });
+
+  partnershipNotifications.forEach((notification) => alerts.push({
+    id: notification.id,
+    title: notification.title,
+    body: notification.body,
+    kind: "partnership",
+    href: notification.href || "/admin/partnerships",
+    createdAt: notification.createdAt,
+  }));
 
   return alerts.sort(
     (left, right) => new Date(right.createdAt).getTime() - new Date(left.createdAt).getTime(),

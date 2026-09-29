@@ -755,10 +755,10 @@ export type ActiveAd = {
   exactModel: string;
   productType: string;
   contract: string;
-  startDate: string;
+  startDate?: string | undefined;
   /** ISO timestamp the live countdown ticks down to. */
-  expiresAt: string;
-  status: "On-going" | "Expiring" | "Expired" | "Done";
+  expiresAt?: string | undefined;
+  status: "Approved" | "On-going" | "Expiring" | "Expired" | "Done";
   /** Set when an administrator finishes an advertisement early. */
   endedAt?: string | undefined;
   endReason?: string | undefined;
@@ -772,6 +772,7 @@ export type ActiveAd = {
   placement: string;
   submittedLink?: string | undefined;
   trackedLink?: string | undefined;
+  monitoringUrl?: string | undefined;
   trackingEnabled?: boolean | undefined;
 };
 

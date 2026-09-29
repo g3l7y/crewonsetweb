@@ -22,8 +22,8 @@ type Promotion = {
   trackedLink?: string;
   submittedLink?: string;
   status: string;
-  startDate: string;
-  endDate: string;
+  startDate?: string;
+  endDate?: string;
   endedAt?: string;
   endReason?: string;
   performance: { clicks: number; visits: number; impressions: number; revenue: number };
@@ -93,7 +93,8 @@ function BrandPromotionPage() {
   }
 
   const isDone = promotion.status === 'Done';
-  const remainingMs = isDone || now === null ? 0 : new Date(promotion.endDate).getTime() - now;
+  const isApproved = promotion.status === 'Approved';
+  const remainingMs = isDone || isApproved || now === null || !promotion.endDate ? 0 : new Date(promotion.endDate).getTime() - now;
   const countdown = splitCountdown(remainingMs);
   const metrics = [
     { label: 'Ad clicks', value: promotion.performance.clicks.toLocaleString(), icon: MousePointerClick },
@@ -116,16 +117,16 @@ function BrandPromotionPage() {
 
         <section className="mt-8 rounded-xl border border-white/10 bg-[#101923] p-6 shadow-2xl">
           <div className="flex items-center gap-2 text-sm font-black uppercase"><Megaphone className="size-4 text-[#ff6248]" /> Promotion details</div>
-          <p className="mt-4 max-w-3xl text-sm leading-7 text-white/70">{promotion.description || 'Your Crew On Set brand promotion is active.'}</p>
+          <p className="mt-4 max-w-3xl text-sm leading-7 text-white/70">{promotion.description || (isApproved ? 'Your application is approved. The promotion countdown will begin when the placement goes live.' : 'Your Crew On Set brand promotion is active.')}</p>
           <div className="mt-6 grid gap-5 sm:grid-cols-2">
-            <div><p className="text-[10px] font-black uppercase tracking-wide text-white/35">Live from</p><p className="mt-1 text-sm font-bold">{formatDate(promotion.startDate)}</p></div>
-            <div><p className="text-[10px] font-black uppercase tracking-wide text-white/35">{isDone ? 'Ended' : 'Contract ends'}</p><p className="mt-1 text-sm font-bold">{formatDate(promotion.endedAt || promotion.endDate)}</p></div>
+            {!isApproved && promotion.startDate && <div><p className="text-[10px] font-black uppercase tracking-wide text-white/35">Live from</p><p className="mt-1 text-sm font-bold">{formatDate(promotion.startDate)}</p></div>}
+            {!isApproved && (promotion.endedAt || promotion.endDate) && <div><p className="text-[10px] font-black uppercase tracking-wide text-white/35">{isDone ? 'Ended' : 'Contract ends'}</p><p className="mt-1 text-sm font-bold">{formatDate(promotion.endedAt || promotion.endDate!)}</p></div>}
           </div>
           {promotion.endReason && <p className="mt-5 rounded-lg border border-white/10 bg-white/[.03] p-3 text-sm text-white/65">Completion note: {promotion.endReason}</p>}
           {(promotion.trackedLink || promotion.link) && <a href={promotion.trackedLink || promotion.link} target="_blank" rel="noreferrer" className="mt-6 inline-flex items-center gap-2 text-sm font-bold text-[#f3c747] hover:underline"><ExternalLink className="size-4" /> Visit submitted brand link</a>}
         </section>
 
-        <section className="mt-5 rounded-xl border border-white/10 bg-[#101923] p-6 shadow-2xl" aria-live="polite">
+        {!isApproved && <section className="mt-5 rounded-xl border border-white/10 bg-[#101923] p-6 shadow-2xl" aria-live="polite">
           <div className="flex items-center gap-2 text-sm font-black uppercase"><CalendarClock className="size-4 text-[#ff6248]" /> Live expiration countdown</div>
           {now === null ? <p className="mt-5 text-sm text-white/55">Loading countdown.</p> : (
             <>
@@ -140,7 +141,7 @@ function BrandPromotionPage() {
               <p className="mt-4 text-center text-xs font-bold uppercase tracking-wide text-white/45">{isDone ? 'Promotion completed - countdown stopped' : remainingMs <= 0 ? 'Contract ended - updating campaign status' : 'Time remaining in the agreed promotion period'}</p>
             </>
           )}
-        </section>
+        </section>}
 
         <section className="mt-5 grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
           {metrics.map((metric) => <article key={metric.label} className="rounded-xl border border-white/10 bg-[#182330] p-5"><metric.icon className="size-5 text-[#f3c747]" /><p className="mt-4 text-2xl font-black">{metric.value}</p><p className="mt-1 text-xs font-bold uppercase tracking-wide text-white/40">{metric.label}</p></article>)}

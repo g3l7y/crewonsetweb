@@ -5,6 +5,7 @@ import {
   updateWebsiteRecord,
 } from '@/lib/playfab/websiteData';
 import type { PartnershipApplication, PartnershipPayment } from '@/lib/playfab/types';
+import { sendPartnershipStatusEmail } from '@/lib/partnership-email';
 
 export function createPartnershipPaymentId(): string {
   return 'COS-BRAND-' + Date.now() + '-' + Math.random().toString(36).slice(2, 8);
@@ -77,22 +78,22 @@ export async function isPartnershipCheckoutPaid(
   }
 
   const attributes = asRecord(result.data?.attributes);
-  const payments = Array.isArray(attributes.payments) ? attributes.payments : [];
+  const payments = Array.isArray(attributes['payments']) ? attributes['payments'] : [];
   const paidPayment = payments.some((entry) => {
-    const paymentAttributes = asRecord(asRecord(entry).attributes);
-    const status = String(paymentAttributes.status || '').toLowerCase();
-    const currency = String(paymentAttributes.currency || 'PHP').toUpperCase();
-    const rawAmount = paymentAttributes.amount ?? paymentAttributes.net_amount;
+    const paymentAttributes = asRecord(asRecord(entry)['attributes']);
+    const status = String(paymentAttributes['status'] || '').toLowerCase();
+    const currency = String(paymentAttributes['currency'] || 'PHP').toUpperCase();
+    const rawAmount = paymentAttributes['amount'] ?? paymentAttributes['net_amount'];
     const amount = rawAmount === undefined ? undefined : Number(rawAmount);
     return status === 'paid' && currency === 'PHP' && amount === payment.amountInCentavos;
   });
   if (paidPayment) return true;
 
-  const paymentIntent = asRecord(attributes.payment_intent);
-  const paymentIntentAttributes = asRecord(paymentIntent.attributes);
-  return String(paymentIntentAttributes.status || '').toLowerCase() === 'succeeded'
-    && String(paymentIntentAttributes.currency || 'PHP').toUpperCase() === 'PHP'
-    && Number(paymentIntentAttributes.amount) === payment.amountInCentavos;
+  const paymentIntent = asRecord(attributes['payment_intent']);
+  const paymentIntentAttributes = asRecord(paymentIntent['attributes']);
+  return String(paymentIntentAttributes['status'] || '').toLowerCase() === 'succeeded'
+    && String(paymentIntentAttributes['currency'] || 'PHP').toUpperCase() === 'PHP'
+    && Number(paymentIntentAttributes['amount']) === payment.amountInCentavos;
 }
 
 export async function markPartnershipPaymentPaid(
@@ -118,11 +119,18 @@ export async function markPartnershipPaymentPaid(
     if (!paymentUpdated) return { updated: false, alreadyPaid: false };
   }
 
+  const applications = await getWebsiteRecords<PartnershipApplication>(WEBSITE_DATA_KEYS.partnerships, secretKey);
+  const existingApplication = applications.find((application) => application.id === payment.applicationId);
+  if (!existingApplication) return { updated: false, alreadyPaid: false };
+  const brandPromotionToken = existingApplication.brandPromotionToken || await createPromotionAccessToken(payment.applicationId, secretKey);
+  const shouldSendApproval = ['Pending', 'Approved'].includes(existingApplication.status) && !existingApplication.approvalEmailSentAt;
   const applicationUpdated = await updateWebsiteRecord<PartnershipApplication>(
     WEBSITE_DATA_KEYS.partnerships,
     payment.applicationId,
     (application) => ({
       ...application,
+      ...(application.status === 'Pending' ? { status: 'Approved' } : {}),
+      brandPromotionToken: application.brandPromotionToken || brandPromotionToken,
       paymentStatus: 'Paid',
       paymentId: payment.id,
       paymentAmount: payment.amountInCentavos / 100,
@@ -131,6 +139,18 @@ export async function markPartnershipPaymentPaid(
     secretKey,
   );
   if (!applicationUpdated) return { updated: false, alreadyPaid: false };
+
+  if (shouldSendApproval) {
+    await sendPartnershipStatusEmail({ application: { ...existingApplication, status: 'Approved', brandPromotionToken }, status: 'Approved' });
+    await updateWebsiteRecord<PartnershipApplication>(
+      WEBSITE_DATA_KEYS.partnerships,
+      payment.applicationId,
+      (application) => application.approvalEmailSentAt
+        ? application
+        : { ...application, approvalEmailSentAt: new Date().toISOString() },
+      secretKey,
+    );
+  }
 
   const existingNotifications = await getWebsiteRecords<{ id: string }>(
     WEBSITE_DATA_KEYS.notifications,
@@ -156,6 +176,13 @@ export async function markPartnershipPaymentPaid(
   }
 
   return { updated: !wasAlreadyPaid, alreadyPaid: wasAlreadyPaid };
+}
+
+async function createPromotionAccessToken(applicationId: string, secretKey: string): Promise<string> {
+  const key = await crypto.subtle.importKey('raw', new TextEncoder().encode(secretKey), { name: 'HMAC', hash: 'SHA-256' }, false, ['sign']);
+  const signature = await crypto.subtle.sign('HMAC', key, new TextEncoder().encode(applicationId));
+  const encoded = Array.from(new Uint8Array(signature)).map((byte) => byte.toString(16).padStart(2, '0')).join('');
+  return applicationId + '.' + encoded;
 }
 
 export function formatPaymentAmount(amountInCentavos: number): string {

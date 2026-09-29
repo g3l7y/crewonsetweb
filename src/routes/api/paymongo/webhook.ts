@@ -139,8 +139,7 @@ export const Route = createFileRoute("/api/paymongo/webhook")({
               ) ?? null;
           }
           if (brandPayment && playfabSecret) {
-            if (brandPayment.status === "fulfilled") return Response.json({ received: true });
-            if (!isPaidCheckoutAmount(attributes, brandPayment.amountInCentavos)) {
+            if (brandPayment.status !== "fulfilled" && !isPaidCheckoutAmount(attributes, brandPayment.amountInCentavos)) {
               return Response.json({ received: true });
             }
             const result = await markPartnershipPaymentPaid(brandPayment, eventId, playfabSecret);

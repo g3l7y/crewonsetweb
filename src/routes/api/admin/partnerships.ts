@@ -236,6 +236,21 @@ export const Route = createFileRoute('/api/admin/partnerships')({
 
           const success = await appendWebsiteRecord(WEBSITE_DATA_KEYS.partnerships, application, getSecretKey());
           if (!success) return Response.json({ error: 'Failed to save partnership application.' }, { status: 500 });
+          const existingNotifications = await getWebsiteRecords<{ id: string }>(WEBSITE_DATA_KEYS.notifications, getSecretKey());
+          const notificationId = 'partnership-submitted-' + application.id;
+          if (!existingNotifications.some((item) => item.id === notificationId)) {
+            await appendWebsiteRecord(WEBSITE_DATA_KEYS.notifications, {
+              id: notificationId,
+              title: 'New brand application submitted',
+              body: application.brand + ' submitted a ' + application.productType + ' partnership application.',
+              kind: 'partnership',
+              href: '/admin/partnerships',
+              entityId: application.id,
+              entityType: 'partnership',
+              read: false,
+              createdAt: application.submittedAt,
+            }, getSecretKey());
+          }
           return Response.json({ success: true, data: application }, { status: 201 });
         } catch (error) {
           console.error('[API] POST partnerships error:', error);
@@ -365,6 +380,7 @@ export const Route = createFileRoute('/api/admin/partnerships')({
             if (application.paymentStatus !== 'Paid') {
               return Response.json({ error: 'The application cannot be approved until the brand payment is completed.' }, { status: 409 });
             }
+            nextApplication.brandPromotionToken = application.brandPromotionToken || await createPromotionAccessToken(application.id, secretKey);
             const emailError = await trySendPartnershipStatusEmail({ application, status: 'Approved' });
             if (emailError) emailWarning = 'The status was saved, but the approval email could not be delivered: ' + emailError;
             else nextApplication.approvalEmailSentAt = new Date().toISOString();

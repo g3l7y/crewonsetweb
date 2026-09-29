@@ -24,12 +24,13 @@ export const Route = createFileRoute('/api/brand-promotions')({
             secretKey,
           );
           const application = applications.find((item) => item.brandPromotionToken === token);
-          if (!application || !['On-going', 'Done'].includes(application.status)) {
+          if (!application || !['Approved', 'On-going', 'Done'].includes(application.status)) {
             return Response.json({ error: 'Promotion not found or not available.' }, { status: 404 });
           }
-          const startDate = application.promotionStartedAt || application.paymentPaidAt || application.submittedAt;
-          const scheduledEndDate = getPromotionEndDate(application);
-          const endDate = application.promotionEndedAt || scheduledEndDate;
+          const isApproved = application.status === 'Approved';
+          const startDate = isApproved ? undefined : application.promotionStartedAt || application.submittedAt;
+          const scheduledEndDate = isApproved ? undefined : getPromotionEndDate(application);
+          const endDate = isApproved ? undefined : application.promotionEndedAt || scheduledEndDate;
           const source = application as PartnershipApplication & Record<string, unknown>;
           const baseUrl = (process.env['PUBLIC_APP_URL']?.trim() || new URL(request.url).origin).replace(/\/$/, '');
           const trackedLink = application.brandPromotionToken

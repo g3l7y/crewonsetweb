@@ -789,6 +789,8 @@ export interface AdEntry {
   /** Submitted destination URL and first-party tracked redirect. */
   submittedLink?: string | undefined;
   trackedLink?: string | undefined;
+  /** Private brand monitoring page link. */
+  monitoringUrl?: string | undefined;
   /** Whether durable first-party click tracking is configured for this ad. */
   trackingEnabled?: boolean | undefined;
   endedAt?: string | undefined;
