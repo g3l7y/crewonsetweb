@@ -30,15 +30,13 @@ import {
   MailCheck,
   Megaphone,
   Search,
-  Trash2,
   X,
 } from "lucide-react";
 import {
   adsStore,
   applicationsStore,
+  adminNotificationsStore,
   canAdvancePartnershipStatus,
-  deleteSharedRecord,
-  deleteSharedRecords,
   updatePartnershipStatus,
   revenueStore,
   formatMoney,
@@ -66,13 +64,14 @@ const statusStyles = mockStatusStyles;
 const showLegacyAds = false;
 
 const adStatusStyles: Record<ActiveAd["status"], string> = {
-  Approved: "bg-[#d9a514]/15 text-[#e1b42b]",
+  Approved: "bg-[#d9a514]/15 text-[#f3c747]",
   "On-going": "bg-[#3a7bd5]/15 text-[#7cb0ee]",
   Expiring: "bg-[#d9a514]/15 text-[#e1b42b]",
   Expired: "bg-coral/15 text-coral",
   Done: "bg-white/[.08] text-white/50",
 };
-function formatDate(iso: string) {
+function formatDate(iso?: string) {
+  if (!iso) return "Not set";
   return new Date(iso).toLocaleDateString("en-US", {
     year: "numeric",
     month: "short",
@@ -91,7 +90,8 @@ function buildMockPromotionEnd(startDate: string, duration?: number, durationUni
 }
 
 function buildMockAd(application: PartnershipApplication, status: ActiveAd['status'] = 'On-going'): RevenueRecord {
-  const startDate = application.promotionStartedAt || application.paymentPaidAt || application.submittedAt;
+  const startDate = application.promotionStartedAt;
+  const isLive = status !== 'Approved';
   return {
     id: 'AD-' + application.id,
     applicationId: application.id,
@@ -99,11 +99,12 @@ function buildMockAd(application: PartnershipApplication, status: ActiveAd['stat
     exactModel: application.exactModel,
     productType: application.productType,
     contract: application.description || 'Crew On Set brand promotion placement.',
-    ...(status === 'Approved' ? {} : {
-      startDate,
-      expiresAt: application.promotionEndsAt || buildMockPromotionEnd(startDate, application.duration, application.durationUnit),
-    }),
+    ...(isLive ? {
+      startDate: startDate || new Date().toISOString(),
+      expiresAt: application.promotionEndsAt || buildMockPromotionEnd(startDate || new Date().toISOString(), application.duration, application.durationUnit),
+    } : {}),
     submittedLink: application.link,
+    trackedLink: application.brandPromotionToken ? '/api/brand-promotions/click?token=' + encodeURIComponent(application.brandPromotionToken) : undefined,
     status,
     revenue: application.budget,
     clicks: 0,
@@ -120,10 +121,6 @@ function PartnershipsPage() {
   const [applicationQuery, setApplicationQuery] = useState("");
   const [productTypeFilter, setProductTypeFilter] = useState<"All" | (typeof partnershipProductTypes)[number]>("All");
   const [emailConfirmation, setEmailConfirmation] = useState<string | null>(null);
-  const [deleteTarget, setDeleteTarget] = useState<PartnershipApplication | null>(null);
-  const [bulkDeleteTarget, setBulkDeleteTarget] = useState<PartnershipApplication[] | null>(null);
-  const [selectedApplicationIds, setSelectedApplicationIds] = useState<string[]>([]);
-  const [selectedAdIds, setSelectedAdIds] = useState<string[]>([]);
 
   const [ads, setAds] = adsStore.useStore();
   const [revenue, setRevenue] = revenueStore.useStore();
@@ -155,6 +152,34 @@ function PartnershipsPage() {
 
     const expireMockPromotions = () => {
       const now = Date.now();
+      const newlyExpired = applicationsStore.get().filter((application) => {
+        const endDate = application.promotionEndsAt || buildMockPromotionEnd(
+          application.promotionStartedAt || application.paymentPaidAt || application.submittedAt,
+          application.duration,
+          application.durationUnit,
+        );
+        return application.status === "On-going" && new Date(endDate).getTime() <= now;
+      });
+      if (newlyExpired.length) {
+        adminNotificationsStore.set((current) => {
+          const knownIds = new Set(current.map((notification) => notification.id));
+          const added = newlyExpired.filter((application) => !knownIds.has("partnership-expired-" + application.id));
+          return [
+            ...added.map((application) => ({
+              id: "partnership-expired-" + application.id,
+              title: "Brand promotion completed",
+              body: application.brand + " promotion reached its contract end date and was marked Done. Mock completion email simulated for " + application.email + ".",
+              kind: "partnership" as const,
+              href: "/admin/ads/AD-" + application.id,
+              entityId: application.id,
+              entityType: "partnership",
+              read: false,
+              createdAt: new Date(now).toISOString(),
+            })),
+            ...current,
+          ];
+        });
+      }
       setApplications((current) => {
         let changed = false;
         const next = current.map((application) => {
@@ -175,7 +200,7 @@ function PartnershipsPage() {
         return changed ? next : current;
       });
       const expireAd = <T extends ActiveAd>(item: T): T =>
-        item.status !== "Done" && item.status !== "Approved" && item.expiresAt && new Date(item.expiresAt).getTime() <= now
+        item.status !== "Done" && item.expiresAt && new Date(item.expiresAt).getTime() <= now
           ? { ...item, status: "Done" as const, endedAt: item.endedAt || item.expiresAt } as T
           : item;
       setAds((current) => {
@@ -201,14 +226,6 @@ function PartnershipsPage() {
     { label: "Impressions", value: ads.reduce((sum, ad) => sum + ad.impressions, 0).toLocaleString(), color: "bg-[#d9a514]", icon: Eye },
   ];
 
-  async function archiveSelected() {
-    if (!selectedAdIds.length) return;
-    if (!(await deleteSharedRecords("cos.ads", selectedAdIds))) return;
-    const ids = new Set(selectedAdIds);
-    setAds((current) => current.filter((ad) => !ids.has(ad.id)));
-    setSelectedAdIds([]);
-  }
-
   const filtered = useMemo(() => {
     const search = applicationQuery.trim().toLowerCase();
     return applications.filter((app) => {
@@ -224,30 +241,6 @@ function PartnershipsPage() {
       );
     });
   }, [applications, applicationQuery, productTypeFilter, statusFilter]);
-
-  async function deleteApplication(app: PartnershipApplication) {
-    if (!(await deleteSharedRecord("cos.applications", app.id))) return;
-    setApplications((current) => current.filter((item) => item.id !== app.id));
-    setSelected((current) => current?.id === app.id ? null : current);
-    setSelectedApplicationIds((current) => current.filter((id) => id !== app.id));
-    setDeleteTarget(null);
-  }
-
-  function requestDeleteSelected() {
-    const targets = filtered.filter((item) => selectedApplicationIds.includes(item.id));
-    if (targets.length) setBulkDeleteTarget(targets);
-  }
-
-  async function confirmBulkDelete() {
-    if (!bulkDeleteTarget) return;
-    const ids = bulkDeleteTarget.map((item) => item.id);
-    if (!(await deleteSharedRecords("cos.applications", ids))) return;
-    const idSet = new Set(ids);
-    setApplications((current) => current.filter((item) => !idSet.has(item.id)));
-    setSelected((current) => current && idSet.has(current.id) ? null : current);
-    setSelectedApplicationIds((current) => current.filter((id) => !idSet.has(id)));
-    setBulkDeleteTarget(null);
-  }
 
   function showStatusMessage(message: string) {
     setEmailConfirmation(message);
@@ -357,7 +350,7 @@ function PartnershipsPage() {
     } else {
       showStatusMessage(
         isMockMode()
-          ? 'Mock status saved for ' + app.brand + ': ' + status + '.'
+          ? 'Mock status saved for ' + app.brand + ': ' + status + '. Status email simulated for ' + app.email + '.'
           : 'Status saved and email sent to ' + app.email + '.',
       );
     }
@@ -371,13 +364,29 @@ function PartnershipsPage() {
     const paymentId = app.paymentId || uid('BRAND-PAYMENT');
     const updatedApplication: PartnershipApplication = {
       ...app,
+      status: 'Approved',
       paymentStatus: 'Paid',
       paymentId,
       paymentPaidAt: paidAt,
       paymentAmount: app.budget,
+      brandPromotionToken: app.brandPromotionToken || uid('PROMO'),
     };
     setApplications((current) => current.map((item) => item.id === id ? updatedApplication : item));
     setSelected(updatedApplication);
+    const approvedAd = buildMockAd(updatedApplication, 'Approved');
+    setAds((current) => [approvedAd, ...current.filter((item) => item.applicationId !== id)]);
+    setRevenue((current) => [approvedAd, ...current.filter((item) => item.applicationId !== id)]);
+    adminNotificationsStore.set((current) => [{
+      id: 'brand-payment-' + paymentId,
+      title: 'Brand payment received',
+      body: app.brand + ' completed the PHP ' + formatMoney(app.budget) + ' sponsorship payment. The application is now Approved.',
+      kind: 'partnership',
+      href: '/admin/partnerships',
+      entityId: app.id,
+      entityType: 'partnership-payment',
+      read: false,
+      createdAt: paidAt,
+    }, ...current]);
     topUpsStore.set((current) => [
       {
         id: paymentId,
@@ -391,7 +400,7 @@ function PartnershipsPage() {
       },
       ...current.filter((row) => row.id !== paymentId),
     ]);
-    showStatusMessage('Mock payment received for ' + app.brand + '. An admin notification and transaction entry were created.');
+    showStatusMessage('Mock payment received for ' + app.brand + '. The application is Approved, an admin notification was created, and the approval email was simulated for ' + app.email + '.');
   }
   return (
     <div className="admin-page h-full overflow-y-auto bg-[#101923] text-white">
@@ -460,8 +469,7 @@ function PartnershipsPage() {
         </section>
 
         <div className="mb-3 flex items-center justify-between rounded-lg border border-white/[0.06] bg-[#182330] px-4 py-3">
-          <label className="flex items-center gap-3 text-xs font-bold uppercase !text-white/60"><input type="checkbox" checked={filtered.length > 0 && selectedApplicationIds.length === filtered.length} onChange={(event) => setSelectedApplicationIds(event.target.checked ? filtered.map((item) => item.id) : [])} /> Select all <span className="!text-coral">{selectedApplicationIds.length} selected</span></label>
-          <button disabled={!selectedApplicationIds.length} onClick={requestDeleteSelected} className="inline-flex items-center gap-2 rounded-md bg-coral px-3 py-2 text-[10px] font-black uppercase text-white disabled:opacity-30"><Trash2 className="size-3.5" /> Delete selected</button>
+          <span className="text-xs font-bold uppercase !text-white/45">{filtered.length} applications</span>
         </div>
         <div className="admin-filter-results-card admin-filter-results-card--partnerships admin-table-wrap overflow-hidden rounded-lg border border-white/[0.06] bg-[#182330] shadow-xl">
           <div className="admin-filter-results-scroll admin-table-wrap overflow-x-auto">
@@ -495,7 +503,7 @@ function PartnershipsPage() {
                     className="border-b border-white/[0.05] transition hover:bg-white/[0.025] last:border-0"
                   >
                     <td className="px-5 py-4">
-                      <div className="flex items-center gap-3"><input type="checkbox" checked={selectedApplicationIds.includes(app.id)} onChange={(event) => setSelectedApplicationIds((current) => event.target.checked ? [...current, app.id] : current.filter((id) => id !== app.id))} aria-label={`Select ${app.brand} application`} /><div><p className="font-black !text-white">{app.brand}</p>
+                      <div className="flex items-center gap-3"><div><p className="font-black !text-white">{app.brand}</p>
                       <p className="text-[10px] !text-white/35">{app.id}</p></div></div>
                     </td>
                     <td className="px-5 py-4 text-sm !text-white/55">{app.productType}</td>
@@ -520,15 +528,6 @@ function PartnershipsPage() {
                       >
                         <Eye className="size-3.5" />
                         See Info
-                      </button>
-                      <button
-                        onClick={() => setDeleteTarget(app)}
-                        title="Delete application"
-                        aria-label={`Delete ${app.brand} application`}
-                        className="ml-2 inline-flex items-center gap-2 rounded-md border border-coral/40 bg-coral/10 px-3 py-2 text-[10px] font-black uppercase text-coral transition hover:bg-coral hover:text-white"
-                      >
-                        <Trash2 className="size-3.5" />
-                        Delete
                       </button>
                     </td>
                   </tr>
@@ -591,7 +590,6 @@ function PartnershipsPage() {
           ))}
         </div>
 
-        <div className="mb-3 mt-6 flex items-center justify-between rounded-lg border border-white/[0.06] bg-[#182330] px-4 py-3"><label className="flex items-center gap-3 text-xs font-bold uppercase !text-white/60"><input type="checkbox" checked={filteredAds.length > 0 && selectedAdIds.length === filteredAds.length} onChange={(event) => setSelectedAdIds(event.target.checked ? filteredAds.map((item) => item.id) : [])} /> Select all <span className="!text-coral">{selectedAdIds.length} selected</span></label><button disabled={!selectedAdIds.length} onClick={archiveSelected} className="inline-flex items-center gap-2 rounded-md bg-coral px-3 py-2 text-[10px] font-black uppercase text-white disabled:opacity-30"><Trash2 className="size-3.5" /> Delete selected</button></div>
         <div className="admin-table-wrap mt-6 overflow-hidden rounded-lg border border-white/[0.06] bg-[#182330] shadow-xl">
           <div className="admin-table-wrap overflow-x-auto">
             <table className="admin-table w-full min-w-[900px] text-left">
@@ -627,7 +625,7 @@ function PartnershipsPage() {
                     className="border-b border-white/[0.05] transition hover:bg-white/[0.025] last:border-0"
                   >
                     <td className="px-5 py-4">
-                      <div className="flex items-center gap-3"><input type="checkbox" checked={selectedAdIds.includes(ad.id)} onChange={(event) => setSelectedAdIds((current) => event.target.checked ? [...current, ad.id] : current.filter((id) => id !== ad.id))} aria-label={`Select ${ad.brand} advertisement`} /><div><p className="font-black !text-white">{ad.brand}</p>
+                      <div className="flex items-center gap-3"><div><p className="font-black !text-white">{ad.brand}</p>
                       <p className="text-[10px] !text-white/35">{ad.id}</p></div></div>
                     </td>
                     <td className="px-5 py-4 text-sm !text-white/55">{ad.exactModel}</td>
@@ -668,40 +666,6 @@ function PartnershipsPage() {
           </div>
         </div>
         </section>
-      )}
-
-      {bulkDeleteTarget && (
-        <div className="fixed inset-0 z-[120] flex items-center justify-center bg-black/70 p-4 backdrop-blur-sm" onClick={() => setBulkDeleteTarget(null)}>
-          <div className="w-full max-w-md rounded-xl border border-coral/40 bg-[#151c28] p-6 shadow-2xl" onClick={(event) => event.stopPropagation()}>
-            <h3 className="text-lg font-black uppercase !text-white">Delete selected applications?</h3>
-            <p className="mt-3 text-sm leading-relaxed !text-white/55">This will archive {bulkDeleteTarget.length} application{bulkDeleteTarget.length === 1 ? "" : "s"} from Partnerships & Ads. Historical records will be preserved.</p>
-            <div className="mt-6 flex justify-end gap-2">
-              <button onClick={() => setBulkDeleteTarget(null)} className="rounded-md border border-white/10 px-4 py-2 text-xs font-bold uppercase !text-white/60 hover:!text-white">Cancel</button>
-              <button onClick={confirmBulkDelete} className="rounded-md bg-coral px-4 py-2 text-xs font-black uppercase text-white hover:bg-coral/90">Confirm Delete</button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {deleteTarget && (
-        <div className="fixed inset-0 z-[120] flex items-center justify-center bg-black/70 p-4 backdrop-blur-sm" onClick={() => setDeleteTarget(null)}>
-          <div className="w-full max-w-lg rounded-xl border border-coral/40 bg-[#151c28] p-6 shadow-2xl" onClick={(event) => event.stopPropagation()}>
-            <h3 className="text-lg font-black uppercase !text-white">
-              {deleteTarget.status === "Approved" ? "Delete Approved Application?" : "Delete Partnership Application?"}
-            </h3>
-            <p className="mt-3 text-sm leading-relaxed !text-white/55">
-              {deleteTarget.status === "Approved"
-                  ? "Warning: This application is currently Approved. Deleting it will remove it from the active Partnerships & Ads management list. Its historical advertisement record will remain in Advertisement Revenue."
-                  : deleteTarget.status === "Pending"
-                    ? "Are you sure you want to remove this pending partnership application?"
-                    : "This will remove the application from the Partnership Applications management list. Historical records will be preserved."}
-            </p>
-            <div className="mt-6 flex justify-end gap-2">
-              <button onClick={() => setDeleteTarget(null)} className="rounded-md border border-white/10 px-4 py-2 text-xs font-bold uppercase !text-white/60 hover:!text-white">Cancel</button>
-              <button onClick={() => deleteApplication(deleteTarget)} className="rounded-md bg-coral px-4 py-2 text-xs font-black uppercase text-white hover:bg-coral/90">Confirm Delete</button>
-            </div>
-          </div>
-        </div>
       )}
 
       {selected && (

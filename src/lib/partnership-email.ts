@@ -1,6 +1,13 @@
 import type { PartnershipApplication, PartnershipStatus } from '@/lib/playfab/types';
-import { formatPaymentAmount } from '@/lib/partnership-payments';
 import nodemailer from 'nodemailer';
+
+function formatPaymentAmount(amountInCentavos: number): string {
+  return new Intl.NumberFormat('en-PH', {
+    style: 'currency',
+    currency: 'PHP',
+    maximumFractionDigits: 2,
+  }).format(amountInCentavos / 100);
+}
 
 type PartnershipEmailOptions = {
   application: PartnershipApplication;

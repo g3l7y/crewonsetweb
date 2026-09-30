@@ -4,6 +4,7 @@ import { useQuery } from "@tanstack/react-query";
 import { Toaster } from "@/components/ui/sonner";
 import {
   adminAccountStore,
+  adminNotificationsStore,
   alertReadStore,
   bugReportsStore,
   playerReportsStore,
@@ -11,7 +12,7 @@ import {
 import { topUpsStore, type TopUpRecord } from "@/lib/admin-demo-data";
 import { buildAlerts } from "@/components/admin/admin-alerts";
 import { isMockMode } from "@/lib/playfab/config";
-import { useSession } from "@/lib/playfab/hooks";
+import { useAdminNotifications, useSession } from "@/lib/playfab/hooks";
 import { useDisplayTheme } from "@/components/theme/display-theme-switcher";
 import {
   Banknote,
@@ -53,6 +54,8 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
   const displayTheme = useDisplayTheme("admin");
   const mockMode = isMockMode();
   const sessionQuery = useSession();
+  const realAdminNotificationsQuery = useAdminNotifications();
+  const [mockAdminNotifications] = adminNotificationsStore.useStore();
   const [demoTransactions] = topUpsStore.useStore();
   const liveTransactionsQuery = useQuery({
     queryKey: ["admin", "paymongo-orders", "notifications"],
@@ -73,17 +76,7 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
     () => (mockMode ? demoTransactions : (liveTransactionsQuery.data ?? [])),
     [demoTransactions, liveTransactionsQuery.data, mockMode],
   );
-  const partnershipNotificationsQuery = useQuery({
-    queryKey: ["admin", "partnership-notifications"],
-    queryFn: async () => {
-      const response = await fetch("/api/admin/data?key=notifications", { credentials: "include", cache: "no-store" });
-      if (!response.ok) return [];
-      const result = (await response.json().catch(() => ({}))) as { data?: unknown };
-      return Array.isArray(result.data) ? result.data as Array<{ id: string; title: string; body: string; href?: string; createdAt: string }> : [];
-    },
-    enabled: !mockMode && Boolean(sessionQuery.data),
-    refetchInterval: mockMode ? false : 15_000,
-  });
+  const adminNotifications = mockMode ? mockAdminNotifications : (realAdminNotificationsQuery.data ?? []);
   const [mobileOpen, setMobileOpen] = useState(false);
   const [collapsed, setCollapsed] = useState(false);
   const [identityOpen, setIdentityOpen] = useState(false);
@@ -93,8 +86,8 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
   const [bugs] = bugReportsStore.useStore();
   const [playerReports] = playerReportsStore.useStore();
   const alerts = useMemo(
-    () => buildAlerts(bugs, playerReports, transactions, mockMode ? [] : partnershipNotificationsQuery.data),
-    [bugs, playerReports, transactions, mockMode, partnershipNotificationsQuery.data],
+    () => buildAlerts(bugs, playerReports, transactions, adminNotifications),
+    [adminNotifications, bugs, playerReports, transactions],
   );
   const [readIds, setReadIds] = alertReadStore.useStore();
   const unread = alerts.filter((alert) => !readIds.includes(alert.id)).length;

@@ -1209,7 +1209,7 @@ export type AdminNotification = {
   id: string;
   title: string;
   body: string;
-  kind: "player-report" | "application" | "system";
+  kind: "player-report" | "application" | "partnership" | "system";
   href: string;
   entityId?: string;
   entityType?: string;

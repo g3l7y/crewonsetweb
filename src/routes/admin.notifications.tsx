@@ -24,10 +24,10 @@ export const Route = createFileRoute("/admin/notifications")({
 import { useMemo } from "react";
 import { Bell, Bug, CheckCheck, ChevronRight, CircleDollarSign, Flag, HandCoins } from "lucide-react";
 import { useRouter } from "@/components/next-compat/navigation";
-import { alertReadStore, bugReportsStore, playerReportsStore } from "@/lib/demo/store";
+import { adminNotificationsStore, alertReadStore, bugReportsStore, playerReportsStore } from "@/lib/demo/store";
 import { buildAlerts, type AdminAlert } from "@/components/admin/admin-alerts";
 import { topUpsStore, type TopUpRecord } from "@/lib/admin-demo-data";
-import { useSession } from "@/lib/playfab/hooks";
+import { useAdminNotifications, useSession } from "@/lib/playfab/hooks";
 
 const iconByKind: Record<AdminAlert["kind"], typeof Bug> = {
   bug: Bug,
@@ -39,6 +39,8 @@ const iconByKind: Record<AdminAlert["kind"], typeof Bug> = {
 function NotificationsPage() {
   const mockMode = isMockMode();
   const sessionQuery = useSession();
+  const adminNotificationsQuery = useAdminNotifications();
+  const [mockAdminNotifications] = adminNotificationsStore.useStore();
   const [demoTransactions] = topUpsStore.useStore();
   const liveTransactionsQuery = useQuery({
     queryKey: ["admin", "paymongo-orders", "notifications"],
@@ -59,25 +61,15 @@ function NotificationsPage() {
     () => (mockMode ? demoTransactions : (liveTransactionsQuery.data ?? [])),
     [demoTransactions, liveTransactionsQuery.data, mockMode],
   );
-  const partnershipNotificationsQuery = useQuery({
-    queryKey: ["admin", "partnership-notifications"],
-    queryFn: async () => {
-      const response = await fetch("/api/admin/data?key=notifications", { credentials: "include", cache: "no-store" });
-      if (!response.ok) return [];
-      const result = (await response.json().catch(() => ({}))) as { data?: unknown };
-      return Array.isArray(result.data) ? result.data as Array<{ id: string; title: string; body: string; href?: string; createdAt: string }> : [];
-    },
-    enabled: !mockMode && Boolean(sessionQuery.data),
-    refetchInterval: mockMode ? false : 15_000,
-  });
+  const adminNotifications = mockMode ? mockAdminNotifications : (adminNotificationsQuery.data ?? []);
   const [bugs] = bugReportsStore.useStore();
   const [playerReports] = playerReportsStore.useStore();
   const [readIds, setReadIds] = alertReadStore.useStore();
   const router = useRouter();
 
   const alerts = useMemo(
-    () => buildAlerts(bugs, playerReports, transactions, mockMode ? [] : partnershipNotificationsQuery.data),
-    [bugs, playerReports, transactions, mockMode, partnershipNotificationsQuery.data],
+    () => buildAlerts(bugs, playerReports, transactions, adminNotifications),
+    [adminNotifications, bugs, playerReports, transactions],
   );
   const unreadCount = alerts.filter((alert) => !readIds.includes(alert.id)).length;
 

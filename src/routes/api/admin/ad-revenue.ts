@@ -19,7 +19,7 @@ function numberValue(value: unknown): number {
 function toAdEntry(application: PartnershipApplication, request: Request, metrics?: { clicks: number; visits: number }): AdEntry {
   const source = application as PartnershipApplication & Record<string, unknown>;
   const isApproved = application.status === 'Approved';
-  const startDate = isApproved ? undefined : application.promotionStartedAt || application.submittedAt;
+  const startDate = isApproved ? undefined : application.promotionStartedAt || application.paymentPaidAt || application.submittedAt;
   const expiresAt = isApproved ? undefined : application.promotionEndedAt || getPromotionEndDate(application);
   const baseUrl = (process.env['PUBLIC_APP_URL']?.trim() || new URL(request.url).origin).replace(/\/$/, '');
   return {
@@ -34,11 +34,10 @@ function toAdEntry(application: PartnershipApplication, request: Request, metric
     clicks: metrics?.clicks ?? numberValue(source['adClicks']),
     visits: metrics?.visits ?? numberValue(source['adVisits']),
     revenue: numberValue(source['adRevenue'] ?? application.budget),
-    startDate,
-    endDate: expiresAt,
-    expiresAt,
+    ...(startDate ? { startDate } : {}),
+    ...(expiresAt ? { endDate: expiresAt, expiresAt } : {}),
     submittedLink: application.link,
-    trackedLink: isBrandPromotionTrackingConfigured() && application.status === 'On-going' && application.brandPromotionToken
+    trackedLink: application.brandPromotionToken
       ? baseUrl + '/api/brand-promotions/click?token=' + encodeURIComponent(application.brandPromotionToken)
       : undefined,
     monitoringUrl: application.brandPromotionToken

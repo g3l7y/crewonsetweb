@@ -1,5 +1,6 @@
 import type { BugReport, PlayerReport } from "@/lib/demo/store";
 import type { TopUpRecord } from "@/lib/admin-demo-data";
+import type { AdminNotification } from "@/lib/playfab/types";
 
 export type AdminAlert = {
   id: string;
@@ -30,7 +31,7 @@ export function buildAlerts(
   bugs: BugReport[] = [],
   playerReports: PlayerReport[] = [],
   transactions: TopUpRecord[] = [],
-  partnershipNotifications: Array<{ id: string; title: string; body: string; href?: string; createdAt: string }> = [],
+  notifications: AdminNotification[] = [],
 ): AdminAlert[] {
   const alerts: AdminAlert[] = [];
 
@@ -56,8 +57,24 @@ export function buildAlerts(
     });
   });
 
+  notifications.forEach((notification) => {
+    if (notification.kind !== "partnership" && notification.kind !== "application") return;
+    alerts.push({
+      id: notification.id,
+      title: notification.title,
+      body: notification.body || "A brand partnership application was updated.",
+      kind: "partnership",
+      href: notification.href || "/admin/partnerships",
+      createdAt: notification.createdAt,
+    });
+  });
+
   transactions
     .filter((transaction) => transaction.status === "Completed")
+    .filter((transaction) =>
+      !transaction.bank.toLowerCase().includes("brand partnership") ||
+      !notifications.some((notification) => notification.entityId === transaction.playerId),
+    )
     .forEach((transaction) => {
       const brandPayment = transaction.bank.toLowerCase().includes("brand partnership");
       alerts.push({
@@ -73,15 +90,6 @@ export function buildAlerts(
         createdAt: transactionTimestamp(transaction),
       });
     });
-
-  partnershipNotifications.forEach((notification) => alerts.push({
-    id: notification.id,
-    title: notification.title,
-    body: notification.body,
-    kind: "partnership",
-    href: notification.href || "/admin/partnerships",
-    createdAt: notification.createdAt,
-  }));
 
   return alerts.sort(
     (left, right) => new Date(right.createdAt).getTime() - new Date(left.createdAt).getTime(),

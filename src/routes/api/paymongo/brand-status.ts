@@ -45,6 +45,14 @@ export const Route = createFileRoute('/api/paymongo/brand-status')({
             return Response.json({ success: true, status: 'Failed' });
           }
 
+          if (payment.status === 'fulfilled') {
+            const result = await markPartnershipPaymentPaid(payment, 'return:' + payment.id, playfabSecret);
+            if (!result.updated && !result.alreadyPaid) {
+              return Response.json({ error: 'Payment was received but the application could not be updated.' }, { status: 500 });
+            }
+            return Response.json({ success: true, status: 'Paid', amount: payment.amountInCentavos / 100 });
+          }
+
           const paymongoSecret = getSecret('PAYMONGO_SECRET_KEY');
           if (!paymongoSecret) {
             return Response.json({ error: 'Payment confirmation is not configured.' }, { status: 503 });
