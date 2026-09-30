@@ -217,7 +217,7 @@ function TeamPage() {
                   <div className="hero-photo-image">
 
                     <Image
-                      src="/assets/team-portrait.png"
+                      src="/assets/team-hero.png"
                       alt="The team behind Crew On Set"
                       fill
                       priority
