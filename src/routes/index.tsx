@@ -414,7 +414,7 @@ function HomePage() {
           <div className="order-2 lg:order-1">
             <div className="image-frame -rotate-1 border-navy bg-navy">
               <Image
-                src="/assets/crew-team-illustration.png"
+                src="/assets/home-team-card.png"
                 alt="The team behind Crew On Set"
                 width={1200}
                 height={800}
