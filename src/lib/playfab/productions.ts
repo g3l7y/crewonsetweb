@@ -49,6 +49,7 @@ export async function getRecentProductions(sessionTicket: string, count: number)
  * Guarantees all UI and domain fields are safely mapped.
  */
 export function mapDataToProductionLogs(data: any): ProductionLog[] {
+  if (data && !Array.isArray(data) && Array.isArray(data.logs)) data = data.logs;
   if (!Array.isArray(data)) return [];
   return data.map((item: any) => {
     const id = item.productionId || item.id || `PRD-${Date.now()}`;
@@ -86,6 +87,7 @@ export function mapDataToProductionLogs(data: any): ProductionLog[] {
       cCoinsEarned: item.cCoinsEarned != null ? Number(item.cCoinsEarned) : 0,
       feedback: item.feedback || 'Production completed.',
       success: item.success !== undefined ? Boolean(item.success) : true,
+      status: item.status === 'accepted' || item.status === 'completed' ? item.status : undefined,
       stats: item.stats || [
         ['Retakes', String(item.retakes || 0)],
         ['Errors', String(item.errors || 0)],

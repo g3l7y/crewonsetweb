@@ -18,6 +18,7 @@ import { syncPlayFabContactEmail } from "@/lib/playfab/contact-email";
 import type { SessionData, AuthResponse } from "@/lib/playfab/types";
 import { PLAYFAB_DATA_KEYS } from "@/lib/playfab/constants";
 import { createPolicyAcceptanceRecord } from "@/lib/legal-consent";
+import { sendPlayerWelcomeEmail } from "@/lib/account-email";
 
 export const Route = createFileRoute("/api/auth/register")({
   server: {
@@ -177,6 +178,12 @@ export const Route = createFileRoute("/api/auth/register")({
                 "[PlayFab] Could not sync registration contact email:",
                 contactEmailError,
               );
+            }
+
+            try {
+              await sendPlayerWelcomeEmail(normalizedEmail, normalizedUsername);
+            } catch (emailError) {
+              console.error("[Auth] Could not send player welcome email:", emailError);
             }
           }
 
