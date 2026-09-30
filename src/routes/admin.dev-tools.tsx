@@ -32,7 +32,7 @@ function DeveloperMaintenancePage() {
   const playersQuery = useAdminPlayers();
   const [applications, setApplications] = applicationsStore.useStore();
   const [key, setKey] = useState('');
-  const [targetId, setTargetId] = useState('');
+  const [selectedTargetIds, setSelectedTargetIds] = useState<string[]>([]);
   const [action, setAction] = useState<MaintenanceAction>('player-reset');
   const [confirmation, setConfirmation] = useState('');
   const [busy, setBusy] = useState(false);
@@ -44,11 +44,20 @@ function DeveloperMaintenancePage() {
   const options = action === 'application-delete'
     ? applications.map((application) => ({ id: application.id, label: application.brand + ' — ' + application.exactModel }))
     : players.map((player) => ({ id: player.playFabId, label: (player.username || player.displayName || player.playFabId) + ' — ' + player.playFabId }));
-  const selected = options.find((option) => option.id === targetId);
-  const selectAll = targetId === '__all__';
-  const targetIds = selectAll ? options.map((option) => option.id) : targetId ? [targetId] : [];
-  const expectedConfirmation = selectAll ? 'ALL TARGETS' : targetId;
-  const allowed = Boolean(key.trim() && targetIds.length && confirmation.trim() === expectedConfirmation && !busy);
+  const targetIds = selectedTargetIds.filter((id) => options.some((option) => option.id === id));
+  const selectAll = options.length > 0 && targetIds.length === options.length;
+  const expectedConfirmation = selectAll ? 'ALL TARGETS' : targetIds.length > 1 ? `${targetIds.length} TARGETS` : targetIds[0] || '';
+  const allowed = Boolean(key.trim() && targetIds.length && confirmation.trim().toLocaleLowerCase() === expectedConfirmation.toLocaleLowerCase() && !busy);
+
+  function toggleTarget(id: string) {
+    setSelectedTargetIds((current) => current.includes(id) ? current.filter((target) => target !== id) : [...current, id]);
+    setConfirmation('');
+  }
+
+  function toggleAllTargets() {
+    setSelectedTargetIds(selectAll ? [] : options.map((option) => option.id));
+    setConfirmation('');
+  }
 
   async function runAction() {
     if (!allowed) return;
@@ -59,7 +68,7 @@ function DeveloperMaintenancePage() {
       const response = await fetch('/api/dev/maintenance', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'x-dev-maintenance-key': key },
-        body: JSON.stringify({ action, targetId: selectAll ? '__all__' : targetId, targetIds }),
+        body: JSON.stringify({ action, targetIds }),
       });
       const result = await response.json().catch(() => ({})) as { error?: string };
       if (!response.ok) throw new Error(result.error || 'Developer maintenance action failed.');
@@ -111,7 +120,7 @@ function DeveloperMaintenancePage() {
           ? 'The player account and its linked activity and transaction ledgers were permanently deleted.'
           : 'The brand application, promotion records, and linked payment ledger entries were permanently deleted.');
       setKey('');
-      setTargetId('');
+      setSelectedTargetIds([]);
       setConfirmation('');
     } catch (reason) {
       setError(reason instanceof Error ? reason.message : 'Developer maintenance action failed.');
@@ -143,34 +152,39 @@ function DeveloperMaintenancePage() {
 
         <label className="mb-5 block">
           <span className="mb-2 block text-xs font-black uppercase tracking-wider text-white/55">Action</span>
-          <select value={action} onChange={(event) => { setAction(event.target.value as MaintenanceAction); setTargetId(''); setConfirmation(''); }} className="w-full rounded-lg border border-white/15 bg-[#101923] px-4 py-3 text-sm text-white outline-none focus:border-[#f3c747]">
+          <select value={action} onChange={(event) => { setAction(event.target.value as MaintenanceAction); setSelectedTargetIds([]); setConfirmation(''); }} className="w-full rounded-lg border border-white/15 bg-[#101923] px-4 py-3 text-sm text-white outline-none focus:border-[#f3c747]">
             <option value="player-reset">Purge player records and reset account</option>
             <option value="player-delete">Delete player account and all linked records</option>
             <option value="application-delete">Delete brand application and linked promotion/payment records</option>
           </select>
         </label>
 
-        <label className="mb-5 block">
-          <span className="mb-2 block text-xs font-black uppercase tracking-wider text-white/55">{action === 'application-delete' ? 'Brand application' : 'Player account'}</span>
-          <select value={targetId} onChange={(event) => { setTargetId(event.target.value); setConfirmation(''); }} className="w-full rounded-lg border border-white/15 bg-[#101923] px-4 py-3 text-sm text-white outline-none focus:border-[#f3c747]">
-          <option value="">Select a target…</option>
-          {options.length > 0 && <option value="__all__">Select all targets ({options.length})</option>}
-            {options.map((option) => <option value={option.id} key={option.id}>{option.label}</option>)}
-          </select>
+        <fieldset className="mb-5 rounded-lg border border-white/10 p-4">
+          <legend className="px-1 text-xs font-black uppercase tracking-wider text-white/55">{action === 'application-delete' ? 'Brand applications' : 'Player accounts'} · {targetIds.length} selected</legend>
+          <label className="mb-3 flex cursor-pointer items-center gap-3 rounded-md bg-white/[.04] p-3 text-sm font-bold text-white">
+            <input type="checkbox" checked={selectAll} onChange={toggleAllTargets} disabled={!options.length || busy} className="size-4 accent-[#f3c747]" />
+            Select all targets ({options.length})
+          </label>
+          <div className="max-h-64 space-y-2 overflow-y-auto pr-1">
+            {options.map((option) => <label key={option.id} className="flex cursor-pointer items-start gap-3 rounded-md border border-white/[.08] p-3 text-sm text-white/80 hover:bg-white/[.04]">
+              <input type="checkbox" checked={targetIds.includes(option.id)} onChange={() => toggleTarget(option.id)} disabled={busy} className="mt-0.5 size-4 shrink-0 accent-[#f3c747]" />
+              <span className="break-all">{option.label}</span>
+            </label>)}
+            {!options.length && <p className="p-3 text-sm text-white/40">No targets are available.</p>}
+          </div>
           {mockMode && action !== 'application-delete' && <span className="mt-2 block text-xs text-white/40">Mock mode stores gameplay data for the CAMERA_PRO demo player only.</span>}
-          {action === 'application-delete' && (applications.length === 0) && <span className="mt-2 block text-xs text-white/40">No application records are available.</span>}
-        </label>
+        </fieldset>
 
         <label className="mb-5 block">
-          <span className="mb-2 block text-xs font-black uppercase tracking-wider text-white/55">Confirm by typing: <strong className="text-white">{expectedConfirmation || '—'}</strong></span>
-          <input value={confirmation} onChange={(event) => setConfirmation(event.target.value)} placeholder={selectAll ? 'Type ALL TARGETS exactly' : 'Type the ID exactly'} className="w-full rounded-lg border border-white/15 bg-[#101923] px-4 py-3 text-sm text-white outline-none focus:border-[#f3c747]" />
+          <span className="mb-2 block text-xs font-black uppercase tracking-wider text-white/55">Confirm by typing: <strong className="break-all text-white">{expectedConfirmation || '—'}</strong></span>
+          <input value={confirmation} onChange={(event) => setConfirmation(event.target.value)} placeholder={selectAll ? 'Type ALL TARGETS' : targetIds.length > 1 ? `Type ${targetIds.length} TARGETS` : 'Type the ID exactly'} className="w-full rounded-lg border border-white/15 bg-[#101923] px-4 py-3 text-sm text-white outline-none focus:border-[#f3c747]" />
         </label>
 
         {(action === 'player-delete' || action === 'application-delete') && <div className="mb-5 flex gap-2 rounded-lg border border-coral/30 bg-coral/10 p-3 text-xs text-coral"><AlertTriangle className="size-4 shrink-0" />This permanently removes the selected account or brand record and its linked transaction history.</div>}
         {error && <p role="alert" className="mb-4 text-sm text-coral">{error}</p>}
         {message && <p role="status" className="mb-4 text-sm text-emerald-300">{message}</p>}
 
-        <button type="button" disabled={!allowed || (!selectAll && !selected)} onClick={() => void runAction()} className="inline-flex items-center gap-2 rounded-lg bg-coral px-5 py-3 text-xs font-black uppercase tracking-wide text-white transition hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-40">
+        <button type="button" disabled={!allowed} onClick={() => void runAction()} className="inline-flex items-center gap-2 rounded-lg bg-coral px-5 py-3 text-xs font-black uppercase tracking-wide text-white transition hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-40">
           {busy ? <LoaderCircle className="size-4 animate-spin" /> : action === 'application-delete' ? <Trash2 className="size-4" /> : <UserRoundX className="size-4" />}
           {busy ? 'Processing…' : action === 'player-reset' ? 'Purge and reset player' : action === 'player-delete' ? 'Delete player completely' : 'Delete application completely'}
         </button>
