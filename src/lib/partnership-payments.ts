@@ -139,8 +139,8 @@ export async function markPartnershipPaymentPaid(
   );
   if (!applicationUpdated) return { updated: false, alreadyPaid: false };
 
-  const applications = await getWebsiteRecords<PartnershipApplication>(WEBSITE_DATA_KEYS.partnerships, secretKey);
-  const application = applications.find((item) => item.id === payment.applicationId);
+  const updatedApplications = await getWebsiteRecords<PartnershipApplication>(WEBSITE_DATA_KEYS.partnerships, secretKey);
+  const application = updatedApplications.find((item) => item.id === payment.applicationId);
   if (application?.status === 'Approved') await ensureApprovedPartnershipEmail(application, secretKey);
 
   const existingNotifications = await getWebsiteRecords<{ id: string }>(

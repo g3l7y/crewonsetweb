@@ -168,3 +168,11 @@ export async function completeEmailChangeToken(
   `;
   return rows.length > 0;
 }
+
+export async function deletePlayerEmailIdentity(playFabId: string): Promise<void> {
+  if (!databaseUrl()) return;
+  const sql = getSql();
+  await ensureSchema(sql);
+  await sql`DELETE FROM playfab_email_change_tokens WHERE playfab_id = ${playFabId}`;
+  await sql`DELETE FROM playfab_email_login_aliases WHERE playfab_id = ${playFabId}`;
+}

@@ -610,6 +610,27 @@ export function resetMockPlayerAccountData(persist = true) {
   if (persist) saveMockPlayerAdminState();
 }
 
+export function purgeMockPlayerAccountData() {
+  resetMockPlayerAccountData(false);
+  MOCK_FRIENDS.splice(0);
+  if (typeof window !== 'undefined') {
+    window.localStorage.removeItem(MOCK_PROFILE_METADATA_KEY);
+    window.localStorage.removeItem('cos.profile.account');
+  }
+  MOCK_PLAYER_PROFILE = {
+    playFabId: 'MOCK-PLAYER-001',
+    email: 'player@crewonset.com',
+    displayName: 'CAMERA_PRO',
+    username: 'CAMERA_PRO',
+    avatarUrl: DEFAULT_PROFILE_PICTURE_URL,
+    primaryRole: 'cameraman',
+    crewId: 'COS-2847-CP',
+    joinedAt: '2025-03-14T08:00:00Z',
+    lastLoginAt: new Date().toISOString(),
+  };
+  saveMockPlayerAdminState();
+}
+
 // Admin Mock Seeds
 let MOCK_BUG_REPORTS: BugReport[] = [
   { id: 'BR-001', playerName: 'CAMERA_PRO', playerId: 'COS-2847-CP', category: 'Camera/Rigging', description: 'Gimbal axis slips when rotating beyond 90 degrees.', email: 'player@crewonset.com', submittedAt: '2026-08-25T10:00:00Z', status: 'New' },
@@ -638,6 +659,15 @@ const MOCK_REVENUE: RevenueEntry[] = [
   { id: 'REV-002', source: 'Brand Partnerships', amount: 125000, date: '2026-08-15' },
   { id: 'REV-003', source: 'In-Game Ad Displays', amount: 27200, date: '2026-08-20' },
 ];
+
+export function deleteMockPartnershipRecords(applicationId: string, brand?: string) {
+  const application = MOCK_PARTNERSHIPS.find((item) => item.id === applicationId);
+  const brandName = (brand || application?.brand || '').trim().toLowerCase();
+  MOCK_PARTNERSHIPS = MOCK_PARTNERSHIPS.filter((item) => item.id !== applicationId);
+  MOCK_ADS = MOCK_ADS.filter((item) => item.applicationId !== applicationId && item.id !== 'AD-' + applicationId);
+  const remainingRevenue = MOCK_REVENUE.filter((item) => !brandName || !item.source.toLowerCase().includes(brandName));
+  MOCK_REVENUE.splice(0, MOCK_REVENUE.length, ...remainingRevenue);
+}
 
 const MOCK_GAME_BUILDS: GameBuild[] = [
   { id: 'build-001', version: '0.9.2-beta', platform: 'Windows', status: 'Active', releaseDate: '2026-08-15T00:00:00Z', size: '2.4 GB', downloadUrl: 'https://downloads.crewonset.com/CrewOnSet-v0.9.2-beta.zip', notes: 'Latest stable beta build with level 4 optimizations.', changelog: 'Fixed audio clip timing; added 4K texture support.' },
@@ -902,6 +932,7 @@ export function createMockService(): PlayFabService {
     admin: {
       async getPlayers(): Promise<PlayerProfile[]> {
         await randomDelay();
+        readMockPlayerAdminState();
         const currentAvatar = getStoredMockProfileMetadata().avatarUrl || DEFAULT_PROFILE_PICTURE_URL;
         return Array.from({ length: 8 }).map((_, i) => ({
           ...MOCK_PLAYER_PROFILE,
@@ -909,7 +940,7 @@ export function createMockService(): PlayFabService {
           displayName: `PLAYER_${i + 1}`,
           username: `PLAYER_${i + 1}`,
           avatarUrl: i === 0 ? currentAvatar : DEFAULT_PROFILE_PICTURE_URL,
-        }));
+        })).filter((player) => player.playFabId !== 'MOCK-PLAYER-001' || !mockPlayerDeleted);
       },
       async getPlayer(id: string) {
         await randomDelay();
@@ -979,7 +1010,7 @@ export function createMockService(): PlayFabService {
       },
       async deletePartnership(id: string): Promise<void> {
         await randomDelay();
-        MOCK_PARTNERSHIPS = MOCK_PARTNERSHIPS.filter((x) => x.id !== id);
+        deleteMockPartnershipRecords(id);
       },
       async getAds(): Promise<AdEntry[]> {
         await randomDelay();
