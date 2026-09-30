@@ -64,22 +64,22 @@ const chapters = [
 
 const roles = [
   {
-    image: "/assets/role-director.png",
+    image: "/assets/home-role-director.png",
     title: "Director",
     text: "Call the shots, direct the crew, and keep the entire production moving toward the final take.",
   },
   {
-    image: "/assets/role-cameraman.png",
+    image: "/assets/home-role-cameraman.png",
     title: "Cameraman",
     text: "Frame the shots and capture every important moment before time runs out.",
   },
   {
-    image: "/assets/role-av-technician.png",
+    image: "/assets/home-role-av-technician.png",
     title: "AV Technician",
     text: "Control lighting, sound, and studio equipment so every scene looks and sounds ready for the take.",
   },
   {
-    image: "/assets/role-editor.png",
+    image: "/assets/home-role-editor.png",
     title: "Editor",
     text: "Choose the strongest takes, fix production mistakes, and assemble the commercial to its perfection.",
   },
