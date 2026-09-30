@@ -151,7 +151,7 @@ function FeaturesPage() {
 
       <section className="story-hero">
         <div className="story-hero-bg">
-          <Image src="/assets/role-director.png" alt="Crew working on a commercial set" fill priority className="object-cover" />
+          <Image src="/assets/home-role-director.png" alt="The Director leading a production on set" fill priority className="object-cover" />
         </div>
 
         <div className="story-hero-overlay" />
