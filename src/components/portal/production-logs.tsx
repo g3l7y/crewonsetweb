@@ -278,7 +278,9 @@ function mapRealProductionLog(log: PlayFabProductionLog): ProductionLog {
     runtime: log.runtime || "—",
     summary: log.feedback || "Production completed.",
     setupNotes: "Synced from PlayFab production history.",
-    result: log.success ? "Production completed successfully." : "Production requires review.",
+    result: log.status === "accepted"
+      ? "Contract accepted in the game; production has not been completed yet."
+      : log.success ? "Production completed successfully." : "Production requires review.",
     stats,
   };
 }

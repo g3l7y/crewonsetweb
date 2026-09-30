@@ -660,6 +660,10 @@ const MOCK_REVENUE: RevenueEntry[] = [
   { id: 'REV-003', source: 'In-Game Ad Displays', amount: 27200, date: '2026-08-20' },
 ];
 
+export function clearMockRevenue() {
+  MOCK_REVENUE.splice(0, MOCK_REVENUE.length);
+}
+
 export function deleteMockPartnershipRecords(applicationId: string, brand?: string) {
   const application = MOCK_PARTNERSHIPS.find((item) => item.id === applicationId);
   const brandName = (brand || application?.brand || '').trim().toLowerCase();

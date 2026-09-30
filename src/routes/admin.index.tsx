@@ -33,7 +33,7 @@ import {
 import { useMemo } from "react";
 import { topUpsStore } from "@/lib/admin-demo-data";
 import { useAdminPayMongoOrders } from "@/lib/admin-paymongo-orders";
-import { adminActivityStore, applicationsStore, contentStatsStore, formatMoney, gameBuildStore, messagesStore } from "@/lib/demo/store";
+import { adminActivityStore, applicationsStore, contentStatsStore, formatMoney, gameBuildStore, messagesStore, revenueStore } from "@/lib/demo/store";
 import { sortNewestFirst } from "@/lib/validation";
 import { isMockMode } from "@/lib/playfab/config";
 import { useAdminPlayers } from "@/lib/playfab/hooks";
@@ -69,8 +69,6 @@ const stats = [
   },
 ];
 
-const dashboardBaseRevenue = 184260;
-const seededCompletedTopUpRevenue = 164.92;
 
 const activityKindStyles: Record<string, string> = {
   player: "bg-coral/15 text-[#ff7663]",
@@ -99,6 +97,7 @@ function AdminDashboardPage() {
   const mockMode = isMockMode();
   const adminPlayersQuery = useAdminPlayers();
   const [applications] = applicationsStore.useStore();
+  const [demoRevenue] = revenueStore.useStore();
   const [activity] = adminActivityStore.useStore();
   const [contentStats] = contentStatsStore.useStore();
   const [messages] = messagesStore.useStore();
@@ -141,10 +140,6 @@ function AdminDashboardPage() {
     const paymongoRevenue = topUps
       .filter((topUp) => topUp.status === "Completed")
       .reduce((total, topUp) => total + topUp.amount, 0);
-    const recognizedBrandBudgets = applications
-      .filter((application) => ["Approved", "On-going", "Done"].includes(application.status) && application.paymentStatus !== "Paid")
-      .reduce((total, application) => total + application.budget, 0);
-
     if (!mockMode) {
       const playerCount = adminPlayersQuery.isLoading
         ? "…"
@@ -158,19 +153,18 @@ function AdminDashboardPage() {
         }
         return {
           ...stat,
-          value: formatMoney(paymongoRevenue + recognizedBrandBudgets),
+          value: formatMoney(paymongoRevenue),
           change: "—",
         };
       });
     }
 
-    const syncedTopUpRevenue = Math.max(0, paymongoRevenue - seededCompletedTopUpRevenue);
     return stats.map((stat) =>
       stat.label === "Total Revenue"
-        ? { ...stat, value: formatMoney(dashboardBaseRevenue + syncedTopUpRevenue) }
+        ? { ...stat, value: formatMoney(paymongoRevenue + demoRevenue.reduce((total, record) => total + record.revenue, 0)) }
         : stat,
     );
-  }, [adminPlayersQuery.data, adminPlayersQuery.isLoading, applications, mockMode, topUps]);
+  }, [adminPlayersQuery.data, adminPlayersQuery.isLoading, demoRevenue, mockMode, topUps]);
 
   return (
     <div className="admin-page h-full overflow-y-auto bg-[#101923] text-white">

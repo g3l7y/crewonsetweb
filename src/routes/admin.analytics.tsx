@@ -4,7 +4,7 @@ import { DashboardCharts } from "@/components/admin/dashboard-charts";
 import { useSearchParams } from "@/components/next-compat/navigation";
 import { playerChartData, salesChartData, players as mockPlayers, topUpsStore } from "@/lib/admin-demo-data";
 import { buildOverallAnalysis, type AnalysisTrendPoint, type AdminAnalysisSnapshot } from "@/lib/admin-analysis";
-import { applicationsStore, formatMoney } from "@/lib/demo/store";
+import { applicationsStore, formatMoney, revenueStore } from "@/lib/demo/store";
 import { useAdminPayMongoOrders } from "@/lib/admin-paymongo-orders";
 import { isMockMode } from "@/lib/playfab/config";
 import { useAdminPlayers } from "@/lib/playfab/hooks";
@@ -125,6 +125,7 @@ function AnalyticsPage() {
   const mockMode = isMockMode();
   const adminPlayersQuery = useAdminPlayers();
   const [applications] = applicationsStore.useStore();
+  const [demoRevenue] = revenueStore.useStore();
   const [demoTopUps] = topUpsStore.useStore();
   const liveTopUpsQuery = useAdminPayMongoOrders();
   const topUps = useMemo(
@@ -145,9 +146,11 @@ function AnalyticsPage() {
     return {
       paymongoRevenue,
       recognizedBrandBudgets,
-      total: paymongoRevenue + recognizedBrandBudgets,
+      total: mockMode
+        ? paymongoRevenue + demoRevenue.reduce((total, record) => total + record.revenue, 0)
+        : paymongoRevenue,
     };
-  }, [applications, topUps]);
+  }, [applications, demoRevenue, mockMode, topUps]);
 
   const playerTrend = useMemo(
     () => getPlayerTrend(mockMode, adminPlayersQuery.data),
@@ -213,7 +216,7 @@ function AnalyticsPage() {
     {
       label: "Total Revenue",
       value: formatMoney(revenue.total),
-      context: "PayMongo ledger + recognized brand budgets",
+      context: "Completed payments and tracked sales",
       icon: CircleDollarSign,
       color: "bg-[#243241]",
     },
