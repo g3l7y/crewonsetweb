@@ -45,7 +45,10 @@ function DeveloperMaintenancePage() {
     ? applications.map((application) => ({ id: application.id, label: application.brand + ' — ' + application.exactModel }))
     : players.map((player) => ({ id: player.playFabId, label: (player.username || player.displayName || player.playFabId) + ' — ' + player.playFabId }));
   const selected = options.find((option) => option.id === targetId);
-  const allowed = Boolean(key.trim() && targetId && confirmation.trim() === targetId && !busy);
+  const selectAll = targetId === '__all__';
+  const targetIds = selectAll ? options.map((option) => option.id) : targetId ? [targetId] : [];
+  const expectedConfirmation = selectAll ? 'ALL TARGETS' : targetId;
+  const allowed = Boolean(key.trim() && targetIds.length && confirmation.trim() === expectedConfirmation && !busy);
 
   async function runAction() {
     if (!allowed) return;
@@ -56,40 +59,45 @@ function DeveloperMaintenancePage() {
       const response = await fetch('/api/dev/maintenance', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'x-dev-maintenance-key': key },
-        body: JSON.stringify({ action, targetId }),
+        body: JSON.stringify({ action, targetId: selectAll ? '__all__' : targetId, targetIds }),
       });
       const result = await response.json().catch(() => ({})) as { error?: string };
       if (!response.ok) throw new Error(result.error || 'Developer maintenance action failed.');
 
       if (mockMode && action === 'application-delete') {
-        const application = applications.find((item) => item.id === targetId);
-        await getPlayFabService().admin.deletePartnership(targetId);
-        setApplications((current) => current.filter((item) => item.id !== targetId));
+        const selectedApplications = applications.filter((item) => targetIds.includes(item.id));
+        for (const applicationId of targetIds) await getPlayFabService().admin.deletePartnership(applicationId);
+        setApplications((current) => current.filter((item) => !targetIds.includes(item.id)));
         const relatedPaymentIds = new Set(topUpsStore.get()
-          .filter((item) => item.playerId === targetId || (item.bank.toLowerCase().includes('brand partnership') && item.playerName.toLowerCase() === application?.brand.toLowerCase()))
+          .filter((item) => targetIds.includes(item.playerId) || (item.bank.toLowerCase().includes('brand partnership') && selectedApplications.some((application) => item.playerName.toLowerCase() === application.brand.toLowerCase())))
           .map((item) => item.id));
         topUpsStore.set((current) => current.filter((item) => !relatedPaymentIds.has(item.id)));
-        adminNotificationsStore.set((current) => current.filter((item) => item.entityId !== targetId && !relatedPaymentIds.has(item.id)));
-        const adMatches = (item: { applicationId?: string; id: string }) => item.applicationId !== targetId && item.id !== 'AD-' + targetId;
+        adminNotificationsStore.set((current) => current.filter((item) => !targetIds.includes(item.entityId || '') && !relatedPaymentIds.has(item.id)));
+        const adMatches = (item: { applicationId?: string; id: string }) => !targetIds.includes(item.applicationId || '') && !targetIds.includes(item.id.replace(/^AD-/, ''));
         const { adsStore, revenueStore } = await import('@/lib/demo/store');
         adsStore.set((current) => current.filter(adMatches));
         revenueStore.set((current) => current.filter(adMatches));
       }
 
       if (mockMode && (action === 'player-reset' || action === 'player-delete')) {
-        purgeMockPlayerAccountData();
-        if (action === 'player-delete') deleteMockPlayerAccount();
+        for (const playerId of targetIds) {
+          if (playerId === 'MOCK-PLAYER-001') {
+            purgeMockPlayerAccountData();
+            if (action === 'player-delete') deleteMockPlayerAccount();
+          }
+        }
         walletStore.set([0]);
         ownedItemsStore.set([]);
         equippedItemsStore.set({});
         transactionsStore.set([]);
         notificationsStore.set([]);
         playerMailStore.set([]);
-        const player = players.find((item) => item.playFabId === targetId);
-        topUpsStore.set((current) => current.filter((item) => item.playerId !== targetId && item.playerName.toLowerCase() !== (player?.username || '').toLowerCase()));
-        bugReportsStore.set((current) => current.filter((item) => item.playerId !== targetId));
-        playerReportsStore.set((current) => current.filter((item) => item.reporterId !== targetId));
-        adminNotificationsStore.set((current) => current.filter((item) => item.entityId !== targetId));
+        const selectedPlayers = players.filter((item) => targetIds.includes(item.playFabId));
+        const selectedNames = new Set(selectedPlayers.map((item) => item.username.toLowerCase()));
+        topUpsStore.set((current) => current.filter((item) => !targetIds.includes(item.playerId) && !selectedNames.has(item.playerName.toLowerCase())));
+        bugReportsStore.set((current) => current.filter((item) => !targetIds.includes(item.playerId)));
+        playerReportsStore.set((current) => current.filter((item) => !targetIds.includes(item.reporterId)));
+        adminNotificationsStore.set((current) => current.filter((item) => !targetIds.includes(item.entityId || '')));
       }
 
       await Promise.all([
@@ -145,7 +153,8 @@ function DeveloperMaintenancePage() {
         <label className="mb-5 block">
           <span className="mb-2 block text-xs font-black uppercase tracking-wider text-white/55">{action === 'application-delete' ? 'Brand application' : 'Player account'}</span>
           <select value={targetId} onChange={(event) => { setTargetId(event.target.value); setConfirmation(''); }} className="w-full rounded-lg border border-white/15 bg-[#101923] px-4 py-3 text-sm text-white outline-none focus:border-[#f3c747]">
-            <option value="">Select a target…</option>
+          <option value="">Select a target…</option>
+          {options.length > 0 && <option value="__all__">Select all targets ({options.length})</option>}
             {options.map((option) => <option value={option.id} key={option.id}>{option.label}</option>)}
           </select>
           {mockMode && action !== 'application-delete' && <span className="mt-2 block text-xs text-white/40">Mock mode stores gameplay data for the CAMERA_PRO demo player only.</span>}
@@ -153,15 +162,15 @@ function DeveloperMaintenancePage() {
         </label>
 
         <label className="mb-5 block">
-          <span className="mb-2 block text-xs font-black uppercase tracking-wider text-white/55">Confirm by typing the selected ID: <strong className="text-white">{targetId || '—'}</strong></span>
-          <input value={confirmation} onChange={(event) => setConfirmation(event.target.value)} placeholder="Type the ID exactly" className="w-full rounded-lg border border-white/15 bg-[#101923] px-4 py-3 text-sm text-white outline-none focus:border-[#f3c747]" />
+          <span className="mb-2 block text-xs font-black uppercase tracking-wider text-white/55">Confirm by typing: <strong className="text-white">{expectedConfirmation || '—'}</strong></span>
+          <input value={confirmation} onChange={(event) => setConfirmation(event.target.value)} placeholder={selectAll ? 'Type ALL TARGETS exactly' : 'Type the ID exactly'} className="w-full rounded-lg border border-white/15 bg-[#101923] px-4 py-3 text-sm text-white outline-none focus:border-[#f3c747]" />
         </label>
 
         {(action === 'player-delete' || action === 'application-delete') && <div className="mb-5 flex gap-2 rounded-lg border border-coral/30 bg-coral/10 p-3 text-xs text-coral"><AlertTriangle className="size-4 shrink-0" />This permanently removes the selected account or brand record and its linked transaction history.</div>}
         {error && <p role="alert" className="mb-4 text-sm text-coral">{error}</p>}
         {message && <p role="status" className="mb-4 text-sm text-emerald-300">{message}</p>}
 
-        <button type="button" disabled={!allowed || !selected} onClick={() => void runAction()} className="inline-flex items-center gap-2 rounded-lg bg-coral px-5 py-3 text-xs font-black uppercase tracking-wide text-white transition hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-40">
+        <button type="button" disabled={!allowed || (!selectAll && !selected)} onClick={() => void runAction()} className="inline-flex items-center gap-2 rounded-lg bg-coral px-5 py-3 text-xs font-black uppercase tracking-wide text-white transition hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-40">
           {busy ? <LoaderCircle className="size-4 animate-spin" /> : action === 'application-delete' ? <Trash2 className="size-4" /> : <UserRoundX className="size-4" />}
           {busy ? 'Processing…' : action === 'player-reset' ? 'Purge and reset player' : action === 'player-delete' ? 'Delete player completely' : 'Delete application completely'}
         </button>
