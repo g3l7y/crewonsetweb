@@ -113,7 +113,7 @@ function DeveloperMaintenancePage() {
   }
 
   return (
-    <div className="admin-page min-h-full bg-[#101923] px-5 py-7 text-white sm:px-8">
+    <div className="admin-page h-full min-h-0 overflow-y-auto overflow-x-hidden overscroll-y-contain bg-[#101923] px-5 py-7 text-white sm:px-8">
       <header className="mb-7">
         <div className="mb-2 inline-flex items-center gap-2 rounded-full border border-[#f3c747]/30 bg-[#f3c747]/10 px-3 py-1 text-[10px] font-black uppercase tracking-[.18em] text-[#f3c747]">
           <KeyRound className="size-3.5" /> Private developer utility
