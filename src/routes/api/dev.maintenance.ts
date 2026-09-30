@@ -94,10 +94,15 @@ async function resetPlayFabPlayer(playFabId: string, secretKey: string) {
     InfoRequestParameters: { GetUserInventory: true, GetUserVirtualCurrency: true },
   }, secretKey);
   await playFabServerRequest('/Admin/ResetUserStatistics', { PlayFabId: playFabId }, secretKey);
-  await playFabServerRequest('/Server/UpdateUserData', {
-    PlayFabId: playFabId,
-    KeysToRemove: Object.values(PLAYFAB_DATA_KEYS),
-  }, secretKey);
+  // Keep the request at the same nine-key size as the established admin reset
+  // call, then remove any newer keys in a separate request.
+  const userDataKeys = Object.values(PLAYFAB_DATA_KEYS);
+  for (let offset = 0; offset < userDataKeys.length; offset += 9) {
+    await playFabServerRequest('/Server/UpdateUserData', {
+      PlayFabId: playFabId,
+      KeysToRemove: userDataKeys.slice(offset, offset + 9),
+    }, secretKey);
+  }
   const inventory = current.InfoResultPayload?.UserInventory || [];
   for (let offset = 0; offset < inventory.length; offset += 25) {
     const items = inventory.slice(offset, offset + 25).flatMap((item) => item.ItemInstanceId ? [{ PlayFabId: playFabId, ItemInstanceId: item.ItemInstanceId }] : []);
