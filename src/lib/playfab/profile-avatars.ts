@@ -38,7 +38,7 @@ async function playFabFileRequest<T>(
   });
   const result = await response.json() as PlayFabResult<T>;
   if (!response.ok || result.code !== 200 || result.data === undefined) {
-    throw new Error(result.errorMessage || `PlayFab file request failed: ${path}`);
+    throw new Error(`PlayFab file request ${path} failed: ${result.errorMessage || `HTTP ${response.status}`}`);
   }
   return result.data;
 }
