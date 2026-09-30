@@ -44,21 +44,21 @@ const chapters = [
     title: "PRE-PRODUCTION",
     text: "Your crew lands its first commercial. Different roles, different responsibilities.",
     icon: Building2,
-    image: "/assets/role-av-technician.png",
+    image: "/assets/home-role-director.png",
   },
   {
     number: "02",
     title: "PRODUCTION",
     text: "Your crew finally gets a shot at a production. Everything is on the line",
     icon: Clapperboard,
-    image: "/assets/role-cameraman.png",
+    image: "/assets/home-role-cameraman.png",
   },
   {
     number: "03",
     title: "POST-PRODUCTION",
     text: "Refining the footage and preparing the final product.",
     icon: Timer,
-    image: "/assets/role-editor.png",
+    image: "/assets/home-role-editor.png",
   },
 ];
 
@@ -97,6 +97,7 @@ function HomePage() {
         if (!entry) return;
 
         if (entry.isIntersecting && entry.intersectionRatio >= 0.35) {
+          video.muted = false;
           void video.play().catch(() => {
             // Autoplay can still be blocked by browser settings; controls remain available.
           });
@@ -239,7 +240,9 @@ function HomePage() {
                 poster="/videos/crew-on-set-game-lore-poster.jpg"
                 title="The Story of Crew On Set!"
                 controls
-                muted
+                onPlay={(event) => {
+                  event.currentTarget.muted = false;
+                }}
                 preload="metadata"
                 playsInline
               />
