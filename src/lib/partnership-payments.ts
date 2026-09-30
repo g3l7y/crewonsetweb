@@ -123,7 +123,6 @@ export async function markPartnershipPaymentPaid(
   const existingApplication = applications.find((application) => application.id === payment.applicationId);
   if (!existingApplication) return { updated: false, alreadyPaid: false };
   const brandPromotionToken = existingApplication.brandPromotionToken || await createPromotionAccessToken(payment.applicationId, secretKey);
-  const shouldSendApproval = ['Pending', 'Approved'].includes(existingApplication.status) && !existingApplication.approvalEmailSentAt;
   const applicationUpdated = await updateWebsiteRecord<PartnershipApplication>(
     WEBSITE_DATA_KEYS.partnerships,
     payment.applicationId,
@@ -140,8 +139,8 @@ export async function markPartnershipPaymentPaid(
   );
   if (!applicationUpdated) return { updated: false, alreadyPaid: false };
 
-  const applications = await getWebsiteRecords<PartnershipApplication>(WEBSITE_DATA_KEYS.partnerships, secretKey);
-  const application = applications.find((item) => item.id === payment.applicationId);
+  const updatedApplications = await getWebsiteRecords<PartnershipApplication>(WEBSITE_DATA_KEYS.partnerships, secretKey);
+  const application = updatedApplications.find((item) => item.id === payment.applicationId);
   if (application?.status === 'Approved') await ensureApprovedPartnershipEmail(application, secretKey);
 
   const existingNotifications = await getWebsiteRecords<{ id: string }>(
@@ -199,6 +198,7 @@ export async function ensureApprovedPartnershipEmail(
     console.error('[Partnership payment] Approval email will be retried:', application.id, error);
     return false;
   }
+}
 
 export function formatPaymentAmount(amountInCentavos: number): string {
   return new Intl.NumberFormat('en-PH', {

@@ -97,3 +97,18 @@ export async function getProfileAvatarFile(
   }>("/File/GetFiles", context.token, context.entity, {});
   return getFileMetadata(result.Metadata, fileName);
 }
+
+export async function deletePlayerProfileAvatarFiles(playFabId: string, secretKey: string): Promise<void> {
+  const safePlayerId = playFabId.replace(/[^a-z0-9_-]/gi, '_');
+  const context = await getTitleEntityContext(secretKey);
+  const result = await playFabFileRequest<{
+    Metadata?: FileMetadata[] | Record<string, FileMetadata>;
+  }>('/File/GetFiles', context.token, context.entity, {});
+  const files = Array.isArray(result.Metadata) ? result.Metadata : Object.values(result.Metadata || {});
+  const fileNames = files
+    .map((file) => file.FileName)
+    .filter((fileName) => new RegExp(`^profile_avatar_${safePlayerId}_[a-f0-9]{32}\\.(jpg|png)$`, 'i').test(fileName));
+  if (fileNames.length) {
+    await playFabFileRequest('/File/DeleteFiles', context.token, context.entity, { FileNames: fileNames });
+  }
+}

@@ -266,3 +266,15 @@ export async function markPayMongoOrderFailed(orderId: string, reason: string): 
   `;
   return updated.length > 0;
 }
+
+/** Permanently remove payment-ledger rows for a developer-requested account purge. */
+export async function deletePayMongoOrdersForPlayer(playFabId: string): Promise<number> {
+  const sql = getSql();
+  await ensureSchema(sql);
+  const deleted = await sql`
+    DELETE FROM paymongo_payment_ledger
+    WHERE playfab_id = ${playFabId}
+    RETURNING order_id
+  `;
+  return deleted.length;
+}
