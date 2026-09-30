@@ -278,3 +278,11 @@ export async function deletePayMongoOrdersForPlayer(playFabId: string): Promise<
   `;
   return deleted.length;
 }
+
+/** Permanently clear the local test ledger; this does not alter PayMongo's records. */
+export async function clearPayMongoLedger(): Promise<number> {
+  const sql = getSql();
+  await ensureSchema(sql);
+  const deleted = await sql`DELETE FROM paymongo_payment_ledger RETURNING order_id`;
+  return deleted.length;
+}

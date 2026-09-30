@@ -6,6 +6,7 @@ import type { AuthResponse, SessionData } from "@/lib/playfab/types";
 import { getPlayFabContactEmail, syncPlayFabContactEmail } from "@/lib/playfab/contact-email";
 import { createPolicyAcceptanceRecord } from "@/lib/legal-consent";
 import { getMockAccountByPlayFabId } from "@/lib/playfab/mock-accounts";
+import { sendPlayerWelcomeEmail } from "@/lib/account-email";
 
 export const Route = createFileRoute("/api/auth/google")({
   server: {
@@ -291,6 +292,14 @@ export const Route = createFileRoute("/api/auth/google")({
             displayName: resolvedDisplayName,
             email: sessionEmail,
           };
+
+          if (intent === "signup" && pfData.NewlyCreated === true && sessionEmail) {
+            try {
+              await sendPlayerWelcomeEmail(sessionEmail, resolvedDisplayName);
+            } catch (emailError) {
+              console.error("[Auth] Could not send Google player welcome email:", emailError);
+            }
+          }
 
           const headers = new Headers({ "Content-Type": "application/json" });
           for (const cookie of createSessionCookies(session)) {

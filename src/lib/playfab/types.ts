@@ -321,6 +321,8 @@ export interface KnowledgeEntry {
  * Production wrap log recorded at completion of a shoot.
  */
 export interface ProductionLog {
+  /** Game contract lifecycle state when reported by the game client. */
+  status?: "accepted" | "completed" | undefined;
   /** Unique production record identifier */
   productionId?: string | undefined;
   /** Contract ID if tied to a client contract */

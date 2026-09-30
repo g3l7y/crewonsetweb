@@ -3,11 +3,12 @@ import { isMockMode, PLAYFAB_API_BASE } from '@/lib/playfab/config';
 import { validateSessionFromRequest, unauthorizedSessionResponse } from '@/lib/playfab/session';
 import { PLAYFAB_DATA_KEYS } from '@/lib/playfab/constants';
 import { WEBSITE_DATA_KEYS, getWebsiteRecords, setWebsiteRecords } from '@/lib/playfab/websiteData';
-import { deletePayMongoOrdersForPlayer, isPayMongoLedgerConfigured } from '@/lib/paymongo/ledger';
+import { clearPayMongoLedger, deletePayMongoOrdersForPlayer, isPayMongoLedgerConfigured } from '@/lib/paymongo/ledger';
 import { deleteBrandPromotionData } from '@/lib/brand-promotion-tracking';
 import { deletePlayerEmailIdentity } from '@/lib/playfab/email-login-identities';
 import { deletePlayerProfileAvatarFiles } from '@/lib/playfab/profile-avatars';
 import { deleteSubmissionAttachments } from '@/lib/playfab/submission-attachments';
+import { clearMockRevenue } from '@/lib/playfab/mock-provider';
 
 function getPlayFabSecret() {
   return process.env['PLAYFAB_SECRET_KEY']?.trim() || '';
@@ -144,7 +145,26 @@ export const Route = createFileRoute('/api/dev/maintenance')({
         }
         if (!isAuthorizedDevKey(request)) return Response.json({ error: 'Developer key rejected.' }, { status: 403 });
         try {
-          const body = await request.json() as { action?: string; targetId?: string; targetIds?: unknown[] };
+          const body = await request.json() as { action?: string; targetId?: string; targetIds?: unknown[]; confirmation?: string };
+          if (body.action === 'financial-reset') {
+            if (body.confirmation !== 'CLEAR FINANCIAL HISTORY') return Response.json({ error: 'Type CLEAR FINANCIAL HISTORY to confirm.' }, { status: 400 });
+            if (isMockMode()) { clearMockRevenue(); return Response.json({ success: true, mode: 'mock' }); }
+            const secretKey = getPlayFabSecret();
+            if (!secretKey) return Response.json({ error: 'PlayFab server access is not configured.' }, { status: 503 });
+            for (const collection of [WEBSITE_DATA_KEYS.paymongoOrders, WEBSITE_DATA_KEYS.partnershipPayments]) {
+              const cleared = await setWebsiteRecords(collection, [], secretKey);
+              if (!cleared) throw new Error('Could not clear ' + collection + '.');
+            }
+            if (isPayMongoLedgerConfigured()) await clearPayMongoLedger();
+            const adminAds = await getWebsiteRecords<{ id: string; revenue?: number; clicks?: number; visits?: number; impressions?: number }>('website_admin_ads', secretKey);
+            const resetAds = adminAds.map((ad) => ({ ...ad, revenue: 0, clicks: 0, visits: 0, impressions: 0 }));
+            if (!(await setWebsiteRecords('website_admin_ads', resetAds, secretKey))) throw new Error('Could not reset advertisement sales totals.');
+            if (!(await setWebsiteRecords('website_admin_revenue', [], secretKey))) throw new Error('Could not clear the revenue summary.');
+            const partnerships = await getWebsiteRecords<Record<string, unknown> & { id: string }>(WEBSITE_DATA_KEYS.partnerships, secretKey);
+            const resetPartnerships = partnerships.map((application) => ({ ...application, adRevenue: 0, adClicks: 0, adVisits: 0, adImpressions: 0 }));
+            if (!(await setWebsiteRecords(WEBSITE_DATA_KEYS.partnerships, resetPartnerships, secretKey))) throw new Error('Could not reset partnership sales totals.');
+            return Response.json({ success: true, mode: 'real' });
+          }
           const requestedIds = Array.isArray(body.targetIds)
             ? body.targetIds.map((id) => String(id || '').trim()).filter(Boolean)
             : [String(body.targetId || '').trim()].filter(Boolean);

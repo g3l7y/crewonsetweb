@@ -75,6 +75,22 @@ export async function sendAccountEmailChangeConfirmation(
   });
 }
 
+export async function sendPlayerWelcomeEmail(to: string, username: string) {
+  const mailer = getMailer();
+  const safeUsername = username.trim() || "Crew Player";
+  const subject = "Welcome to Crew On Set!";
+  const heading = "You’re now a Crew Player";
+  const body = `Hello ${safeUsername},\n\nThank you for joining Crew On Set. We’re grateful to have you as part of the community, and we hope you enjoy bringing each production to life with your crew.\n\nYour account is ready. You can use your Crew On Set credentials to access your player account.`;
+  await mailer.transporter.sendMail({
+    from: mailer.from,
+    replyTo: mailer.replyTo,
+    to,
+    subject,
+    text: `${heading}\n\n${body}\n\nCrew On Set!`,
+    html: `<!doctype html><html><body style="font-family:Arial,sans-serif;color:#0a0e19;line-height:1.6"><h1>${heading}</h1><p>Hello ${escapeHtml(safeUsername)},</p><p>Thank you for joining Crew On Set. We’re grateful to have you as part of the community, and we hope you enjoy bringing each production to life with your crew.</p><p>Your account is ready. You can use your Crew On Set credentials to access your player account.</p><p style="color:#667085;font-size:12px">Crew On Set!</p></body></html>`,
+  });
+}
+
 export function accountEmailActionUrl(request: Request, path: string, token: string) {
   const configuredOrigin = process.env["PUBLIC_APP_URL"]?.trim();
   const origin = configuredOrigin || new URL(request.url).origin;
