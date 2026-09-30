@@ -58,7 +58,7 @@ const roles = [
     color: "coral",
     description:
       "Leads the production, coordinates the crew, and makes the final creative decisions to deliver the client's vision.",
-    image: "/assets/role-director.png",
+    image: "/assets/home-role-director.png",
     responsibilities: [
       "Read and understand the client brief",
       "Break down the vision and plan each take",
@@ -79,7 +79,7 @@ const roles = [
     color: "blue",
     description:
       "Captures the action with precision, controls the camera, and brings the story to life through framing and movement.",
-    image: "/assets/role-cameraman.png",
+    image: "/assets/home-role-cameraman.png",
     responsibilities: [
       "Frame shots according to the director's vision",
       "Control focus, exposure, and camera movement",
@@ -99,7 +99,7 @@ const roles = [
     color: "green",
     description:
       "Manages lighting, audio, monitors, and technical equipment to keep the set clean, stable, and production-ready.",
-    image: "/assets/role-av-technician.png",
+    image: "/assets/home-role-av-technician.png",
     responsibilities: [
       "Set up and operate production equipment",
       "Manage studio lighting and microphones",
@@ -120,7 +120,7 @@ const roles = [
     color: "purple",
     description:
       "Shapes the story in post, selects the strongest moments, fixes continuity issues, and builds the final commercial.",
-    image: "/assets/role-editor.png",
+    image: "/assets/home-role-editor.png",
     responsibilities: [
       "Review all captured footage",
       "Select the strongest moments",
