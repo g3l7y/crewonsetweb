@@ -97,3 +97,12 @@ export async function finishPromotionCompletionEmail(eventId: string, sent: bool
     WHERE event_id = ${eventId}
   `;
 }
+
+/** Permanently remove all tracking and completion-email ledger data for a purged brand application. */
+export async function deleteBrandPromotionData(applicationId: string): Promise<void> {
+  if (!databaseUrl()) return;
+  const sql = getSql();
+  await ensureSchema(sql);
+  await sql`DELETE FROM brand_promotion_clicks WHERE application_id = ${applicationId}`;
+  await sql`DELETE FROM brand_promotion_email_events WHERE event_id = ${'promotion-complete:' + applicationId}`;
+}

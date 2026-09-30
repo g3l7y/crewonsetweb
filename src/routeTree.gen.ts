@@ -26,6 +26,7 @@ import { Route as AdminIndexRouteImport } from './routes/admin.index'
 import { Route as AdminAdRevenueRouteImport } from './routes/admin.ad-revenue'
 import { Route as AdminAnalyticsRouteImport } from './routes/admin.analytics'
 import { Route as AdminBugsRouteImport } from './routes/admin.bugs'
+import { Route as AdminDevToolsRouteImport } from './routes/admin.dev-tools'
 import { Route as AdminGameRouteImport } from './routes/admin.game'
 import { Route as AdminNotificationsRouteImport } from './routes/admin.notifications'
 import { Route as AdminPartnershipsRouteImport } from './routes/admin.partnerships'
@@ -70,6 +71,7 @@ import { Route as ApiAuthRegisterRouteImport } from './routes/api/auth/register'
 import { Route as ApiAuthSessionRouteImport } from './routes/api/auth/session'
 import { Route as ApiBrandPromotionsClickRouteImport } from './routes/api/brand-promotions.click'
 import { Route as ApiCronExpireBrandPromotionsRouteImport } from './routes/api/cron/expire-brand-promotions'
+import { Route as ApiDevMaintenanceRouteImport } from './routes/api/dev.maintenance'
 import { Route as ApiPaymongoBrandStatusRouteImport } from './routes/api/paymongo/brand-status'
 import { Route as ApiPaymongoCheckoutRouteImport } from './routes/api/paymongo/checkout'
 import { Route as ApiPaymongoReturnRouteImport } from './routes/api/paymongo/return'
@@ -176,6 +178,11 @@ const AdminAnalyticsRoute = AdminAnalyticsRouteImport.update({
 const AdminBugsRoute = AdminBugsRouteImport.update({
   id: '/bugs',
   path: '/bugs',
+  getParentRoute: () => AdminRoute,
+} as any)
+const AdminDevToolsRoute = AdminDevToolsRouteImport.update({
+  id: '/dev-tools',
+  path: '/dev-tools',
   getParentRoute: () => AdminRoute,
 } as any)
 const AdminGameRoute = AdminGameRouteImport.update({
@@ -400,6 +407,11 @@ const ApiCronExpireBrandPromotionsRoute =
     path: '/api/cron/expire-brand-promotions',
     getParentRoute: () => rootRouteImport,
   } as any)
+const ApiDevMaintenanceRoute = ApiDevMaintenanceRouteImport.update({
+  id: '/api/dev/maintenance',
+  path: '/api/dev/maintenance',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiPaymongoBrandStatusRoute = ApiPaymongoBrandStatusRouteImport.update({
   id: '/api/paymongo/brand-status',
   path: '/api/paymongo/brand-status',
@@ -537,6 +549,7 @@ export interface FileRoutesByFullPath {
   '/admin/ad-revenue': typeof AdminAdRevenueRoute
   '/admin/analytics': typeof AdminAnalyticsRoute
   '/admin/bugs': typeof AdminBugsRoute
+  '/admin/dev-tools': typeof AdminDevToolsRoute
   '/admin/game': typeof AdminGameRoute
   '/admin/notifications': typeof AdminNotificationsRoute
   '/admin/partnerships': typeof AdminPartnershipsRoute
@@ -582,6 +595,7 @@ export interface FileRoutesByFullPath {
   '/api/auth/session': typeof ApiAuthSessionRoute
   '/api/brand-promotions/click': typeof ApiBrandPromotionsClickRoute
   '/api/cron/expire-brand-promotions': typeof ApiCronExpireBrandPromotionsRoute
+  '/api/dev/maintenance': typeof ApiDevMaintenanceRoute
   '/api/paymongo/brand-status': typeof ApiPaymongoBrandStatusRoute
   '/api/paymongo/checkout': typeof ApiPaymongoCheckoutRoute
   '/api/paymongo/return': typeof ApiPaymongoReturnRoute
@@ -620,6 +634,7 @@ export interface FileRoutesByTo {
   '/admin/ad-revenue': typeof AdminAdRevenueRoute
   '/admin/analytics': typeof AdminAnalyticsRoute
   '/admin/bugs': typeof AdminBugsRoute
+  '/admin/dev-tools': typeof AdminDevToolsRoute
   '/admin/game': typeof AdminGameRoute
   '/admin/notifications': typeof AdminNotificationsRoute
   '/admin/partnerships': typeof AdminPartnershipsRoute
@@ -665,6 +680,7 @@ export interface FileRoutesByTo {
   '/api/auth/session': typeof ApiAuthSessionRoute
   '/api/brand-promotions/click': typeof ApiBrandPromotionsClickRoute
   '/api/cron/expire-brand-promotions': typeof ApiCronExpireBrandPromotionsRoute
+  '/api/dev/maintenance': typeof ApiDevMaintenanceRoute
   '/api/paymongo/brand-status': typeof ApiPaymongoBrandStatusRoute
   '/api/paymongo/checkout': typeof ApiPaymongoCheckoutRoute
   '/api/paymongo/return': typeof ApiPaymongoReturnRoute
@@ -706,6 +722,7 @@ export interface FileRoutesById {
   '/admin/ad-revenue': typeof AdminAdRevenueRoute
   '/admin/analytics': typeof AdminAnalyticsRoute
   '/admin/bugs': typeof AdminBugsRoute
+  '/admin/dev-tools': typeof AdminDevToolsRoute
   '/admin/game': typeof AdminGameRoute
   '/admin/notifications': typeof AdminNotificationsRoute
   '/admin/partnerships': typeof AdminPartnershipsRoute
@@ -751,6 +768,7 @@ export interface FileRoutesById {
   '/api/auth/session': typeof ApiAuthSessionRoute
   '/api/brand-promotions/click': typeof ApiBrandPromotionsClickRoute
   '/api/cron/expire-brand-promotions': typeof ApiCronExpireBrandPromotionsRoute
+  '/api/dev/maintenance': typeof ApiDevMaintenanceRoute
   '/api/paymongo/brand-status': typeof ApiPaymongoBrandStatusRoute
   '/api/paymongo/checkout': typeof ApiPaymongoCheckoutRoute
   '/api/paymongo/return': typeof ApiPaymongoReturnRoute
@@ -793,6 +811,7 @@ export interface FileRouteTypes {
     | '/admin/ad-revenue'
     | '/admin/analytics'
     | '/admin/bugs'
+    | '/admin/dev-tools'
     | '/admin/game'
     | '/admin/notifications'
     | '/admin/partnerships'
@@ -838,6 +857,7 @@ export interface FileRouteTypes {
     | '/api/auth/session'
     | '/api/brand-promotions/click'
     | '/api/cron/expire-brand-promotions'
+    | '/api/dev/maintenance'
     | '/api/paymongo/brand-status'
     | '/api/paymongo/checkout'
     | '/api/paymongo/return'
@@ -876,6 +896,7 @@ export interface FileRouteTypes {
     | '/admin/ad-revenue'
     | '/admin/analytics'
     | '/admin/bugs'
+    | '/admin/dev-tools'
     | '/admin/game'
     | '/admin/notifications'
     | '/admin/partnerships'
@@ -921,6 +942,7 @@ export interface FileRouteTypes {
     | '/api/auth/session'
     | '/api/brand-promotions/click'
     | '/api/cron/expire-brand-promotions'
+    | '/api/dev/maintenance'
     | '/api/paymongo/brand-status'
     | '/api/paymongo/checkout'
     | '/api/paymongo/return'
@@ -961,6 +983,7 @@ export interface FileRouteTypes {
     | '/admin/ad-revenue'
     | '/admin/analytics'
     | '/admin/bugs'
+    | '/admin/dev-tools'
     | '/admin/game'
     | '/admin/notifications'
     | '/admin/partnerships'
@@ -1006,6 +1029,7 @@ export interface FileRouteTypes {
     | '/api/auth/session'
     | '/api/brand-promotions/click'
     | '/api/cron/expire-brand-promotions'
+    | '/api/dev/maintenance'
     | '/api/paymongo/brand-status'
     | '/api/paymongo/checkout'
     | '/api/paymongo/return'
@@ -1071,6 +1095,7 @@ export interface RootRouteChildren {
   ApiAuthRegisterRoute: typeof ApiAuthRegisterRoute
   ApiAuthSessionRoute: typeof ApiAuthSessionRoute
   ApiCronExpireBrandPromotionsRoute: typeof ApiCronExpireBrandPromotionsRoute
+  ApiDevMaintenanceRoute: typeof ApiDevMaintenanceRoute
   ApiPaymongoBrandStatusRoute: typeof ApiPaymongoBrandStatusRoute
   ApiPaymongoCheckoutRoute: typeof ApiPaymongoCheckoutRoute
   ApiPaymongoReturnRoute: typeof ApiPaymongoReturnRoute
@@ -1213,6 +1238,13 @@ declare module '@tanstack/react-router' {
       path: '/bugs'
       fullPath: '/admin/bugs'
       preLoaderRoute: typeof AdminBugsRouteImport
+      parentRoute: typeof AdminRoute
+    }
+    '/admin/dev-tools': {
+      id: '/admin/dev-tools'
+      path: '/dev-tools'
+      fullPath: '/admin/dev-tools'
+      preLoaderRoute: typeof AdminDevToolsRouteImport
       parentRoute: typeof AdminRoute
     }
     '/admin/game': {
@@ -1523,6 +1555,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiCronExpireBrandPromotionsRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/dev/maintenance': {
+      id: '/api/dev/maintenance'
+      path: '/api/dev/maintenance'
+      fullPath: '/api/dev/maintenance'
+      preLoaderRoute: typeof ApiDevMaintenanceRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/paymongo/brand-status': {
       id: '/api/paymongo/brand-status'
       path: '/api/paymongo/brand-status'
@@ -1684,6 +1723,7 @@ interface AdminRouteChildren {
   AdminAdRevenueRoute: typeof AdminAdRevenueRoute
   AdminAnalyticsRoute: typeof AdminAnalyticsRoute
   AdminBugsRoute: typeof AdminBugsRoute
+  AdminDevToolsRoute: typeof AdminDevToolsRoute
   AdminGameRoute: typeof AdminGameRoute
   AdminNotificationsRoute: typeof AdminNotificationsRoute
   AdminPartnershipsRoute: typeof AdminPartnershipsRoute
@@ -1699,6 +1739,7 @@ const AdminRouteChildren: AdminRouteChildren = {
   AdminAdRevenueRoute: AdminAdRevenueRoute,
   AdminAnalyticsRoute: AdminAnalyticsRoute,
   AdminBugsRoute: AdminBugsRoute,
+  AdminDevToolsRoute: AdminDevToolsRoute,
   AdminGameRoute: AdminGameRoute,
   AdminNotificationsRoute: AdminNotificationsRoute,
   AdminPartnershipsRoute: AdminPartnershipsRoute,
@@ -1801,6 +1842,7 @@ const rootRouteChildren: RootRouteChildren = {
   ApiAuthRegisterRoute: ApiAuthRegisterRoute,
   ApiAuthSessionRoute: ApiAuthSessionRoute,
   ApiCronExpireBrandPromotionsRoute: ApiCronExpireBrandPromotionsRoute,
+  ApiDevMaintenanceRoute: ApiDevMaintenanceRoute,
   ApiPaymongoBrandStatusRoute: ApiPaymongoBrandStatusRoute,
   ApiPaymongoCheckoutRoute: ApiPaymongoCheckoutRoute,
   ApiPaymongoReturnRoute: ApiPaymongoReturnRoute,

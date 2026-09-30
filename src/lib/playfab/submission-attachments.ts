@@ -191,3 +191,19 @@ export async function getSubmissionAttachment(
 
   return metadata[fileName] ?? Object.values(metadata).find((file) => file.FileName === fileName) ?? null;
 }
+
+export async function deleteSubmissionAttachments(recordId: string, secretKey: string): Promise<void> {
+  const safeId = recordId.replace(/[^a-z0-9_-]/gi, '_');
+  const entityContext = await getTitleEntityContext(secretKey);
+  const result = await playFabFileRequest<{
+    Metadata?: PlayFabFileMetadata[] | Record<string, PlayFabFileMetadata>;
+  }>('/File/GetFiles', entityContext.token, {}, entityContext.entity);
+  const metadata = result.Metadata;
+  const files = Array.isArray(metadata) ? metadata : Object.values(metadata || {});
+  const fileNames = files
+    .map((file) => file.FileName)
+    .filter((fileName) => new RegExp(`^submission_${safeId}_[a-f0-9]{32}\\.(jpg|jpeg|png|webp|gif|pdf)$`, 'i').test(fileName));
+  if (fileNames.length) {
+    await playFabFileRequest('/File/DeleteFiles', entityContext.token, { FileNames: fileNames }, entityContext.entity);
+  }
+}
