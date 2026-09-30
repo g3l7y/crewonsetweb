@@ -32,8 +32,11 @@ async function playFabServerRequest<T>(path: string, body: Record<string, unknow
     headers: { 'Content-Type': 'application/json', 'X-SecretKey': secretKey },
     body: JSON.stringify({ ...body, TitleId: PLAYFAB_TITLE_ID }),
   });
-  const result = await response.json().catch(() => ({})) as { code?: number; errorMessage?: string; data?: T };
-  if (!response.ok || result.code !== 200) throw new Error(result.errorMessage || 'PlayFab could not complete the maintenance action.');
+  const result = await response.json().catch(() => ({})) as { code?: number; error?: string; errorMessage?: string; data?: T };
+  if (!response.ok || result.code !== 200) {
+    const reason = result.errorMessage || result.error || `HTTP ${response.status}`;
+    throw new Error(`PlayFab ${path} failed: ${reason}`);
+  }
   return result.data as T;
 }
 
@@ -80,8 +83,10 @@ async function resetPlayFabPlayer(playFabId: string, secretKey: string) {
     }
   }
   const current = await playFabServerRequest<{
-    UserInventory?: Array<{ ItemInstanceId?: string }>;
-    UserVirtualCurrency?: Record<string, number>;
+    InfoResultPayload?: {
+      UserInventory?: Array<{ ItemInstanceId?: string }>;
+      UserVirtualCurrency?: Record<string, number>;
+    };
   }>('/Server/GetPlayerCombinedInfo', {
     PlayFabId: playFabId,
     InfoRequestParameters: { GetUserInventory: true, GetUserVirtualCurrency: true },
@@ -91,12 +96,12 @@ async function resetPlayFabPlayer(playFabId: string, secretKey: string) {
     PlayFabId: playFabId,
     KeysToRemove: Object.values(PLAYFAB_DATA_KEYS),
   }, secretKey);
-  const inventory = current.UserInventory || [];
+  const inventory = current.InfoResultPayload?.UserInventory || [];
   for (let offset = 0; offset < inventory.length; offset += 25) {
     const items = inventory.slice(offset, offset + 25).flatMap((item) => item.ItemInstanceId ? [{ PlayFabId: playFabId, ItemInstanceId: item.ItemInstanceId }] : []);
     if (items.length) await playFabServerRequest('/Admin/RevokeInventoryItems', { Items: items }, secretKey);
   }
-  for (const [currency, balance] of Object.entries(current.UserVirtualCurrency || {})) {
+  for (const [currency, balance] of Object.entries(current.InfoResultPayload?.UserVirtualCurrency || {})) {
     if (balance > 0) await playFabServerRequest('/Server/SubtractUserVirtualCurrency', { PlayFabId: playFabId, VirtualCurrency: currency, Amount: balance }, secretKey);
   }
 }
