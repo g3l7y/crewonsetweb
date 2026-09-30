@@ -403,7 +403,8 @@ export function useAdminNotifications() {
     queryKey: QUERY_KEYS.adminNotifications,
     queryFn: () => getPlayFabService().admin.getNotifications(),
     enabled: !!session && (session.role === "admin" || session.role === "developer"),
-    staleTime: 2 * 60 * 1000,
+    staleTime: 0,
+    refetchInterval: isMockMode() ? false : 15_000,
   });
 }
 

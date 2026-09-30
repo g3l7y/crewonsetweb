@@ -5,6 +5,7 @@ import {
   updateWebsiteRecord,
 } from '@/lib/playfab/websiteData';
 import type { PartnershipApplication, PartnershipPayment } from '@/lib/playfab/types';
+import { sendPartnershipStatusEmail } from '@/lib/partnership-email';
 
 export function createPartnershipPaymentId(): string {
   return 'COS-BRAND-' + Date.now() + '-' + Math.random().toString(36).slice(2, 8);
@@ -127,10 +128,20 @@ export async function markPartnershipPaymentPaid(
       paymentId: payment.id,
       paymentAmount: payment.amountInCentavos / 100,
       paymentPaidAt: application.paymentPaidAt || payment.paidAt || paidAt,
+      ...(application.status === 'Pending'
+        ? {
+            status: 'Approved',
+            brandPromotionToken: application.brandPromotionToken || crypto.randomUUID(),
+          }
+        : {}),
     }),
     secretKey,
   );
   if (!applicationUpdated) return { updated: false, alreadyPaid: false };
+
+  const applications = await getWebsiteRecords<PartnershipApplication>(WEBSITE_DATA_KEYS.partnerships, secretKey);
+  const application = applications.find((item) => item.id === payment.applicationId);
+  if (application?.status === 'Approved') await ensureApprovedPartnershipEmail(application, secretKey);
 
   const existingNotifications = await getWebsiteRecords<{ id: string }>(
     WEBSITE_DATA_KEYS.notifications,
@@ -138,7 +149,7 @@ export async function markPartnershipPaymentPaid(
   );
   const notificationId = 'brand-payment-' + payment.id;
   if (!existingNotifications.some((item) => item.id === notificationId)) {
-    await appendWebsiteRecord(
+    const notificationSaved = await appendWebsiteRecord(
       WEBSITE_DATA_KEYS.notifications,
       {
         id: notificationId,
@@ -153,9 +164,33 @@ export async function markPartnershipPaymentPaid(
       },
       secretKey,
     );
+    if (!notificationSaved) throw new Error('The payment was recorded, but its admin notification could not be saved.');
   }
 
   return { updated: !wasAlreadyPaid, alreadyPaid: wasAlreadyPaid };
+}
+
+export async function ensureApprovedPartnershipEmail(
+  application: PartnershipApplication,
+  secretKey: string,
+): Promise<boolean> {
+  if (application.status !== 'Approved' || application.approvalEmailSentAt) return false;
+  try {
+    await sendPartnershipStatusEmail({ application, status: 'Approved' });
+    const saved = await updateWebsiteRecord<PartnershipApplication>(
+      WEBSITE_DATA_KEYS.partnerships,
+      application.id,
+      (current) => current.approvalEmailSentAt
+        ? current
+        : { ...current, approvalEmailSentAt: new Date().toISOString() },
+      secretKey,
+    );
+    if (!saved) throw new Error('Approval email sent, but its delivery receipt could not be saved.');
+    return true;
+  } catch (error) {
+    console.error('[Partnership payment] Approval email will be retried:', application.id, error);
+    return false;
+  }
 }
 
 export function formatPaymentAmount(amountInCentavos: number): string {

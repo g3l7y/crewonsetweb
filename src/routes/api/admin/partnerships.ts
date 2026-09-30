@@ -4,15 +4,15 @@ import {
   WEBSITE_DATA_KEYS,
   getWebsiteRecords,
   appendWebsiteRecord,
+  setWebsiteRecords,
   updateWebsiteRecord,
-  deleteWebsiteRecords,
 } from '@/lib/playfab/websiteData';
-import type { PartnershipApplication, PartnershipPayment, PartnershipStatus } from '@/lib/playfab/types';
+import type { AdminNotification, PartnershipApplication, PartnershipPayment, PartnershipStatus } from '@/lib/playfab/types';
 import {
   parseSubmissionRequest,
   uploadSubmissionAttachment,
 } from '@/lib/playfab/submission-attachments';
-import { createPartnershipPaymentId, findPartnershipPayment, updatePartnershipPayment } from '@/lib/partnership-payments';
+import { createPartnershipPaymentId, ensureApprovedPartnershipEmail, findPartnershipPayment, updatePartnershipPayment } from '@/lib/partnership-payments';
 import { sendPartnershipStatusEmail } from '@/lib/partnership-email';
 import { getPromotionEndDate, processExpiredPromotions, sendPromotionCompletionEmail } from '@/lib/brand-promotion-lifecycle';
 import { ensureBrandPromotionExpiryWorkflow } from '@/lib/brand-promotion-scheduler';
@@ -39,6 +39,31 @@ const transitions: Record<PartnershipStatus, PartnershipStatus[]> = {
 
 function isPartnershipStatus(value: unknown): value is PartnershipStatus {
   return typeof value === 'string' && value in transitions;
+}
+
+async function ensureApplicationNotifications(
+  applications: PartnershipApplication[],
+  secretKey: string,
+): Promise<void> {
+  const existing = await getWebsiteRecords<AdminNotification>(WEBSITE_DATA_KEYS.notifications, secretKey);
+  const existingIds = new Set(existing.map((item) => item.id));
+  const missing = applications
+    .filter((application) => !existingIds.has('partnership-submitted-' + application.id))
+    .map((application): AdminNotification => ({
+      id: 'partnership-submitted-' + application.id,
+      title: 'New brand application submitted',
+      body: (application.brand || 'A brand') + ' submitted a partnership application for ' + (application.exactModel || 'a product') + '.',
+      kind: 'partnership',
+      href: '/admin/partnerships',
+      entityId: application.id,
+      entityType: 'partnership',
+      read: false,
+      createdAt: application.submittedAt,
+    }));
+  if (missing.length) {
+    const saved = await setWebsiteRecords(WEBSITE_DATA_KEYS.notifications, [...missing, ...existing], secretKey);
+    if (!saved) console.error('[Partnerships] New application notifications could not be saved.');
+  }
 }
 
 async function trySendPartnershipStatusEmail(
@@ -162,6 +187,10 @@ export const Route = createFileRoute('/api/admin/partnerships')({
             WEBSITE_DATA_KEYS.partnerships,
             secretKey,
           );
+          await ensureApplicationNotifications(applications, secretKey);
+          await Promise.all(applications
+            .filter((application) => application.status === 'Approved' && application.paymentStatus === 'Paid' && !application.approvalEmailSentAt)
+            .map((application) => ensureApprovedPartnershipEmail(application, secretKey)));
           const scheduledApplications = await Promise.all(applications.map(async (application) => {
             if (application.status !== 'On-going' || isMockMode()) return application;
             try {
@@ -236,6 +265,7 @@ export const Route = createFileRoute('/api/admin/partnerships')({
 
           const success = await appendWebsiteRecord(WEBSITE_DATA_KEYS.partnerships, application, getSecretKey());
           if (!success) return Response.json({ error: 'Failed to save partnership application.' }, { status: 500 });
+          await ensureApplicationNotifications([application], getSecretKey());
           return Response.json({ success: true, data: application }, { status: 201 });
         } catch (error) {
           console.error('[API] POST partnerships error:', error);
@@ -425,21 +455,6 @@ export const Route = createFileRoute('/api/admin/partnerships')({
         }
       },
 
-      DELETE: async ({ request }) => {
-        if (!(await validateSessionFromRequest(request, { requireAdmin: true }))) {
-          return unauthorizedSessionResponse();
-        }
-        try {
-          const { ids } = (await request.json()) as { ids?: string[] };
-          if (!ids || ids.length === 0) return Response.json({ error: 'Application IDs are required.' }, { status: 400 });
-          const success = await deleteWebsiteRecords(WEBSITE_DATA_KEYS.partnerships, ids, getSecretKey());
-          if (!success) return Response.json({ error: 'Failed to delete partnership applications.' }, { status: 500 });
-          return Response.json({ success: true });
-        } catch (error) {
-          console.error('[API] DELETE partnerships error:', error);
-          return Response.json({ error: 'Failed to delete partnership applications.' }, { status: 500 });
-        }
-      },
     },
   },
 });

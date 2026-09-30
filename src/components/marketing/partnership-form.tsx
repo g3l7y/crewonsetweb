@@ -5,6 +5,7 @@ import { EMAIL_ERROR, isValidEmail } from "@/lib/validation";
 import { isMockMode } from "@/lib/playfab/config";
 import {
   applicationsStore,
+  adminNotificationsStore,
   insertSharedRecord,
   readAttachmentAsDataUrl,
   partnershipProductTypes,
@@ -115,6 +116,19 @@ export function PartnershipForm() {
       return;
     }
     applicationsStore.set((current) => [application, ...current.filter((item) => item.id !== application.id)]);
+    if (mockMode) {
+      adminNotificationsStore.set((current) => [{
+        id: "partnership-submitted-" + application.id,
+        title: "New brand application submitted",
+        body: brandName + " submitted a partnership application for " + exactModel + ".",
+        kind: "partnership",
+        href: "/admin/partnerships",
+        entityId: application.id,
+        entityType: "partnership",
+        read: false,
+        createdAt: application.submittedAt,
+      }, ...current]);
+    }
     setSubmitted(true);
   }
 

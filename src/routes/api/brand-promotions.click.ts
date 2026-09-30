@@ -27,6 +27,12 @@ export const Route = createFileRoute('/api/brand-promotions/click')({
           await processExpiredPromotions(secretKey);
           const applications = await getWebsiteRecords<PartnershipApplication>(WEBSITE_DATA_KEYS.partnerships, secretKey);
           const application = applications.find((item) => item.brandPromotionToken === token);
+          if (application?.status === 'Approved') {
+            return new Response('This promotion is approved and will be available when its status changes to On-going.', {
+              status: 409,
+              headers: { 'content-type': 'text/plain; charset=utf-8' },
+            });
+          }
           if (!application || application.status !== 'On-going' || Date.now() >= new Date(getPromotionEndDate(application)).getTime()) {
             return new Response('This brand promotion has ended.', { status: 410, headers: { 'content-type': 'text/plain; charset=utf-8' } });
           }

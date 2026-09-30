@@ -468,7 +468,12 @@ function createRealService(): PlayFabService {
       getSystemRequirements: async () => [],
       getInstallSteps: async () => [],
       getSocialLinks: async () => [],
-      getNotifications: async () => [],
+      getNotifications: async () => {
+        const res = await fetch('/api/admin/data?key=notifications', { cache: 'no-store' });
+        if (!res.ok) throw new Error('Failed to fetch admin notifications');
+        const json = await res.json();
+        return json.data ?? [];
+      },
       submitBugReport: async (report) => {
         const res = await fetch('/api/admin/bug-reports', {
           method: 'POST',
