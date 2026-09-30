@@ -72,8 +72,8 @@ function DownloadPage() {
         {/* HERO */}
         <section className="download-hero relative overflow-hidden border-b border-white/10 bg-[#070b13] pb-16 pt-32 text-white sm:pb-20 sm:pt-40">
           <Image
-            src="/assets/crew-set-illustration.png"
-            alt="Key art from Crew On Set!"
+            src="/assets/download-hero.png"
+            alt="A Crew On Set fan downloads the game at home"
             fill
             priority
             className="object-cover opacity-30 saturate-[.8]"
