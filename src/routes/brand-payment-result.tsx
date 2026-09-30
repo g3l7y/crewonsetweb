@@ -78,7 +78,7 @@ function BrandPaymentResultPage() {
       iconClass: 'text-[#2d9d8f]',
       eyebrow: 'PAYMENT CONFIRMED',
       title: 'Payment successful',
-      body: 'Your payment has been received and recorded. Your brand partnership application is now ready for the next stage of review. Please wait for the Crew On Set team to contact you regarding implementation.',
+      body: 'Your payment has been received and recorded. Your brand partnership application is now Approved. The Crew On Set team will contact you when the promotion is ready to go live.',
     },
     pending: {
       icon: Clock3,

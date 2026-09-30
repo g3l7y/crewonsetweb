@@ -1067,14 +1067,26 @@ export function createMockService(): PlayFabService {
       },
       async submitPartnership(app: Omit<PartnershipApplication, 'id' | 'submittedAt' | 'status' | 'archived' | 'archivedAt'> | any): Promise<PartnershipApplication> {
         await randomDelay();
+        const submittedAt = new Date().toISOString();
         const newApp: PartnershipApplication = {
           ...app,
           id: uid('PA'),
-          status: 'Pending',
+          status: 'New',
           archived: false,
-          submittedAt: new Date().toISOString(),
+          submittedAt,
         };
         MOCK_PARTNERSHIPS.unshift(newApp);
+        MOCK_ADMIN_NOTIFS.unshift({
+          id: 'partnership-submitted-' + newApp.id,
+          title: 'New brand application submitted',
+          body: (newApp.brand || 'A brand') + ' submitted a partnership application for ' + (newApp.exactModel || 'a product') + '.',
+          kind: 'partnership',
+          href: '/admin/partnerships',
+          entityId: newApp.id,
+          entityType: 'partnership',
+          read: false,
+          createdAt: submittedAt,
+        });
         return newApp;
       },
     },

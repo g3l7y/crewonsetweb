@@ -1,11 +1,12 @@
 import type { BugReport, PlayerReport } from "@/lib/demo/store";
 import type { TopUpRecord } from "@/lib/admin-demo-data";
+import type { AdminNotification } from "@/lib/playfab/types";
 
 export type AdminAlert = {
   id: string;
   title: string;
   body: string;
-  kind: "bug" | "player-report" | "transaction";
+  kind: "bug" | "player-report" | "transaction" | "partnership";
   /** In-app destination this alert links to when clicked. */
   href: string;
   /** Used to keep the bell and the full Notifications page in newest-first order. */
@@ -30,6 +31,7 @@ export function buildAlerts(
   bugs: BugReport[] = [],
   playerReports: PlayerReport[] = [],
   transactions: TopUpRecord[] = [],
+  notifications: AdminNotification[] = [],
 ): AdminAlert[] {
   const alerts: AdminAlert[] = [];
 
@@ -55,8 +57,24 @@ export function buildAlerts(
     });
   });
 
+  notifications.forEach((notification) => {
+    if (notification.kind !== "partnership" && notification.kind !== "application") return;
+    alerts.push({
+      id: notification.id,
+      title: notification.title,
+      body: notification.body || "A brand partnership application was updated.",
+      kind: "partnership",
+      href: notification.href || "/admin/partnerships",
+      createdAt: notification.createdAt,
+    });
+  });
+
   transactions
     .filter((transaction) => transaction.status === "Completed")
+    .filter((transaction) =>
+      !transaction.bank.toLowerCase().includes("brand partnership") ||
+      !notifications.some((notification) => notification.entityId === transaction.playerId),
+    )
     .forEach((transaction) => {
       const brandPayment = transaction.bank.toLowerCase().includes("brand partnership");
       alerts.push({

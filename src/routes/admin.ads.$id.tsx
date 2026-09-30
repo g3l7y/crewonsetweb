@@ -30,16 +30,18 @@ import {
   MousePointerClick,
   Users,
 } from "lucide-react";
-import { adsStore, applicationsStore, formatMoney, notificationsStore, uid, type ActiveAd } from "@/lib/demo/store";
+import { adsStore, adminNotificationsStore, applicationsStore, formatMoney, notificationsStore, uid, type ActiveAd } from "@/lib/demo/store";
 
 const statusStyles: Record<ActiveAd["status"], string> = {
+  Approved: "bg-[#d9a514]/15 text-[#f3c747]",
   "On-going": "bg-[#2d9d8f]/15 text-[#4bc4b4]",
   Expiring: "bg-[#d9a514]/15 text-[#e1b42b]",
   Expired: "bg-coral/15 text-[#ff7663]",
   Done: "bg-white/[.08] text-white/50",
 };
 
-function formatDate(iso: string) {
+function formatDate(iso?: string) {
+  if (!iso) return "Not set";
   return new Date(iso).toLocaleDateString("en-US", {
     year: "numeric",
     month: "short",
@@ -61,8 +63,7 @@ function splitCountdown(ms: number) {
 }
 
 function fromServiceAd(ad: AdEntry): ActiveAd {
-  const status = ad.status === 'Done' ? 'Done' : ad.status === 'Expiring' ? 'Expiring' : ad.status === 'Expired' ? 'Expired' : 'On-going';
-  const startDate = ad.startDate || new Date().toISOString();
+  const status = ad.status === 'Approved' ? 'Approved' : ad.status === 'Done' ? 'Done' : ad.status === 'Expiring' ? 'Expiring' : ad.status === 'Expired' ? 'Expired' : 'On-going';
   return {
     id: ad.id,
     applicationId: ad.applicationId,
@@ -70,8 +71,8 @@ function fromServiceAd(ad: AdEntry): ActiveAd {
     exactModel: ad.exactModel || ad.product || '',
     productType: ad.productType || 'Other',
     contract: ad.contract || 'Crew On Set brand promotion placement.',
-    startDate,
-    expiresAt: ad.expiresAt || ad.endDate || startDate,
+    ...(ad.startDate ? { startDate: ad.startDate } : {}),
+    ...(ad.expiresAt || ad.endDate ? { expiresAt: ad.expiresAt || ad.endDate } : {}),
     status,
     endedAt: ad.endedAt,
     endReason: ad.endReason,
@@ -93,6 +94,7 @@ function AdDetailPage() {
   const realAdsQuery = useAdminAds();
   const ads = isMockMode() ? localAds : (realAdsQuery.data ?? []).map(fromServiceAd);
   const [notifications, setNotifications] = notificationsStore.useStore();
+  const [, setAdminNotifications] = adminNotificationsStore.useStore();
   const [now, setNow] = useState<number | null>(null);
   const [adminNotified, setAdminNotified] = useState(false);
   const [trackingLinkCopied, setTrackingLinkCopied] = useState(false);
@@ -108,6 +110,7 @@ function AdDetailPage() {
 
   useEffect(() => {
     if (!ad || now === null || hasFiredExpiry.current) return;
+    if (ad.status === "Approved" || !ad.expiresAt) return;
     const remaining = new Date(ad.expiresAt).getTime() - now;
     if (remaining <= 0 && ad.status !== "Done") {
       hasFiredExpiry.current = true;
@@ -132,9 +135,20 @@ function AdDetailPage() {
         },
         ...notifications,
       ]);
+      setAdminNotifications((current) => [{
+        id: "partnership-expired-" + ad.applicationId,
+        title: "Brand promotion completed",
+        body: `${ad.brand} promotion reached its contract end date and was marked Done. Mock completion email simulated for the brand contact.`,
+        kind: "partnership",
+        href: "/admin/ads/" + ad.id,
+        entityId: ad.applicationId,
+        entityType: "partnership",
+        read: false,
+        createdAt: new Date().toISOString(),
+      }, ...current.filter((notification) => notification.id !== "partnership-expired-" + ad.applicationId)]);
       setAdminNotified(true);
     }
-  }, [ad, now, ads, notifications, setAds, setApplications, setNotifications, realAdsQuery.refetch]);
+  }, [ad, now, ads, notifications, setAds, setApplications, setNotifications, setAdminNotifications, realAdsQuery.refetch]);
 
   if (!ad) {
     return (
@@ -156,7 +170,8 @@ function AdDetailPage() {
   }
 
   const isDone = ad.status === "Done";
-  const remainingMs = isDone ? 0 : now === null ? null : new Date(ad.expiresAt).getTime() - now;
+  const countdownStartsLater = ad.status === "Approved";
+  const remainingMs = countdownStartsLater ? null : isDone ? 0 : now === null || !ad.expiresAt ? null : new Date(ad.expiresAt).getTime() - now;
   const countdown = remainingMs === null ? null : splitCountdown(remainingMs);
   const isExpired = !isDone && (ad.status === "Expired" || (remainingMs !== null && remainingMs <= 0));
 
@@ -199,11 +214,11 @@ function AdDetailPage() {
           <div className="mt-5 grid gap-4 sm:grid-cols-2">
             <div>
               <p className="text-[9px] font-black uppercase tracking-wide !text-white/30">Start Date</p>
-              <p className="mt-1.5 text-sm font-bold !text-white/80">{formatDate(ad.startDate)}</p>
+              <p className="mt-1.5 text-sm font-bold !text-white/80">{countdownStartsLater ? "Not set — begins when the promotion goes On-going" : formatDate(ad.startDate)}</p>
             </div>
             <div>
               <p className="text-[9px] font-black uppercase tracking-wide !text-white/30">{isDone ? "Ended Date / Time" : "Expiration Date"}</p>
-              <p className="mt-1.5 text-sm font-bold !text-white/80">{formatDate(isDone && ad.endedAt ? ad.endedAt : ad.expiresAt)}</p>
+              <p className="mt-1.5 text-sm font-bold !text-white/80">{countdownStartsLater ? "Not set" : formatDate(isDone && ad.endedAt ? ad.endedAt : ad.expiresAt)}</p>
             </div>
             <div>
               <p className="flex items-center gap-1.5 text-[9px] font-black uppercase tracking-wide !text-white/30">
@@ -258,7 +273,7 @@ function AdDetailPage() {
 
           {isExpired || countdown === null ? (
             <p className="mt-6 text-center text-sm font-black uppercase !text-[#ff7663]">
-              {countdown === null ? "Loading…" : "Contract Expired"}
+              {countdownStartsLater ? "Countdown starts when status is On-going" : countdown === null ? "Loading…" : "Contract Expired"}
             </p>
           ) : (
             <div className="mt-6 grid grid-cols-4 gap-2 text-center">
