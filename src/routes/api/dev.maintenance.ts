@@ -132,26 +132,31 @@ export const Route = createFileRoute('/api/dev/maintenance')({
         }
         if (!isAuthorizedDevKey(request)) return Response.json({ error: 'Developer key rejected.' }, { status: 403 });
         try {
-          const body = await request.json() as { action?: string; targetId?: string };
-          const targetId = String(body.targetId || '').trim();
-          if (!targetId) return Response.json({ error: 'Choose a player or application.' }, { status: 400 });
+          const body = await request.json() as { action?: string; targetId?: string; targetIds?: unknown[] };
+          const requestedIds = Array.isArray(body.targetIds)
+            ? body.targetIds.map((id) => String(id || '').trim()).filter(Boolean)
+            : [String(body.targetId || '').trim()].filter(Boolean);
+          const targetIds = [...new Set(requestedIds)];
+          if (!targetIds.length || targetIds.length > 500) return Response.json({ error: 'Choose at least one target (up to 500 at a time).' }, { status: 400 });
           if (isMockMode()) return Response.json({ success: true, mode: 'mock' });
 
           const secretKey = getPlayFabSecret();
           if (!secretKey) return Response.json({ error: 'PlayFab server access is not configured.' }, { status: 503 });
           if (body.action === 'player-reset' || body.action === 'player-delete') {
-            await resetPlayFabPlayer(targetId, secretKey);
-            await clearPlayerWebsiteRecords(targetId, secretKey);
-            if (isPayMongoLedgerConfigured()) await deletePayMongoOrdersForPlayer(targetId);
-            if (body.action === 'player-delete') {
-              await deletePlayerEmailIdentity(targetId);
-              await playFabServerRequest('/Admin/DeleteMasterPlayerAccount', { PlayFabId: targetId }, secretKey);
+            for (const targetId of targetIds) {
+              await resetPlayFabPlayer(targetId, secretKey);
+              await clearPlayerWebsiteRecords(targetId, secretKey);
+              if (isPayMongoLedgerConfigured()) await deletePayMongoOrdersForPlayer(targetId);
+              if (body.action === 'player-delete') {
+                await deletePlayerEmailIdentity(targetId);
+                await playFabServerRequest('/Admin/DeleteMasterPlayerAccount', { PlayFabId: targetId }, secretKey);
+              }
             }
-            return Response.json({ success: true, mode: 'real' });
+            return Response.json({ success: true, mode: 'real', count: targetIds.length });
           }
           if (body.action === 'application-delete') {
-            await deletePartnershipApplication(targetId, secretKey);
-            return Response.json({ success: true, mode: 'real' });
+            for (const targetId of targetIds) await deletePartnershipApplication(targetId, secretKey);
+            return Response.json({ success: true, mode: 'real', count: targetIds.length });
           }
           return Response.json({ error: 'Unsupported developer maintenance action.' }, { status: 400 });
         } catch (error) {
