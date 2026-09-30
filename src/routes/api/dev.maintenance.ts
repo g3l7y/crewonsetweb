@@ -1,5 +1,5 @@
 import { createFileRoute } from '@tanstack/react-router';
-import { isMockMode, PLAYFAB_API_BASE, PLAYFAB_TITLE_ID } from '@/lib/playfab/config';
+import { isMockMode, PLAYFAB_API_BASE } from '@/lib/playfab/config';
 import { validateSessionFromRequest, unauthorizedSessionResponse } from '@/lib/playfab/session';
 import { PLAYFAB_DATA_KEYS } from '@/lib/playfab/constants';
 import { WEBSITE_DATA_KEYS, getWebsiteRecords, setWebsiteRecords } from '@/lib/playfab/websiteData';
@@ -30,7 +30,9 @@ async function playFabServerRequest<T>(path: string, body: Record<string, unknow
   const response = await fetch(PLAYFAB_API_BASE + path, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', 'X-SecretKey': secretKey },
-    body: JSON.stringify({ ...body, TitleId: PLAYFAB_TITLE_ID }),
+    // The title ID is already part of PLAYFAB_API_BASE. PlayFab Server/Admin
+    // request bodies must contain only endpoint-specific fields.
+    body: JSON.stringify(body),
   });
   const result = await response.json().catch(() => ({})) as { code?: number; error?: string; errorMessage?: string; data?: T };
   if (!response.ok || result.code !== 200) {
