@@ -365,7 +365,7 @@ function HomePage() {
         <div className="mx-auto grid max-w-7xl items-center gap-12 px-5 lg:grid-cols-[1.05fr_.95fr] lg:px-8">
           <div className="image-frame rotate-1 border-white/10 bg-black">
             <Image
-              src="/assets/home-production-card.png"
+              src="/assets/home-production-card-green-screen.png"
               alt="Crew coordinating a live shoot"
               width={1200}
               height={800}
