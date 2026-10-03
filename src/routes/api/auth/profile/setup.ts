@@ -1,7 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { PLAYFAB_API_BASE, isMockMode } from "@/lib/playfab/config";
 import { PLAYFAB_DATA_KEYS } from "@/lib/playfab/constants";
-import { findPlayFabAccountByIdentifier } from "@/lib/playfab/credential-verification";
 import { createSessionCookies, validateSessionFromRequest } from "@/lib/playfab/session";
 import {
   getMockAccountBySessionTicket,
@@ -23,9 +22,12 @@ async function playFabClientRequest(
   });
   const result = await response.json().catch(() => ({}));
   if (!response.ok || result.code !== 200) {
-    if ([1006, 1009].includes(Number(result.errorCode))) {
-      throw new Error("That username or email is already in use. Please choose another.");
-    }
+    // PlayFab reports these only when the proposed credentials are already
+    // attached to a different account. Keep other account/API failures distinct.
+    if (Number(result.errorCode) === 1006)
+      throw new Error("That email is already in use. Please choose another.");
+    if (Number(result.errorCode) === 1009)
+      throw new Error("That username is already in use. Please choose another.");
     if (Number(result.errorCode) === 1008) throw new Error(PASSWORD_ERROR);
     throw new Error(result.errorMessage ?? "PlayFab could not save your profile.");
   }
@@ -112,14 +114,6 @@ export const Route = createFileRoute("/api/auth/profile/setup")({
               { status: 403 },
             );
           }
-          const existing = await findPlayFabAccountByIdentifier(username);
-          if (existing && existing.playFabId !== session.playFabId) {
-            return Response.json(
-              { success: false, error: "That username is already in use. Please choose another." },
-              { status: 409 },
-            );
-          }
-
           const currentAccount = await playFabClientRequest(
             "/Client/GetAccountInfo",
             session.sessionTicket,
@@ -187,12 +181,13 @@ export const Route = createFileRoute("/api/auth/profile/setup")({
             headers.append("Set-Cookie", cookie);
           return new Response(JSON.stringify({ success: true, username }), { headers });
         } catch (error) {
+          const errorMessage = error instanceof Error ? error.message : "Unable to save your username.";
           return Response.json(
             {
               success: false,
-              error: error instanceof Error ? error.message : "Unable to save your username.",
+              error: errorMessage,
             },
-            { status: 400 },
+            { status: /already in use/.test(errorMessage) ? 409 : 400 },
           );
         }
       },
