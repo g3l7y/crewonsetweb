@@ -126,15 +126,21 @@ export const Route = createFileRoute("/api/auth/register")({
             const pfResult = await playfabResponse.json();
 
             if (!playfabResponse.ok || pfResult.code !== 200) {
-              const duplicate =
-                /already|not available|username|email/i.test(String(pfResult.errorMessage ?? "")) ||
-                [1006, 1009].includes(Number(pfResult.errorCode));
+              const errorCode = Number(pfResult.errorCode);
+              const error =
+                errorCode === 1006
+                  ? "That email is already in use. Please choose another."
+                  : errorCode === 1009
+                    ? "That username is already in use. Please choose another."
+                    : errorCode === 1322
+                      ? "PlayFab is still finishing deletion of an account that used these credentials. Try again after the deletion is complete."
+                      : (pfResult.errorMessage ?? "PlayFab registration failed.");
               return Response.json(
                 {
                   success: false,
-                  error: pfResult.errorMessage ?? "PlayFab registration failed.",
+                  error,
                 } satisfies AuthResponse,
-                { status: duplicate ? 409 : 400 },
+                { status: [1006, 1009].includes(errorCode) ? 409 : errorCode === 1322 ? 409 : 400 },
               );
             }
 
