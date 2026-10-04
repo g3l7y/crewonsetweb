@@ -44,7 +44,7 @@ export function SiteFooter() {
         </div>
           
         {/* NAV */}
-        <nav className="flex flex-wrap items-center justify-center gap-x-7 gap-y-3" aria-label="Contact links">
+        <nav className="mx-auto flex w-full max-w-3xl flex-wrap items-center justify-center gap-x-7 gap-y-3 sm:justify-between" aria-label="Contact links">
           {footerContacts.map((item) => (
             <a
               key={item.href}
