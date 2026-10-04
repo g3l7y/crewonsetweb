@@ -60,7 +60,9 @@ function ContactPage() {
         title="Connect with the crew"
         accent={
           <>
-            <span className="text-yellow">on and off the </span>
+            <span className="text-yellow">on </span>
+            <span className="text-coral">and</span>
+            <span className="text-yellow"> off the </span>
             <span className="text-coral">set</span>
             <span className="text-white">.</span>
           </>
