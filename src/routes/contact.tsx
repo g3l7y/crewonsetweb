@@ -17,15 +17,15 @@ export const Route = createFileRoute("/contact")({
   component: ContactPage,
 });
 
-import { Facebook, Instagram, Mail, MessageCircle, Radio } from "lucide-react";
+import { Facebook, Instagram, Mail } from "lucide-react";
 import { MarketingShell } from "@/components/marketing/marketing-shell";
 import { PageHero } from "@/components/marketing/page-hero";
 import { PartnershipForm } from "@/components/marketing/partnership-form";
 
 const contacts = [
-  { icon: Mail, label: "General inquiries", value: "crewonset1@gmail.com", href: "mailto:crewonset1@gmail.com" },
-  { icon: Facebook, label: "Facebook", value: "Crew On Set!", href: "https://www.facebook.com/" },
-  { icon: Instagram, label: "Instagram", value: "@crew_on_set_game", href: "https://www.instagram.com//" },
+  { icon: Mail, label: "General inquiries", value: "crewonsetgame@gmail.com", href: "https://mail.google.com/mail/?view=cm&fs=1&to=crewonsetgame@gmail.com" },
+  { icon: Facebook, label: "Facebook", value: "Crew On Set", href: "https://www.facebook.com/profile.php?id=61594770855744" },
+  { icon: Instagram, label: "Instagram", value: "@crewonset", href: "https://www.instagram.com/crewonset/" },
 ];
 
 function ContactPage() {
@@ -93,7 +93,7 @@ function ContactPage() {
           </div>
           <div className="grid items-start gap-12 lg:grid-cols-[.68fr_1.32fr]">
             <aside className="lg:sticky lg:top-24"><span className="eyebrow mb-5 bg-navy text-yellow">THE STUDIO LINE</span><h2 className="font-sans text-4xl font-extrabold uppercase leading-tight tracking-normal sm:text-5xl">Let&apos;s make your product<span className="text-coral"> a commercial.</span></h2><p className="mt-5 leading-relaxed text-[#fefdf8]">For press, community questions, or general studio conversations, contact us directly. Companies and product teams can use the production brief to submit a partnership proposal. <br /><br />
-      Have questions, feedback, or need assistance? We&apos;d love to hear from you. Reach out to the Crew on Set! team</p>
+      Have questions, feedback, or need assistance? We&apos;d love to hear from you. Reach out to the Crew on Set! team.</p>
       
       <div className="mt-8 space-y-3">{contacts.map((contact) => <a key={contact.label} href={contact.href} target={contact.href.startsWith("http") ? "_blank" : undefined} rel={contact.href.startsWith("http") ? "noreferrer" : undefined} className="flex items-center gap-4 rounded-lg border border-navy/10 bg-white p-4 transition hover:-translate-y-0.5 hover:border-coral/40 hover:shadow-md"><div className="grid size-10 shrink-0 place-items-center rounded-md bg-navy text-yellow"><contact.icon className="size-4" /></div><div><p className="text-[10px] font-black uppercase tracking-wider text-navy/40">{contact.label}</p><p className="mt-1 text-sm font-bold">{contact.value}</p></div></a>)}</div></aside><PartnershipForm />
           </div>
