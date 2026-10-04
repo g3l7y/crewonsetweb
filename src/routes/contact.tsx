@@ -29,6 +29,29 @@ const contacts = [
 ];
 
 function ContactPage() {
+  const faqs = [
+    {
+      question: "What kinds of brands can apply for a partnership?",
+      answer: "Companies and product teams can submit proposals for products they would like featured in a Crew On Set! production. Share the product category, exact model, and how you picture it fitting into a production.",
+    },
+    {
+      question: "What should I include in the application?",
+      answer: "Include your brand name, product type and model, business email, proposed budget, and advertisement duration. A product link and a short description of your goals help us understand the brief.",
+    },
+    {
+      question: "Do I need to provide a budget and duration?",
+      answer: "Yes. The form asks for a proposed budget in Philippine pesos and an advertisement duration. These are part of your proposal and help our team review the scope.",
+    },
+    {
+      question: "Can I attach a product brief or images?",
+      answer: "Yes. You can attach an image or PDF up to 5 MB. You can also add a product page link and describe any additional details in the application.",
+    },
+    {
+      question: "What happens after I submit?",
+      answer: "Your application is sent to the Crew On Set! team for review. We’ll use the business email you provide to follow up about your proposal.",
+    },
+  ];
+
   return (
     <MarketingShell>
       <div className="contact-page">
@@ -47,10 +70,33 @@ function ContactPage() {
         imageAlt="A production team preparing a commercial set"
         cameraFrame
       />
-      <section className="bg-[#070b13] py-20 sm:py-28"><div className="mx-auto grid max-w-7xl items-start gap-12 px-5 lg:grid-cols-[.68fr_1.32fr] lg:px-8"><aside className="lg:sticky lg:top-24"><span className="eyebrow mb-5 bg-navy text-yellow">THE STUDIO LINE</span><h2 className="text-4xl font-black uppercase leading-[.95] tracking-[-.045em] sm:text-5xl">Let&apos;s make your product<span className="text-coral"> a commercial.</span></h2><p className="mt-5 leading-relaxed text-navy/60">For press, community questions, or general studio conversations, contact us directly. Companies and product teams can use the production brief to submit a partnership proposal. <br /><br />
+      <section className="bg-[#070b13] py-20 sm:py-28">
+        <div className="mx-auto max-w-7xl px-5 lg:px-8">
+          <div className="mx-auto mb-16 max-w-3xl">
+            <span className="eyebrow mb-5 bg-navy text-yellow">BEFORE YOU APPLY</span>
+            <h2 className="text-4xl font-black uppercase leading-[.95] tracking-[-.045em] text-white sm:text-5xl">
+              Frequently Asked <span className="text-yellow">Questions</span>
+            </h2>
+            <div className="mt-8 divide-y divide-white/15 border-y border-white/15">
+              {faqs.map((faq) => (
+                <details key={faq.question} className="group py-5">
+                  <summary className="flex cursor-pointer list-none items-center justify-between gap-4 text-base font-black text-white marker:hidden sm:text-lg">
+                    {faq.question}
+                    <span aria-hidden="true" className="text-2xl font-normal text-coral transition-transform group-open:rotate-45">+</span>
+                  </summary>
+                  <p className="max-w-2xl pt-4 leading-relaxed text-white/65">{faq.answer}</p>
+                </details>
+              ))}
+            </div>
+          </div>
+          <div className="grid items-start gap-12 lg:grid-cols-[.68fr_1.32fr]">
+            <aside className="lg:sticky lg:top-24"><span className="eyebrow mb-5 bg-navy text-yellow">THE STUDIO LINE</span><h2 className="text-4xl font-black uppercase leading-[.95] tracking-[-.045em] sm:text-5xl">Let&apos;s make your product<span className="text-coral"> a commercial.</span></h2><p className="mt-5 leading-relaxed text-navy/60">For press, community questions, or general studio conversations, contact us directly. Companies and product teams can use the production brief to submit a partnership proposal. <br /><br />
       Have questions, feedback, or need assistance? We&apos;d love to hear from you. Reach out to the Crew on Set! team</p>
       
-      <div className="mt-8 space-y-3">{contacts.map((contact) => <a key={contact.label} href={contact.href} target={contact.href.startsWith("http") ? "_blank" : undefined} rel={contact.href.startsWith("http") ? "noreferrer" : undefined} className="flex items-center gap-4 rounded-lg border border-navy/10 bg-white p-4 transition hover:-translate-y-0.5 hover:border-coral/40 hover:shadow-md"><div className="grid size-10 shrink-0 place-items-center rounded-md bg-navy text-yellow"><contact.icon className="size-4" /></div><div><p className="text-[10px] font-black uppercase tracking-wider text-navy/40">{contact.label}</p><p className="mt-1 text-sm font-bold">{contact.value}</p></div></a>)}</div></aside><PartnershipForm /></div></section>
+      <div className="mt-8 space-y-3">{contacts.map((contact) => <a key={contact.label} href={contact.href} target={contact.href.startsWith("http") ? "_blank" : undefined} rel={contact.href.startsWith("http") ? "noreferrer" : undefined} className="flex items-center gap-4 rounded-lg border border-navy/10 bg-white p-4 transition hover:-translate-y-0.5 hover:border-coral/40 hover:shadow-md"><div className="grid size-10 shrink-0 place-items-center rounded-md bg-navy text-yellow"><contact.icon className="size-4" /></div><div><p className="text-[10px] font-black uppercase tracking-wider text-navy/40">{contact.label}</p><p className="mt-1 text-sm font-bold">{contact.value}</p></div></a>)}</div></aside><PartnershipForm />
+          </div>
+        </div>
+      </section>
       </div>
 
     </MarketingShell>
