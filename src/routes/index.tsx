@@ -97,9 +97,9 @@ function HomePage() {
         if (!entry) return;
 
         if (entry.isIntersecting && entry.intersectionRatio >= 0.35) {
-          video.muted = true;
+          video.muted = false;
           void video.play().catch(() => {
-            // Playback can still be blocked by browser settings; controls remain available.
+            // Browsers may block autoplay with sound until the visitor interacts with the page.
           });
           return;
         }
@@ -240,7 +240,6 @@ function HomePage() {
                 poster="/videos/crew-on-set-game-lore-poster.jpg"
                 title="The Story of Crew On Set!"
                 controls
-                muted
                 controlsList="nodownload"
                 preload="metadata"
                 playsInline
