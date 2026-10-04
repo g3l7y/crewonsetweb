@@ -103,9 +103,12 @@ export const Route = createFileRoute("/api/auth/google")({
             return Response.json(
               {
                 success: false,
-                error: pfResult.errorMessage ?? "Google sign-in failed in PlayFab.",
+                error:
+                  Number(pfResult.errorCode) === 1322
+                    ? "PlayFab is still finishing deletion of an account linked to this Google sign-in. Try again after the deletion is complete."
+                    : (pfResult.errorMessage ?? "Google sign-in failed in PlayFab."),
               } satisfies AuthResponse,
-              { status: 401 },
+              { status: Number(pfResult.errorCode) === 1322 ? 409 : 401 },
             );
           }
 
@@ -113,7 +116,10 @@ export const Route = createFileRoute("/api/auth/google")({
           const banSecret = process.env["PLAYFAB_SECRET_KEY"]?.trim();
           if (!banSecret) {
             return Response.json(
-              { success: false, error: "Account status verification is not configured." } satisfies AuthResponse,
+              {
+                success: false,
+                error: "Account status verification is not configured.",
+              } satisfies AuthResponse,
               { status: 503 },
             );
           }

@@ -3,6 +3,7 @@ import { unauthorizedSessionResponse, validateSessionFromRequest } from '@/lib/p
 import { PLAYFAB_API_BASE } from '@/lib/playfab/config';
 import { DEFAULT_PROFILE_PICTURE_URL, isManagedProfileAvatarUrl } from '@/lib/profile-avatar';
 import { PLAYFAB_DATA_KEYS } from '@/lib/playfab/constants';
+import { deletePlayerEmailIdentity } from '@/lib/playfab/email-login-identities';
 import { getCcoinCurrencyCode } from '@/lib/playfab/economy';
 import { mapDataToAchievements } from '@/lib/playfab/achievements';
 import { mapDataToProductionLogs } from '@/lib/playfab/productions';
@@ -571,6 +572,7 @@ async function clearPlayerInboxRecords(playerId: string, secretKey: string): Pro
 async function deletePlayerAccount(playerId: string, secretKey: string): Promise<void> {
   await playFabServerRequest('/Server/BanUsers', { Bans: [{ PlayFabId: playerId, Reason: 'Account deletion pending.' }] }, secretKey);
   await playFabServerRequest('/Admin/DeleteMasterPlayerAccount', { PlayFabId: playerId }, secretKey);
+  await deletePlayerEmailIdentity(playerId);
   pendingDeletedPlayerIds.add(playerId);
 }
 
