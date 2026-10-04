@@ -329,6 +329,8 @@ export interface ProductionLog {
   contractId?: string | undefined;
   /** Client or studio brand name */
   clientName?: string | undefined;
+  /** Optional brand name when the production title is a separate product/contract name */
+  clientBrandName?: string | undefined;
   /** Production level index */
   level: number;
   /** Production stage name or identifier */

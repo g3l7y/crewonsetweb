@@ -175,19 +175,36 @@ function AlmanacPage() {
     }
 
     return records.map((item, index) => {
-      const hasMetadata = Boolean(item.title.trim() && item.description.trim());
+      const levelMatch = item.id.match(/^game_level_(\d+)$/i);
+      const level = levelMatch ? Number(levelMatch[1]) : 0;
+      const levelBadge = level > 0 ? {
+        title: level === 1 ? "First Day on Set" : level === 2 ? "Off-Center, On-Point" : `Level ${level} Wrapped`,
+        description: level === 1
+          ? "Your first contract is in the can. Every great crew starts with one call time."
+          : level === 2
+            ? "You met the rule of thirds on set. Place the subject with intention and let the frame tell the story."
+            : `You reached level ${level}. Another brief, another skill added to your crew toolkit.`,
+      } : null;
+      const genericLevelTitle = /^level \d+ unlocked$/i.test(item.title?.trim() || item.name?.trim() || "");
+      const title = genericLevelTitle ? levelBadge?.title || item.title?.trim() : item.title?.trim() || item.name?.trim() || levelBadge?.title || "";
+      const description = genericLevelTitle ? levelBadge?.description || item.description?.trim() : item.description?.trim() || levelBadge?.description || "";
+      const hasMetadata = Boolean(title && description);
       return {
         id: item.id,
-        name: hasMetadata ? item.title : "",
-        description: hasMetadata ? item.description : "",
+        name: hasMetadata ? title : "",
+        description: hasMetadata ? description : "",
         date: item.unlockedAt ? new Date(item.unlockedAt).toLocaleDateString() : undefined,
         unlocked: hasMetadata && item.unlocked,
         icon: hasMetadata ? realAchievementIcons[index % realAchievementIcons.length] : Lock,
         progress: hasMetadata && item.maxProgress > 0 ? `${item.progress}/${item.maxProgress}` : undefined,
         percent: hasMetadata && item.maxProgress > 0 ? Math.min(100, Math.round((item.progress / item.maxProgress) * 100)) : undefined,
-        requirement: hasMetadata ? item.description : "",
-        levelUnlocked: 0,
-        unlocks: "",
+        requirement: hasMetadata ? description : "",
+        levelUnlocked: level,
+        unlocks: levelBadge ? (level === 1
+          ? "On-set basics: call sheets, slate reading, and the production log system."
+          : level === 2
+            ? "Rule-of-thirds framing: use the grid to place your subject and build a balanced composition."
+            : `Level ${level} campaign knowledge and contract experience.`) : "",
         placeholder: !hasMetadata,
       };
     });

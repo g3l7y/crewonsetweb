@@ -9,6 +9,7 @@ type ProductionLog = {
   production: string;
   role: string;
   client: string;
+  clientBrandName?: string;
   date: string;
   score: number;
   rank: string;
@@ -17,6 +18,15 @@ type ProductionLog = {
   setupNotes: string;
   result: string;
   stats: [string, string][];
+  preProductionScore?: number;
+  productionScore?: number;
+  postProductionScore?: number;
+  details?: Record<string, unknown>;
+  budgetUsed?: number;
+  budgetRemaining?: number;
+  success?: boolean;
+  status?: string;
+  nextStep?: string;
 };
 
 const productionLogs: ProductionLog[] = [
@@ -267,11 +277,15 @@ function mapRealProductionLog(log: PlayFabProductionLog): ProductionLog {
       )
     : [];
 
+  const details = (log.details && typeof log.details === "object" ? log.details : {}) as Record<string, unknown>;
+  const nextStep = [details.nextStep, details.yourNextStep, details.next_step].find((value) => typeof value === "string");
+  const mode = String(log.mode ?? "solo").toLowerCase();
   return {
     id: log.productionId || log.id || ("production-" + log.date),
     production: log.title || log.clientName || "Production",
-    role: log.rolePlayed || log.role || "Crew",
+    role: mode === "solo" || mode === "singleplayer" ? "All Roles" : log.rolePlayed || log.role || "Crew",
     client: log.clientName || log.client || "Commercial Client",
+    clientBrandName: log.clientBrandName || log.clientName || log.client || "Commercial Client",
     date: (log.date || "").slice(0, 10),
     score: Number(log.overallScore ?? log.score ?? 0),
     rank: log.rank || log.letterGrade || "—",
@@ -279,9 +293,18 @@ function mapRealProductionLog(log: PlayFabProductionLog): ProductionLog {
     summary: log.feedback || "Production completed.",
     setupNotes: "Synced from PlayFab production history.",
     result: log.status === "accepted"
-      ? "Contract accepted in the game; production has not been completed yet."
-      : log.success ? "Production completed successfully." : "Production requires review.",
+      ? "Contract accepted · gameplay results will appear after the game syncs the completed production."
+      : log.success ? "Contract passed." : "Contract failed.",
     stats,
+    preProductionScore: log.preProductionScore,
+    productionScore: log.productionScore,
+    postProductionScore: log.postProductionScore,
+    details,
+    budgetUsed: log.budgetUsed,
+    budgetRemaining: log.budgetRemaining,
+    success: Boolean(log.success),
+    status: log.status,
+    nextStep: typeof nextStep === "string" ? nextStep : undefined,
   };
 }
 
@@ -309,7 +332,7 @@ export function ProductionLogs() {
           <table className="admin-table">
             <thead>
               <tr>
-                <th>Production</th>
+                <th>Product / Contract</th>
                 <th>Role</th>
                 <th>Client</th>
                 <th>Date</th>
@@ -323,7 +346,7 @@ export function ProductionLogs() {
                 <tr key={log.id}>
                   <td className="font-bold">{log.production}</td>
                   <td>{log.role}</td>
-                  <td>{log.client}</td>
+                  <td>{log.clientBrandName || log.client}</td>
                   <td className="whitespace-nowrap">{formatDate(log.date)}</td>
                   <td className="font-black">{log.score}%</td>
                   <td>
@@ -346,6 +369,8 @@ export function ProductionLogs() {
                   </td>
                 </tr>
               ))}
+              {!mockMode && realLogsQuery.isLoading && <tr><td colSpan={7} className="py-8 text-center">Loading game progress…</td></tr>}
+              {!mockMode && !realLogsQuery.isLoading && logs.length === 0 && <tr><td colSpan={7} className="py-10 text-center text-navy/55">No game progress has synced yet. Completed contracts will appear here when Crew On Set! publishes them to PlayFab.</td></tr>}
             </tbody>
           </table>
         </div>
@@ -388,6 +413,35 @@ export function ProductionLogs() {
             </header>
 
             <div className="space-y-6 p-5 sm:p-6">
+              {!mockMode && (() => {
+                const details = openLog.details ?? {};
+                const nestedPhases = details.phases && typeof details.phases === "object" ? details.phases as Record<string, unknown> : {};
+                const phases = {
+                  ...nestedPhases,
+                  ...(!nestedPhases.preProduction && (details.preProductionFeedback || details.preProdFeedback) ? { preProduction: details.preProductionFeedback ?? details.preProdFeedback } : {}),
+                  ...(!nestedPhases.production && details.productionFeedback ? { production: details.productionFeedback } : {}),
+                  ...(!nestedPhases.postProduction && (details.postProductionFeedback || details.postProdFeedback) ? { postProduction: details.postProductionFeedback ?? details.postProdFeedback } : {}),
+                };
+                const budget = details.budgetReview && typeof details.budgetReview === "object" ? details.budgetReview as Record<string, unknown> : {};
+                const spent = openLog.budgetUsed ?? (typeof budget.spent === "number" ? budget.spent : undefined);
+                const remaining = openLog.budgetRemaining ?? (typeof budget.remaining === "number" ? budget.remaining : undefined);
+                return <section className="space-y-3">
+                  <h4 className="text-xs font-black uppercase tracking-[.16em] text-navy/60">Client Feedback</h4>
+                  <div className="grid gap-3 sm:grid-cols-3">
+                    {([["Pre-production", openLog.preProductionScore], ["Production", openLog.productionScore], ["Post-production", openLog.postProductionScore]] as const).map(([label, score]) => <div key={label} className="rounded-lg border border-navy/10 bg-navy/[.03] p-3"><p className="text-[9px] font-black uppercase tracking-[.14em] text-navy/45">{label}</p><p className="mt-1 text-sm font-bold text-navy">{score == null ? "Not synced" : `${score}/100`}</p></div>)}
+                  </div>
+                  {Object.entries(phases).map(([phase, value]) => {
+                    const phaseData = value && typeof value === "object" ? value as Record<string, unknown> : { feedback: value };
+                    const feedback = phaseData.feedback ?? phaseData.clientFeedback ?? phaseData.notes;
+                    return <div key={phase} className="rounded-lg border border-navy/10 p-3"><p className="text-[10px] font-black uppercase text-navy/60">{phase.replace(/([A-Z])/g, " $1")}</p>{typeof feedback === "string" && <p className="mt-1 text-sm text-navy/75">{feedback}</p>}</div>;
+                  })}
+                  <div className="grid gap-3 sm:grid-cols-2">
+                    <div className="rounded-lg border border-navy/10 p-3"><p className="text-[10px] font-black uppercase text-navy/50">Budget Review</p><p className="mt-1 text-sm text-navy/75">{spent == null && remaining == null ? "Budget details not synced yet." : `Spent: ${spent ?? "—"} · Remaining: ${remaining ?? "—"}`}</p>{typeof budget.feedback === "string" && <p className="mt-1 text-sm text-navy/65">{budget.feedback}</p>}</div>
+                    <div className="rounded-lg border border-navy/10 p-3"><p className="text-[10px] font-black uppercase text-navy/50">Client Decision</p><p className="mt-1 text-sm font-bold text-navy">{typeof details.clientDecision === "string" ? details.clientDecision : openLog.status === "accepted" ? "Contract accepted · awaiting result" : openLog.success ? "Passed" : "Failed"}</p></div>
+                  </div>
+                  {openLog.nextStep && <div className="rounded-lg border border-coral/25 bg-coral/[.06] p-3"><p className="text-[10px] font-black uppercase text-coral">Your Next Step</p><p className="mt-1 text-sm text-navy/75">{openLog.nextStep}</p></div>}
+                </section>;
+              })()}
               <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
                 {openLog.stats.map(([label, value]) => (
                   <div

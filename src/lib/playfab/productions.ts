@@ -63,6 +63,7 @@ export function mapDataToProductionLogs(data: any): ProductionLog[] {
       id,
       contractId: item.contractId,
       clientName: item.clientName || item.client || 'Commercial Client',
+      clientBrandName: item.clientBrandName || item.brandName || item.client_name || item.clientName || item.client || 'Commercial Client',
       client: item.clientName || item.client || 'Commercial Client',
       level,
       stage: item.stage || item.title || `Level ${level} Shoot`,
@@ -75,6 +76,9 @@ export function mapDataToProductionLogs(data: any): ProductionLog[] {
       role: (item.role || item.rolePlayed || 'cameraman') as PlayerRole,
       rolePlayed: (item.role || item.rolePlayed || 'cameraman') as string,
       overallScore: score,
+      preProductionScore: optionalNumber(item.preProductionScore ?? item.preProdScore ?? item.phaseScores?.preProduction),
+      productionScore: optionalNumber(item.productionScore ?? item.phaseScores?.production),
+      postProductionScore: optionalNumber(item.postProductionScore ?? item.postProdScore ?? item.phaseScores?.postProduction),
       score,
       letterGrade,
       rank: letterGrade,
@@ -93,6 +97,14 @@ export function mapDataToProductionLogs(data: any): ProductionLog[] {
         ['Errors', String(item.errors || 0)],
       ],
       details: item.details || {},
+      budgetUsed: optionalNumber(item.budgetUsed ?? item.budget?.spent),
+      budgetRemaining: optionalNumber(item.budgetRemaining ?? item.budget?.remaining),
     } as ProductionLog;
   });
+}
+
+function optionalNumber(value: unknown): number | undefined {
+  if (value == null || value === "") return undefined;
+  const parsed = Number(value);
+  return Number.isFinite(parsed) ? parsed : undefined;
 }
