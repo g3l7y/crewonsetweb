@@ -69,14 +69,14 @@ const roles = [
     text: "Call the shots, direct the crew, and keep the entire production moving toward the final take.",
   },
   {
-    image: "/assets/home-role-cameraman.png",
-    title: "Cameraman",
-    text: "Frame the shots and capture every important moment before time runs out.",
-  },
-  {
     image: "/assets/home-role-av-technician.png",
     title: "AV Technician",
     text: "Control lighting, sound, and studio equipment so every scene looks and sounds ready for the take.",
+  },
+  {
+    image: "/assets/home-role-cameraman.png",
+    title: "Cameraman",
+    text: "Frame the shots and capture every important moment before time runs out.",
   },
   {
     image: "/assets/home-role-editor.png",
@@ -380,7 +380,7 @@ function HomePage() {
             </h2>
 
             <p className="mt-6 text-lg leading-relaxed text-white/70">
-              Every production depends on teamwork. The Director leads the vision, the Cameraman captures the shot, the AV Technician keeps the set running, and the Editor brings it all together. Work together, handle the chaos, and make every take count.
+              Every production depends on teamwork. The Director leads the vision, the AV Technician keeps the set running, the Cameraman captures the shot, and the Editor brings it all together. Work together, handle the chaos, and make every take count.
             </p>
 
             <p className="mt-4 text-lg leading-relaxed text-white/70">
