@@ -31,24 +31,24 @@ const contacts = [
 function ContactPage() {
   const faqs = [
     {
-      question: "What kinds of brands can apply for a partnership?",
-      answer: "Companies and product teams can submit proposals for products they would like featured in a Crew On Set! production. Share the product category, exact model, and how you picture it fitting into a production.",
+      question: "What is Crew On Set!?",
+      answer: "Crew On Set! is a 1–4 player co-op game about running a chaotic commercial production. Players work together as a crew to keep each production moving.",
     },
     {
-      question: "What should I include in the application?",
-      answer: "Include your brand name, product type and model, business email, proposed budget, and advertisement duration. A product link and a short description of your goals help us understand the brief.",
+      question: "How can I get started playing?",
+      answer: "Visit the Download page for the current game build, system requirements, and installation details.",
     },
     {
-      question: "Do I need to provide a budget and duration?",
-      answer: "Yes. The form asks for a proposed budget in Philippine pesos and an advertisement duration. These are part of your proposal and help our team review the scope.",
+      question: "Can I play with friends?",
+      answer: "Yes. Crew On Set! supports 1–4 player co-op, so you can take on a production solo or work through it with friends.",
     },
     {
-      question: "Can I attach a product brief or images?",
-      answer: "Yes. You can attach an image or PDF up to 5 MB. You can also add a product page link and describe any additional details in the application.",
+      question: "How can a brand or product team partner with Crew On Set!?",
+      answer: "Use the partnership application below to send a production proposal. Include the product type and model, a business email, proposed budget, and advertisement duration. A product link or brief can help explain the idea.",
     },
     {
-      question: "What happens after I submit?",
-      answer: "Your application is sent to the Crew On Set! team for review. We’ll use the business email you provide to follow up about your proposal.",
+      question: "Where can I ask a question or share feedback?",
+      answer: "Reach the team through the contact links on this page. For a brand proposal, use the partnership application so the production team has the details it needs.",
     },
   ];
 
@@ -72,12 +72,12 @@ function ContactPage() {
       />
       <section className="bg-[#070b13] py-20 sm:py-28">
         <div className="mx-auto max-w-7xl px-5 lg:px-8">
-          <div className="mx-auto mb-16 max-w-3xl">
-            <span className="eyebrow mb-5 bg-navy text-yellow">BEFORE YOU APPLY</span>
-            <h2 className="text-4xl font-black uppercase leading-[.95] tracking-[-.045em] text-white sm:text-5xl">
+          <div className="mb-16">
+            <span className="eyebrow mb-5 bg-navy text-yellow">PLAYER &amp; PARTNER INFO</span>
+            <h2 className="font-sans text-4xl font-extrabold uppercase leading-tight tracking-wide text-white sm:text-5xl">
               Frequently Asked <span className="text-yellow">Questions</span>
             </h2>
-            <div className="mt-8 divide-y divide-white/15 border-y border-white/15">
+            <div className="mt-8 max-w-5xl divide-y divide-white/15 border-y border-white/15">
               {faqs.map((faq) => (
                 <details key={faq.question} className="group py-5">
                   <summary className="flex cursor-pointer list-none items-center justify-between gap-4 text-base font-black text-white marker:hidden sm:text-lg">
@@ -90,7 +90,7 @@ function ContactPage() {
             </div>
           </div>
           <div className="grid items-start gap-12 lg:grid-cols-[.68fr_1.32fr]">
-            <aside className="lg:sticky lg:top-24"><span className="eyebrow mb-5 bg-navy text-yellow">THE STUDIO LINE</span><h2 className="text-4xl font-black uppercase leading-[.95] tracking-[-.045em] sm:text-5xl">Let&apos;s make your product<span className="text-coral"> a commercial.</span></h2><p className="mt-5 leading-relaxed text-navy/60">For press, community questions, or general studio conversations, contact us directly. Companies and product teams can use the production brief to submit a partnership proposal. <br /><br />
+            <aside className="lg:sticky lg:top-24"><span className="eyebrow mb-5 bg-navy text-yellow">THE STUDIO LINE</span><h2 className="font-sans text-4xl font-extrabold uppercase leading-tight tracking-normal sm:text-5xl">Let&apos;s make your product<span className="text-coral"> a commercial.</span></h2><p className="mt-5 leading-relaxed text-navy/60">For press, community questions, or general studio conversations, contact us directly. Companies and product teams can use the production brief to submit a partnership proposal. <br /><br />
       Have questions, feedback, or need assistance? We&apos;d love to hear from you. Reach out to the Crew on Set! team</p>
       
       <div className="mt-8 space-y-3">{contacts.map((contact) => <a key={contact.label} href={contact.href} target={contact.href.startsWith("http") ? "_blank" : undefined} rel={contact.href.startsWith("http") ? "noreferrer" : undefined} className="flex items-center gap-4 rounded-lg border border-navy/10 bg-white p-4 transition hover:-translate-y-0.5 hover:border-coral/40 hover:shadow-md"><div className="grid size-10 shrink-0 place-items-center rounded-md bg-navy text-yellow"><contact.icon className="size-4" /></div><div><p className="text-[10px] font-black uppercase tracking-wider text-navy/40">{contact.label}</p><p className="mt-1 text-sm font-bold">{contact.value}</p></div></a>)}</div></aside><PartnershipForm />
