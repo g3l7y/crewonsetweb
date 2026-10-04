@@ -72,7 +72,7 @@ function ContactPage() {
       />
       <section className="bg-[#070b13] py-20 sm:py-28">
         <div className="mx-auto max-w-7xl px-5 lg:px-8">
-          <div className="mb-16">
+          <div className="mb-24 sm:mb-32">
             <span className="eyebrow mb-5 bg-navy text-yellow">PLAYER &amp; PARTNER INFO</span>
             <h2 className="font-sans text-4xl font-extrabold uppercase leading-tight tracking-wide text-white sm:text-5xl">
               Frequently Asked <span className="text-yellow">Questions</span>
@@ -90,7 +90,7 @@ function ContactPage() {
             </div>
           </div>
           <div className="grid items-start gap-12 lg:grid-cols-[.68fr_1.32fr]">
-            <aside className="lg:sticky lg:top-24"><span className="eyebrow mb-5 bg-navy text-yellow">THE STUDIO LINE</span><h2 className="font-sans text-4xl font-extrabold uppercase leading-tight tracking-normal sm:text-5xl">Let&apos;s make your product<span className="text-coral"> a commercial.</span></h2><p className="mt-5 leading-relaxed text-navy/60">For press, community questions, or general studio conversations, contact us directly. Companies and product teams can use the production brief to submit a partnership proposal. <br /><br />
+            <aside className="lg:sticky lg:top-24"><span className="eyebrow mb-5 bg-navy text-yellow">THE STUDIO LINE</span><h2 className="font-sans text-4xl font-extrabold uppercase leading-tight tracking-normal sm:text-5xl">Let&apos;s make your product<span className="text-coral"> a commercial.</span></h2><p className="mt-5 leading-relaxed text-[#fefdf8]">For press, community questions, or general studio conversations, contact us directly. Companies and product teams can use the production brief to submit a partnership proposal. <br /><br />
       Have questions, feedback, or need assistance? We&apos;d love to hear from you. Reach out to the Crew on Set! team</p>
       
       <div className="mt-8 space-y-3">{contacts.map((contact) => <a key={contact.label} href={contact.href} target={contact.href.startsWith("http") ? "_blank" : undefined} rel={contact.href.startsWith("http") ? "noreferrer" : undefined} className="flex items-center gap-4 rounded-lg border border-navy/10 bg-white p-4 transition hover:-translate-y-0.5 hover:border-coral/40 hover:shadow-md"><div className="grid size-10 shrink-0 place-items-center rounded-md bg-navy text-yellow"><contact.icon className="size-4" /></div><div><p className="text-[10px] font-black uppercase tracking-wider text-navy/40">{contact.label}</p><p className="mt-1 text-sm font-bold">{contact.value}</p></div></a>)}</div></aside><PartnershipForm />
