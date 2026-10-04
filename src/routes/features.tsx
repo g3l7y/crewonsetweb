@@ -73,26 +73,6 @@ const roles = [
     quote: "A good Director doesn't just see the shot—they see the story behind it.",
   },
   {
-    icon: Camera,
-    title: "Cameraman",
-    specialty: "Framing & Movement",
-    color: "blue",
-    description:
-      "Captures the action with precision, controls the camera, and brings the story to life through framing and movement.",
-    image: "/assets/home-role-cameraman.png",
-    responsibilities: [
-      "Frame shots according to the director's vision",
-      "Control focus, exposure, and camera movement",
-      "Track unpredictable action across the set",
-      "Capture every required shot",
-    ],
-    skills: ["Focus", "Composition", "Movement", "Visual Awareness"],
-    tools: ["Camera", "Lenses", "Tripod", "Monitor", "Gimbal"],
-    purpose:
-      "Gameplay purpose: physically frames and times every shot, turning the director's plan into usable footage.",
-    quote: "Every frame tells a story. Make sure yours is worth remembering.",
-  },
-  {
     icon: AudioLines,
     title: "AV Technician",
     specialty: "Light & Sound",
@@ -112,6 +92,26 @@ const roles = [
     purpose:
       "Gameplay purpose: keeps the technical systems running so the other three roles never lose sound or light mid-take.",
     quote: "When the equipment works perfectly, nobody notices. That's the point.",
+  },
+  {
+    icon: Camera,
+    title: "Cameraman",
+    specialty: "Framing & Movement",
+    color: "blue",
+    description:
+      "Captures the action with precision, controls the camera, and brings the story to life through framing and movement.",
+    image: "/assets/home-role-cameraman.png",
+    responsibilities: [
+      "Frame shots according to the director's vision",
+      "Control focus, exposure, and camera movement",
+      "Track unpredictable action across the set",
+      "Capture every required shot",
+    ],
+    skills: ["Focus", "Composition", "Movement", "Visual Awareness"],
+    tools: ["Camera", "Lenses", "Tripod", "Monitor", "Gimbal"],
+    purpose:
+      "Gameplay purpose: physically frames and times every shot, turning the director's plan into usable footage.",
+    quote: "Every frame tells a story. Make sure yours is worth remembering.",
   },
   {
     icon: Scissors,
