@@ -322,7 +322,7 @@ export interface KnowledgeEntry {
  */
 export interface ProductionLog {
   /** Game contract lifecycle state when reported by the game client. */
-  status?: "accepted" | "completed" | undefined;
+  status?: "accepted" | "completed" | "failed" | undefined;
   /** Unique production record identifier */
   productionId?: string | undefined;
   /** Contract ID if tied to a client contract */
@@ -331,6 +331,12 @@ export interface ProductionLog {
   clientName?: string | undefined;
   /** Optional brand name when the production title is a separate product/contract name */
   clientBrandName?: string | undefined;
+  preProductionFeedback?: string | undefined;
+  productionFeedback?: string | undefined;
+  postProductionFeedback?: string | undefined;
+  budgetFeedback?: string | undefined;
+  clientDecision?: string | undefined;
+  nextStep?: string | undefined;
   /** Production level index */
   level: number;
   /** Production stage name or identifier */
@@ -347,6 +353,8 @@ export interface ProductionLog {
   role: PlayerRole;
   /** Overall wrap score (0 - 100) */
   overallScore?: number | undefined;
+  hasPhaseScores?: boolean | undefined;
+  hasBudgetReview?: boolean | undefined;
   /** Pre-production phase score */
   preProductionScore?: number | undefined;
   /** Production shoot phase score */
@@ -367,6 +375,8 @@ export interface ProductionLog {
   budgetUsed?: number | undefined;
   /** Budget surplus remaining */
   budgetRemaining?: number | undefined;
+  budgetOpeningBalance?: number | undefined;
+  budgetIncome?: number | undefined;
   /** Soft currency awarded */
   bCoinsEarned: number;
   /** Hard currency awarded */

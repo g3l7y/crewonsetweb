@@ -9,17 +9,28 @@ import type { ProductionLog, ProductionMode, PlayerRole } from './types';
  */
 export async function getProductionLogs(sessionTicket: string): Promise<ProductionLog[]> {
   try {
-    const data = await getUserData(sessionTicket, [PLAYFAB_DATA_KEYS.production_logs]);
+    const detailKeys = Array.from({ length: 5 }, (_, index) => `production_log_level_${index + 1}`);
+    const data = await getUserData(sessionTicket, [PLAYFAB_DATA_KEYS.production_logs, ...detailKeys]);
     const raw = data[PLAYFAB_DATA_KEYS.production_logs];
+    let summaryLogs: ProductionLog[] = [];
     if (raw) {
       try {
         const parsed = JSON.parse(raw);
-        return mapDataToProductionLogs(parsed);
+        summaryLogs = mapDataToProductionLogs(parsed);
       } catch {
         console.warn('[Productions] Failed to parse production_logs JSON from PlayFab.');
       }
     }
-    return [];
+    const detailedLogs = detailKeys.flatMap((key) => {
+      const detail = data[key];
+      if (!detail) return [];
+      try { return mapDataToProductionLogs(JSON.parse(detail)); }
+      catch { console.warn(`[Productions] Failed to parse ${key} JSON from PlayFab.`); return []; }
+    });
+    const merged = new Map<string, ProductionLog>();
+    for (const log of summaryLogs) merged.set(log.productionId || log.id || `${log.level}`, log);
+    for (const log of detailedLogs) merged.set(log.productionId || log.id || `${log.level}`, log);
+    return Array.from(merged.values()).sort((a, b) => new Date(b.date || b.completedAt || 0).getTime() - new Date(a.date || a.completedAt || 0).getTime());
   } catch (error) {
     console.error('Failed to get production logs:', error);
     return [];
@@ -50,6 +61,7 @@ export async function getRecentProductions(sessionTicket: string, count: number)
  */
 export function mapDataToProductionLogs(data: any): ProductionLog[] {
   if (data && !Array.isArray(data) && Array.isArray(data.logs)) data = data.logs;
+  else if (data && !Array.isArray(data) && (data.productionId || data.id)) data = [data];
   if (!Array.isArray(data)) return [];
   return data.map((item: any) => {
     const id = item.productionId || item.id || `PRD-${Date.now()}`;
@@ -76,9 +88,10 @@ export function mapDataToProductionLogs(data: any): ProductionLog[] {
       role: (item.role || item.rolePlayed || 'cameraman') as PlayerRole,
       rolePlayed: (item.role || item.rolePlayed || 'cameraman') as string,
       overallScore: score,
-      preProductionScore: optionalNumber(item.preProductionScore ?? item.preProdScore ?? item.phaseScores?.preProduction),
-      productionScore: optionalNumber(item.productionScore ?? item.phaseScores?.production),
-      postProductionScore: optionalNumber(item.postProductionScore ?? item.postProdScore ?? item.phaseScores?.postProduction),
+      hasPhaseScores: item.hasPhaseScores == null ? undefined : Boolean(item.hasPhaseScores),
+      preProductionScore: item.hasPhaseScores === false ? undefined : optionalNumber(item.preProductionScore ?? item.preProdScore ?? item.phaseScores?.preProduction),
+      productionScore: item.hasPhaseScores === false ? undefined : optionalNumber(item.productionScore ?? item.phaseScores?.production),
+      postProductionScore: item.hasPhaseScores === false ? undefined : optionalNumber(item.postProductionScore ?? item.postProdScore ?? item.phaseScores?.postProduction),
       score,
       letterGrade,
       rank: letterGrade,
@@ -91,14 +104,35 @@ export function mapDataToProductionLogs(data: any): ProductionLog[] {
       cCoinsEarned: item.cCoinsEarned != null ? Number(item.cCoinsEarned) : 0,
       feedback: item.feedback || 'Production completed.',
       success: item.success !== undefined ? Boolean(item.success) : true,
-      status: item.status === 'accepted' || item.status === 'completed' ? item.status : undefined,
+      status: item.status === 'accepted' || item.status === 'completed' || item.status === 'failed' ? item.status : undefined,
       stats: item.stats || [
         ['Retakes', String(item.retakes || 0)],
         ['Errors', String(item.errors || 0)],
       ],
-      details: item.details || {},
-      budgetUsed: optionalNumber(item.budgetUsed ?? item.budget?.spent),
-      budgetRemaining: optionalNumber(item.budgetRemaining ?? item.budget?.remaining),
+      details: {
+        ...(item.details && typeof item.details === 'object' ? item.details : {}),
+        ...(item.nextStep ? { nextStep: item.nextStep } : {}),
+        ...(item.clientDecision ? { clientDecision: item.clientDecision } : {}),
+        ...((item.preProductionFeedback || item.productionFeedback || item.postProductionFeedback) ? {
+          phases: {
+            ...((item.details?.phases && typeof item.details.phases === 'object') ? item.details.phases : {}),
+            ...(item.preProductionFeedback ? { preProduction: { feedback: item.preProductionFeedback } } : {}),
+            ...(item.productionFeedback ? { production: { feedback: item.productionFeedback } } : {}),
+            ...(item.postProductionFeedback ? { postProduction: { feedback: item.postProductionFeedback } } : {}),
+          },
+        } : {}),
+        ...((item.budgetFeedback || item.budget) ? {
+          budgetReview: {
+            ...(item.budget && typeof item.budget === 'object' ? item.budget : {}),
+            ...(item.budgetFeedback ? { feedback: item.budgetFeedback } : {}),
+          },
+        } : {}),
+      },
+      budgetUsed: item.hasBudgetReview === false ? undefined : optionalNumber(item.budgetUsed ?? item.budget?.spent),
+      budgetRemaining: item.hasBudgetReview === false ? undefined : optionalNumber(item.budgetRemaining ?? item.budget?.remaining),
+      hasBudgetReview: item.hasBudgetReview == null ? undefined : Boolean(item.hasBudgetReview),
+      budgetOpeningBalance: item.hasBudgetReview === false ? undefined : optionalNumber(item.budgetOpeningBalance ?? item.budget?.openingBalance),
+      budgetIncome: item.hasBudgetReview === false ? undefined : optionalNumber(item.budgetIncome ?? item.budget?.income),
     } as ProductionLog;
   });
 }
