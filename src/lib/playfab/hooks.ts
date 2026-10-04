@@ -133,7 +133,8 @@ export function useAchievements() {
     queryKey: QUERY_KEYS.achievements,
     queryFn: () => getPlayFabService().player.getAchievements(),
     enabled: !!session,
-    staleTime: 2 * 60 * 1000,
+    staleTime: 30 * 1000,
+    refetchInterval: 30 * 1000,
   });
 }
 
@@ -153,7 +154,8 @@ export function useProductionLogs() {
     queryKey: QUERY_KEYS.productionLogs,
     queryFn: () => getPlayFabService().player.getProductionLogs(),
     enabled: !!session,
-    staleTime: 2 * 60 * 1000,
+    staleTime: 30 * 1000,
+    refetchInterval: 30 * 1000,
   });
 }
 
