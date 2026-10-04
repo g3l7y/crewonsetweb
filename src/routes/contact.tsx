@@ -57,15 +57,15 @@ function ContactPage() {
       <div className="contact-page">
       <PageHero
         eyebrow="CONTACT & PARTNERSHIPS"
-        title="Bring your brand"
+        title="Connect with the crew"
         accent={
           <>
-            <span className="text-yellow">onto the </span>
+            <span className="text-yellow">on and off the </span>
             <span className="text-coral">set</span>
             <span className="text-white">.</span>
           </>
         }
-        description="Connect with the Crew On Set! studio, join our community, or submit a production-ready proposal for a brand and product collaboration."
+        description="Whether you’re here to play, share feedback, join the community, or explore a brand partnership, we’d love to hear from you."
         image="/assets/crew-set-illustration.png"
         imageAlt="A production team preparing a commercial set"
         cameraFrame
