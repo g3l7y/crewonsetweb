@@ -72,15 +72,15 @@ export function ProductionLogs() {
     <section className="mt-7 almanac-content-panel p-4 sm:p-6">
       <div className="almanac-content-body">
         <h2 className="section-title text-3xl text-navy sm:text-4xl">Production Logs</h2>
-        <p className="mt-1 text-sm text-navy/55">Completed productions reported by Crew On Set!</p>
+        <div className="mt-1 flex items-center justify-between gap-3 text-sm text-navy/55"><p>Completed attempts saved by Crew On Set!</p><button type="button" className="rounded border px-3 py-2 font-bold" disabled={logsQuery.isFetching} onClick={() => void logsQuery.refetch()}>{logsQuery.isFetching ? "Refreshing…" : "Refresh"}</button></div>
         <div className="player-account-scroll-list almanac-content-scroll production-logs-list admin-table-wrap mt-5 border-navy/10">
           <table className="admin-table">
             <thead><tr><th>Level</th><th>Product / Contract</th><th>Role</th><th>Client</th><th>Date</th><th>Score</th><th>Rank</th><th className="text-right">Info</th></tr></thead>
             <tbody>
               {logs.map((log) => (
                 <tr key={log.id}>
-                  <td>{log.level}</td>
-                  <td className="font-bold">{log.production || "—"}</td>
+                  <td>{log.level || "—"}</td>
+                  <td className="font-bold">{log.production || (log.level ? `Level ${log.level} production` : "Production")}{typeof log.details["careerName"] === "string" && <span className="block text-xs font-normal">Career: {log.details["careerName"]}</span>}</td>
                   <td>{log.role || "—"}</td>
                   <td>{log.client || "—"}</td>
                   <td className="whitespace-nowrap">{formatDate(log.date)}</td>
@@ -91,7 +91,7 @@ export function ProductionLogs() {
               ))}
               {logsQuery.isLoading && <tr><td colSpan={8} className="py-8 text-center">Loading production history…</td></tr>}
               {logsQuery.isError && <tr><td colSpan={8} className="py-8 text-center text-red-700">Could not load production history from PlayFab. Retrying automatically…</td></tr>}
-              {!logsQuery.isLoading && !logsQuery.isError && logs.length === 0 && <tr><td colSpan={8} className="py-10 text-center text-navy/55">No completed productions have synced from the game yet.</td></tr>}
+              {!logsQuery.isLoading && !logsQuery.isError && logs.length === 0 && <tr><td colSpan={8} className="py-10 text-center text-navy/55">PlayFab has no completed production records in this account’s logs or active saved careers. Check that the game uses this same account and its career cloud sync has finished, then refresh.</td></tr>}
             </tbody>
           </table>
         </div>
@@ -103,7 +103,7 @@ export function ProductionLogs() {
             <header className="flex items-start gap-4 border-b border-navy/10 p-5 sm:p-6">
               <div className="min-w-0 flex-1">
                 <p className="text-[10px] font-black uppercase tracking-[.18em] text-coral">Level {openLog.level} · {openLog.role}</p>
-                <h3 className="production-log-title section-title mt-1 text-2xl text-navy sm:text-3xl">{openLog.production}</h3>
+                <h3 className="production-log-title section-title mt-1 text-2xl text-navy sm:text-3xl">{openLog.production || `Level ${openLog.level} production`}</h3>
                 <p className="mt-1 text-xs font-semibold text-navy/50">Client: {openLog.client} · {formatDate(openLog.date)}</p>
               </div>
               <button type="button" onClick={() => setOpenLog(null)} aria-label="Close production details" className="rounded-md p-1.5 text-navy/40 transition hover:bg-navy/5 hover:text-navy"><X className="size-5" /></button>
@@ -112,6 +112,7 @@ export function ProductionLogs() {
             <div className="space-y-6 p-5 sm:p-6">
               <section className="space-y-3">
                 <h4 className="text-xs font-black uppercase tracking-[.16em] text-navy/60">Game Results</h4>
+                <div className="flex flex-wrap gap-4 text-sm">{([["Camera", "cameraScore", "/70"], ["Lighting", "lightingScore", "/30"], ["Recorded takes", "takes", ""]] as const).map(([label, key, unit]) => typeof openLog.details[key] === "number" ? <p key={key}>{label}: {String(openLog.details[key])}{unit}</p> : null)}</div>
                 <div className="grid gap-3 sm:grid-cols-3">
                   {([["Pre-production", openLog.preProductionScore], ["Production", openLog.productionScore], ["Post-production", openLog.postProductionScore]] as const).map(([label, score]) => <div key={label} className="rounded-lg border border-navy/10 bg-navy/[.03] p-3"><p className="text-[9px] font-black uppercase tracking-[.14em] text-navy/45">{label}</p><p className="mt-1 text-sm font-bold text-navy">{score == null ? "—" : `${score}/100`}</p></div>)}
                 </div>
@@ -129,7 +130,7 @@ export function ProductionLogs() {
                   const trackingComplete = budget?.["tracking_complete"] ?? budget?.["complete"];
                   const trackingAvailable = budget?.["available"];
                   return <div className="grid gap-3 sm:grid-cols-2">
-                    <div className="rounded-lg border border-navy/10 p-3"><p className="text-[10px] font-black uppercase text-navy/50">Budget Review</p><p className="mt-1 text-sm text-navy/75">{[opening, income, spent, remaining].some((item) => item != null) ? `Opening balance: ${opening ?? "—"} · Income: ${income ?? "—"} · Spent: ${spent ?? "—"} · Remaining: ${remaining ?? "—"}` : "—"}</p>{trackingAvailable === false && <p className="mt-1 text-sm text-navy/65">Budget tracking unavailable.</p>}{typeof trackingComplete === "boolean" && <p className="mt-1 text-sm text-navy/65">Tracking {trackingComplete ? "complete" : "incomplete"}.</p>}{typeof budget?.["feedback"] === "string" && <p className="mt-1 text-sm text-navy/65">{budget["feedback"]}</p>}</div>
+                    <div className="rounded-lg border border-navy/10 p-3"><p className="text-[10px] font-black uppercase text-navy/50">Budget Review</p><p className="mt-1 text-sm text-navy/75">{[opening, income, spent, remaining].some((item) => item != null) ? `Opening balance: ${opening ?? "—"} · Income: ${income ?? "—"} · Spent: ${spent ?? "—"} · Remaining: ${remaining ?? "—"}` : "—"}</p>{trackingAvailable === false && <p className="mt-1 text-sm text-navy/65">Budget tracking unavailable.</p>}{typeof trackingComplete === "boolean" && <p className="mt-1 text-sm text-navy/65">Tracking {trackingComplete ? "complete" : "incomplete"}.</p>}{typeof budget?.["feedback"] === "string" && <p className="mt-1 whitespace-pre-line text-sm text-navy/65">{cleanGameFeedback(budget["feedback"])}</p>}</div>
                     <div className="rounded-lg border border-navy/10 p-3"><p className="text-[10px] font-black uppercase text-navy/50">Client Decision</p><p className="mt-1 text-sm font-bold text-navy">{openLog.result || "—"}</p></div>
                   </div>;
                 })()}

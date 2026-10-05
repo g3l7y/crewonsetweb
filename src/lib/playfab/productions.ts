@@ -1,18 +1,17 @@
 import { getUserData } from './player';
 import { PLAYFAB_DATA_KEYS } from './constants';
+import { mapCareerAttemptsToProductionLogs } from './game-careers';
 import type { ProductionLog, ProductionMode, PlayerRole } from './types';
 
 /**
  * Fetch all production logs for a user.
- * Authoritative history stored under User Data key 'production_logs'.
- * Handles missing data gracefully by returning empty array.
+ * Reads dedicated logs and the game's existing career checkpoints.
+ * Missing history is empty; failed requests and unreadable saves are errors.
  */
 export async function getProductionLogs(sessionTicket: string): Promise<ProductionLog[]> {
   try {
-    const data = await getUserData(sessionTicket, [PLAYFAB_DATA_KEYS.production_logs], true);
-    const raw = data[PLAYFAB_DATA_KEYS.production_logs];
-    if (!raw) return [];
-    const logs = mapDataToProductionLogs(JSON.parse(raw));
+    const data = await getUserData(sessionTicket, undefined, true);
+    const logs = mapUserDataToProductionLogs(data);
     return logs.sort((a, b) =>
       new Date(b.date || b.completedAt || 0).getTime() - new Date(a.date || a.completedAt || 0).getTime(),
     );
@@ -20,6 +19,21 @@ export async function getProductionLogs(sessionTicket: string): Promise<Producti
     console.error('Failed to get production logs:', error);
     throw error;
   }
+}
+
+/** The game writes both dedicated logs and results inside its private career saves. */
+export function mapUserDataToProductionLogs(data: Record<string, string>): ProductionLog[] {
+  const raw = data[PLAYFAB_DATA_KEYS.production_logs];
+  const logs = mapDataToProductionLogs(mapCareerAttemptsToProductionLogs(data));
+  const dedicated = raw ? mapDataToProductionLogs(JSON.parse(raw)) : [];
+  const merged = new Map<string, ProductionLog>();
+  for (const log of [...logs, ...dedicated]) {
+    const key = log.submissionId || log.id || log.productionId || `record-${merged.size}`;
+    const previous = merged.get(key);
+    const supplied = Object.fromEntries(Object.entries(log).filter(([, value]) => value !== undefined && value !== ''));
+    merged.set(key, previous ? { ...previous, ...supplied, details: { ...previous.details, ...log.details } } : log);
+  }
+  return [...merged.values()];
 }
 
 /**
@@ -49,11 +63,11 @@ export function mapDataToProductionLogs(data: any): ProductionLog[] {
   else if (data && !Array.isArray(data) && Array.isArray(data.records)) data = data.records;
   else if (data && !Array.isArray(data) && Array.isArray(data.production_logs)) data = data.production_logs;
   else if (data && !Array.isArray(data) && (data.productionId || data.id)) data = [data];
-  if (!Array.isArray(data)) return [];
-  return data.map((item: any) => {
-    const id = item.id || item.submissionId || item.submission_id || item.productionId || item.production_id || `level-${Number(item.level) || 1}`;
-    const level = Number(item.level) || 1;
-    const rawDate = item.date || item.completedAt || item.played_at || item.playedUtc;
+  if (!Array.isArray(data)) throw new Error('PlayFab production history has an unreadable format.');
+  return data.filter((item: unknown) => item !== null && typeof item === 'object' && !Array.isArray(item)).map((item: any, index: number) => {
+    const id = item.id || item.submissionId || item.submission_id || item.productionId || item.production_id || `record-${index}`;
+    const level = optionalNumber(item.level) ?? 0;
+    const rawDate = item.played_at || item.playedUtc || item.completedAt || item.date;
     const parsedDate = rawDate ? new Date(rawDate) : null;
     const date = parsedDate && Number.isFinite(parsedDate.getTime()) ? parsedDate.toISOString() : '';
     const rawScore = item.overallScore ?? item.overall_score ?? item.score;
@@ -65,7 +79,7 @@ export function mapDataToProductionLogs(data: any): ProductionLog[] {
       const feedback = phase && typeof phase === 'object' ? phase.feedback ?? phase.clientFeedback ?? phase.notes : phase;
       const phaseScore = phase && typeof phase === 'object' ? phase.score : undefined;
       return {
-        ...(feedback != null ? { feedback } : item[feedbackField] != null ? { feedback: item[feedbackField] } : {}),
+        ...(feedback != null ? { feedback } : (item[feedbackField] ?? item[snake + '_feedback']) != null ? { feedback: item[feedbackField] ?? item[snake + '_feedback'] } : {}),
         ...(phaseScore != null ? { score: phaseScore } : item[scoreField] != null ? { score: item[scoreField] } : {}),
       };
     };
@@ -93,7 +107,7 @@ export function mapDataToProductionLogs(data: any): ProductionLog[] {
       ...(item.details && typeof item.details === 'object' ? item.details : {}),
       ...(item.submissionId || item.submission_id ? { submissionId: item.submissionId || item.submission_id } : {}),
       ...(item.careerId || item.career_id ? { careerId: item.careerId || item.career_id } : {}),
-      phases: Object.fromEntries(Object.entries(phaseDetails).filter(([, phase]) => phase.feedback != null || phase.score != null)),
+      ...(hasPhaseData ? { phases: Object.fromEntries(Object.entries(phaseDetails).filter(([, phase]) => phase.feedback != null || phase.score != null)) } : {}),
       ...(hasBudgetReview ? { budgetReview: { ...budgetReview, ...(budgetReview.feedback ? { feedback: budgetReview.feedback } : {}) } } : {}),
       ...(decision ? { clientDecision: decision } : {}),
       ...(nextStep ? { nextStep } : {}),
@@ -104,6 +118,7 @@ export function mapDataToProductionLogs(data: any): ProductionLog[] {
     return {
       productionId: item.productionId || item.production_id || id,
       id,
+      submissionId: item.submissionId || item.submission_id,
       contractId: item.contractId || item.contract_id,
       clientName: client,
       clientBrandName: client,

@@ -94,6 +94,8 @@ export function usePlayerProgression() {
     queryFn: () => getPlayFabService().player.getProgression(),
     enabled: !!session,
     staleTime: 2 * 60 * 1000,
+    refetchInterval: 30_000,
+    refetchOnWindowFocus: true,
   });
 }
 
@@ -130,7 +132,7 @@ export function usePlayerLoadout() {
 export function useAchievements() {
   const { data: session } = useSession();
   return useQuery({
-    queryKey: QUERY_KEYS.achievements,
+    queryKey: [...QUERY_KEYS.achievements, session?.playFabId],
     queryFn: () => getPlayFabService().player.getAchievements(),
     enabled: !!session,
     staleTime: 30 * 1000,
@@ -151,7 +153,7 @@ export function useKnowledge() {
 export function useProductionLogs() {
   const { data: session } = useSession();
   return useQuery({
-    queryKey: QUERY_KEYS.productionLogs,
+    queryKey: [...QUERY_KEYS.productionLogs, session?.playFabId],
     queryFn: () => getPlayFabService().player.getProductionLogs(),
     enabled: !!session,
     staleTime: 30 * 1000,

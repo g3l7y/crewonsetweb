@@ -1,6 +1,7 @@
 import { playfabClientApi } from './client';
 import { getUserData } from './player';
 import { PLAYFAB_DATA_KEYS, PLAYFAB_STATISTICS } from './constants';
+import { getHighestGameCareerLevel } from './game-careers';
 import type { PlayerProgression, RoleStatistics } from './types';
 
 /**
@@ -32,7 +33,8 @@ export async function getPlayerProgression(sessionTicket: string): Promise<Playe
 
   try {
     // 1. Check UserData 'progression' key
-    const userData = await getUserData(sessionTicket, [PLAYFAB_DATA_KEYS.progression]);
+    const userData = await getUserData(sessionTicket);
+    const careerLevel = getHighestGameCareerLevel(userData);
     const rawProg = userData[PLAYFAB_DATA_KEYS.progression];
     if (rawProg) {
       try {
@@ -40,11 +42,12 @@ export async function getPlayerProgression(sessionTicket: string): Promise<Playe
         return {
           ...defaultProgression,
           ...parsed,
-          level: parsed.level ?? defaultProgression.level,
+          level: Math.max(Number(parsed.level ?? defaultProgression.level), careerLevel ?? 1),
           currentXp: parsed.currentXp ?? parsed.xp ?? defaultProgression.currentXp,
           xpToNextLevel: parsed.xpToNextLevel ?? defaultProgression.xpToNextLevel,
           totalXp: parsed.totalXp ?? parsed.total_xp ?? defaultProgression.totalXp,
-          highestLevelUnlocked: parsed.highestLevelUnlocked ?? parsed.highest_level ?? defaultProgression.highestLevelUnlocked,
+          highestLevelUnlocked: Math.max(Number(parsed.highestLevelUnlocked ?? parsed.highest_level ?? defaultProgression.highestLevelUnlocked), careerLevel ?? 1),
+          highest_level: Math.max(Number(parsed.highestLevelUnlocked ?? parsed.highest_level ?? defaultProgression.highestLevelUnlocked), careerLevel ?? 1),
           completedLevels: Array.isArray(parsed.completedLevels) ? parsed.completedLevels : defaultProgression.completedLevels,
           completedStages: parsed.completedStages ?? defaultProgression.completedStages,
           tutorialProgress: parsed.tutorialProgress ?? parsed.tutorial_progress ?? defaultProgression.tutorialProgress,
@@ -64,7 +67,12 @@ export async function getPlayerProgression(sessionTicket: string): Promise<Playe
 
     const stats = statsData.Statistics || [];
     if (stats.length === 0) {
-      return defaultProgression;
+      return careerLevel ? {
+        ...defaultProgression,
+        level: careerLevel,
+        highestLevelUnlocked: careerLevel,
+        highest_level: careerLevel,
+      } : defaultProgression;
     }
 
     const statMap: Record<string, number> = {};
@@ -72,10 +80,10 @@ export async function getPlayerProgression(sessionTicket: string): Promise<Playe
       statMap[s.StatisticName] = s.Value;
     }
 
-    const level = statMap[PLAYFAB_STATISTICS.level] ?? defaultProgression.level;
+    const level = Math.max(statMap[PLAYFAB_STATISTICS.level] ?? defaultProgression.level, careerLevel ?? 1);
     const totalXp = statMap[PLAYFAB_STATISTICS.total_xp] ?? defaultProgression.totalXp;
     const currentXp = totalXp % defaultProgression.xpToNextLevel;
-    const highestLevel = statMap[PLAYFAB_STATISTICS.highest_level] ?? level;
+    const highestLevel = Math.max(statMap[PLAYFAB_STATISTICS.highest_level] ?? level, level, careerLevel ?? 1);
     const tutorialProgress = statMap[PLAYFAB_STATISTICS.tutorial_progress] ?? defaultProgression.tutorialProgress;
     const campaignCompleted = (statMap[PLAYFAB_STATISTICS.campaign_completed] ?? 0) > 0;
     const multiplayerUnlocked = (statMap[PLAYFAB_STATISTICS.multiplayer_unlocked] ?? 0) > 0;

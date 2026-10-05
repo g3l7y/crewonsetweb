@@ -269,6 +269,8 @@ export interface Loadout {
  * In-game achievement tracking.
  */
 export interface Achievement {
+  /** Career name supplied by the Unity save; milestones are per career. */
+  careerName?: string | undefined;
   /** Unique achievement identifier */
   id: string;
   /** Title / display name */

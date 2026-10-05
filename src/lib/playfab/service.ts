@@ -289,6 +289,7 @@ function createRealService(): PlayFabService {
 
       getAchievements: async () => {
         const ticket = await resolveSessionTicket();
+        if (!ticket) throw new Error('Please sign in again to load game achievements.');
         return getAchievements(ticket);
       },
 
@@ -299,7 +300,7 @@ function createRealService(): PlayFabService {
 
       getProductionLogs: async () => {
         const ticket = await resolveSessionTicket();
-        if (!ticket) return [];
+        if (!ticket) throw new Error('Please sign in again to load game production history.');
         return getProductionLogs(ticket);
       },
 

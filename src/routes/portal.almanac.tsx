@@ -47,6 +47,7 @@ type Achievement = {
   levelUnlocked: number;
   unlocks: string;
   placeholder?: boolean;
+  careerName?: string;
 };
 
 const demoAchievements: Achievement[] = [
@@ -140,7 +141,7 @@ function formatShort(value?: string) {
   return value ?? "";
 }
 
-const realAchievementIcons = [Star, Trophy, Clapperboard, Camera, Film, Award, Users, Crown];
+
 
 function AlmanacPage() {
   const searchParams = useSearchParams();
@@ -159,56 +160,21 @@ function AlmanacPage() {
     useState<Achievement | null>(null);
   const mockMode = isMockMode();
   const achievementsQuery = useAchievements();
-  const realAchievements = useMemo<Achievement[]>(() => {
-    const records = achievementsQuery.data ?? [];
-    if (records.length === 0) {
-      return Array.from({ length: 6 }, (_, index) => ({
-        id: `real-locked-achievement-${index}`,
-        name: "",
-        description: "",
-        unlocked: false,
-        icon: Lock,
-        levelUnlocked: 0,
-        unlocks: "",
-        placeholder: true,
-      }));
-    }
-
-    return records.map((item, index) => {
-      const levelMatch = item.id.match(/^game_level_(\d+)$/i);
-      const level = levelMatch ? Number(levelMatch[1]) : 0;
-      const levelBadge = level > 0 ? {
-        title: level === 1 ? "First Day on Set" : level === 2 ? "Off-Center, On-Point" : `Level ${level} Wrapped`,
-        description: level === 1
-          ? "Your first contract is in the can. Every great crew starts with one call time."
-          : level === 2
-            ? "You met the rule of thirds on set. Place the subject with intention and let the frame tell the story."
-            : `You reached level ${level}. Another brief, another skill added to your crew toolkit.`,
-      } : null;
-      const genericLevelTitle = /^level \d+ unlocked$/i.test(item.title?.trim() || item.name?.trim() || "");
-      const title = genericLevelTitle ? levelBadge?.title || item.title?.trim() : item.title?.trim() || item.name?.trim() || levelBadge?.title || "";
-      const description = genericLevelTitle ? levelBadge?.description || item.description?.trim() : item.description?.trim() || levelBadge?.description || "";
-      const hasMetadata = Boolean(title && description);
-      return {
-        id: item.id,
-        name: hasMetadata ? title : "",
-        description: hasMetadata ? description : "",
-        date: item.unlockedAt ? new Date(item.unlockedAt).toLocaleDateString() : undefined,
-        unlocked: hasMetadata && item.unlocked,
-        icon: hasMetadata ? realAchievementIcons[index % realAchievementIcons.length] : Lock,
-        progress: hasMetadata && item.maxProgress > 0 ? `${item.progress}/${item.maxProgress}` : undefined,
-        percent: hasMetadata && item.maxProgress > 0 ? Math.min(100, Math.round((item.progress / item.maxProgress) * 100)) : undefined,
-        requirement: hasMetadata ? description : "",
-        levelUnlocked: level,
-        unlocks: levelBadge ? (level === 1
-          ? "On-set basics: call sheets, slate reading, and the production log system."
-          : level === 2
-            ? "Rule-of-thirds framing: use the grid to place your subject and build a balanced composition."
-            : `Level ${level} campaign knowledge and contract experience.`) : "",
-        placeholder: !hasMetadata,
-      };
-    });
-  }, [achievementsQuery.data]);
+  const realAchievements = useMemo<Achievement[]>(() => (achievementsQuery.data ?? []).map((item) => ({
+    id: item.id,
+    name: item.title || item.name || item.id,
+    description: item.description,
+    ...(item.unlockedAt ? { date: new Date(item.unlockedAt).toLocaleDateString() } : {}),
+    ...(item.careerName ? { careerName: item.careerName } : {}),
+    unlocked: item.unlocked,
+    icon: Trophy,
+    ...(item.maxProgress > 0 ? {
+      progress: item.progress + "/" + item.maxProgress,
+      percent: Math.min(100, Math.round((item.progress / item.maxProgress) * 100)),
+    } : {}),
+    levelUnlocked: 0,
+    unlocks: "",
+  })), [achievementsQuery.data]);
   const achievements = mockMode ? demoAchievements : realAchievements;
 
   const shownAchievements = useMemo(() => {
@@ -268,6 +234,11 @@ function AlmanacPage() {
           <ProductionLogs />
         ) : (
           <section className="achievements-section almanac-content-panel p-4 sm:p-6">
+            <div className="mb-4 flex items-center justify-between gap-3 text-sm">
+              <p>{mockMode ? "Demo achievements" : "Achievements recorded by the game. Career milestones use the game’s own definitions."}</p>
+              <button type="button" className="rounded border px-3 py-2 font-bold" disabled={achievementsQuery.isFetching} onClick={() => void achievementsQuery.refetch()}>{achievementsQuery.isFetching ? "Refreshing…" : "Refresh"}</button>
+            </div>
+            {achievementsQuery.isError && <p role="alert" className="mb-3 text-red-700">Could not refresh game achievements. Please retry.</p>}
             <div className="achievements-toolbar">
               <div className="achievements-filters">
                 {["All", "Unlocked", "Locked"].map((option) => (
@@ -342,13 +313,14 @@ function AlmanacPage() {
                             <Lock className="achievement-lock" />
                           )}
                         </div>
+                        {achievement.careerName && <p className="text-xs">Career: {achievement.careerName}</p>}
                         <p className="achievement-desc">
                           {achievement.description}
                         </p>
                       </div>
                     </div>
 
-                    {(achievement.levelUnlocked > 0 || achievement.progress) && (
+                    {(achievement.levelUnlocked > 0) && (
                       <div className="achievement-level-row">
                         <span className="achievement-level-badge">
                           Level {achievement.levelUnlocked > 0 ? achievement.levelUnlocked : "—"}
@@ -372,7 +344,7 @@ function AlmanacPage() {
                         <span>Unlocked {formatShort(achievement.date)}</span>
                         <CheckCircle2 className="achievement-check" />
                       </div>
-                    ) : (
+                    ) : achievement.percent !== undefined ? (
                       <div className="achievement-progress">
                         <div className="achievement-progress-labels">
                           <span>{achievement.progress}</span>
@@ -385,7 +357,7 @@ function AlmanacPage() {
                           />
                         </div>
                       </div>
-                    )}
+                    ) : null}
                   </button>
                 );
               })}
@@ -395,7 +367,7 @@ function AlmanacPage() {
               <div className="empty-results">
                 <Trophy className="empty-icon" />
                 <h3>NO ACHIEVEMENTS FOUND</h3>
-                <p>Try switching to another achievement filter.</p>
+                <p>{achievementsQuery.isLoading ? "Loading game achievements…" : achievementsQuery.isError ? "Could not read achievements from PlayFab. Please refresh to retry." : achievements.length ? "Try switching to another achievement filter." : "No achievement records are available for this account yet."}</p>
               </div>
             )}
           </section>
@@ -441,7 +413,7 @@ function AlmanacPage() {
               <p>{selectedAchievement.description}</p>
             </div>
 
-            {(selectedAchievement.levelUnlocked > 0 || selectedAchievement.progress) && <div className="achievement-modal-level">
+            {(selectedAchievement.levelUnlocked > 0) && <div className="achievement-modal-level">
               <span className="achievement-level-badge">
                 Level {selectedAchievement.levelUnlocked}
               </span>
@@ -472,7 +444,7 @@ function AlmanacPage() {
             {selectedAchievement.unlocked ? (
               <div className="achievement-modal-unlocked">
                 <Medal />
-                <span>Unlocked on {selectedAchievement.date}</span>
+                <span>{selectedAchievement.date ? `Unlocked on ${selectedAchievement.date}` : "Unlocked"}</span>
               </div>
             ) : selectedAchievement.progress && selectedAchievement.percent !== undefined ? (
               <div className="achievement-progress">
