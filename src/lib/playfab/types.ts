@@ -331,6 +331,12 @@ export interface ProductionLog {
   clientName?: string | undefined;
   /** Optional brand name when the production title is a separate product/contract name */
   clientBrandName?: string | undefined;
+  /** Contract/product name reported by the game. */
+  production?: string | undefined;
+  /** Crew roles reported by the game, especially for solo productions. */
+  roles?: string[] | undefined;
+  /** Game submission identifier used to deduplicate synced records. */
+  submissionId?: string | undefined;
   preProductionFeedback?: string | undefined;
   productionFeedback?: string | undefined;
   postProductionFeedback?: string | undefined;
