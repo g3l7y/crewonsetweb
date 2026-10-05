@@ -1031,9 +1031,9 @@ export type SocialLink = {
 
 export const socialLinksStore = createStore<SocialLink>("cos.socialLinks", [
   { id: "soc-youtube", platform: "YouTube", url: "https://www.youtube.com/", active: true },
-  { id: "soc-instagram", platform: "Instagram", url: "https://www.instagram.com/", active: true },
+  { id: "soc-instagram", platform: "Instagram", url: "https://www.instagram.com/crewonset/", active: true },
   { id: "soc-twitter", platform: "Twitter", url: "https://twitter.com/", active: true },
-  { id: "soc-facebook", platform: "Facebook", url: "https://www.facebook.com/", active: true },
+  { id: "soc-facebook", platform: "Facebook", url: "https://www.facebook.com/profile.php?id=61594770855744", active: true },
 ]);
 
 /* ------------------------------------------- installation steps (admin → public) */

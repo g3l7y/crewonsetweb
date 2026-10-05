@@ -151,9 +151,9 @@ function DownloadPage() {
                 What&apos;s in <span className="text-yellow">the download.</span>
               </h2>
               <p className="mt-5 leading-relaxed text-white/70">
-                Crew On Set! is a 1–4 player co-op game about running a chaotic commercial
-                production studio. This build includes the full story campaign, all four crew roles,
-                and the online co-op matchmaking lobby.
+                Crew On Set! is a commercial filmmaking game for 1–4 players. Play solo and
+                take on every part of a production, or team up online and divide the four crew
+                roles. This build includes the story campaign and online multiplayer lobby.
               </p>
               <p className="mt-4 leading-relaxed text-white/70">
                 This is an active playtest build — expect frequent updates, new sets, and balance
@@ -172,7 +172,7 @@ function DownloadPage() {
               <div className="mt-8 grid gap-3 sm:grid-cols-2">
                 <div className="download-card flex items-center gap-3 rounded-md border border-[#fefaef]/80 bg-[#fefaef] px-4 py-3 text-[#0a0e19]">
                   <Gamepad2 className="size-5 shrink-0 text-yellow" />
-                  <span className="text-sm font-bold">1–4 player co-op</span>
+                  <span className="text-sm font-bold">Solo or 1–4 players</span>
                 </div>
                 <div className="download-card flex items-center gap-3 rounded-md border border-[#fefaef]/80 bg-[#fefaef] px-4 py-3 text-[#0a0e19]">
                   <MonitorPlay className="size-5 shrink-0 text-yellow" />

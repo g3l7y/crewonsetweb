@@ -3,10 +3,10 @@ import { createFileRoute } from "@tanstack/react-router";
 export const Route = createFileRoute("/")({
   head: () => ({
     meta: [
-      { title: "Crew On Set! — Co-op Commercial Chaos" },
-      { name: "description", content: "A playful 1-4 player co-op game about making the greatest commercial nobody asked for." },
-      { property: "og:title", content: "Crew On Set! — Co-op Commercial Chaos" },
-      { property: "og:description", content: "A playful 1-4 player co-op game about making the greatest commercial nobody asked for." },
+      { title: "Crew On Set! — Make a Commercial, Solo or Together" },
+      { name: "description", content: "A hands-on commercial filmmaking game for 1–4 players. Explore pre-production, filming, and editing at your own pace." },
+      { property: "og:title", content: "Crew On Set! — Make a Commercial, Solo or Together" },
+      { property: "og:description", content: "A hands-on commercial filmmaking game for 1–4 players. Explore pre-production, filming, and editing at your own pace." },
     ],
   }),
   component: HomePage,
@@ -42,21 +42,21 @@ const chapters = [
   {
     number: "01",
     title: "PRE-PRODUCTION",
-    text: "Your crew lands its first commercial. Different roles, different responsibilities.",
+    text: "Review the client brief, plan the shoot, and prepare your set and equipment. Take time to explore each setup choice.",
     icon: Building2,
     image: "/assets/home-role-director.png",
   },
   {
     number: "02",
     title: "PRODUCTION",
-    text: "Your crew finally gets a shot at a production. Everything is on the line",
+    text: "Frame and record the shots your brief calls for. Adjust the camera and lighting, then try another take whenever you need.",
     icon: Clapperboard,
     image: "/assets/home-role-cameraman.png",
   },
   {
     number: "03",
     title: "POST-PRODUCTION",
-    text: "Refining the footage and preparing the final product.",
+    text: "Arrange and trim your footage, add branding and sound, adjust color, then export and submit your commercial for feedback.",
     icon: Timer,
     image: "/assets/home-role-editor.png",
   },
@@ -66,22 +66,22 @@ const roles = [
   {
     image: "/assets/home-role-director.png",
     title: "Director",
-    text: "Call the shots, direct the crew, and keep the entire production moving toward the final take.",
+    text: "Use the production tablet to plan the set, place products and props, position actors, and cue their actions.",
   },
   {
     image: "/assets/home-role-av-technician.png",
     title: "AV Technician",
-    text: "Control lighting, sound, and studio equipment so every scene looks and sounds ready for the take.",
+    text: "Set up and adjust production lights, and use the audio monitor to check levels while preparing the set.",
   },
   {
     image: "/assets/home-role-cameraman.png",
     title: "Cameraman",
-    text: "Frame the shots and capture every important moment before time runs out.",
+    text: "Compose each shot with the camera controls, then record and review takes against the client brief.",
   },
   {
     image: "/assets/home-role-editor.png",
     title: "Editor",
-    text: "Choose the strongest takes, fix production mistakes, and assemble the commercial to its perfection.",
+    text: "Review the footage, arrange and trim clips, add branding and music, adjust color, then export and submit the cut.",
   },
 ];
 
@@ -158,8 +158,7 @@ function HomePage() {
             </h1>
 
             <p className="mt-5 max-w-xl text-lg font-medium leading-relaxed text-white/50 sm:text-xl">
-              Grab your crew and make the greatest commercial nobody asked
-              for. A 1–4 player co-op game where every second on set counts.
+              Make a commercial your way. Play solo or with up to three others as you explore the filmmaking process, from preparing the set to editing the final cut.
             </p>
 
             <div className="mt-8">
@@ -201,15 +200,15 @@ function HomePage() {
             </h2>
 
             <p className="mt-6 text-lg leading-relaxed text-white/70">
-              Welcome to your own studio, where clients are demanding, the
-              props are puzzling, and someone definitely forgot to put an SD
-              Card into the camera.
+              Welcome to your own studio. Explore commercial filmmaking,
+              arrange the set, and learn by trying ideas and reviewing the
+              results.
             </p>
 
             <p className="mt-4 text-lg leading-relaxed text-white/70">
-              You and your crew have one job and it is to turn contracts into
-              unforgettable commercials. Learn each other&apos;s strengths,
-              work under pressure, and get the final shot.
+              Take a contract from the first setup choices to a finished
+              commercial. Explore the production process at your own pace and
+              use each review to guide your next edit.
             </p>
 
 
@@ -313,12 +312,11 @@ function HomePage() {
             <h2 className="section-title">
               One Crew.
               <br />
-              <span className="text-coral">One Teamwork.</span>
+              <span className="text-coral">Solo or Together.</span>
             </h2>
 
             <p className="mt-5 text-lg text-navy/65">
-              Choose your role and work together. Every role controls a
-              different part of the production.
+              In multiplayer, players can specialize in different roles. Playing solo? Take on every part of the production yourself.
             </p>
           </div>
 
@@ -379,26 +377,24 @@ function HomePage() {
             </h2>
 
             <p className="mt-6 text-lg leading-relaxed text-white/70">
-              Every production depends on teamwork. The Director leads the vision, the AV Technician keeps the set running, the Cameraman captures the shot, and the Editor brings it all together. Work together, handle the chaos, and make every take count.
+              Follow a commercial from the client brief to the finished edit. The Director plans the set and cues actors, the AV Technician adjusts lights and monitors audio, the Cameraman frames and records footage, and the Editor assembles and submits the cut. Play solo and move between these tasks, or share them with a crew.
             </p>
 
             <p className="mt-4 text-lg leading-relaxed text-white/70">
-              Miss a cue and the take is ruined. Nail it, and the crew moves
-              one step closer to wrapping the shoot on schedule — and on
-              budget.
+              Try different setups, review your footage, and use the feedback to guide your next edit. The game is designed as a relaxed, hands-on way to explore commercial filmmaking.
             </p>
 
             <div className="mt-8 grid gap-4 sm:grid-cols-2">
               <div className="rounded-md border border-white/10 bg-white/5 px-4 py-4">
-                <span className="text-xs font-black uppercase tracking-widest text-yellow">PREPARATION</span>
+                <span className="text-xs font-black uppercase tracking-widest text-yellow">PRE-PRODUCTION</span>
                 <p className="mt-1 text-sm leading-relaxed text-white/60">
-                  Get your equipment ready, coordinate with your crew, and make sure everything is in place before the cameras roll.
+                  Read the client brief, plan the required shots, purchase and place equipment, and prepare the set, products, props, and actors.
                 </p>
               </div>
               <div className="rounded-md border border-white/10 bg-white/5 px-4 py-4">
-                <span className="text-xs font-black uppercase tracking-widest text-yellow">ON-SET PRESSURE</span>
+                <span className="text-xs font-black uppercase tracking-widest text-yellow">PRODUCTION & POST-PRODUCTION</span>
                 <p className="mt-1 text-sm leading-relaxed text-white/60">
-                  Keep the production moving, react to unexpected problems, and deliver the shot before time runs out.
+                  Record and review your takes, then arrange and trim footage, add branding and music, adjust color, and submit the exported commercial.
                 </p>
               </div>
             </div>
@@ -437,7 +433,7 @@ function HomePage() {
 
             <p className="mt-6 text-lg leading-relaxed text-navy/70">
               We&apos;re a small independent crew of artists, designers,
-              documentators and developers obsessed with co-op games and the
+              documentators and developers interested in games and the
               strange magic that happens behind the camera.
             </p>
 
@@ -497,31 +493,31 @@ function HomePage() {
 
             <div className="mt-6 flex flex-wrap gap-2">
               <a
-                href="mailto:hello@crew-on-set.game"
+                href="mailto:crewonsetgame@gmail.com"
                 className="social-link"
               >
                 <Mail />
-                crewonset1@gmail.com
+                crewonsetgame@gmail.com
               </a>
 
               <a
-                href="https://www.facebook.com/"
+                href="https://www.facebook.com/profile.php?id=61594770855744"
                 target="_blank"
                 rel="noreferrer"
                 className="social-link"
               >
                 <Facebook />
-                Crew On Set!
+                Crew On Set
               </a>
 
               <a
-                href="https://www.instagram.com/"
+                href="https://www.instagram.com/crewonset/"
                 target="_blank"
                 rel="noreferrer"
                 className="social-link"
               >
                 <Instagram />
-                @crew_on_set_game
+                @crewonset
               </a>
             </div>
           </div>
