@@ -23,7 +23,7 @@ import { PageHero } from "@/components/marketing/page-hero";
 import { PartnershipForm } from "@/components/marketing/partnership-form";
 
 const contacts = [
-  { icon: Mail, label: "General inquiries", value: "crewonsetgame@gmail.com", href: "https://mail.google.com/mail/?view=cm&fs=1&to=crewonsetgame@gmail.com" },
+  { icon: Mail, label: "General inquiries", value: "crewonsetgame@gmail.com", href: "mailto:crewonsetgame@gmail.com" },
   { icon: Facebook, label: "Facebook", value: "Crew On Set", href: "https://www.facebook.com/profile.php?id=61594770855744" },
   { icon: Instagram, label: "Instagram", value: "@crewonset", href: "https://www.instagram.com/crewonset/" },
 ];
@@ -32,7 +32,7 @@ function ContactPage() {
   const faqs = [
     {
       question: "What is Crew On Set!?",
-      answer: "Crew On Set! is a 1–4 player co-op game about running a chaotic commercial production. Players work together as a crew to keep each production moving.",
+      answer: "Crew On Set! is a commercial filmmaking game for 1–4 players. Play solo and handle every part of a production, or team up online and divide the work among the crew roles.",
     },
     {
       question: "How can I get started playing?",
@@ -40,7 +40,7 @@ function ContactPage() {
     },
     {
       question: "Can I play with friends?",
-      answer: "Yes. Crew On Set! supports 1–4 player co-op, so you can take on a production solo or work through it with friends.",
+      answer: "Yes. You can play solo or team up online with up to three other players. Multiplayer lets the crew divide the production roles; solo play lets one player handle the full process.",
     },
     {
       question: "How can a brand or product team partner with Crew On Set!?",
