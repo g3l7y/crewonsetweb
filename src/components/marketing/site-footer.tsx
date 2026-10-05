@@ -1,16 +1,11 @@
-import Image from "@/components/next-compat/image";
-import Link from "@/components/next-compat/link";
-import { usePathname } from "@/components/next-compat/navigation";
 import { Facebook, Globe, Instagram, Twitter, Youtube } from "lucide-react";
 
 import { socialLinksStore } from "@/lib/demo/store";
 
-const footerNav = [
-  { label: "HOME", href: "/" },
-  { label: "FEATURES", href: "/features" },
-  { label: "DOWNLOAD", href: "/download" },
-  { label: "TEAM", href: "/team" },
-  { label: "CONTACT", href: "/contact" },
+const footerContacts = [
+  { label: "crewonsetgame@gmail.com", href: "https://mail.google.com/mail/?view=cm&fs=1&to=crewonsetgame@gmail.com" },
+  { label: "Crew On Set", href: "https://www.facebook.com/profile.php?id=61594770855744" },
+  { label: "@crewonset", href: "https://www.instagram.com/crewonset/" },
 ];
 
 function iconForPlatform(platform: string) {
@@ -23,7 +18,6 @@ function iconForPlatform(platform: string) {
 }
 
 export function SiteFooter() {
-  const pathname = usePathname();
   const [socialLinks] = socialLinksStore.useStore();
   const activeSocialLinks = socialLinks.filter((social) => social.active === true);
 
@@ -50,18 +44,17 @@ export function SiteFooter() {
         </div>
           
         {/* NAV */}
-        <nav className="flex flex-wrap items-center justify-center gap-x-7 gap-y-3" aria-label="Footer navigation">
-          {footerNav.map((item) => (
-            <Link
+        <nav className="mx-auto flex w-full max-w-3xl flex-wrap items-center justify-center gap-x-7 gap-y-3 sm:justify-between" aria-label="Contact links">
+          {footerContacts.map((item) => (
+            <a
               key={item.href}
               href={item.href}
-              aria-current={pathname === item.href ? "page" : undefined}
-              className={`text-xs font-black tracking-[.16em] transition hover:text-yellow ${
-                pathname === item.href ? "text-yellow" : "text-white/60"
-              }`}
+              target="_blank"
+              rel="noreferrer noopener"
+              className="text-xs font-black tracking-[.08em] text-white/70 transition hover:text-yellow"
             >
               {item.label}
-            </Link>
+            </a>
           ))}
         </nav>
       </div>
