@@ -111,9 +111,10 @@ export default function CheckoutPage({ onBack }: CheckoutPageProps) {
     if (params.get('payment') !== 'success') return;
     const reference = params.get('reference')?.trim();
     if (!reference) return;
+    const paymentReference = reference;
 
-    const processedKey = `cos.paymongo.fulfilled.${reference}`;
-    const legacyProcessedKey = `cos.paymongo.test.fulfilled.${reference}`;
+    const processedKey = `cos.paymongo.fulfilled.${paymentReference}`;
+    const legacyProcessedKey = `cos.paymongo.test.fulfilled.${paymentReference}`;
     const clearPaymentQuery = () => {
       const url = new URL(window.location.href);
       url.searchParams.delete('payment');
@@ -126,7 +127,7 @@ export default function CheckoutPage({ onBack }: CheckoutPageProps) {
       (mockMode && window.localStorage.getItem(legacyProcessedKey) === '1')
     ) {
       if (mockMode) {
-        completeDemoPurchase(reference);
+        completeDemoPurchase(paymentReference);
       } else {
         setCheckoutPayload(null);
         void walletQuery.refetch();
@@ -141,7 +142,7 @@ export default function CheckoutPage({ onBack }: CheckoutPageProps) {
 
     async function confirmPayment() {
       for (let attempt = 0; attempt < 20; attempt += 1) {
-        const response = await fetch(`/api/paymongo/status?orderId=${encodeURIComponent(reference)}`, {
+        const response = await fetch(`/api/paymongo/status?orderId=${encodeURIComponent(paymentReference)}`, {
           credentials: 'include',
           cache: 'no-store',
         });
@@ -151,7 +152,7 @@ export default function CheckoutPage({ onBack }: CheckoutPageProps) {
           error?: string;
         };
         if (!response.ok) throw new Error(result.error || 'Payment status is temporarily unavailable.');
-        if (result.status === 'fulfilled' && result.coins === pack.coins) return;
+        if (result.status === 'fulfilled' && result.coins === pack?.coins) return;
         if (result.status === 'failed') throw new Error('Payment was received, but the C-Coin credit failed. Please contact support.');
         if (attempt < 19) await new Promise((resolve) => window.setTimeout(resolve, 1000));
       }
@@ -163,7 +164,7 @@ export default function CheckoutPage({ onBack }: CheckoutPageProps) {
         if (cancelled) return;
         window.localStorage.setItem(processedKey, '1');
         if (mockMode) {
-          completeDemoPurchase(reference);
+          completeDemoPurchase(paymentReference);
         } else {
           await walletQuery.refetch();
           if (cancelled) return;

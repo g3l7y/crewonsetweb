@@ -35,6 +35,7 @@ const sharedEndpoints: Record<string, string> = {
 };
 
 export const reportStatusColors = {
+  New: "#F3C747",
   Investigating: "#F39A5A",
   Resolved: "#4BC4B4",
 } as const;
