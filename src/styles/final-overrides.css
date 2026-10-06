@@ -228,14 +228,21 @@ body {
 }
 
 /* Keep the three production stages centered as one balanced workflow. */
-.marketing-theme .team-page .team-hero-copy > p {
+.marketing-theme .team-page .crew-heading p {
   color: #14213d !important;
 }
 
 .features-almanac .timeline {
   grid-template-columns: repeat(3, minmax(0, 1fr));
-  max-width: 1200px;
+  width: 100%;
+  max-width: 1140px;
   margin-inline: auto;
+}
+
+.features-almanac .timeline-item {
+  width: 100%;
+  max-width: 320px;
+  justify-self: center;
 }
 
 @media (max-width: 900px) {

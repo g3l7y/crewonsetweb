@@ -480,11 +480,25 @@
   position: relative;
   min-height: 570px;
   overflow: hidden;
+  isolation: isolate;
+}
+
+.crew-profile-image::before {
+  content: "";
+  position: absolute;
+  z-index: 0;
+  inset: -12px;
+  background-image: var(--crew-photo-bg);
+  background-position: center;
+  background-size: cover;
+  filter: blur(12px) saturate(0.9) brightness(0.86);
+  transform: scale(1.04);
 }
 
 .crew-profile-image > img {
+  z-index: 1;
   object-fit: cover;
-  transform: scale(1.2);
+  transform: scale(1.04);
   transition: transform 0.7s ease;
 }
 
@@ -506,6 +520,7 @@
 
 .crew-image-gradient {
   position: absolute;
+  z-index: 2;
   inset: 0;
   background:
     linear-gradient(
@@ -518,13 +533,14 @@
 .crew-profile-image::after {
   content: "";
   position: absolute;
+  z-index: 2;
   top: 0;
   right: 0;
   bottom: 0;
-  width: 34%;
+  width: 20%;
   background: linear-gradient(
     to left,
-    rgba(11, 17, 23, 0.85),
+    rgba(11, 17, 23, 0.38),
     transparent
   );
 }
