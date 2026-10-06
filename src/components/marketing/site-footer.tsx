@@ -35,7 +35,7 @@ export function SiteFooter() {
                 target="_blank"
                 rel="noreferrer noopener"
                 aria-label={social.platform}
-                className="grid size-11 place-items-center rounded-full border border-white/15 bg-white/[.06] text-white/70 transition hover:-translate-y-0.5 hover:border-yellow hover:bg-yellow hover:text-navy"
+                className="footer-social-link grid size-11 place-items-center rounded-full border border-white/15 bg-white/[.06] transition hover:-translate-y-0.5"
               >
                 <Icon className="size-5" />
               </a>
@@ -51,7 +51,7 @@ export function SiteFooter() {
               href={item.href}
               target="_blank"
               rel="noreferrer noopener"
-              className="text-xs font-black tracking-[.08em] text-white/70 transition hover:text-yellow"
+              className="footer-contact-link text-xs font-black tracking-[.08em] transition"
             >
               {item.label}
             </a>

@@ -227,6 +227,45 @@ body {
   color: var(--crew-ink) !important;
 }
 
+/* Keep the three production stages centered as one balanced workflow. */
+.marketing-theme .team-page .team-hero-copy > p {
+  color: #14213d !important;
+}
+
+.features-almanac .timeline {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  max-width: 1200px;
+  margin-inline: auto;
+}
+
+@media (max-width: 900px) {
+  .features-almanac .timeline {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* Footer links share the copyright label color in every interaction state. */
+.footer-contact-link,
+.footer-social-link,
+.footer-contact-link:visited,
+.footer-social-link:visited,
+.footer-contact-link:hover,
+.footer-social-link:hover,
+.footer-contact-link:focus-visible,
+.footer-social-link:focus-visible,
+.footer-contact-link:active {
+  color: #c6c5c2 !important;
+}
+
+.footer-contact-link:hover,
+.footer-social-link:hover,
+.footer-contact-link:focus-visible,
+.footer-social-link:focus-visible,
+.footer-contact-link:active {
+  border-color: #fbbf24 !important;
+  background-color: #0f1728 !important;
+}
+
 .features-almanac .story-timeline h2,
 .features-almanac .story-timeline h3,
 .features-almanac .story-timeline p,
