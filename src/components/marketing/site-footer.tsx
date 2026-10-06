@@ -18,7 +18,7 @@ export function SiteFooter() {
               href={item.href}
               target={item.href.startsWith("mailto:") ? undefined : "_blank"}
               rel={item.href.startsWith("mailto:") ? undefined : "noreferrer noopener"}
-              className="inline-flex items-center gap-2 rounded-md border border-white/20 bg-white/[.04] px-4 py-3 text-xs font-black tracking-[.04em] text-white/80 transition hover:-translate-y-0.5 hover:border-yellow hover:bg-yellow hover:text-navy"
+              className="footer-contact-link inline-flex items-center gap-2 rounded-md border border-white/20 bg-white/[.04] px-4 py-3 text-xs font-black tracking-[.04em] transition hover:-translate-y-0.5"
             >
               <item.icon className="size-4 shrink-0" aria-hidden="true" />
               {item.label}
