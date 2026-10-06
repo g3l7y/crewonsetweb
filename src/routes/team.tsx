@@ -14,7 +14,7 @@ export const Route = createFileRoute("/team")({
 
 import Image from "@/components/next-compat/image";
 import Link from "@/components/next-compat/link";
-import { useEffect, useState, type ReactNode } from "react";
+import { useEffect, useState, type CSSProperties, type ReactNode } from "react";
 import {
   ArrowDownRight,
   ArrowRight,
@@ -373,7 +373,10 @@ function TeamPage() {
 
                 {/* IMAGE */}
 
-                <div className="crew-profile-image">
+                <div
+                  className="crew-profile-image"
+                  style={{ "--crew-photo-bg": `url("${member.image}")` } as CSSProperties}
+                >
 
                   <Image
                     src={member.image}
@@ -388,16 +391,6 @@ function TeamPage() {
                   <div className="member-number">
                     {member.number}
                   </div>
-
-                  {activeMember === 0 && (
-                    <div className="thats-me">
-                      THAT&apos;S ME!
-                    </div>
-                  )}
-
-                  {activeMember === 0 && (
-                    <Crown className="member-crown" />
-                  )}
 
                   <div className="crew-image-label">
                     CREW ON SET
