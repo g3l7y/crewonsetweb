@@ -48,7 +48,7 @@ const team = [
     name: "Princess Angela Cartel",
     role: "Technical Writer, Web Developer",
     icon: Coffee,
-    image: "/assets/team-princess.png",
+    image: "/assets/team-princess.jpg",
     imagePosition: "member-one",
     description:
       "Turns production systems into clear briefs, guides, and copy the whole crew can actually use.",
@@ -59,7 +59,7 @@ const team = [
     name: "Mc Kelvin Bocateja",
     role: "Lead Programmer",
     icon: Code2,
-    image: "/assets/team-kelvin.png",
+    image: "/assets/team-kelvin.jpg",
     imagePosition: "member-two",
     description:
       "Builds the engine side — camera rig physics, lighting simulation, the editing timeline, and the live services powering the portal.",
@@ -70,7 +70,7 @@ const team = [
     name: "Rae Yshene Acido",
     role: "Designer",
     icon: Palette,
-    image: "/assets/team-rae.png",
+    image: "/assets/team-rae.jpg",
     imagePosition: "member-three",
     description:
       "Shapes the 2D visual language — characters, cosmetics, UI framing, and the ink-line look across the game and site.",
@@ -81,7 +81,7 @@ const team = [
     name: "Joseph Namuag",
     role: "System Analyst",
     icon: Gamepad2,
-    image: "/assets/team-joseph.png",
+    image: "/assets/team-joseph.jpg",
     imagePosition: "member-four",
     description:
       "Maps the production loop into systems: scoring curves, the C-Coin economy, ad rules, and the data model behind the Almanac.",
