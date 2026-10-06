@@ -161,6 +161,17 @@ export function useProductionLogs() {
   });
 }
 
+export function useProductionHistory() {
+  const { data: session } = useSession();
+  return useQuery({
+    queryKey: [...QUERY_KEYS.productionLogs, 'history', session?.playFabId],
+    queryFn: () => getPlayFabService().player.getProductionHistory(),
+    enabled: !!session,
+    staleTime: 30 * 1000,
+    refetchInterval: 30 * 1000,
+  });
+}
+
 export function useTransactions() {
   const { data: session } = useSession();
   return useQuery({

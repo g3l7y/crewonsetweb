@@ -1,6 +1,6 @@
 import { useMemo, useState } from "react";
 import { Star, X } from "lucide-react";
-import { useProductionLogs } from "@/lib/playfab/hooks";
+import { useProductionHistory } from "@/lib/playfab/hooks";
 import type { ProductionLog as GameProductionLog } from "@/lib/playfab/types";
 
 type ProductionLog = {
@@ -64,15 +64,29 @@ function mapGameProduction(log: GameProductionLog): ProductionLog {
 }
 
 export function ProductionLogs() {
-  const logsQuery = useProductionLogs();
+  const logsQuery = useProductionHistory();
   const [openLog, setOpenLog] = useState<ProductionLog | null>(null);
-  const logs = useMemo(() => (logsQuery.data ?? []).map(mapGameProduction), [logsQuery.data]);
+  const logs = useMemo(() => (logsQuery.data?.logs ?? []).map(mapGameProduction), [logsQuery.data]);
+  const careers = logsQuery.data?.careers ?? [];
 
   return (
-    <section className="mt-7 almanac-content-panel p-4 sm:p-6">
+    <section className="production-history-panel mt-7 almanac-content-panel p-4 sm:p-6">
       <div className="almanac-content-body">
         <h2 className="section-title text-3xl text-navy sm:text-4xl">Production Logs</h2>
-        <div className="mt-1 flex items-center justify-between gap-3 text-sm text-navy/55"><p>Completed attempts saved by Crew On Set!</p><button type="button" className="rounded border px-3 py-2 font-bold" disabled={logsQuery.isFetching} onClick={() => void logsQuery.refetch()}>{logsQuery.isFetching ? "Refreshing…" : "Refresh"}</button></div>
+        <div className="production-history-heading mt-1 flex items-center justify-between gap-3 text-sm text-navy"><p>Saved career progress and completed attempts from Crew On Set!</p><button type="button" className="rounded border px-3 py-2 font-bold" disabled={logsQuery.isFetching} onClick={() => void logsQuery.refetch()}>{logsQuery.isFetching ? "Refreshing…" : "Refresh"}</button></div>
+        {careers.length > 0 && <div className="production-career-progress mt-5 space-y-3">
+          <h3 className="text-sm font-black uppercase">Current saved progress</h3>
+          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">{careers.map((career) => <article key={career.id} className="rounded-lg border border-navy/20 p-4">
+            <h4 className="font-bold">{career.name || "Saved career"}</h4>
+            <p className="mt-1 text-sm">Level {career.level} · {career.balance == null ? "Budget not recorded" : `${career.balance.toLocaleString()} B-Coins`}</p>
+            <p className="mt-2 text-sm">{career.activeLevel != null ? `Level ${career.activeLevel} attempt in progress` : "Saved checkpoint"}</p>
+            <p className="text-xs">{career.completedAttempts} completed attempts recorded{career.takes != null ? ` · ${career.takes} takes in current attempt` : ""}</p>
+            <p className="mt-2 text-xs">Checkpoint saved: {formatDate(career.updatedUtc)}</p>
+            {career.transactions.length > 0 && <details className="mt-3 text-sm"><summary className="cursor-pointer font-bold">Current attempt transactions</summary><ul className="mt-2 space-y-1">{career.transactions.map((transaction, index) => <li key={index}>{transaction.item || transaction.category}: {transaction.amount > 0 ? "+" : ""}{transaction.amount.toLocaleString()} B-Coins</li>)}</ul></details>}
+          </article>)}</div>
+          <p className="text-xs">A saved level is current progress. Scores, ranks and feedback appear only when the game records a completed attempt.</p>
+        </div>}
+        <h3 className="production-history-heading mt-5 text-sm font-black uppercase">Completed production history</h3>
         <div className="player-account-scroll-list almanac-content-scroll production-logs-list admin-table-wrap mt-5 border-navy/10">
           <table className="admin-table">
             <thead><tr><th>Level</th><th>Product / Contract</th><th>Role</th><th>Client</th><th>Date</th><th>Score</th><th>Rank</th><th className="text-right">Info</th></tr></thead>
@@ -80,7 +94,7 @@ export function ProductionLogs() {
               {logs.map((log) => (
                 <tr key={log.id}>
                   <td>{log.level || "—"}</td>
-                  <td className="font-bold">{log.production || (log.level ? `Level ${log.level} production` : "Production")}{typeof log.details["careerName"] === "string" && <span className="block text-xs font-normal">Career: {log.details["careerName"]}</span>}</td>
+                  <td className="font-bold">{log.production || (log.level ? `Level ${log.level} production` : "Production")}{typeof log.details["careerName"] === "string" && <span className="block text-xs font-normal">Career: {log.details["careerName"]}{log.details["archivedCareer"] === true ? " · Archived" : ""}</span>}</td>
                   <td>{log.role || "—"}</td>
                   <td>{log.client || "—"}</td>
                   <td className="whitespace-nowrap">{formatDate(log.date)}</td>
@@ -91,7 +105,7 @@ export function ProductionLogs() {
               ))}
               {logsQuery.isLoading && <tr><td colSpan={8} className="py-8 text-center">Loading production history…</td></tr>}
               {logsQuery.isError && <tr><td colSpan={8} className="py-8 text-center text-red-700">Could not load production history from PlayFab. Retrying automatically…</td></tr>}
-              {!logsQuery.isLoading && !logsQuery.isError && logs.length === 0 && <tr><td colSpan={8} className="py-10 text-center text-navy/55">PlayFab has no completed production records in this account’s logs or active saved careers. Check that the game uses this same account and its career cloud sync has finished, then refresh.</td></tr>}
+              {!logsQuery.isLoading && !logsQuery.isError && logs.length === 0 && <tr><td colSpan={8} className="py-10 text-center text-navy/55">{careers.length ? "Your saved careers are synced. They do not contain completed production results yet. Finish and submit a production in the game, then sync and refresh." : "No saved careers or completed productions were returned for this account. Sign into the same account in the game and sync, then refresh."}</td></tr>}
             </tbody>
           </table>
         </div>

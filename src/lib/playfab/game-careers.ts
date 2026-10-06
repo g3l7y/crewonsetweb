@@ -10,6 +10,10 @@ export interface GameCareerSave {
   name: string;
   currentLevel: number;
   results: JsonRecord[];
+  active?: JsonRecord;
+  deleted: boolean;
+  origin: string;
+  updatedUtc: string;
   values: Map<string, JsonRecord>;
 }
 export function careerInt(career: GameCareerSave, key: string): number | undefined {
@@ -18,7 +22,7 @@ export function careerInt(career: GameCareerSave, key: string): number | undefin
     ? value['integer'] : undefined;
 }
 /** Read existing private Unity cloud checkpoints, including chunked analytics. */
-export function mapGameCareerSaves(userData: Record<string, string>): GameCareerSave[] {
+export function mapGameCareerSaves(userData: Record<string, string>, includeArchived = false): GameCareerSave[] {
   return Object.entries(userData).filter(([key]) => key.startsWith(CAREER_SAVE_PREFIX)).flatMap(([key, raw]) => {
     const save: unknown = JSON.parse(raw);
     if (!isRecord(save) || !Array.isArray(save['values'])) throw new Error('Unreadable game career checkpoint.');
@@ -26,10 +30,14 @@ export function mapGameCareerSaves(userData: Record<string, string>): GameCareer
     for (const entry of save['values']) {
       if (isRecord(entry) && typeof entry['key'] === 'string') values.set(entry['key'], entry);
     }
-    // Deleted careers remain in PlayFab as tombstones and must never reappear.
-    if (values.get('SaveDeleted')?.['integer'] === 1) return [];
+    // Archived careers retain earned history, but must not become playable saves.
+    const deleted = values.get('SaveDeleted')?.['integer'] === 1;
+    if (deleted && !includeArchived) return [];
+    const id = typeof save['id'] === 'string' ? save['id'] : key.slice(CAREER_SAVE_PREFIX.length);
+    const origin = values.get('Profile.CareerOrigin.v1')?.['text'] || values.get('CCoins.CareerRewardId')?.['text'];
     const career: GameCareerSave = {
-      id: typeof save['id'] === 'string' ? save['id'] : key.slice(CAREER_SAVE_PREFIX.length),
+      id, deleted, origin: typeof origin === 'string' ? origin : id,
+      updatedUtc: typeof save['updatedUtc'] === 'string' ? save['updatedUtc'] : '',
       name: typeof save['name'] === 'string' ? save['name'] : '',
       currentLevel: 1, results: [], values,
     };
@@ -48,6 +56,7 @@ export function mapGameCareerSaves(userData: Record<string, string>): GameCareer
       if (!isRecord(history)) throw new Error('Unreadable game production history.');
       career.results = Array.isArray(history['results']) ? history['results'].filter(isRecord) : [];
       const active = history['active'];
+      if (isRecord(active)) career.active = active;
       if (isRecord(active) && active['closed'] === true && !career.results.some((r) =>
         active['submissionId'] ? r['submissionId'] === active['submissionId'] : JSON.stringify(r) === JSON.stringify(active))) {
         career.results.push(active);
@@ -62,10 +71,19 @@ export function getHighestGameCareerLevel(userData: Record<string, string>): num
 }
 /** Adapt saved attempts; never create scores, feedback or completion dates. */
 export function mapCareerAttemptsToProductionLogs(userData: Record<string, string>): JsonRecord[] {
-  return mapGameCareerSaves(userData).flatMap((career) => career.results
+  // AccountProductionProfile selects one history per career origin, including archives.
+  const histories = new Map<string, GameCareerSave>();
+  for (const career of mapGameCareerSaves(userData, true)) {
+    const previous = histories.get(career.origin);
+    if (!previous || career.results.length > previous.results.length ||
+      (career.results.length === previous.results.length && career.updatedUtc > previous.updatedUtc)) histories.set(career.origin, career);
+  }
+  return [...histories.values()].flatMap((career) => career.results
     .filter((attempt) => attempt['closed'] === true)
     .map((attempt, index) => {
-      const detailed = isRecord(attempt['productionLog']) ? attempt['productionLog'] : {};
+      // Unity serializes empty nested records on legacy attempts. These aren't results.
+      const rawDetail = attempt['productionLog'];
+      const detailed = isRecord(rawDetail) && (rawDetail['decision'] === 'passed' || rawDetail['decision'] === 'failed') ? rawDetail : {};
       const submissionId = attempt['submissionId'];
       const grade = attempt['grade'];
       const decision = detailed['client_decision'] ?? detailed['clientDecision'] ?? detailed['decision'];
@@ -84,7 +102,7 @@ export function mapCareerAttemptsToProductionLogs(userData: Record<string, strin
         complete: attempt['partial'] === false && attempt['assisted'] === false && opening + income - spent === closing,
       } : undefined);
       return {
-        id: submissionId || `${career.id}:attempt-${index}`,
+        id: submissionId || `${career.origin}:attempt-${index}`,
         submissionId, careerId: career.id, level: attempt['level'], mode: 'singleplayer',
         playedUtc: attempt['playedUtc'] || attempt['date'], score: attempt['score'], rank: grade,
         preProductionScore: attempt['pre'],
@@ -96,7 +114,7 @@ export function mapCareerAttemptsToProductionLogs(userData: Record<string, strin
         feedback: detailed['decisionFeedback'] ?? detailed['result'] ?? attempt['completionFeedback'],
         details: { careerName: career.name, careerId: career.id, submissionId, source: 'career',
           cameraScore: camera, lightingScore: lighting, takes: attempt['takes'], transactions,
-          partialTracking: attempt['partial'], assisted: attempt['assisted'] },
+          partialTracking: attempt['partial'], assisted: attempt['assisted'], archivedCareer: career.deleted },
       };
     }));
 }

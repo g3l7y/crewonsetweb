@@ -4166,6 +4166,10 @@ html[data-display-theme="dark"] .display-theme-switcher button[aria-pressed="tru
   :where(
     .section-title,
     .almanac-content-body > p,
+    .production-history-heading,
+    .production-history-heading *,
+    .production-career-progress,
+    .production-career-progress *,
     .achievements-filter-all,
     .achievements-filter-unlocked
   ) {

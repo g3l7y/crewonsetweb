@@ -1,7 +1,27 @@
 import { getUserData } from './player';
 import { PLAYFAB_DATA_KEYS } from './constants';
-import { mapCareerAttemptsToProductionLogs } from './game-careers';
-import type { ProductionLog, ProductionMode, PlayerRole } from './types';
+import { careerInt, isRecord, mapGameCareerSaves, mapCareerAttemptsToProductionLogs } from './game-careers';
+import type { ProductionHistory, ProductionLog, ProductionMode, PlayerRole } from './types';
+
+export async function getProductionHistory(sessionTicket: string): Promise<ProductionHistory> {
+  const data = await getUserData(sessionTicket, undefined, true);
+  return {
+    logs: mapUserDataToProductionLogs(data).sort((a, b) => b.date.localeCompare(a.date)),
+    careers: mapGameCareerSaves(data).map((career) => {
+      const active = career.active?.['closed'] === false ? career.active : undefined;
+      return {
+        id: career.id, name: career.name, level: career.currentLevel,
+        balance: careerInt(career, 'PlayerMoney'), updatedUtc: career.updatedUtc,
+        completedAttempts: career.results.filter((attempt) => attempt['closed'] === true).length,
+        activeLevel: typeof active?.['level'] === 'number' ? active['level'] : undefined,
+        takes: typeof active?.['takes'] === 'number' ? active['takes'] : undefined,
+        transactions: (Array.isArray(active?.['transactions']) ? active['transactions'] : []).filter(isRecord)
+          .filter((t) => typeof t['amount'] === 'number' && Number.isFinite(t['amount']))
+          .map((t) => ({ item: String(t['item'] ?? ''), category: String(t['category'] ?? ''), amount: t['amount'] as number })),
+      };
+    }),
+  };
+}
 
 /**
  * Fetch all production logs for a user.

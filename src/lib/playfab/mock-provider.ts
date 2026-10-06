@@ -567,6 +567,7 @@ export function createMockService(): PlayFabService {
         await randomDelay();
         return [];
       },
+      async getProductionHistory() { return { logs: [], careers: [] }; },
       async getTransactions(): Promise<Transaction[]> {
         await randomDelay();
         return [...MOCK_TRANSACTIONS];

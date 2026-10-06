@@ -322,6 +322,21 @@ export interface KnowledgeEntry {
 /**
  * Production wrap log recorded at completion of a shoot.
  */
+export interface CareerProgressSummary {
+  id: string;
+  name: string;
+  level: number;
+  balance: number | undefined;
+  updatedUtc: string;
+  completedAttempts: number;
+  activeLevel: number | undefined;
+  takes: number | undefined;
+  transactions: { item: string; category: string; amount: number }[];
+}
+export interface ProductionHistory {
+  logs: ProductionLog[];
+  careers: CareerProgressSummary[];
+}
 export interface ProductionLog {
   /** Game contract lifecycle state when reported by the game client. */
   status?: "accepted" | "completed" | "failed" | undefined;
@@ -1011,6 +1026,7 @@ export interface AuthService {
  * Player profile, progression, loadout, and social service.
  */
 export interface PlayerService {
+  getProductionHistory(): Promise<ProductionHistory>;
   getProfile(): Promise<PlayerProfile>;
   getProgression(): Promise<PlayerProgression>;
   getWallet(): Promise<PlayerWallet>;

@@ -9,7 +9,7 @@ import { getCcoinCurrencyCode, getVirtualCurrency } from './economy';
 import { getInventory } from './inventory';
 import { getAchievements } from './achievements';
 import { getKnowledge } from './almanac';
-import { getProductionLogs } from './productions';
+import { getProductionHistory, getProductionLogs } from './productions';
 import { getTransactions } from './transactions';
 import { getNotifications } from './notifications';
 import { getGlobalLeaderboard, getLeaderboardAroundPlayer } from './leaderboard';
@@ -302,6 +302,11 @@ function createRealService(): PlayFabService {
         const ticket = await resolveSessionTicket();
         if (!ticket) throw new Error('Please sign in again to load game production history.');
         return getProductionLogs(ticket);
+      },
+      getProductionHistory: async () => {
+        const ticket = await resolveSessionTicket();
+        if (!ticket) throw new Error('Please sign in again to load saved game progress.');
+        return getProductionHistory(ticket);
       },
 
       getTransactions: async () => {
