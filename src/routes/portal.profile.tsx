@@ -24,7 +24,7 @@ import {
   Twitter,
   Youtube,
 } from "lucide-react";
-import { useEffect, useMemo, useState } from "react";
+import { lazy, Suspense, useEffect, useMemo, useState } from "react";
 import { EMAIL_ERROR, USERNAME_ERROR, isValidEmail, isValidUsername } from "@/lib/validation";
 import { useQueryClient } from "@tanstack/react-query";
 import {
@@ -63,6 +63,12 @@ const defaultProfileAccount: ProfileAccount = {
   username: "CAMERA_PRO",
   email: "player@gmail.com",
 };
+
+const Avatar3DPreview = lazy(() =>
+  import("@/components/portal/avatar-3d-preview").then((module) => ({
+    default: module.Avatar3DPreview,
+  })),
+);
 
 function readProfileAccount(): ProfileAccount {
   if (typeof window === "undefined") return defaultProfileAccount;
@@ -862,12 +868,11 @@ function CrewProfilePage() {
             </header>
             <div className="grid min-h-0 flex-1 overflow-y-auto lg:grid-cols-[280px_minmax(0,1fr)]">
               <aside className="border-b border-[#121826]/15 bg-[#e9dfcc] p-5 lg:border-b-0 lg:border-r">
-                <div className="mx-auto grid size-40 place-items-center overflow-hidden rounded-full border-[5px] border-yellow bg-[#0d121c] shadow-lg">
-                  <Image src={profileImage} alt={profileDisplayName + " avatar"} width={160} height={160} unoptimized={profileImage.startsWith("blob:") || profileImage.startsWith("data:")} className="size-full object-cover object-[62%_45%]" />
-                </div>
+                <Suspense fallback={<div className="grid h-64 w-full place-items-center rounded-xl border border-[#121826]/15 bg-[#e4d8c1] text-[10px] font-bold uppercase tracking-wider text-[#303b4c]/65 sm:h-72">Preparing 3D avatar…</div>}>
+                  <Avatar3DPreview loadout={avatarDraftLoadout} displayName={profileDisplayName} />
+                </Suspense>
                 <p className="mt-3 text-center text-sm font-black uppercase tracking-wide">{profileDisplayName}</p>
-                <p className="text-center text-[10px] font-bold uppercase tracking-[0.14em] text-[#303b4c]/55">Profile picture</p>
-                <p className="mt-1 text-center text-[10px] leading-4 text-[#303b4c]/60">Item artwork previews are shown here. The live 3D avatar render is available in the game.</p>
+                <p className="text-center text-[10px] font-bold uppercase tracking-[0.14em] text-[#303b4c]/55">Live 3D avatar · drag to rotate</p>
                 <div className="mt-5 rounded-xl border border-[#121826]/10 bg-[#f8f2e6] p-3">
                   <p className="text-[10px] font-black uppercase tracking-[0.16em] text-[#aa7100]">Outfit preview</p>
                   <div className="mt-2 grid grid-cols-2 gap-2">
