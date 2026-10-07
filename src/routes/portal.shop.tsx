@@ -781,32 +781,28 @@ function ShopPage() {
                     {equipped[selectedItem.category] === selectedItem.id ? "Unequip" : "Equip"}
                   </button>
                 )}
-                <button
-                  type="button"
-                  className="shop-secondary-button"
-                  disabled={
-                    ownedIds.includes(selectedItem.id) ||
-                    cart.some((line) => line.itemId === selectedItem.id)
-                  }
-                  onClick={() => addToCart(selectedItem.id)}
-                >
-                  {ownedIds.includes(selectedItem.id)
-                    ? "Owned"
-                    : cart.some((line) => line.itemId === selectedItem.id)
-                      ? "In cart"
-                      : "Add to cart"}
-                </button>
-                <button
-                  type="button"
-                  className="shop-primary-button"
-                  disabled={ownedIds.includes(selectedItem.id)}
-                  onClick={() => {
-                    setSelectedItem(null);
-                    setConfirmTarget({ mode: "single", itemId: selectedItem.id });
-                  }}
-                >
-                  Buy now
-                </button>
+                {!ownedIds.includes(selectedItem.id) && (
+                  <>
+                    <button
+                      type="button"
+                      className="shop-secondary-button"
+                      disabled={cart.some((line) => line.itemId === selectedItem.id)}
+                      onClick={() => addToCart(selectedItem.id)}
+                    >
+                      {cart.some((line) => line.itemId === selectedItem.id) ? "In cart" : "Add to cart"}
+                    </button>
+                    <button
+                      type="button"
+                      className="shop-primary-button"
+                      onClick={() => {
+                        setSelectedItem(null);
+                        setConfirmTarget({ mode: "single", itemId: selectedItem.id });
+                      }}
+                    >
+                      Buy now
+                    </button>
+                  </>
+                )}
               </div>
             </div>
           </section>
