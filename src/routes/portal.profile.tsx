@@ -69,6 +69,15 @@ const Avatar3DPreview = lazy(() =>
     default: module.Avatar3DPreview,
   })),
 );
+const AVATAR_SETUP_PENDING_KEY = "cos.avatarSetupPending";
+const STARTER_AVATAR_LOADOUT: Record<string, string> = {
+  Body: "avatar-body-girl",
+  Face: "face-neutral-focus",
+  Hair: "hair-chestnut-bun",
+  Tops: "top-white-tee",
+  Bottoms: "bottom-teal-joggers",
+  "Shoe Wear": "shoe-slip-ons",
+};
 
 function readProfileAccount(): ProfileAccount {
   if (typeof window === "undefined") return defaultProfileAccount;
@@ -193,6 +202,7 @@ function CrewProfilePage() {
   const [avatarCategory, setAvatarCategory] = useState<"All" | CosmeticItem["category"]>("All");
   const [avatarDraftLoadout, setAvatarDraftLoadout] = useState<Record<string, string>>({});
   const [avatarStatus, setAvatarStatus] = useState("");
+  const [avatarSetupPending, setAvatarSetupPending] = useState(false);
 
   const [account, setAccount] = useState<ProfileAccount>(defaultProfileAccount);
 
@@ -203,6 +213,17 @@ function CrewProfilePage() {
   const [twitter, setTwitter] = useState("");
   const [instagram, setInstagram] = useState("");
   const [youtube, setYoutube] = useState("");
+
+  useEffect(() => {
+    if (!profileQuery.isSuccess || !loadoutQuery.isSuccess || typeof window === "undefined") return;
+    if (window.localStorage.getItem(AVATAR_SETUP_PENDING_KEY) !== "1") return;
+    setAvatarSetupPending(true);
+    const saved = loadoutQuery.data ?? {};
+    const savedFreeItems = Object.fromEntries(Object.entries(saved).filter(([, itemId]) => freeCosmeticIds.includes(itemId)));
+    setAvatarDraftLoadout({ ...STARTER_AVATAR_LOADOUT, ...savedFreeItems });
+    setAvatarCategory("All");
+    setAvatarOpen(true);
+  }, [profileQuery.isSuccess, loadoutQuery.isSuccess, loadoutQuery.data]);
 
   const [editMode, setEditMode] = useState(false);
   const [saved, setSaved] = useState(false);
@@ -462,13 +483,13 @@ function CrewProfilePage() {
   };
 
   const hasSocials = twitter || instagram || youtube;
-  const avatarCategories: Array<"All" | CosmeticItem["category"]> = ["All", "Face", "Body", "Hair", "Tops", "Bottoms", "Shoe Wear", "Accessories"];
+  const avatarCategories: Array<"All" | CosmeticItem["category"]> = ["All", "Body", "Face", "Hair", "Tops", "Bottoms", "Shoe Wear", "Accessories"];
   const avatarOwnedIds = new Set([
     ...ownedItems.map((item) => item.id),
     ...profileCosmeticItems.filter((item) => freeCosmeticIds.includes(item.id)).map((item) => item.id),
   ]);
   const visibleAvatarItems = profileCosmeticItems.filter((item) =>
-    avatarOwnedIds.has(item.id) && (avatarCategory === "All" || item.category === avatarCategory),
+    avatarOwnedIds.has(item.id) && (!avatarSetupPending || freeCosmeticIds.includes(item.id)) && (avatarCategory === "All" || item.category === avatarCategory),
   );
   const getAvatarItem = (slot: string) => profileCosmeticItems.find((item) => item.id === avatarDraftLoadout[slot]);
 
@@ -477,10 +498,23 @@ function CrewProfilePage() {
       .filter(([, item]) => item)
       .map(([slot, item]) => [slot, item!.id]));
     if (!equipped.Body) equipped.Body = "avatar-body-girl";
+    if (Object.keys(equipped).length === 1) Object.assign(equipped, { ...STARTER_AVATAR_LOADOUT, Body: equipped.Body });
     setAvatarDraftLoadout(equipped);
     setAvatarCategory("All");
     setAvatarStatus("");
     setAvatarOpen(true);
+  };
+
+  const finishAvatarSetup = async () => {
+    try {
+      await updateLoadoutMutation.mutateAsync(avatarDraftLoadout);
+      window.localStorage.removeItem(AVATAR_SETUP_PENDING_KEY);
+      setAvatarSetupPending(false);
+      setAvatarOpen(false);
+      setAvatarStatus("Your starter outfit is saved and synced to your game account.");
+    } catch (error) {
+      setAvatarStatus(error instanceof Error ? error.message : "Could not save your avatar. Please try again.");
+    }
   };
 
   const tryOnAvatarItem = (item: CosmeticItem) => {
@@ -890,6 +924,7 @@ function CrewProfilePage() {
                 </div>
               </aside>
               <div className="min-w-0 p-4 sm:p-6">
+                {avatarSetupPending && <p className="mb-4 rounded-lg border border-yellow/70 bg-yellow/20 px-3 py-2 text-xs font-bold text-[#51401c]">Choose from your free owned items, try them on, then save your starter look. You can add more items from the shop anytime.</p>}
                 <div className="flex flex-wrap gap-2">
                   {avatarCategories.map((category) => <button key={category} type="button" onClick={() => setAvatarCategory(category)} className={`rounded-md border px-3 py-2 text-[10px] font-black uppercase tracking-wide transition ${avatarCategory === category ? "border-[#121826] bg-yellow text-[#121826]" : "border-[#121826]/20 bg-white/60 text-[#303b4c] hover:bg-yellow/35"}`}>{category === "Shoe Wear" ? "Shoe Wear" : category}</button>)}
                   <Link href="/portal/shop" onClick={() => setAvatarOpen(false)} className="ml-auto rounded-md border border-[#121826]/20 bg-[#121826] px-3 py-2 text-[10px] font-black uppercase tracking-wide text-yellow hover:bg-[#263246]">Shop C-Coin items</Link>
@@ -918,6 +953,7 @@ function CrewProfilePage() {
                   })}
                 </div>
                 {visibleAvatarItems.length === 0 && <p className="rounded-xl border border-dashed border-[#121826]/20 p-8 text-center text-sm text-[#303b4c]/60">You don’t own any {avatarCategory === "All" ? "cosmetics" : avatarCategory} yet.</p>}
+                {avatarSetupPending && <div className="mt-5 flex justify-end"><button type="button" disabled={updateLoadoutMutation.isPending} onClick={() => void finishAvatarSetup()} className="rounded-md border border-[#121826] bg-[#121826] px-5 py-3 text-xs font-black uppercase tracking-wide text-yellow disabled:opacity-50">{updateLoadoutMutation.isPending ? "Saving…" : "Save starter avatar"}</button></div>}
               </div>
             </div>
           </section>

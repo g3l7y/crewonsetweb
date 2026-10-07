@@ -50,7 +50,7 @@ import {
 
 type Category = "All" | CosmeticCategory;
 type ViewMode = "shop" | "owned";
-const categories: Category[] = ["All", "Face", "Hair", "Body", "Tops", "Bottoms", "Shoe Wear", "Accessories"];
+const categories: Category[] = ["All", "Body", "Face", "Hair", "Tops", "Bottoms", "Shoe Wear", "Accessories"];
 const bundledFaceItems = cosmeticCatalog.filter((item) => item.category === "Face");
 
 const rarityStyles: Record<string, string> = {

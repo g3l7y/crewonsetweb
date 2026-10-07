@@ -19,6 +19,7 @@ type CrewAccessPageProps = {
   mode: "login" | "signup";
   scope?: "player" | "admin";
 };
+const AVATAR_SETUP_PENDING_KEY = "cos.avatarSetupPending";
 
 type GoogleTokenResponse = {
   access_token?: string;
@@ -265,13 +266,14 @@ export function CrewAccessPage({ mode, scope = "player" }: CrewAccessPageProps) 
       setError("");
       setLoading(true);
       try {
-        const destination = await registerWithCredentials(
+        await registerWithCredentials(
           username,
           email.trim(),
           password,
           acceptedPolicies,
         );
-        router.push(destination);
+        if (typeof window !== "undefined") window.localStorage.setItem(AVATAR_SETUP_PENDING_KEY, "1");
+        router.push("/portal/profile");
         router.refresh();
       } catch (err) {
         setError(err instanceof Error ? err.message : "Unable to create your account.");
@@ -672,7 +674,8 @@ export function CrewAccessPage({ mode, scope = "player" }: CrewAccessPageProps) 
         <GoogleProfileSetupModal
           onComplete={() => {
             setGoogleProfileSetupOpen(false);
-            router.push("/portal");
+            if (typeof window !== "undefined") window.localStorage.setItem(AVATAR_SETUP_PENDING_KEY, "1");
+            router.push("/portal/profile");
             router.refresh();
           }}
         />
