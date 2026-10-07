@@ -34,7 +34,7 @@ import {
   transactionsStore,
 } from "@/lib/demo/store";
 import { CosmeticArt } from "@/components/portal/cosmetic-art";
-import { cosmeticCatalog, equippedItemsStore, freeBodyItems, ownedItemsStore, type CosmeticItem } from "@/lib/demo/portal-shop";
+import { cosmeticCatalog, equippedItemsStore, freeBodyItems, freeCatalogItems, freeCosmeticIds, ownedItemsStore, type CosmeticItem } from "@/lib/demo/portal-shop";
 import { getProfileArtwork } from "@/lib/demo/profile-art";
 import { DEFAULT_PROFILE_PICTURE_URL } from "@/lib/profile-avatar";
 import { isMockMode } from "@/lib/playfab/config";
@@ -90,7 +90,7 @@ function CrewProfilePage() {
   const updateLoadoutMutation = useUpdateLoadout();
   const queryClient = useQueryClient();
 
-  const demoOwnedItems = cosmeticCatalog.filter((item) => ownedIds.includes(item.id));
+  const demoOwnedItems = [...cosmeticCatalog, ...freeBodyItems].filter((item) => ownedIds.includes(item.id) || freeCosmeticIds.includes(item.id));
   const realCatalogItems = useMemo(() => (catalogQuery.data ?? [])
     .map((remote) => {
       const category = remote.category as (typeof cosmeticCatalog)[number]["category"];
@@ -107,7 +107,7 @@ function CrewProfilePage() {
         id: remote.itemId,
         name: remote.displayName ?? "",
         category,
-        price: remote.price ?? 0,
+        price: freeCosmeticIds.includes(remote.itemId) ? 0 : remote.price ?? 0,
         rarity,
         description: remote.description ?? "",
         assetKey: remote.customData?.assetKey ?? "",
@@ -126,16 +126,17 @@ function CrewProfilePage() {
     : [
         ...realCatalogItems,
         ...bundledFaceItems.filter((item) => !realCatalogItems.some((remote) => remote.id === item.id)),
+        ...freeCatalogItems.filter((item) => !realCatalogItems.some((remote) => remote.id === item.id)),
         ...freeBodyItems,
       ];
   const realOwnedItems = profileCosmeticItems.filter((item) =>
-    item.category === "Face" || item.category === "Body" || inventoryQuery.data?.some((inventoryItem) => inventoryItem.itemId === item.id)
+    freeCosmeticIds.includes(item.id) || inventoryQuery.data?.some((inventoryItem) => inventoryItem.itemId === item.id)
   );
   const ownedItems = mockMode ? demoOwnedItems : realOwnedItems;
 
   const demoEquippedBySlot = Object.fromEntries(
     [...cosmeticCatalog, ...freeBodyItems].map((item) => [item.category, item.id]).filter(([slot, id]) =>
-      demoEquippedItems[slot as string] === id && ownedIds.includes(id as string)
+      demoEquippedItems[slot as string] === id && (ownedIds.includes(id as string) || freeCosmeticIds.includes(id as string))
     ).map(([slot, id]) => [slot, profileCosmeticItems.find((item) => item.id === id)]),
   );
   const realLoadout = loadoutQuery.data ?? {};
@@ -459,7 +460,7 @@ function CrewProfilePage() {
   const visibleAvatarItems = profileCosmeticItems.filter((item) => avatarCategory === "All" || item.category === avatarCategory);
   const avatarOwnedIds = new Set([
     ...ownedItems.map((item) => item.id),
-    ...profileCosmeticItems.filter((item) => item.category === "Face" || item.category === "Body").map((item) => item.id),
+    ...profileCosmeticItems.filter((item) => freeCosmeticIds.includes(item.id)).map((item) => item.id),
   ]);
   const getAvatarItem = (slot: string) => profileCosmeticItems.find((item) => item.id === avatarDraftLoadout[slot]);
 

@@ -30,6 +30,16 @@ export const freeBodyItems: CosmeticItem[] = [
   { id: "avatar-body-girl", name: "Crew Member · Girl", category: "Body", price: 0, rarity: "Common", description: "A free player body style.", assetKey: "body-girl" },
 ];
 
+/** These appearance choices are free and treated as owned in both app surfaces. */
+export const freeCatalogItems = cosmeticCatalog.filter((item) =>
+  ["hair-chestnut-bun", "hair-swept-fringe", "top-white-tee", "bottom-teal-joggers"].includes(item.id),
+);
+export const freeCosmeticIds = [
+  ...cosmeticCatalog.filter((item) => item.category === "Face").map((item) => item.id),
+  ...freeCatalogItems.map((item) => item.id),
+  ...freeBodyItems.map((item) => item.id),
+];
+
 export type CoinPackage = {
   id: string;
   coins: number;

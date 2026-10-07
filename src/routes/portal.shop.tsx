@@ -20,6 +20,8 @@ import { CosmeticArt } from "@/components/portal/cosmetic-art";
 import {
   cosmeticCatalog,
   freeBodyItems,
+  freeCatalogItems,
+  freeCosmeticIds,
   coinPackages,
   ownedItemsStore,
   cartStore,
@@ -137,7 +139,7 @@ function ShopPage() {
           id: remote.itemId,
           name,
           category,
-          price: remote.price ?? 0,
+          price: freeCosmeticIds.includes(remote.itemId) ? 0 : remote.price ?? 0,
           rarity,
           description,
           assetKey,
@@ -150,14 +152,14 @@ function ShopPage() {
     return [
       ...liveItems,
       ...bundledFaceItems.filter((item) => !liveItems.some((liveItem) => liveItem.id === item.id)),
+      ...freeCatalogItems.filter((item) => !liveItems.some((liveItem) => liveItem.id === item.id)),
       ...freeBodyItems,
     ];
   }, [catalogQuery.data, mockMode]);
 
-  const bundledFaceIds = bundledFaceItems.map((item) => item.id);
   const ownedIds = mockMode
-    ? [...new Set([...demoOwnedIds, ...bundledFaceIds, ...freeBodyItems.map((item) => item.id)])]
-    : [...new Set([...(inventoryQuery.data ?? []).map((item) => item.itemId), ...bundledFaceIds, ...freeBodyItems.map((item) => item.id)])];
+    ? [...new Set([...demoOwnedIds, ...freeCosmeticIds])]
+    : [...new Set([...(inventoryQuery.data ?? []).map((item) => item.itemId), ...freeCosmeticIds])];
   const balance = mockMode ? (demoWallet[0] ?? 0) : (walletQuery.data?.cCoins ?? 0);
   const loading =
     !mockMode && (catalogQuery.isLoading || walletQuery.isLoading || inventoryQuery.isLoading);
