@@ -71,7 +71,9 @@ export function useSession() {
   return useQuery({
     queryKey: QUERY_KEYS.session,
     queryFn: () => getPlayFabService().auth.getSession(),
-    staleTime: 5 * 60 * 1000,
+    // Auth can change between account sign-outs/sign-ins in the same SPA session.
+    // Recheck immediately on portal mount so player-specific queries use the new ID.
+    staleTime: 0,
     retry: false,
   });
 }
@@ -80,7 +82,7 @@ export function useSession() {
 export function usePlayerProfile() {
   const { data: session } = useSession();
   return useQuery({
-    queryKey: QUERY_KEYS.profile,
+    queryKey: [...QUERY_KEYS.profile, session?.playFabId],
     queryFn: () => getPlayFabService().player.getProfile(),
     enabled: !!session,
     staleTime: 2 * 60 * 1000,
@@ -122,7 +124,7 @@ export function usePlayerInventory() {
 export function usePlayerLoadout() {
   const { data: session } = useSession();
   return useQuery({
-    queryKey: QUERY_KEYS.loadout,
+    queryKey: [...QUERY_KEYS.loadout, session?.playFabId],
     queryFn: () => getPlayFabService().player.getLoadout(),
     enabled: !!session,
     staleTime: 0,
