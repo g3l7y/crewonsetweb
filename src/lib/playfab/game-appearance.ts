@@ -15,8 +15,8 @@ export type GameAppearance = {
 const WEBSITE_TO_GAME: Record<string, string> = {
   "accessory-crew-backpack": "character_accessory1",
   "accessory-rectangular-frames": "character_accessory2",
-  "accessory-utility-belt": "character_accessory3",
-  "accessory-set-gloves": "character_accessory4",
+  "accessory-set-gloves": "character_accessory3",
+  "accessory-utility-belt": "character_accessory4",
   "accessory-call-sheet-pass": "character_accessory5",
   "accessory-face-mask": "character_accessory6",
   "hair-chestnut-bun": "character_hair1",
