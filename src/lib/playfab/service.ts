@@ -277,14 +277,12 @@ function createRealService(): PlayFabService {
 
       getLoadout: async () => {
         const ticket = await resolveSessionTicket();
-        if (!ticket) return {};
-        try {
-          const data = await getUserData(ticket, [GAME_APPEARANCE_KEY, PLAYFAB_DATA_KEYS.loadout]);
-          const rawAppearance = data[GAME_APPEARANCE_KEY];
-          if (rawAppearance) return gameAppearanceToLoadout(JSON.parse(rawAppearance));
-          const rawLoadout = data[PLAYFAB_DATA_KEYS.loadout];
-          if (rawLoadout) return JSON.parse(rawLoadout);
-        } catch { /* Ignore malformed saved loadout and use an empty loadout. */ }
+        if (!ticket) throw new Error('Please sign in again to load your avatar.');
+        const data = await getUserData(ticket, [GAME_APPEARANCE_KEY, PLAYFAB_DATA_KEYS.loadout], true);
+        const rawAppearance = data[GAME_APPEARANCE_KEY];
+        if (rawAppearance) return gameAppearanceToLoadout(JSON.parse(rawAppearance));
+        const rawLoadout = data[PLAYFAB_DATA_KEYS.loadout];
+        if (rawLoadout) return JSON.parse(rawLoadout);
         return {};
       },
 
@@ -361,7 +359,7 @@ function createRealService(): PlayFabService {
 
       updateLoadout: async (loadout) => {
         const ticket = await resolveSessionTicket();
-        if (!ticket) return;
+        if (!ticket) throw new Error('Please sign in again to save your avatar.');
         const session = await fetch('/api/auth/session', { credentials: 'same-origin', cache: 'no-store' }).then((response) => response.ok ? response.json() : null).catch(() => null);
         const playerId = String(session?.session?.playFabId ?? session?.session?.PlayFabId ?? '');
         if (!playerId) throw new Error('Please sign in again to sync your avatar to the game.');
@@ -375,6 +373,11 @@ function createRealService(): PlayFabService {
           [PLAYFAB_DATA_KEYS.loadout]: JSON.stringify(completeLoadout),
         });
         if (!saved) throw new Error('PlayFab could not save your avatar. Please try again.');
+        const confirmed = await getUserData(ticket, [GAME_APPEARANCE_KEY], true);
+        const stored = JSON.parse(confirmed[GAME_APPEARANCE_KEY] || 'null');
+        if (stored?.change_id !== appearance.change_id) {
+          throw new Error('Your outfit changed on another device. Refresh your wardrobe before equipping again.');
+        }
       },
     },
 

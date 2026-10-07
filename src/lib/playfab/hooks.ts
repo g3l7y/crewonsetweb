@@ -455,7 +455,7 @@ export function useUpdateLoadout() {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: (loadout: Loadout) => getPlayFabService().player.updateLoadout(loadout),
-    onSuccess: () => {
+    onSettled: () => {
       queryClient.invalidateQueries({ queryKey: QUERY_KEYS.loadout });
       queryClient.invalidateQueries({ queryKey: QUERY_KEYS.inventory });
     },

@@ -173,7 +173,7 @@ export function Avatar3DPreview({ loadout, displayName, portrait = false, classN
       renderer.dispose();
       host.replaceChildren();
     };
-  }, [selection, displayName]);
+  }, [selection, displayName, portrait]);
 
   return (
     <div className={className ?? (portrait
