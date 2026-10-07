@@ -738,8 +738,8 @@ function GoogleProfileSetupModal({ onComplete }: { onComplete: () => void }) {
           Set up your profile
         </h2>
         <p className="mt-3 text-sm leading-relaxed text-navy/65">
-          Set a username and password for your PlayFab account. You can use these credentials to
-          sign in without Google, while keeping this same account and progress.
+          Set a username and password for your Crew On Set account. You can use these credentials to
+          sign in without Google while keeping the same account and game progress.
         </p>
         <form onSubmit={submit} className="mt-6">
           <label className="form-label">
@@ -871,8 +871,8 @@ function SignupPolicyDialog({ kind, onClose }: { kind: PolicyKind; onClose: () =
             body: "We may update or temporarily interrupt features as the service develops. We may restrict or suspend an account when needed to protect players, the service, or enforce these terms.",
           },
           {
-            title: "Third-party services",
-            body: "Some features rely on services such as Google sign-in, PlayFab, hosting, and payment providers. Their own terms and policies may also apply when you use those features.",
+            title: "Other services",
+            body: "Some features may open external sign-in or payment pages. The terms and privacy policies for those services may also apply when you use them.",
           },
         ]
       : [
@@ -885,8 +885,8 @@ function SignupPolicyDialog({ kind, onClose }: { kind: PolicyKind; onClose: () =
             body: "We use this information to create and secure accounts, provide game and community features, restore access, process and reconcile purchases, respond to support requests, review reports, prevent abuse, and improve the service.",
           },
           {
-            title: "Service providers",
-            body: "Information is handled by providers that help operate the service, such as PlayFab for account and game data, Google when you choose Google sign-in, Vercel for hosting, PayMongo for checkout, and email providers for service messages. They receive information as needed to provide their services.",
+            title: "How your information is handled",
+            body: "Trusted service providers may process information needed to support account access, game features, hosting, payments, and service messages. Each receives only the information needed to provide its service.",
           },
           {
             title: "Retention and protection",

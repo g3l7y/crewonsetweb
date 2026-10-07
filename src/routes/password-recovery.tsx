@@ -90,7 +90,7 @@ function PasswordRecoveryPage() {
         ) : (
           <form onSubmit={submit} className="mt-6 grid gap-4">
             <p className="text-sm leading-relaxed text-navy/65">
-              This secure PlayFab recovery link expires after 30 minutes. Choose a new password
+              This secure password recovery link expires after 30 minutes. Choose a new password
               below.
             </p>
             <label className="form-label">

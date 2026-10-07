@@ -28,9 +28,7 @@ type CheckoutResponse = {
 };
 
 /**
- * Checkout uses PayMongo Hosted Checkout in both demo and real modes. Mock
- * mode uses the PayMongo Test environment and never falls back to a local
- * payment form, so the payment flow remains an authentic provider flow.
+ * Checkout opens the configured secure payment page in both demo and real modes.
  */
 export default function CheckoutPage({ onBack }: CheckoutPageProps) {
   const mockMode = isMockMode();
@@ -81,7 +79,7 @@ export default function CheckoutPage({ onBack }: CheckoutPageProps) {
           minute: "2-digit",
           hour12: false,
         }),
-        bank: "PayMongo Test Checkout",
+        bank: "Demo Checkout",
         amount: pack.pricePhp,
         status: "Completed",
       },
@@ -230,12 +228,12 @@ export default function CheckoutPage({ onBack }: CheckoutPageProps) {
       const result = (await response.json().catch(() => ({}))) as CheckoutResponse;
 
       if (!response.ok || !result.checkoutUrl) {
-        throw new Error(result.error || "PayMongo checkout could not be started.");
+        throw new Error("We couldn't open checkout. Please try again.");
       }
 
       window.location.assign(result.checkoutUrl);
-    } catch (checkoutError) {
-      setError(checkoutError instanceof Error ? checkoutError.message : "PayMongo checkout could not be started.");
+    } catch {
+      setError("We couldn't open checkout. Please try again.");
       setProcessing(false);
     }
   }
@@ -271,13 +269,13 @@ export default function CheckoutPage({ onBack }: CheckoutPageProps) {
           <h1 className="mt-2 text-3xl font-black text-navy">Thanks for your order.</h1>
           <p className="mt-3 text-sm leading-relaxed text-navy/55">
             {formatCoins(totalCoins)} C-Coins has been credited to your wallet.
-            {mockMode ? " This is a demo checkout — no live money was charged." : " PayMongo confirmed the payment and PlayFab updated your wallet."}
+            {mockMode ? " This demo checkout did not charge real money." : " Your payment was confirmed and your wallet has been updated."}
           </p>
 
           <div className="mt-5 flex items-center gap-3 rounded-lg border border-navy/10 bg-navy/[0.03] p-3 text-left">
             <Mail className="size-5 shrink-0 text-coral" />
             <p className="text-xs text-navy/60">
-              {mockMode ? <>A demo confirmation was prepared for <strong>{email || "your email address"}</strong>.</> : <>Your PayMongo payment was confirmed securely.</>}
+              {mockMode ? <>A demo confirmation was prepared for <strong>{email || "your email address"}</strong>.</> : <>Your payment was confirmed securely.</>}
             </p>
           </div>
 
@@ -353,9 +351,9 @@ export default function CheckoutPage({ onBack }: CheckoutPageProps) {
               <div className="flex items-start gap-3">
                 <ShieldCheck className="mt-0.5 size-5 shrink-0 text-coral" />
                 <div>
-                  <p className="text-sm font-black text-navy">PayMongo Hosted Checkout</p>
+                  <p className="text-sm font-black text-navy">Secure checkout</p>
                   <p className="mt-1 text-xs leading-relaxed text-navy/50">
-                    The next screen is PayMongo's hosted payment page, where the customer chooses an enabled method and completes payment securely.
+                    Continue to the secure payment page to choose an available method and complete your purchase.
                   </p>
                   <p className="mt-2 text-[11px] font-black uppercase tracking-wide text-coral">
                     Card · GCash · QR Ph
@@ -377,17 +375,17 @@ export default function CheckoutPage({ onBack }: CheckoutPageProps) {
             >
               <LockKeyhole className="size-4" />
               {processing
-                ? "Opening PayMongo..."
+                ? "Opening secure checkout…"
                 : mockMode
-                  ? "Open PayMongo Test Checkout"
-                  : "Continue to PayMongo"}
+                  ? "Continue to demo checkout"
+                  : "Continue to secure checkout"}
             </button>
 
             <p className="flex items-center gap-2 text-[11px] text-navy/40">
               <ShieldCheck className="size-3.5 shrink-0" />
               {mockMode
-                ? "Demo mode uses PayMongo test checkout when configured; no live money is charged."
-                : "You will be redirected to PayMongo's secure hosted checkout."}
+                ? "Demo checkout does not charge real money."
+                : "You’ll continue to a secure payment page to finish checkout."}
             </p>
           </form>
         </section>

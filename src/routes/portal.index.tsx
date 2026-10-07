@@ -602,7 +602,7 @@ function PlayerDashboardPage() {
 
             {ownedItemsLoading ? (
               <p className="px-5 py-8 text-center text-sm text-white/40">
-                Syncing your collection…
+                Loading your collection…
               </p>
             ) : ownedItemsTotal === 0 ? (
               <p className="px-5 py-8 text-center text-sm text-white/40">
@@ -610,7 +610,7 @@ function PlayerDashboardPage() {
               </p>
             ) : dashboardOwnedItems.length === 0 ? (
               <p className="px-5 py-8 text-center text-sm text-white/40">
-                Your collection is synced, but item artwork is still loading.
+                Your collection is ready. Loading item artwork…
               </p>
             ) : (
               <div className="grid grid-cols-2 gap-3 p-5">

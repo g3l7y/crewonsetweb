@@ -380,8 +380,9 @@ export function ProductionLogs() {
                   </td>
                 </tr>
               ))}
-              {!mockMode && realLogsQuery.isLoading && <tr><td colSpan={7} className="py-8 text-center">Loading game progress…</td></tr>}
-              {!mockMode && !realLogsQuery.isLoading && logs.length === 0 && <tr><td colSpan={7} className="py-10 text-center text-navy/55">No game progress has synced yet. Completed contracts will appear here when Crew On Set! publishes them to PlayFab.</td></tr>}
+              {!mockMode && realLogsQuery.isLoading && <tr><td colSpan={7} className="py-8 text-center">Loading production history…</td></tr>}
+              {!mockMode && realLogsQuery.isError && <tr><td colSpan={7} className="py-8 text-center text-red-700">Couldn't load production history. Please try again.</td></tr>}
+              {!mockMode && !realLogsQuery.isLoading && !realLogsQuery.isError && logs.length === 0 && <tr><td colSpan={7} className="py-10 text-center text-navy/55">No completed productions yet. Finish a contract in the game and refresh to see your results here.</td></tr>}
             </tbody>
           </table>
         </div>

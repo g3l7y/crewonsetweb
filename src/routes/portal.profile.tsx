@@ -155,7 +155,7 @@ function CrewProfilePage() {
           }))
       : (transactionsQuery.data ?? []).map((transaction) => ({
           id: transaction.id,
-          label: transaction.description || "PlayFab transaction",
+          label: transaction.description || "Account transaction",
           detail: transaction.type + " — " + transaction.currency,
           amount: transaction.type === "purchase" || transaction.type === "spend"
             ? -Math.abs(transaction.amount)
@@ -318,7 +318,7 @@ function CrewProfilePage() {
           ...(avatarUrl !== undefined ? { avatarUrl } : {}),
         });
       } catch {
-        setFieldError("PlayFab could not save your profile changes. Please try again.");
+        setFieldError("Couldn't save your profile changes. Please try again.");
         return;
       }
     } else {
@@ -413,7 +413,7 @@ function CrewProfilePage() {
     }
 
     if (!mockMode && (draftEmail.trim() !== account.email || draftPassword.length > 0)) {
-      setFieldError("Email and password changes are managed by the PlayFab account service.");
+      setFieldError("Email and password changes aren't available from this page yet. Contact support if you need help.");
       return;
     }
 
@@ -453,7 +453,7 @@ function CrewProfilePage() {
 
   const confirmCredentialChange = () => {
     if (!mockMode) {
-      setConfirmError("Credential changes are managed by the PlayFab account service.");
+      setConfirmError("Account sign-in details can't be changed from this page yet. Contact support for help.");
       return;
     }
 

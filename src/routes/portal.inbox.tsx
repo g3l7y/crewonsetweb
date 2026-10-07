@@ -552,7 +552,7 @@ function InboxPage() {
 
     if (!mockMode) {
       if (!friend.playFabId) {
-        setComposerMessage("This friend is missing a real PlayFab ID.");
+        setComposerMessage("We couldn't find this player's account. Please choose another friend or try again.");
         return;
       }
       void fetch("/api/mail", {

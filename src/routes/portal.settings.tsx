@@ -615,7 +615,7 @@ function SettingsPage() {
 
   const handleDeleteAccount = () => {
     if (!mockMode) {
-      setDeleteError("Account deletion must be completed through the PlayFab account service.");
+      setDeleteError("Account deletion isn't available here yet. Contact support for help with your account.");
       return;
     }
     setDeleteError("");
