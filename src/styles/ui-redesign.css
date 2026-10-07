@@ -4258,3 +4258,47 @@ html[data-display-theme="dark"] .display-theme-switcher button[aria-pressed="tru
 .portal-theme.portal-high-contrast main :where(a, button, input, select, textarea):focus-visible {
   outline-width: 4px !important;
 }
+
+/* Keep the cart compact while giving its item list its own scroll area. */
+.shop-cart-drawer {
+  width: min(440px, calc(100vw - 2rem)) !important;
+  height: min(76dvh, 680px) !important;
+  max-height: calc(100dvh - 2rem) !important;
+  min-height: 0 !important;
+  overflow: hidden !important;
+  border-width: 1px !important;
+  border-radius: .9rem !important;
+}
+
+.shop-cart-drawer .cart-lines {
+  min-height: 0 !important;
+  flex: 1 1 auto !important;
+  overflow-x: hidden !important;
+  overflow-y: auto !important;
+  overscroll-behavior: contain;
+  scrollbar-width: thin;
+  scrollbar-color: var(--portal-muted) transparent;
+}
+
+.shop-cart-drawer .cart-lines::-webkit-scrollbar {
+  width: 8px;
+}
+
+.shop-cart-drawer .cart-lines::-webkit-scrollbar-thumb {
+  border: 2px solid transparent;
+  border-radius: 999px;
+  background: var(--portal-muted);
+  background-clip: padding-box;
+}
+
+.portal-theme.portal-dark .shop-cart-drawer {
+  border-color: rgba(254, 253, 248, .8) !important;
+  background: #0f1626 !important;
+}
+
+@media (max-height: 560px) {
+  .shop-cart-drawer {
+    height: calc(100dvh - 1rem) !important;
+    max-height: calc(100dvh - 1rem) !important;
+  }
+}
