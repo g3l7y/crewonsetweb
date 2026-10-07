@@ -45,7 +45,6 @@ import {
   useNotifications,
   usePurchaseItem,
   usePlayerLoadout,
-  useUpdateLoadout,
 } from "@/lib/playfab/hooks";
 
 type Category = "All" | CosmeticCategory;
@@ -95,8 +94,7 @@ function ShopPage() {
   const inventoryQuery = usePlayerInventory();
   const purchaseItem = usePurchaseItem();
   const loadoutQuery = usePlayerLoadout();
-  const updateLoadout = useUpdateLoadout();
-  const [demoEquipped, setDemoEquipped] = equippedItemsStore.useStore();
+  const [demoEquipped] = equippedItemsStore.useStore();
   const equipped = mockMode ? demoEquipped : (loadoutQuery.data ?? {});
   const realNotificationsQuery = useNotifications();
   const refreshPlayerNotifications = realNotificationsQuery.refetch;
@@ -211,22 +209,6 @@ function ShopPage() {
 
   function removeFromCart(itemId: string) {
     setCart(cart.filter((line) => line.itemId !== itemId));
-  }
-
-  async function equipItem(item: CosmeticItem) {
-    setShopError("");
-    if (!ownedIds.includes(item.id)) return;
-    const slot = item.category;
-    const next = { ...equipped };
-    if (next[slot] === item.id) delete next[slot];
-    else next[slot] = item.id;
-    try {
-      if (mockMode) setDemoEquipped(next);
-      else await updateLoadout.mutateAsync(next);
-      await loadoutQuery.refetch();
-    } catch (error) {
-      setShopError(error instanceof Error ? error.message : "Your outfit could not be updated.");
-    }
   }
 
   function startPackageCheckout(packageId: string) {
@@ -646,11 +628,7 @@ function ShopPage() {
                                 {equipped[item.category] === item.id ? "Equipped" : owned ? "Owned" : inCart ? "In cart" : "Available"}
                               </span>
                             </div>
-                            {owned ? (
-                              <button type="button" className="shop-secondary-button" onClick={() => void equipItem(item)}>
-                                {equipped[item.category] === item.id ? "Unequip" : "Equip"}
-                              </button>
-                            ) : (
+                            {!owned && (
                               <div className="shop-card-actions">
                                 <button
                                   type="button"
@@ -757,9 +735,9 @@ function ShopPage() {
                 <div className="shop-card-copy">
                   <p className="shop-category">{item.category}</p>
                   <h2>{item.name}</h2>
-                <button type="button" className="shop-secondary-button" onClick={() => void equipItem(item)}>
-                  {equipped[item.category] === item.id ? "Equipped · Unequip" : "Equip to avatar"}
-                </button>
+                <span className="shop-status">
+                  {equipped[item.category] === item.id ? "Equipped" : "Owned"}
+                </span>
                 </div>
               </article>
               ))}
@@ -819,11 +797,6 @@ function ShopPage() {
                 </span>
               </div>
               <div className="modal-actions">
-                {ownedIds.includes(selectedItem.id) && (
-                  <button type="button" className="shop-secondary-button" onClick={() => void equipItem(selectedItem)}>
-                    {equipped[selectedItem.category] === selectedItem.id ? "Unequip" : "Equip"}
-                  </button>
-                )}
                 {!ownedIds.includes(selectedItem.id) && (
                   <>
                     <button
