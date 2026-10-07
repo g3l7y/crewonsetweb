@@ -2843,6 +2843,11 @@ html .badges-panel .badges-copy {
   -webkit-text-fill-color: #0a0e19 !important;
 }
 
+.portal-theme.portal-dark .production-log-career {
+  color: #fefdf8 !important;
+  -webkit-text-fill-color: #fefdf8 !important;
+}
+
 .production-log-results-heading {
   color: #b98200 !important;
   -webkit-text-fill-color: #b98200 !important;
