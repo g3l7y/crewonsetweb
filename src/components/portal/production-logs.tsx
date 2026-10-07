@@ -89,12 +89,12 @@ export function ProductionLogs() {
         <h3 className="production-history-heading mt-5 text-sm font-black uppercase">Completed production history</h3>
         <div className="player-account-scroll-list almanac-content-scroll production-logs-list admin-table-wrap mt-5 border-navy/10">
           <table className="admin-table">
-            <thead><tr><th>Level</th><th>Product / Contract</th><th>Role</th><th>Client</th><th>Date</th><th>Score</th><th>Rank</th><th className="text-right">Info</th></tr></thead>
+            <thead><tr><th className="production-log-column-heading">Level</th><th className="production-log-column-heading">Product / Contract</th><th className="production-log-column-heading">Role</th><th className="production-log-column-heading">Client</th><th className="production-log-column-heading">Date</th><th className="production-log-column-heading">Score</th><th className="production-log-column-heading">Rank</th><th className="production-log-column-heading text-right">Info</th></tr></thead>
             <tbody>
               {logs.map((log) => (
                 <tr key={log.id}>
                   <td>{log.level || "—"}</td>
-                  <td className="font-bold">{log.production || (log.level ? `Level ${log.level} production` : "Production")}{typeof log.details["careerName"] === "string" && <span className="block text-xs font-normal">Career: {log.details["careerName"]}{log.details["archivedCareer"] === true ? " · Archived" : ""}</span>}</td>
+                  <td className="font-bold">{log.production || (log.level ? `Level ${log.level} production` : "Production")}{typeof log.details["careerName"] === "string" && <span className="production-log-career block text-xs font-normal">Career: {log.details["careerName"]}{log.details["archivedCareer"] === true ? " · Archived" : ""}</span>}</td>
                   <td>{log.role || "—"}</td>
                   <td>{log.client || "—"}</td>
                   <td className="whitespace-nowrap">{formatDate(log.date)}</td>
@@ -113,8 +113,8 @@ export function ProductionLogs() {
 
       {openLog && (
         <div className="fixed inset-0 z-[120] flex items-start justify-center overflow-y-auto bg-navy/70 p-4 backdrop-blur-sm sm:items-center sm:p-6" onClick={() => setOpenLog(null)}>
-          <div role="dialog" aria-modal="true" aria-label={openLog.production} onClick={(event) => event.stopPropagation()} className="production-log-dialog my-auto w-full max-w-3xl rounded-xl bg-white shadow-2xl">
-            <header className="flex items-start gap-4 border-b border-navy/10 p-5 sm:p-6">
+          <div role="dialog" aria-modal="true" aria-label={openLog.production} onClick={(event) => event.stopPropagation()} className="production-log-dialog my-auto flex max-h-[86vh] w-full max-w-3xl flex-col overflow-hidden rounded-xl bg-white shadow-2xl">
+            <header className="flex shrink-0 items-start gap-4 border-b border-navy/10 p-5 sm:p-6">
               <div className="min-w-0 flex-1">
                 <p className="text-[10px] font-black uppercase tracking-[.18em] text-coral">Level {openLog.level} · {openLog.role}</p>
                 <h3 className="production-log-title section-title mt-1 text-2xl text-navy sm:text-3xl">{openLog.production || `Level ${openLog.level} production`}</h3>
@@ -123,9 +123,9 @@ export function ProductionLogs() {
               <button type="button" onClick={() => setOpenLog(null)} aria-label="Close production details" className="rounded-md p-1.5 text-navy/40 transition hover:bg-navy/5 hover:text-navy"><X className="size-5" /></button>
             </header>
 
-            <div className="space-y-6 p-5 sm:p-6">
+            <div className="min-h-0 space-y-6 overflow-y-auto p-5 sm:p-6">
               <section className="space-y-3">
-                <h4 className="text-xs font-black uppercase tracking-[.16em] text-navy/60">Game Results</h4>
+                <h4 className="production-log-results-heading text-xs font-black uppercase tracking-[.16em]">Game Results</h4>
                 <div className="flex flex-wrap gap-4 text-sm">{([["Camera", "cameraScore", "/70"], ["Lighting", "lightingScore", "/30"], ["Recorded takes", "takes", ""]] as const).map(([label, key, unit]) => typeof openLog.details[key] === "number" ? <p key={key}>{label}: {String(openLog.details[key])}{unit}</p> : null)}</div>
                 <div className="grid gap-3 sm:grid-cols-3">
                   {([["Pre-production", openLog.preProductionScore], ["Production", openLog.productionScore], ["Post-production", openLog.postProductionScore]] as const).map(([label, score]) => <div key={label} className="rounded-lg border border-navy/10 bg-navy/[.03] p-3"><p className="text-[9px] font-black uppercase tracking-[.14em] text-navy/45">{label}</p><p className="mt-1 text-sm font-bold text-navy">{score == null ? "—" : `${score}/100`}</p></div>)}

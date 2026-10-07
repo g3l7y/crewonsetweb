@@ -2795,6 +2795,72 @@ html .badges-panel .badges-copy {
   color: #0a0e19 !important;
 }
 
+/* Keep the production log table headings visible while its three-row list scrolls. */
+.production-logs-list {
+  flex: 0 0 310px;
+  height: 310px !important;
+  min-height: 310px !important;
+  max-height: 310px !important;
+  overflow: auto !important;
+}
+
+.production-logs-list thead {
+  position: sticky;
+  top: 0;
+  z-index: 2;
+}
+
+.production-logs-list thead th.production-log-column-heading {
+  position: sticky;
+  top: 0;
+  z-index: 3;
+  background: #f0ede4 !important;
+  color: #b98200 !important;
+  -webkit-text-fill-color: #b98200 !important;
+}
+
+.portal-theme.portal-dark .production-logs-list thead th.production-log-column-heading {
+  background: #0f1626 !important;
+  color: #ffca28 !important;
+  -webkit-text-fill-color: #ffca28 !important;
+}
+
+.production-log-career {
+  color: #0a0e19 !important;
+  -webkit-text-fill-color: #0a0e19 !important;
+}
+
+.production-log-results-heading {
+  color: #b98200 !important;
+  -webkit-text-fill-color: #b98200 !important;
+}
+
+.portal-theme.portal-dark .production-log-results-heading {
+  color: #ffca28 !important;
+  -webkit-text-fill-color: #ffca28 !important;
+}
+
+.production-log-dialog {
+  max-height: 86vh;
+}
+
+.production-log-dialog > header {
+  background: #f0ede4;
+}
+
+.portal-theme.portal-dark .production-log-dialog > header {
+  background: #0f1626 !important;
+}
+
+@media (max-width: 639px) {
+  .production-logs-list {
+    flex-basis: 280px;
+    height: 280px !important;
+    min-height: 280px !important;
+    max-height: 280px !important;
+  }
+}
+
 .portal-theme.portal-light .leaderboard-list-table tbody td,
 .portal-theme.portal-light .leaderboard-list-table tbody td strong,
 .portal-theme.portal-light .leaderboard-list-table tbody td .leaderboard-rank {

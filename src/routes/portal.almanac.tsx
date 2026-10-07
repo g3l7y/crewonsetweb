@@ -581,7 +581,7 @@ function AlmanacPage() {
           display: flex;
           flex-direction: column;
           min-height: 0;
-          height: clamp(32rem, 68vh, 44rem);
+          height: clamp(38rem, 76vh, 50rem);
           max-height: none;
           overflow: hidden;
         }
