@@ -308,6 +308,17 @@ function mapRealProductionLog(log: PlayFabProductionLog): ProductionLog {
   };
 }
 
+function getDecisionNotes(value: string) {
+  let section = "decision";
+  return value.replace(/<\/?color(?:=[^>]+)?>/gi, "").replace(/<\/?b>/gi, "").split(/\r?\n/).map((line) => line.trim()).filter((line) => {
+    const heading = line.replace(/[^a-z ]/gi, "").trim().toLowerCase();
+    if (heading === "your next step") { section = "next"; return false; }
+    if (heading === "budget review") { section = "budget"; return false; }
+    if (section !== "decision" || /^recorded takes\s*:/i.test(line)) return false;
+    return Boolean(line);
+  }).join("\n");
+}
+
 export function ProductionLogs() {
   const mockMode = isMockMode();
   const realLogsQuery = useProductionLogs();
@@ -432,12 +443,12 @@ export function ProductionLogs() {
                   </div>
                   {Object.entries(phases).map(([phase, value]) => {
                     const phaseData = value && typeof value === "object" ? value as Record<string, unknown> : { feedback: value };
-                    const feedback = phaseData.feedback ?? phaseData.clientFeedback ?? phaseData.notes;
+                    const feedback = phaseData.feedback ?? phaseData.clientFeedback ?? phaseData.notes ?? phaseData.review;
                     return <div key={phase} className="rounded-lg border border-navy/10 p-3"><p className="text-[10px] font-black uppercase text-navy/60">{phase.replace(/([A-Z])/g, " $1")}</p>{typeof feedback === "string" && <p className="mt-1 text-sm text-navy/75">{feedback}</p>}</div>;
                   })}
                   <div className="grid gap-3 sm:grid-cols-2">
-                    <div className="rounded-lg border border-navy/10 p-3"><p className="text-[10px] font-black uppercase text-navy/50">Budget Review</p><p className="mt-1 text-sm text-navy/75">{spent == null && remaining == null ? "Budget details not synced yet." : `Spent: ${spent ?? "—"} · Remaining: ${remaining ?? "—"}`}</p>{typeof budget.feedback === "string" && <p className="mt-1 text-sm text-navy/65">{budget.feedback}</p>}</div>
-                    <div className="rounded-lg border border-navy/10 p-3"><p className="text-[10px] font-black uppercase text-navy/50">Client Decision</p><p className="mt-1 text-sm font-bold text-navy">{typeof details.clientDecision === "string" ? details.clientDecision : openLog.status === "accepted" ? "Contract accepted · awaiting result" : openLog.success ? "Passed" : "Failed"}</p></div>
+                    <div className="rounded-lg border border-navy/10 p-3"><p className="text-[10px] font-black uppercase text-navy/50">Budget Review</p>{typeof budget.feedback === "string" && budget.feedback.trim() ? <p className="mt-1 whitespace-pre-line text-sm text-navy/65">{budget.feedback}</p> : <p className="mt-1 text-sm text-navy/75">{spent == null && remaining == null ? "Budget details not synced yet." : `Spent: ${spent ?? "—"} · Remaining: ${remaining ?? "—"}`}</p>}</div>
+                    <div className="rounded-lg border border-navy/10 p-3"><p className="text-[10px] font-black uppercase text-navy/50">Client Decision</p><p className="mt-1 text-sm font-bold text-navy">{typeof details.clientDecision === "string" ? details.clientDecision : openLog.status === "accepted" ? "Contract accepted · awaiting result" : openLog.success ? "Passed" : "Failed"}</p>{getDecisionNotes(openLog.summary) && <p className="mt-2 whitespace-pre-line text-sm font-normal text-navy/75">{getDecisionNotes(openLog.summary)}</p>}</div>
                   </div>
                   {openLog.nextStep && <div className="rounded-lg border border-coral/25 bg-coral/[.06] p-3"><p className="text-[10px] font-black uppercase text-coral">Your Next Step</p><p className="mt-1 text-sm text-navy/75">{openLog.nextStep}</p></div>}
                 </section>;
@@ -456,25 +467,25 @@ export function ProductionLogs() {
                 ))}
               </div>
 
-              <div className="grid gap-5 sm:grid-cols-2">
+              {mockMode && <div className="grid gap-5 sm:grid-cols-2">
                 <div>
                   <p className="text-[10px] font-black uppercase tracking-[.16em] text-navy/45">
                     Shoot Summary
                   </p>
-                  <p className="mt-2 text-sm leading-relaxed text-navy/70">
+                  <p className="mt-2 whitespace-pre-line text-sm leading-relaxed text-navy/70">
                     {openLog.summary}
                   </p>
                 </div>
 
-                <div>
+                {mockMode && <div>
                   <p className="text-[10px] font-black uppercase tracking-[.16em] text-navy/45">
                     Setup Notes
                   </p>
                   <p className="mt-2 text-sm leading-relaxed text-navy/70">
                     {openLog.setupNotes}
                   </p>
-                </div>
-              </div>
+                </div>}
+              </div>}
 
               <div className="grid gap-3 sm:grid-cols-3">
                 <div className="flex items-center gap-2 rounded-lg border border-navy/10 p-3">
@@ -510,9 +521,9 @@ export function ProductionLogs() {
                 </div>
               </div>
 
-              <p className="rounded-lg border border-coral/25 bg-coral/[.06] p-4 text-sm leading-relaxed text-navy/75">
+              {mockMode && <p className="rounded-lg border border-coral/25 bg-coral/[.06] p-4 text-sm leading-relaxed text-navy/75">
                 {openLog.result}
-              </p>
+              </p>}
             </div>
           </div>
         </div>
