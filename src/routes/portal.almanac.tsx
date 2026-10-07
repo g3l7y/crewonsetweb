@@ -17,20 +17,15 @@ import { ProductionLogs } from "@/components/portal/production-logs";
 import { useSearchParams } from "@/components/next-compat/navigation";
 import { isMockMode } from "@/lib/playfab/config";
 import { useAchievements } from "@/lib/playfab/hooks";
+import { achievementEmoji } from "@/lib/achievement-emoji";
 import {
   Award,
-  Camera,
   CheckCircle2,
-  Clapperboard,
-  Crown,
-  Film,
   Lock,
   Medal,
   ScrollText,
   Sparkles,
-  Star,
   Trophy,
-  Users,
   X,
 } from "lucide-react";
 
@@ -40,7 +35,7 @@ type Achievement = {
   description: string;
   date?: string;
   unlocked: boolean;
-  icon: typeof Star;
+  icon: string;
   progress?: string;
   percent?: number;
   requirement?: string;
@@ -56,7 +51,7 @@ const demoAchievements: Achievement[] = [
     description: "Earn a 100% production rating.",
     date: "Aug 02, 2026",
     unlocked: true,
-    icon: Star,
+    icon: "⭐",
     requirement: "Earn a perfect 100% production rating.",
     levelUnlocked: 12,
     unlocks: "Precision Framing techniques and the S-Rank scoring breakdown.",
@@ -66,7 +61,7 @@ const demoAchievements: Achievement[] = [
     description: "Score over 100,000 in one production.",
     date: "Jul 19, 2026",
     unlocked: true,
-    icon: Trophy,
+    icon: "🎟️",
     requirement: "Score more than 100,000 points in a single production.",
     levelUnlocked: 18,
     unlocks: "Advanced client-rating tactics and the Box Office bonus multiplier guide.",
@@ -76,7 +71,7 @@ const demoAchievements: Achievement[] = [
     description: "Complete your first production.",
     date: "Mar 14, 2025",
     unlocked: true,
-    icon: Clapperboard,
+    icon: "🎬",
     requirement: "Complete your first production.",
     levelUnlocked: 1,
     unlocks: "On-set basics: call sheets, slate reading, and the production log system.",
@@ -86,7 +81,7 @@ const demoAchievements: Achievement[] = [
     description: "Replay a production five times.",
     date: "Jun 04, 2026",
     unlocked: true,
-    icon: Camera,
+    icon: "🎥",
     requirement: "Replay any production five times.",
     levelUnlocked: 8,
     unlocks: "Retake analysis knowledge and the shot-consistency training drills.",
@@ -97,7 +92,7 @@ const demoAchievements: Achievement[] = [
     progress: "87/100 Productions",
     percent: 87,
     unlocked: false,
-    icon: Film,
+    icon: "🎞️",
     requirement: "Complete 100 productions.",
     levelUnlocked: 40,
     unlocks: "The Veteran department dossier and legacy production archive access.",
@@ -108,7 +103,7 @@ const demoAchievements: Achievement[] = [
     progress: "27/50 Crew Level",
     percent: 54,
     unlocked: false,
-    icon: Award,
+    icon: "👑",
     requirement: "Reach Crew Level 50.",
     levelUnlocked: 50,
     unlocks: "Crew leadership knowledge and multi-department coordination playbook.",
@@ -119,7 +114,7 @@ const demoAchievements: Achievement[] = [
     progress: "2/10 Legendary Crew",
     percent: 20,
     unlocked: false,
-    icon: Users,
+    icon: "🤝",
     requirement: "Work with ten legendary crew members.",
     levelUnlocked: 35,
     unlocks: "Legendary collaboration perks and the co-op scoring knowledge set.",
@@ -130,7 +125,7 @@ const demoAchievements: Achievement[] = [
     progress: "3/10 Perfect Scores",
     percent: 30,
     unlocked: false,
-    icon: Crown,
+    icon: "✨",
     requirement: "Earn ten perfect production scores.",
     levelUnlocked: 45,
     unlocks: "The Flawless Reel masterclass and the perfect-run replay library.",
@@ -167,7 +162,7 @@ function AlmanacPage() {
     ...(item.unlockedAt ? { date: new Date(item.unlockedAt).toLocaleDateString() } : {}),
     ...(item.careerName ? { careerName: item.careerName } : {}),
     unlocked: item.unlocked,
-    icon: Trophy,
+    icon: achievementEmoji(item.title || item.name || item.id),
     ...(item.maxProgress > 0 ? {
       progress: item.progress + "/" + item.maxProgress,
       percent: Math.min(100, Math.round((item.progress / item.maxProgress) * 100)),
@@ -274,7 +269,6 @@ function AlmanacPage() {
 
             <div className="player-account-scroll-list almanac-content-scroll achievements-grid">
               {shownAchievements.map((achievement, index) => {
-                const AchievementIcon = achievement.icon;
                 if (achievement.placeholder) {
                   return (
                     <div
@@ -301,7 +295,7 @@ function AlmanacPage() {
                           achievement.unlocked ? "unlocked" : "locked"
                         }`}
                       >
-                        <AchievementIcon />
+                        <span aria-hidden="true" className="achievement-emoji">{achievement.icon}</span>
                       </div>
 
                       <div className="achievement-card-body">
@@ -399,7 +393,7 @@ function AlmanacPage() {
                   selectedAchievement.unlocked ? "unlocked" : "locked"
                 }`}
               >
-                <selectedAchievement.icon />
+                <span aria-hidden="true" className="achievement-emoji">{selectedAchievement.icon}</span>
               </div>
             </div>
 
@@ -803,6 +797,16 @@ function AlmanacPage() {
           height: 28px;
         }
 
+        .achievement-emoji {
+          font-size: 30px;
+          line-height: 1;
+        }
+
+        .achievement-icon.locked .achievement-emoji {
+          filter: grayscale(1);
+          opacity: 0.55;
+        }
+
         .achievement-icon.large {
           width: 64px;
           height: 64px;
@@ -812,6 +816,10 @@ function AlmanacPage() {
         .achievement-icon.large svg {
           width: 32px;
           height: 32px;
+        }
+
+        .achievement-icon.large .achievement-emoji {
+          font-size: 36px;
         }
 
         .achievement-icon.unlocked {
