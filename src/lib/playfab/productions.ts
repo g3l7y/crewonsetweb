@@ -96,10 +96,10 @@ export function mapDataToProductionLogs(data: any): ProductionLog[] {
     const sourcePhases = item.phases ?? item.details?.phases ?? {};
     const phaseValue = (camel: string, snake: string, feedbackField: string, scoreField: string) => {
       const phase = sourcePhases[camel] ?? sourcePhases[snake] ?? {};
-      const feedback = phase && typeof phase === 'object' ? phase.feedback ?? phase.clientFeedback ?? phase.notes : phase;
+      const feedback = phase && typeof phase === 'object' ? phase.feedback ?? phase.clientFeedback ?? phase.notes ?? phase.review : phase;
       const phaseScore = phase && typeof phase === 'object' ? phase.score : undefined;
       return {
-        ...(feedback != null ? { feedback } : (item[feedbackField] ?? item[snake + '_feedback']) != null ? { feedback: item[feedbackField] ?? item[snake + '_feedback'] } : {}),
+        ...(feedback != null ? { feedback } : (item[feedbackField] ?? item[snake + '_feedback'] ?? item[camel + 'Review'] ?? item[snake + '_review']) != null ? { feedback: item[feedbackField] ?? item[snake + '_feedback'] ?? item[camel + 'Review'] ?? item[snake + '_review'] } : {}),
         ...(phaseScore != null ? { score: phaseScore } : item[scoreField] != null ? { score: item[scoreField] } : {}),
       };
     };

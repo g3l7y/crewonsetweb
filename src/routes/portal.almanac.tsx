@@ -235,7 +235,7 @@ function AlmanacPage() {
         ) : (
           <section className="achievements-section almanac-content-panel p-4 sm:p-6">
             <div className="mb-4 flex items-center justify-between gap-3 text-sm">
-              <p>{mockMode ? "Demo achievements" : "Achievements recorded by the game. Career milestones use the game’s own definitions."}</p>
+              <p className="achievement-source-copy">{mockMode ? "Demo achievements" : "Achievements recorded by the game. Career milestones use the game’s own definitions."}</p>
               <button type="button" className="rounded border px-3 py-2 font-bold" disabled={achievementsQuery.isFetching} onClick={() => void achievementsQuery.refetch()}>{achievementsQuery.isFetching ? "Refreshing…" : "Refresh"}</button>
             </div>
             {achievementsQuery.isError && <p role="alert" className="mb-3 text-red-700">Could not refresh game achievements. Please retry.</p>}

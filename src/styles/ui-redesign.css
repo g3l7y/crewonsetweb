@@ -2802,6 +2802,18 @@ html .badges-panel .badges-copy {
   min-height: 310px !important;
   max-height: 310px !important;
   overflow: auto !important;
+  border: 2px solid #0a0e19 !important;
+  background: #f0ede4 !important;
+}
+
+.portal-theme.portal-dark .production-logs-list {
+  border-color: rgba(254, 253, 248, .72) !important;
+  background: #0f1626 !important;
+}
+
+.production-logs-list > table,
+.production-logs-list > table tbody {
+  background: transparent !important;
 }
 
 .production-logs-list thead {
@@ -2850,6 +2862,17 @@ html .badges-panel .badges-copy {
 
 .portal-theme.portal-dark .production-log-dialog > header {
   background: #0f1626 !important;
+}
+
+.portal-theme.portal-light .production-log-dialog .production-log-close,
+.portal-theme.portal-dark .production-log-dialog .production-log-close {
+  color: #dc2626 !important;
+  -webkit-text-fill-color: #dc2626 !important;
+}
+
+.portal-theme.portal-light .almanac-page .achievement-source-copy {
+  color: #0a0e19 !important;
+  -webkit-text-fill-color: #0a0e19 !important;
 }
 
 @media (max-width: 639px) {

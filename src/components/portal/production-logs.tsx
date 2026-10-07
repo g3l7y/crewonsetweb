@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react";
-import { Star, X } from "lucide-react";
+import { X } from "lucide-react";
 import { useProductionHistory } from "@/lib/playfab/hooks";
 import type { ProductionLog as GameProductionLog } from "@/lib/playfab/types";
 
@@ -18,6 +18,9 @@ type ProductionLog = {
   preProductionScore: number | undefined;
   productionScore: number | undefined;
   postProductionScore: number | undefined;
+  preProductionFeedback: string;
+  productionFeedback: string;
+  postProductionFeedback: string;
   details: Record<string, unknown>;
   nextStep: string | undefined;
 };
@@ -41,7 +44,21 @@ function cleanGameFeedback(value: string) {
 }
 
 function mapGameProduction(log: GameProductionLog): ProductionLog {
-  const details = (log.details && typeof log.details === "object" ? log.details : {}) as Record<string, unknown>;
+  const sourceDetails = (log.details && typeof log.details === "object" ? log.details : {}) as Record<string, unknown>;
+  const budgetDetails = (sourceDetails["budgetReview"] ?? sourceDetails["budget"]) as Record<string, unknown> | undefined;
+  const hasRootBudget = log.hasBudgetReview || [log.budgetOpeningBalance, log.budgetIncome, log.budgetUsed, log.budgetRemaining].some((value) => value != null);
+  const details = {
+    ...sourceDetails,
+    ...(budgetDetails || hasRootBudget ? { budgetReview: {
+      ...(budgetDetails ?? {}),
+      ...(log.budgetOpeningBalance != null ? { openingBalance: log.budgetOpeningBalance } : {}),
+      ...(log.budgetIncome != null ? { income: log.budgetIncome } : {}),
+      ...(log.budgetUsed != null ? { spent: log.budgetUsed } : {}),
+      ...(log.budgetRemaining != null ? { remaining: log.budgetRemaining } : {}),
+      ...(log.hasBudgetReview != null ? { available: log.hasBudgetReview } : {}),
+      ...(log.budgetFeedback ? { feedback: log.budgetFeedback } : {}),
+    } } : {}),
+  };
   const nextStep = log.nextStep || (typeof details["nextStep"] === "string" ? details["nextStep"] as string : undefined);
   return {
     id: log.id || log.productionId || log.submissionId || "",
@@ -58,6 +75,9 @@ function mapGameProduction(log: GameProductionLog): ProductionLog {
     preProductionScore: log.preProductionScore,
     productionScore: log.productionScore,
     postProductionScore: log.postProductionScore,
+    preProductionFeedback: log.preProductionFeedback || "",
+    productionFeedback: log.productionFeedback || "",
+    postProductionFeedback: log.postProductionFeedback || "",
     details,
     nextStep,
   };
@@ -120,7 +140,7 @@ export function ProductionLogs() {
                 <h3 className="production-log-title section-title mt-1 text-2xl text-navy sm:text-3xl">{openLog.production || `Level ${openLog.level} production`}</h3>
                 <p className="mt-1 text-xs font-semibold text-navy/50">Client: {openLog.client} · {formatDate(openLog.date)}</p>
               </div>
-              <button type="button" onClick={() => setOpenLog(null)} aria-label="Close production details" className="rounded-md p-1.5 text-navy/40 transition hover:bg-navy/5 hover:text-navy"><X className="size-5" /></button>
+              <button type="button" onClick={() => setOpenLog(null)} aria-label="Close production details" className="production-log-close rounded-md p-1.5 transition hover:bg-red-500/10"><X className="size-5" /></button>
             </header>
 
             <div className="min-h-0 space-y-6 overflow-y-auto p-5 sm:p-6">
@@ -128,13 +148,8 @@ export function ProductionLogs() {
                 <h4 className="production-log-results-heading text-xs font-black uppercase tracking-[.16em]">Game Results</h4>
                 <div className="flex flex-wrap gap-4 text-sm">{([["Camera", "cameraScore", "/70"], ["Lighting", "lightingScore", "/30"], ["Recorded takes", "takes", ""]] as const).map(([label, key, unit]) => typeof openLog.details[key] === "number" ? <p key={key}>{label}: {String(openLog.details[key])}{unit}</p> : null)}</div>
                 <div className="grid gap-3 sm:grid-cols-3">
-                  {([["Pre-production", openLog.preProductionScore], ["Production", openLog.productionScore], ["Post-production", openLog.postProductionScore]] as const).map(([label, score]) => <div key={label} className="rounded-lg border border-navy/10 bg-navy/[.03] p-3"><p className="text-[9px] font-black uppercase tracking-[.14em] text-navy/45">{label}</p><p className="mt-1 text-sm font-bold text-navy">{score == null ? "—" : `${score}/100`}</p></div>)}
+                  {([["Pre-production", openLog.preProductionScore, openLog.preProductionFeedback], ["Production", openLog.productionScore, openLog.productionFeedback], ["Post-production", openLog.postProductionScore, openLog.postProductionFeedback]] as const).filter(([, score, review]) => score != null || Boolean(review)).map(([label, score, review]) => <div key={label} className="rounded-lg border border-navy/10 bg-navy/[.03] p-3"><p className="text-[9px] font-black uppercase tracking-[.14em] text-navy/55">{label} Review</p>{score != null && <p className="mt-1 text-sm font-bold text-navy">{score}/100</p>}{review && <p className="mt-2 whitespace-pre-line text-sm text-navy/75">{cleanGameFeedback(review)}</p>}</div>)}
                 </div>
-                {Object.entries((openLog.details["phases"] && typeof openLog.details["phases"] === "object" ? openLog.details["phases"] : {}) as Record<string, unknown>).map(([phase, value]) => {
-                  const data = value && typeof value === "object" ? value as Record<string, unknown> : {};
-                  const feedback = typeof data["feedback"] === "string" ? data["feedback"] : "";
-                  return feedback ? <div key={phase} className="rounded-lg border border-navy/10 p-3"><p className="text-[10px] font-black uppercase text-navy/60">{phase.replace(/_/g, " ")}</p><p className="mt-1 whitespace-pre-line text-sm text-navy/75">{cleanGameFeedback(feedback)}</p></div> : null;
-                })}
                 {(() => {
                   const budget = (openLog.details["budgetReview"] && typeof openLog.details["budgetReview"] === "object" ? openLog.details["budgetReview"] : openLog.details["budget"]) as Record<string, unknown> | undefined;
                   const spent = budget?.["spent"] ?? budget?.["amount_spent"];
@@ -143,18 +158,14 @@ export function ProductionLogs() {
                   const income = budget?.["income"];
                   const trackingComplete = budget?.["tracking_complete"] ?? budget?.["complete"];
                   const trackingAvailable = budget?.["available"];
+                  const hasBudgetInfo = budget && [opening, income, spent, remaining, trackingComplete, trackingAvailable].some((item) => item != null);
                   return <div className="grid gap-3 sm:grid-cols-2">
-                    <div className="rounded-lg border border-navy/10 p-3"><p className="text-[10px] font-black uppercase text-navy/50">Budget Review</p><p className="mt-1 text-sm text-navy/75">{[opening, income, spent, remaining].some((item) => item != null) ? `Opening balance: ${opening ?? "—"} · Income: ${income ?? "—"} · Spent: ${spent ?? "—"} · Remaining: ${remaining ?? "—"}` : "—"}</p>{trackingAvailable === false && <p className="mt-1 text-sm text-navy/65">Budget tracking unavailable.</p>}{typeof trackingComplete === "boolean" && <p className="mt-1 text-sm text-navy/65">Tracking {trackingComplete ? "complete" : "incomplete"}.</p>}{typeof budget?.["feedback"] === "string" && <p className="mt-1 whitespace-pre-line text-sm text-navy/65">{cleanGameFeedback(budget["feedback"])}</p>}</div>
-                    <div className="rounded-lg border border-navy/10 p-3"><p className="text-[10px] font-black uppercase text-navy/50">Client Decision</p><p className="mt-1 text-sm font-bold text-navy">{openLog.result || "—"}</p></div>
+                    {hasBudgetInfo && <div className="rounded-lg border border-navy/10 p-3"><p className="text-[10px] font-black uppercase text-navy/50">Budget Review</p><p className="mt-1 text-sm text-navy/75">{[opening, income, spent, remaining].some((item) => item != null) ? `Opening balance: ${opening ?? "—"} · Income: ${income ?? "—"} · Spent: ${spent ?? "—"} · Remaining: ${remaining ?? "—"}` : "Budget information recorded."}</p>{trackingAvailable === false && <p className="mt-1 text-sm text-navy/65">Budget tracking unavailable.</p>}{typeof trackingComplete === "boolean" && <p className="mt-1 text-sm text-navy/65">Tracking {trackingComplete ? "complete" : "incomplete"}.</p>}</div>}
+                    {openLog.result && <div className="rounded-lg border border-navy/10 p-3"><p className="text-[10px] font-black uppercase text-navy/50">Client Decision</p><p className="mt-1 text-sm font-bold text-navy">{openLog.result}</p></div>}
                   </div>;
                 })()}
                 {openLog.nextStep && <div className="rounded-lg border border-coral/25 bg-coral/[.06] p-3"><p className="text-[10px] font-black uppercase text-coral">Your Next Step</p><p className="mt-1 text-sm text-navy/75">{openLog.nextStep}</p></div>}
               </section>
-              <div className="grid gap-5 sm:grid-cols-2">
-                <div><p className="text-[10px] font-black uppercase tracking-[.16em] text-navy/45">Game Feedback</p><p className="mt-2 whitespace-pre-line text-sm leading-relaxed text-navy/70">{cleanGameFeedback(openLog.summary) || "—"}</p></div>
-                <div><p className="text-[10px] font-black uppercase tracking-[.16em] text-navy/45">Setup Notes</p><p className="mt-2 whitespace-pre-line text-sm leading-relaxed text-navy/70">{cleanGameFeedback(openLog.setupNotes) || "—"}</p></div>
-              </div>
-              <div className="flex items-center gap-2 rounded-lg border border-navy/10 p-3"><Star className="size-4 text-yellow" /><div><p className="text-[9px] font-black uppercase tracking-[.16em] text-navy/40">Score</p><p className="text-sm font-bold text-navy">{openLog.score == null ? "—" : `${openLog.score}% · Rank ${openLog.rank}`}</p></div></div>
             </div>
           </div>
         </div>
