@@ -105,8 +105,8 @@ export const Route = createFileRoute("/api/auth/google")({
                 success: false,
                 error:
                   Number(pfResult.errorCode) === 1322
-                    ? "PlayFab is still finishing deletion of an account linked to this Google sign-in. Try again after the deletion is complete."
-                    : (pfResult.errorMessage ?? "Google sign-in failed in PlayFab."),
+                    ? "An account linked to this Google sign-in is still being closed. Please try again shortly."
+                    : "We couldn't sign you in with Google. Please try again.",
               } satisfies AuthResponse,
               { status: Number(pfResult.errorCode) === 1322 ? 409 : 401 },
             );

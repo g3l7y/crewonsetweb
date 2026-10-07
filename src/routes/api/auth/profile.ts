@@ -125,7 +125,9 @@ export const Route = createFileRoute("/api/auth/profile")({
           })) headers.append("Set-Cookie", cookie);
           return new Response(JSON.stringify({ success: true, username: username || session.username, email: session.email }), { headers });
         } catch (error) {
-          const message = error instanceof Error ? error.message : "PlayFab could not save your profile.";
+          const message = error instanceof Error && /name|display|email/i.test(error.message)
+            ? error.message
+            : "We couldn't save your profile. Please try again.";
           const status = /name|display|email/i.test(message) ? 409 : 400;
           return Response.json({ success: false, error: message }, { status });
         }

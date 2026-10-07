@@ -135,7 +135,7 @@ export const Route = createFileRoute("/api/auth/login")({
               return Response.json(
                 {
                   success: false,
-                  error: pfResult.errorMessage ?? "Invalid email or password.",
+                  error: "Invalid email or password.",
                 } satisfies AuthResponse,
                 { status: 401 },
               );

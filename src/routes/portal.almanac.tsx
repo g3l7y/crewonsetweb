@@ -367,7 +367,7 @@ function AlmanacPage() {
               <div className="empty-results">
                 <Trophy className="empty-icon" />
                 <h3>NO ACHIEVEMENTS FOUND</h3>
-                <p>{achievementsQuery.isLoading ? "Loading game achievements…" : achievementsQuery.isError ? "Could not read achievements from PlayFab. Please refresh to retry." : achievements.length ? "Try switching to another achievement filter." : "No achievement records are available for this account yet."}</p>
+                <p>{achievementsQuery.isLoading ? "Loading game achievements…" : achievementsQuery.isError ? "Couldn't load achievements. Please refresh to try again." : achievements.length ? "Try switching to another achievement filter." : "No achievement records are available for this account yet."}</p>
               </div>
             )}
           </section>

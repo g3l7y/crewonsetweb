@@ -50,7 +50,7 @@ import {
 
 type Category = "All" | CosmeticCategory;
 type ViewMode = "shop" | "owned";
-const categories: Category[] = ["All", "Hair", "Face", "Tops", "Bottoms", "Shoe Wear", "Accessories"];
+const categories: Category[] = ["All", "Face", "Hair", "Tops", "Bottoms", "Shoe Wear", "Accessories"];
 const bundledFaceItems = cosmeticCatalog.filter((item) => item.category === "Face");
 
 const rarityStyles: Record<string, string> = {
@@ -169,13 +169,22 @@ function ShopPage() {
     return catalog.filter((item) => {
       const matchesCategory = activeCategory === "All" || item.category === activeCategory;
       return matchesCategory && item.name.toLowerCase().includes(normalizedSearch);
-    });
+    }).sort((left, right) => categories.indexOf(left.category) - categories.indexOf(right.category));
   }, [activeCategory, catalog, search]);
 
   const ownedCatalogItems = useMemo(
-    () => catalog.filter((item) => ownedIds.includes(item.id)),
+    () => catalog.filter((item) => ownedIds.includes(item.id))
+      .sort((left, right) => categories.indexOf(left.category) - categories.indexOf(right.category)),
     [catalog, ownedIds],
   );
+  const filteredOwnedItems = useMemo(() => {
+    const normalizedSearch = search.trim().toLowerCase();
+    return ownedCatalogItems.filter((item) => {
+      const matchesCategory = activeCategory === "All" || item.category === activeCategory;
+      const matchesSearch = item.name.toLowerCase().includes(normalizedSearch);
+      return matchesCategory && matchesSearch;
+    });
+  }, [activeCategory, ownedCatalogItems, search]);
 
   const cartLines = useMemo(
     () =>
@@ -309,7 +318,7 @@ function ShopPage() {
                             timeZone: "UTC",
                           }),
                       timestamp: completedAt,
-                      bank: "PayMongo Test Checkout",
+                      bank: "Demo Checkout",
                       amount: paymentAmount,
                       status: "Completed",
                     },
@@ -355,7 +364,7 @@ function ShopPage() {
           status: "failure",
           coins: 0,
           message:
-            "The payment was not completed, so no C-Coins were added. If your payment provider shows a charge, please contact support.",
+            "The payment was not completed, so no C-Coins were added. If your bank or payment account shows a charge, please contact support.",
         });
         cleanPaymentReturnUrl();
       } else {
@@ -422,8 +431,8 @@ function ShopPage() {
           if (typeof result === "boolean" ? !result : !result.success) {
             throw new Error(
               typeof result === "boolean"
-                ? "PlayFab rejected the purchase."
-                : result.error || "PlayFab rejected the purchase.",
+                ? "We couldn't complete the purchase. Please try again."
+                : "We couldn't complete the purchase. Please try again.",
             );
           }
         }
@@ -584,7 +593,7 @@ function ShopPage() {
             </div>
 
             {loading ? (
-              <div className="shop-empty">Syncing the catalog from PlayFab…</div>
+              <div className="shop-empty">Loading shop items…</div>
             ) : (
               <section className="shop-grid" aria-label="Cosmetics catalog">
                 {filteredItems.map((item) => {
@@ -677,13 +686,13 @@ function ShopPage() {
             <section className="coin-pack-section" aria-labelledby="coin-pack-title">
               <div>
                 <p className="portal-kicker">
-                  {mockMode ? "PAYMONGO TEST TOP-UP" : "PAYMONGO WALLET TOP-UP"}
+                  {mockMode ? "C-COIN DEMO TOP-UP" : "C-COIN WALLET TOP-UP"}
                 </p>
                 <h2 id="coin-pack-title">More C-Coins, when the set needs them.</h2>
                 <p>
                   {mockMode
-                    ? "Demo accounts use PayMongo test checkout when configured, with a local fallback when test keys are unavailable."
-                    : "Pay securely through PayMongo. Available payment methods are shown on PayMongo's hosted checkout."}
+                    ? "Add C-Coins in this demo. No real payment will be taken."
+                    : "Securely add C-Coins to your wallet at checkout. Available payment methods will appear on the next screen."}
                 </p>
               </div>
               <div className="coin-pack-grid">
@@ -695,7 +704,7 @@ function ShopPage() {
                     </strong>
                     <p>{pack.priceLabel}</p>
                     <button type="button" onClick={() => startPackageCheckout(pack.id)}>
-                      {mockMode ? "Buy demo pack" : "Buy with PayMongo"}
+                      {mockMode ? "Add demo C-Coins" : "Add C-Coins"}
                     </button>
                   </article>
                 ))}
@@ -703,8 +712,32 @@ function ShopPage() {
             </section>
           </>
         ) : (
-          <section className="shop-grid" aria-label="Owned cosmetics">
-            {ownedCatalogItems.map((item) => (
+          <>
+            <div className="shop-filters">
+              <div className="shop-category-list" role="list" aria-label="Filter owned cosmetics by category">
+                {categories.map((category) => (
+                  <button
+                    key={category}
+                    type="button"
+                    onClick={() => setActiveCategory(category)}
+                    className={activeCategory === category ? "active" : ""}
+                  >
+                    {category}
+                  </button>
+                ))}
+              </div>
+              <label className="shop-search">
+                <Search aria-hidden="true" />
+                <span className="sr-only">Search owned cosmetics</span>
+                <input
+                  value={search}
+                  onChange={(event) => setSearch(event.target.value)}
+                  placeholder="Search owned items"
+                />
+              </label>
+            </div>
+            <section className="shop-grid" aria-label="Owned cosmetics">
+              {filteredOwnedItems.map((item) => (
               <article key={item.id} className="shop-card owned-card">
                 <button
                   type="button"
@@ -729,13 +762,16 @@ function ShopPage() {
                 </button>
                 </div>
               </article>
-            ))}
-            {ownedCatalogItems.length === 0 && (
-              <div className="shop-empty">
-                No synced cosmetics yet. Purchase a cosmetic to start your collection.
-              </div>
-            )}
-          </section>
+              ))}
+              {filteredOwnedItems.length === 0 && (
+                <div className="shop-empty">
+                  {ownedCatalogItems.length === 0
+                    ? "You haven't collected any cosmetics yet. Browse the shop to find your next look."
+                    : "No owned cosmetics match your filters."}
+                </div>
+              )}
+            </section>
+          </>
         )}
       </div>
 

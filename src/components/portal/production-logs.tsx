@@ -149,8 +149,8 @@ export function ProductionLogs() {
                 </tr>
               ))}
               {logsQuery.isLoading && <tr><td colSpan={8} className="py-8 text-center">Loading production history…</td></tr>}
-              {logsQuery.isError && <tr><td colSpan={8} className="py-8 text-center text-red-700">Could not load production history from PlayFab. Retrying automatically…</td></tr>}
-              {!logsQuery.isLoading && !logsQuery.isError && logs.length === 0 && <tr><td colSpan={8} className="py-10 text-center text-navy/55">{careers.length ? "Your saved careers are synced. They do not contain completed production results yet. Finish and submit a production in the game, then sync and refresh." : "No saved careers or completed productions were returned for this account. Sign into the same account in the game and sync, then refresh."}</td></tr>}
+              {logsQuery.isError && <tr><td colSpan={8} className="py-8 text-center text-red-700">Couldn't load production history. Please try again.</td></tr>}
+              {!logsQuery.isLoading && !logsQuery.isError && logs.length === 0 && <tr><td colSpan={8} className="py-10 text-center text-navy/55">{careers.length ? "Your career progress is saved, but there are no completed productions yet. Finish a production in the game to see your results here." : "No completed productions yet. Sign into the same account in the game, then refresh to check again."}</td></tr>}
             </tbody>
           </table>
         </div>
