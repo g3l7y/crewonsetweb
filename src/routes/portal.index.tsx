@@ -65,6 +65,10 @@ import {
 } from "@/lib/playfab/hooks";
 import { isMockMode } from "@/lib/playfab/config";
 import { sortNewestFirst } from "@/lib/validation";
+import { achievementEmoji } from "@/lib/achievement-emoji";
+
+const bundledFaceItems = cosmeticCatalog.filter((item) => item.category === "Face");
+const bundledFaceIds = bundledFaceItems.map((item) => item.id);
 
 const badges = [
   {
@@ -237,7 +241,7 @@ function PlayerDashboardPage() {
         )[index];
         return {
           id: achievement?.id ?? `real-locked-badge-${index}`,
-          icon: ["🎬", "⭐", "🏆", "🎥", "👑", "💯"][index] ?? "🎬",
+          icon: achievementEmoji(achievement?.title ?? ""),
           name: achievement?.title ?? "",
           unlocked: Boolean(achievement?.unlocked),
         };
@@ -305,10 +309,10 @@ function PlayerDashboardPage() {
 
   const catalog = useMemo(() => {
     if (mockMode) return cosmeticCatalog;
-    return (catalogQuery.data ?? [])
+    const liveItems = (catalogQuery.data ?? [])
       .map((remote) => {
         const category = remote.category as CosmeticItem["category"];
-        if (!["Hair", "Tops", "Bottoms", "Shoe Wear", "Accessories"].includes(category))
+        if (!["Face", "Hair", "Tops", "Bottoms", "Shoe Wear", "Accessories"].includes(category))
           return null;
         const rarityValue = String(remote.rarity ?? "").toLowerCase();
         const rarity =
@@ -342,32 +346,39 @@ function PlayerDashboardPage() {
         };
       })
       .filter((item): item is CosmeticItem => item !== null);
+    return [
+      ...liveItems,
+      ...bundledFaceItems.filter((faceItem) => !liveItems.some((item) => item.id === faceItem.id)),
+    ];
   }, [catalogQuery.data, mockMode]);
 
-  const ownedIds = mockMode ? demoOwnedIds : (inventoryQuery.data ?? []).map((item) => item.itemId);
-  const ownedItems = useMemo(
-    () => catalog.filter((item) => ownedIds.includes(item.id)),
-    [catalog, ownedIds],
-  );
+  const ownedIds = mockMode
+    ? [...new Set([...bundledFaceIds, ...demoOwnedIds])]
+    : [...new Set([...(inventoryQuery.data ?? []).map((item) => item.itemId), ...bundledFaceIds])];
   const recentMockOwnedItems = useMemo(
     () =>
-      ownedIds
+      [...new Set([...bundledFaceIds, ...demoOwnedIds])]
         .map((id) => catalog.find((item) => item.id === id))
         .filter((item): item is CosmeticItem => item !== undefined)
         .slice(-2),
-    [catalog, ownedIds],
+    [catalog, demoOwnedIds],
   );
   const recentRealOwnedItems = useMemo(
     () =>
-      [...(inventoryQuery.data ?? [])]
-        .sort((a, b) => new Date(b.acquiredAt).getTime() - new Date(a.acquiredAt).getTime())
+      [
+        ...(inventoryQuery.data ?? []),
+        ...bundledFaceItems
+          .filter((faceItem) => !(inventoryQuery.data ?? []).some((item) => item.itemId === faceItem.id))
+          .map((item) => ({ itemId: item.id, acquiredAt: "" })),
+      ]
+        .sort((a, b) => (Date.parse(b.acquiredAt) || 0) - (Date.parse(a.acquiredAt) || 0))
         .map((inventoryItem) => catalog.find((item) => item.id === inventoryItem.itemId))
         .filter((item): item is CosmeticItem => item !== undefined)
         .slice(0, 2),
     [catalog, inventoryQuery.data],
   );
   const dashboardOwnedItems = mockMode ? recentMockOwnedItems : recentRealOwnedItems;
-  const ownedItemsTotal = mockMode ? ownedItems.length : (inventoryQuery.data?.length ?? 0);
+  const ownedItemsTotal = ownedIds.length;
   const ownedItemsLoading = !mockMode && (catalogQuery.isLoading || inventoryQuery.isLoading);
 
   return (
