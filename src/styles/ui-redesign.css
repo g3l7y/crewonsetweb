@@ -2808,6 +2808,7 @@ html .badges-panel .badges-copy {
 
 .portal-theme.portal-dark .production-logs-list {
   border-color: rgba(254, 253, 248, .72) !important;
+  border-top: 1px solid rgba(254, 253, 248, .9) !important;
   background: #0f1626 !important;
 }
 
