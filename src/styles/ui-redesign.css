@@ -2795,6 +2795,15 @@ html .badges-panel .badges-copy {
   color: #0a0e19 !important;
 }
 
+.portal-theme.portal-dark .production-logs-list {
+  border-top: 1px solid rgba(254, 253, 248, .9) !important;
+}
+
+.portal-theme.portal-dark .production-log-career {
+  color: #fefdf8 !important;
+  -webkit-text-fill-color: #fefdf8 !important;
+}
+
 .portal-theme.portal-light .leaderboard-list-table tbody td,
 .portal-theme.portal-light .leaderboard-list-table tbody td strong,
 .portal-theme.portal-light .leaderboard-list-table tbody td .leaderboard-rank {
