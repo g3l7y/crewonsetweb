@@ -493,14 +493,22 @@ function CrewProfilePage() {
 
               {/* PROFILE PHOTO */}
 
-              <div className="relative size-36 shrink-0 overflow-hidden rounded-full border-[6px] border-yellow bg-[#0d121c] shadow-2xl shadow-black/30">
-                <Image
-                  src={profileImage}
-                  alt={profileDisplayName + " avatar"}
-                  fill
-                  unoptimized={profileImage.startsWith("blob:") || profileImage.startsWith("data:")}
-                  className="object-cover object-[62%_45%]"
-                />
+              <div className="flex shrink-0 flex-col items-center gap-3">
+                <div className="relative size-36 overflow-hidden rounded-full border-[6px] border-yellow bg-[#0d121c] shadow-2xl shadow-black/30">
+                  <Image
+                    src={profileImage}
+                    alt={profileDisplayName + " avatar"}
+                    fill
+                    unoptimized={profileImage.startsWith("blob:") || profileImage.startsWith("data:")}
+                    className="object-cover object-[62%_45%]"
+                  />
+                </div>
+                <button
+                  type="button"
+                  className="rounded-md border border-yellow/30 bg-[#0d121c] px-4 py-2 text-xs font-black uppercase tracking-[0.08em] text-yellow transition hover:border-yellow hover:bg-yellow/10"
+                >
+                  View Avatar
+                </button>
               </div>
 
               {/* NAME / ROLE / LEVEL */}
