@@ -15,7 +15,6 @@ export const Route = createFileRoute("/portal/settings")({
   component: SettingsPage,
 });
 
-import Image from "@/components/next-compat/image";
 import { ChangeEvent, useCallback, useEffect, useRef, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import {
@@ -40,8 +39,6 @@ import { DisplayThemeSwitcher } from "@/components/theme/display-theme-switcher"
 import { PasswordRecoveryModal } from "@/components/password-recovery-modal";
 import { isMockMode } from "@/lib/playfab/config";
 import { QUERY_KEYS, usePlayerProfile, useUpdateProfile } from "@/lib/playfab/hooks";
-import { DEFAULT_PROFILE_PICTURE_URL, isManagedProfileAvatarUrl } from "@/lib/profile-avatar";
-import { readImageAsDataUrl, savePlayerAvatar } from "@/lib/profile-avatar-client";
 import {
   bugCategories,
   adminNotificationsStore,
@@ -84,7 +81,6 @@ const sections = [
 type AccountData = {
   username: string;
   email: string;
-  avatar: string;
 };
 
 type Preferences = {
@@ -102,14 +98,7 @@ type Preferences = {
 const defaultAccount: AccountData = {
   username: "CAMERA_PRO",
   email: "player@gmail.com",
-  avatar: DEFAULT_PROFILE_PICTURE_URL,
 };
-
-function getSavedAvatar(value: unknown): string {
-  if (typeof value !== "string") return DEFAULT_PROFILE_PICTURE_URL;
-  if (value === DEFAULT_PROFILE_PICTURE_URL || value.startsWith("data:image/") || isManagedProfileAvatarUrl(value)) return value;
-  return DEFAULT_PROFILE_PICTURE_URL;
-}
 
 const defaultPreferences: Preferences = {
   profileVisibility: true,
@@ -143,7 +132,6 @@ function SettingsPage() {
   const [account, setAccount] = useState<AccountData>(defaultAccount);
 
   const [savedAccount, setSavedAccount] = useState<AccountData>(defaultAccount);
-  const [avatarSaving, setAvatarSaving] = useState(false);
 
   const [preferences, setPreferences] = useState<Preferences>(defaultPreferences);
 
@@ -211,7 +199,6 @@ function SettingsPage() {
   const [emailChangeSaving, setEmailChangeSaving] = useState(false);
   const handledEmailChangeLink = useRef("");
 
-  const fileInput = useRef<HTMLInputElement>(null);
 
   /* =========================================================
   LOAD SAVED SETTINGS
@@ -234,20 +221,18 @@ function SettingsPage() {
         : null;
 
       const storedAccountData = storedAccount
-        ? JSON.parse(storedAccount) as Partial<AccountData> & { displayName?: string; avatarUrl?: string }
+        ? JSON.parse(storedAccount) as { username?: string; email?: string; displayName?: string }
         : null;
       const loadedAccount = !mockMode && profile
         ? {
             username: profile.username || profile.displayName || "player",
             email: profile.email || "",
-            avatar: profile.avatarUrl || defaultAccount.avatar,
           }
         : storedAccountData
         ? {
             ...defaultAccount,
             username: storedAccountData.username || storedAccountData.displayName || defaultAccount.username,
             email: storedAccountData.email || defaultAccount.email,
-            avatar: getSavedAvatar(storedAccountData.avatarUrl ?? storedAccountData.avatar),
           }
         : profileIdentity?.username
           ? {
@@ -521,46 +506,6 @@ function SettingsPage() {
     setCredentialConfirmPassword("");
     setEditing(null);
     setDraftValue("");
-  };
-
-  /* =========================================================
-     AVATAR
-  ========================================================= */
-
-  const handleAvatarChange = async (event: ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0];
-    event.target.value = "";
-    if (!file) return;
-
-    if (!["image/jpeg", "image/png"].includes(file.type)) {
-      showMessage("Please select a JPG or PNG image.", "error");
-      return;
-    }
-
-    if (file.size > 5 * 1024 * 1024) {
-      showMessage("Avatar must be smaller than 5 MB.", "error");
-      return;
-    }
-
-    setAvatarSaving(true);
-    try {
-      const avatarUrl = mockMode
-        ? await readImageAsDataUrl(file)
-        : await savePlayerAvatar(file);
-      if (mockMode) await updateProfileMutation.mutateAsync({ avatarUrl });
-      const nextAccount = { ...account, avatar: avatarUrl };
-      setAccount(nextAccount);
-      setSavedAccount(nextAccount);
-      if (mockMode) {
-        window.localStorage.setItem("player-account", JSON.stringify({ ...nextAccount, avatarUrl }));
-      }
-      await queryClient.invalidateQueries({ queryKey: QUERY_KEYS.profile });
-      showMessage("Avatar updated.");
-    } catch (error) {
-      showMessage(error instanceof Error ? error.message : "The avatar could not be saved.", "error");
-    } finally {
-      setAvatarSaving(false);
-    }
   };
 
   /* =========================================================
@@ -1091,46 +1036,6 @@ function SettingsPage() {
                     </div>
                   )}
 
-                  {/* AVATAR */}
-
-                  <div className="flex flex-col justify-between gap-4 py-5 sm:flex-row sm:items-center">
-                    <div className="flex items-center gap-4">
-                      <div className="relative size-16 overflow-hidden rounded-full border-2 border-yellow bg-[#0d121c]">
-                        <Image
-                          src={account.avatar}
-                          alt="Player avatar"
-                          fill
-                      unoptimized={account.avatar.startsWith("data:")}
-                          className="object-cover object-[62%_45%]"
-                        />
-                      </div>
-
-                      <div>
-                        <p className="text-[10px] font-black uppercase tracking-wider text-white/30">
-                          Avatar
-                        </p>
-
-                        <p className="mt-1 text-sm text-white/40">JPG or PNG, up to 5 MB</p>
-                      </div>
-                    </div>
-
-                    <input
-                      ref={fileInput}
-                      type="file"
-                      accept="image/png,image/jpeg"
-                      className="hidden"
-                      onChange={handleAvatarChange}
-                    />
-
-                    <button
-                      type="button"
-                      onClick={() => fileInput.current?.click()}
-                      disabled={avatarSaving}
-                      className="w-fit rounded-md border border-white/10 px-3 py-2 text-xs font-black text-white/45 transition hover:border-coral hover:text-coral disabled:cursor-wait disabled:opacity-50"
-                    >
-                      {avatarSaving ? "SAVING…" : "CHANGE"}
-                    </button>
-                  </div>
                 </div>
 
                 {/* DELETE ACCOUNT */}
