@@ -31,7 +31,7 @@ import type {
   CurrencyType,
   ItemRarity,
 } from './types';
-import { cosmeticCatalog } from '@/lib/demo/portal-shop';
+import { cosmeticCatalog, freeBodyItems } from '@/lib/demo/portal-shop';
 import { DEFAULT_PROFILE_PICTURE_URL } from '@/lib/profile-avatar';
 
 // Helper for simulated delay
@@ -152,6 +152,8 @@ const MOCK_INVENTORY: InventoryItem[] = [
 ];
 
 let MOCK_LOADOUT: Loadout = {
+  Face: 'face-neutral-focus',
+  Body: 'avatar-body-girl',
   Hair: 'hair-chestnut-bun',
   Tops: 'top-utility-vest',
   Accessories: 'accessory-rectangular-frames',
@@ -445,7 +447,7 @@ const MOCK_ADMIN_NOTIFS: AdminNotification[] = [
   { id: 'an-3', title: 'Build 0.9.2-beta Live', body: 'Game build 0.9.2-beta has been published.', kind: 'build', href: '/admin/game', read: true, createdAt: '2026-08-15T01:00:00Z' },
 ];
 
-const MOCK_SHOP_CATALOG: InventoryItem[] = cosmeticCatalog.map((item) => ({
+const MOCK_SHOP_CATALOG: InventoryItem[] = [...cosmeticCatalog, ...freeBodyItems].map((item) => ({
   itemId: item.id,
   displayName: item.name,
   category: item.category,

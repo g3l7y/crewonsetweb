@@ -34,13 +34,13 @@ import {
   transactionsStore,
 } from "@/lib/demo/store";
 import { CosmeticArt } from "@/components/portal/cosmetic-art";
-import { cosmeticCatalog, equippedItemsStore, ownedItemsStore } from "@/lib/demo/portal-shop";
+import { cosmeticCatalog, equippedItemsStore, freeBodyItems, ownedItemsStore, type CosmeticItem } from "@/lib/demo/portal-shop";
 import { getProfileArtwork } from "@/lib/demo/profile-art";
 import { DEFAULT_PROFILE_PICTURE_URL } from "@/lib/profile-avatar";
 import { isMockMode } from "@/lib/playfab/config";
 import { achievementEmoji } from "@/lib/achievement-emoji";
 import { formatSocialUsername, getSocialProfileUrl, normalizeSocialProfile } from "@/lib/profile-socials";
-import { QUERY_KEYS, useAchievements, useCatalog, usePlayerInventory, usePlayerLoadout, usePlayerProfile, usePlayerProgression, useTransactions, useUpdateProfile } from "@/lib/playfab/hooks";
+import { QUERY_KEYS, useAchievements, useCatalog, usePlayerInventory, usePlayerLoadout, usePlayerProfile, usePlayerProgression, useTransactions, useUpdateLoadout, useUpdateProfile } from "@/lib/playfab/hooks";
 import { Coins, Lock } from "lucide-react";
 
 type ProfileTransaction = {
@@ -87,13 +87,14 @@ function CrewProfilePage() {
   const loadoutQuery = usePlayerLoadout();
   const transactionsQuery = useTransactions();
   const updateProfileMutation = useUpdateProfile();
+  const updateLoadoutMutation = useUpdateLoadout();
   const queryClient = useQueryClient();
 
   const demoOwnedItems = cosmeticCatalog.filter((item) => ownedIds.includes(item.id));
   const realCatalogItems = useMemo(() => (catalogQuery.data ?? [])
     .map((remote) => {
       const category = remote.category as (typeof cosmeticCatalog)[number]["category"];
-      if (!["Hair", "Tops", "Bottoms", "Shoe Wear", "Accessories"].includes(category)) return null;
+      if (!["Face", "Hair", "Tops", "Bottoms", "Shoe Wear", "Accessories"].includes(category)) return null;
       const rarityValue = String(remote.rarity ?? "").toLowerCase();
       const rarity = rarityValue === "rare"
         ? "Rare"
@@ -110,25 +111,37 @@ function CrewProfilePage() {
         rarity,
         description: remote.description ?? "",
         assetKey: remote.customData?.assetKey ?? "",
-        imageUrl: remote.customData?.imageUrl ?? "",
         imagePath: cosmeticCatalog.find((candidate) =>
           candidate.id === remote.itemId || candidate.assetKey === (remote.customData?.assetKey ?? "")
         )?.imagePath,
+        imageUrl: cosmeticCatalog.some((candidate) =>
+          candidate.id === remote.itemId || candidate.assetKey === (remote.customData?.assetKey ?? "")
+        ) ? "" : remote.customData?.imageUrl ?? "",
       };
     })
     .filter((item): item is (typeof cosmeticCatalog)[number] => item !== null), [catalogQuery.data]);
-  const realOwnedItems = realCatalogItems.filter((item) =>
-    inventoryQuery.data?.some((inventoryItem) => inventoryItem.itemId === item.id)
+  const bundledFaceItems = cosmeticCatalog.filter((item) => item.category === "Face");
+  const profileCosmeticItems = mockMode
+    ? [...cosmeticCatalog, ...freeBodyItems]
+    : [
+        ...realCatalogItems,
+        ...bundledFaceItems.filter((item) => !realCatalogItems.some((remote) => remote.id === item.id)),
+        ...freeBodyItems,
+      ];
+  const realOwnedItems = profileCosmeticItems.filter((item) =>
+    item.category === "Face" || item.category === "Body" || inventoryQuery.data?.some((inventoryItem) => inventoryItem.itemId === item.id)
   );
   const ownedItems = mockMode ? demoOwnedItems : realOwnedItems;
 
   const demoEquippedBySlot = Object.fromEntries(
-    cosmeticCatalog.map((item) => [item.category, item.id]).filter(([slot, id]) =>
+    [...cosmeticCatalog, ...freeBodyItems].map((item) => [item.category, item.id]).filter(([slot, id]) =>
       demoEquippedItems[slot as string] === id && ownedIds.includes(id as string)
-    ).map(([slot, id]) => [slot, demoOwnedItems.find((item) => item.id === id)]),
+    ).map(([slot, id]) => [slot, profileCosmeticItems.find((item) => item.id === id)]),
   );
   const realLoadout = loadoutQuery.data ?? {};
   const realEquippedBySlot = {
+    Face: realOwnedItems.find((item) => item.id === (realLoadout.Face ?? realLoadout.face)),
+    Body: realOwnedItems.find((item) => item.id === (realLoadout.Body ?? realLoadout.body)) ?? realOwnedItems.find((item) => item.id === "avatar-body-girl"),
     Hair: realOwnedItems.find((item) => item.id === (realLoadout.Hair ?? realLoadout.hair)),
     Tops: realOwnedItems.find((item) => item.id === (realLoadout.Tops ?? realLoadout.tops ?? realLoadout.Shirt ?? realLoadout.shirt ?? realLoadout.costume)),
     Bottoms: realOwnedItems.find((item) => item.id === (realLoadout.Bottoms ?? realLoadout.bottoms)),
@@ -169,6 +182,10 @@ function CrewProfilePage() {
   const [profileImage, setProfileImage] = useState(
     DEFAULT_PROFILE_PICTURE_URL
   );
+  const [avatarOpen, setAvatarOpen] = useState(false);
+  const [avatarCategory, setAvatarCategory] = useState<"All" | CosmeticItem["category"]>("All");
+  const [avatarDraftLoadout, setAvatarDraftLoadout] = useState<Record<string, string>>({});
+  const [avatarStatus, setAvatarStatus] = useState("");
 
   const [account, setAccount] = useState<ProfileAccount>(defaultProfileAccount);
 
@@ -438,6 +455,44 @@ function CrewProfilePage() {
   };
 
   const hasSocials = twitter || instagram || youtube;
+  const avatarCategories: Array<"All" | CosmeticItem["category"]> = ["All", "Face", "Body", "Hair", "Tops", "Bottoms", "Shoe Wear", "Accessories"];
+  const visibleAvatarItems = profileCosmeticItems.filter((item) => avatarCategory === "All" || item.category === avatarCategory);
+  const avatarOwnedIds = new Set([
+    ...ownedItems.map((item) => item.id),
+    ...profileCosmeticItems.filter((item) => item.category === "Face" || item.category === "Body").map((item) => item.id),
+  ]);
+  const getAvatarItem = (slot: string) => profileCosmeticItems.find((item) => item.id === avatarDraftLoadout[slot]);
+
+  const openAvatarCustomizer = () => {
+    const equipped = Object.fromEntries(Object.entries(equippedBySlot)
+      .filter(([, item]) => item)
+      .map(([slot, item]) => [slot, item!.id]));
+    if (!equipped.Body) equipped.Body = "avatar-body-girl";
+    setAvatarDraftLoadout(equipped);
+    setAvatarCategory("All");
+    setAvatarStatus("");
+    setAvatarOpen(true);
+  };
+
+  const tryOnAvatarItem = (item: CosmeticItem) => {
+    setAvatarDraftLoadout((current) => ({ ...current, [item.category]: item.id }));
+    setAvatarStatus(`Trying on ${item.name}. This preview is not saved yet.`);
+  };
+
+  const equipAvatarItem = async (item: CosmeticItem) => {
+    if (!avatarOwnedIds.has(item.id)) {
+      setAvatarStatus("You need to own this cosmetic before equipping it.");
+      return;
+    }
+    const next = { ...avatarDraftLoadout, [item.category]: item.id };
+    try {
+      await updateLoadoutMutation.mutateAsync(next);
+      setAvatarDraftLoadout(next);
+      setAvatarStatus(`${item.name} equipped. The game will sync this outfit from your account.`);
+    } catch (error) {
+      setAvatarStatus(error instanceof Error ? error.message : "Could not sync this outfit. Please try again.");
+    }
+  };
 
   return (
     <div className="portal-title-page min-h-screen bg-[#0d121c] px-4 pb-12 text-white sm:px-6 lg:px-8">
@@ -505,6 +560,7 @@ function CrewProfilePage() {
                 </div>
                 <button
                   type="button"
+                  onClick={openAvatarCustomizer}
                   className="rounded-md border border-yellow/30 bg-[#0d121c] px-4 py-2 text-xs font-black uppercase tracking-[0.08em] text-yellow transition hover:border-yellow hover:bg-yellow/10"
                 >
                   View Avatar
@@ -787,6 +843,78 @@ function CrewProfilePage() {
           </div>
         </section>
       </div>
+
+      {avatarOpen && (
+        <div className="fixed inset-0 z-[70] flex items-center justify-center bg-[#05080d]/85 p-3 backdrop-blur-md sm:p-6" onMouseDown={(event) => { if (event.target === event.currentTarget) setAvatarOpen(false); }}>
+          <section role="dialog" aria-modal="true" aria-labelledby="avatar-customizer-title" className="flex max-h-[94vh] w-full max-w-6xl flex-col overflow-hidden rounded-2xl border-2 border-yellow/70 bg-[#f1eadb] text-[#121826] shadow-2xl">
+            <header className="flex items-start justify-between gap-4 border-b-2 border-[#121826]/15 bg-[#e6dcc7] px-5 py-4 sm:px-7">
+              <div>
+                <p className="text-[10px] font-black uppercase tracking-[0.2em] text-[#aa7100]">Crew wardrobe</p>
+                <h2 id="avatar-customizer-title" className="mt-1 text-2xl font-black uppercase tracking-wide sm:text-3xl">View Avatar</h2>
+                <p className="mt-1 text-sm text-[#303b4c]/75">Try on cosmetics, then equip owned items to sync your outfit to the game.</p>
+              </div>
+              <button type="button" aria-label="Close avatar customizer" onClick={() => setAvatarOpen(false)} className="grid size-10 shrink-0 place-items-center rounded-lg border border-[#121826]/20 bg-[#f8f2e6] text-[#121826] transition hover:bg-yellow">
+                <X className="size-5" />
+              </button>
+            </header>
+            <div className="grid min-h-0 flex-1 overflow-y-auto lg:grid-cols-[280px_minmax(0,1fr)]">
+              <aside className="border-b border-[#121826]/15 bg-[#e9dfcc] p-5 lg:border-b-0 lg:border-r">
+                <div className="mx-auto grid size-40 place-items-center overflow-hidden rounded-full border-[5px] border-yellow bg-[#0d121c] shadow-lg">
+                  <Image src={profileImage} alt={profileDisplayName + " avatar"} width={160} height={160} unoptimized={profileImage.startsWith("blob:") || profileImage.startsWith("data:")} className="size-full object-cover object-[62%_45%]" />
+                </div>
+                <p className="mt-3 text-center text-sm font-black uppercase tracking-wide">{profileDisplayName}</p>
+                <p className="text-center text-[10px] font-bold uppercase tracking-[0.14em] text-[#303b4c]/55">Profile picture</p>
+                <p className="mt-1 text-center text-[10px] leading-4 text-[#303b4c]/60">Item artwork previews are shown here. The live 3D avatar render is available in the game.</p>
+                <div className="mt-5 rounded-xl border border-[#121826]/10 bg-[#f8f2e6] p-3">
+                  <p className="text-[10px] font-black uppercase tracking-[0.16em] text-[#aa7100]">Outfit preview</p>
+                  <div className="mt-2 grid grid-cols-2 gap-2">
+                    {loadoutSlots.map((slot) => {
+                      const item = getAvatarItem(slot);
+                      return <div key={slot} className="min-w-0 rounded-lg border border-[#121826]/10 bg-white/60 p-2">
+                        <span className="block text-[9px] font-black uppercase tracking-wide text-[#303b4c]/55">{slot}</span>
+                        {item ? <div className="mt-1 flex items-center gap-2">
+                          <div className="size-9 shrink-0 overflow-hidden rounded-md bg-[#eee7d9]">{item.imageUrl ? <img src={item.imageUrl} alt="" className="size-full object-contain" /> : <CosmeticArt item={item} className="size-full" />}</div>
+                          <span className="truncate text-[10px] font-bold">{item.name}</span>
+                        </div> : <p className="mt-1 text-[10px] text-[#303b4c]/45">Default</p>}
+                      </div>;
+                    })}
+                  </div>
+                </div>
+              </aside>
+              <div className="min-w-0 p-4 sm:p-6">
+                <div className="flex flex-wrap gap-2">
+                  {avatarCategories.map((category) => <button key={category} type="button" onClick={() => setAvatarCategory(category)} className={`rounded-md border px-3 py-2 text-[10px] font-black uppercase tracking-wide transition ${avatarCategory === category ? "border-[#121826] bg-yellow text-[#121826]" : "border-[#121826]/20 bg-white/60 text-[#303b4c] hover:bg-yellow/35"}`}>{category === "Shoe Wear" ? "Shoe Wear" : category}</button>)}
+                  <Link href="/portal/shop" onClick={() => setAvatarOpen(false)} className="ml-auto rounded-md border border-[#121826]/20 bg-[#121826] px-3 py-2 text-[10px] font-black uppercase tracking-wide text-yellow hover:bg-[#263246]">Shop C-Coin items</Link>
+                </div>
+                {avatarStatus && <p role="status" className="mt-4 rounded-lg border border-[#aa7100]/25 bg-yellow/20 px-3 py-2 text-xs font-bold text-[#51401c]">{avatarStatus}</p>}
+                {updateLoadoutMutation.isPending && <p className="mt-3 text-xs font-bold text-[#303b4c]/65">Syncing your outfit to your game account…</p>}
+                <div className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-3 xl:grid-cols-4">
+                  {visibleAvatarItems.map((item) => {
+                    const owned = avatarOwnedIds.has(item.id);
+                    const equipped = equippedBySlot[item.category]?.id === item.id;
+                    const previewed = avatarDraftLoadout[item.category] === item.id;
+                    return <article key={item.id} className={`flex min-w-0 flex-col overflow-hidden rounded-xl border-2 bg-[#f8f2e6] shadow-[3px_3px_0_#12182622] ${previewed ? "border-yellow" : "border-[#121826]/15"}`}>
+                      <div className="relative aspect-square bg-[#eee7d9] p-3">{item.imageUrl ? <img src={item.imageUrl} alt={item.name} className="size-full object-contain" /> : <CosmeticArt item={item} className="size-full" />}
+                        <span className="absolute left-2 top-2 rounded-full border border-[#121826]/15 bg-[#fffaf0] px-2 py-1 text-[8px] font-black uppercase tracking-wide text-[#aa7100]">{item.category}</span>
+                      </div>
+                      <div className="flex flex-1 flex-col p-3">
+                        <h3 className="line-clamp-2 min-h-9 text-xs font-black uppercase leading-4">{item.name}</h3>
+                        <p className="mt-1 text-[10px] font-bold text-[#aa7100]">{item.price === 0 ? "FREE" : `${item.price.toLocaleString()} C-COINS`}</p>
+                        <p className="mt-1 text-[10px] font-bold text-[#303b4c]/55">{equipped ? "Equipped" : owned ? "Owned" : "Available"}</p>
+                        <div className="mt-3 grid grid-cols-2 gap-2">
+                          <button type="button" onClick={() => tryOnAvatarItem(item)} className="rounded-md border border-[#121826]/20 bg-yellow px-2 py-2 text-[9px] font-black uppercase tracking-wide hover:bg-yellow/75">Try On</button>
+                          {owned ? <button type="button" disabled={equipped || updateLoadoutMutation.isPending} onClick={() => void equipAvatarItem(item)} className="rounded-md border border-[#121826] bg-[#121826] px-2 py-2 text-[9px] font-black uppercase tracking-wide text-white disabled:opacity-50">{equipped ? "Equipped" : "Equip"}</button> : <Link href="/portal/shop" onClick={() => setAvatarOpen(false)} className="rounded-md border border-coral bg-coral px-2 py-2 text-center text-[9px] font-black uppercase tracking-wide text-white hover:bg-coral/85">Buy</Link>}
+                        </div>
+                      </div>
+                    </article>;
+                  })}
+                </div>
+                {visibleAvatarItems.length === 0 && <p className="rounded-xl border border-dashed border-[#121826]/20 p-8 text-center text-sm text-[#303b4c]/60">No cosmetics are listed in this category yet.</p>}
+              </div>
+            </div>
+          </section>
+        </div>
+      )}
 
       {/* =========================================================
           EDIT PROFILE MODAL

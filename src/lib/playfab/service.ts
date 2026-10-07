@@ -15,6 +15,7 @@ import { getNotifications } from './notifications';
 import { getGlobalLeaderboard, getLeaderboardAroundPlayer } from './leaderboard';
 import { getFriendsList } from './friends';
 import { DEFAULT_PROFILE_PICTURE_URL, isManagedProfileAvatarUrl } from '../profile-avatar';
+import { GAME_APPEARANCE_KEY, gameAppearanceToLoadout, mergeLoadoutIntoGameAppearance } from './game-appearance';
 
 // Cached session ticket in memory for fast authenticated Client API calls
 let _cachedTicket: string | null = null;
@@ -278,11 +279,11 @@ function createRealService(): PlayFabService {
         const ticket = await resolveSessionTicket();
         if (!ticket) return {};
         try {
-          const data = await getUserData(ticket, [PLAYFAB_DATA_KEYS.loadout]);
+          const data = await getUserData(ticket, [GAME_APPEARANCE_KEY, PLAYFAB_DATA_KEYS.loadout]);
+          const rawAppearance = data[GAME_APPEARANCE_KEY];
+          if (rawAppearance) return gameAppearanceToLoadout(JSON.parse(rawAppearance));
           const rawLoadout = data[PLAYFAB_DATA_KEYS.loadout];
-          if (rawLoadout) {
-            return JSON.parse(rawLoadout);
-          }
+          if (rawLoadout) return JSON.parse(rawLoadout);
         } catch { /* Ignore malformed saved loadout and use an empty loadout. */ }
         return {};
       },
@@ -361,9 +362,19 @@ function createRealService(): PlayFabService {
       updateLoadout: async (loadout) => {
         const ticket = await resolveSessionTicket();
         if (!ticket) return;
-        await updateUserData(ticket, {
-          [PLAYFAB_DATA_KEYS.loadout]: JSON.stringify(loadout),
+        const session = await fetch('/api/auth/session', { credentials: 'same-origin', cache: 'no-store' }).then((response) => response.ok ? response.json() : null).catch(() => null);
+        const playerId = String(session?.session?.playFabId ?? session?.session?.PlayFabId ?? '');
+        if (!playerId) throw new Error('Please sign in again to sync your avatar to the game.');
+        const current = await getUserData(ticket, [GAME_APPEARANCE_KEY, PLAYFAB_DATA_KEYS.loadout], true);
+        let existing: unknown = undefined;
+        try { existing = current[GAME_APPEARANCE_KEY] ? JSON.parse(current[GAME_APPEARANCE_KEY]) : undefined; } catch { /* Replace malformed appearance with the selected website outfit. */ }
+        const appearance = mergeLoadoutIntoGameAppearance(loadout, playerId, existing);
+        const completeLoadout = gameAppearanceToLoadout(appearance);
+        const saved = await updateUserData(ticket, {
+          [GAME_APPEARANCE_KEY]: JSON.stringify(appearance),
+          [PLAYFAB_DATA_KEYS.loadout]: JSON.stringify(completeLoadout),
         });
+        if (!saved) throw new Error('PlayFab could not save your avatar. Please try again.');
       },
     },
 

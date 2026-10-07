@@ -251,6 +251,8 @@ export interface InventoryItem {
  */
 export interface Loadout {
   /** Current portal cosmetic slots. */
+  Face?: string | undefined;
+  Body?: string | undefined;
   Hair?: string | undefined;
   Tops?: string | undefined;
   Bottoms?: string | undefined;

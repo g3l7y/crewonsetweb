@@ -1221,9 +1221,9 @@ export const adminNotificationsStore = createStore<AdminNotification>("cos.admin
 
 /* --------------------------------------------------------- equipped loadout */
 
-export type LoadoutSlot = "Hair" | "Tops" | "Bottoms" | "Shoe Wear" | "Accessories";
+export type LoadoutSlot = "Face" | "Body" | "Hair" | "Tops" | "Bottoms" | "Shoe Wear" | "Accessories";
 
-export const loadoutSlots: LoadoutSlot[] = ["Hair", "Tops", "Bottoms", "Shoe Wear", "Accessories"];
+export const loadoutSlots: LoadoutSlot[] = ["Face", "Body", "Hair", "Tops", "Bottoms", "Shoe Wear", "Accessories"];
 
 export type LoadoutPiece = {
   slot: LoadoutSlot;

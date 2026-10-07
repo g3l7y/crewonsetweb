@@ -10,6 +10,7 @@ export const PLAYFAB_DATA_KEYS = {
   progression: "progression",
   stats: "stats",
   loadout: "loadout",
+  character_appearance: "character_appearance",
   almanac_unlocked: "almanac_unlocked",
   production_logs: "production_logs",
   transactions: "transactions",

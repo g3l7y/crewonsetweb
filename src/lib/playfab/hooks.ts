@@ -125,7 +125,8 @@ export function usePlayerLoadout() {
     queryKey: QUERY_KEYS.loadout,
     queryFn: () => getPlayFabService().player.getLoadout(),
     enabled: !!session,
-    staleTime: 2 * 60 * 1000,
+    staleTime: 0,
+    refetchInterval: session ? 15_000 : false,
   });
 }
 

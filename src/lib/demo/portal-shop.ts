@@ -3,7 +3,7 @@
 import { createStore } from "@/lib/demo/store";
 import shopProducts from "./shop-products.json";
 
-export type CosmeticCategory = "Hair" | "Face" | "Tops" | "Bottoms" | "Shoe Wear" | "Accessories";
+export type CosmeticCategory = "Hair" | "Face" | "Body" | "Tops" | "Bottoms" | "Shoe Wear" | "Accessories";
 
 export type CosmeticItem = {
   id: string;
@@ -23,6 +23,12 @@ export type CosmeticItem = {
 };
 
 export const cosmeticCatalog = shopProducts as CosmeticItem[];
+
+/** Body choices are free, always owned, and map to the game's two built-in rigs. */
+export const freeBodyItems: CosmeticItem[] = [
+  { id: "avatar-body-boy", name: "Crew Member · Boy", category: "Body", price: 0, rarity: "Common", description: "A free player body style.", assetKey: "body-boy" },
+  { id: "avatar-body-girl", name: "Crew Member · Girl", category: "Body", price: 0, rarity: "Common", description: "A free player body style.", assetKey: "body-girl" },
+];
 
 export type CoinPackage = {
   id: string;

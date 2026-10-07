@@ -19,6 +19,7 @@ import { useSearchParams } from "@/components/next-compat/navigation";
 import { CosmeticArt } from "@/components/portal/cosmetic-art";
 import {
   cosmeticCatalog,
+  freeBodyItems,
   coinPackages,
   ownedItemsStore,
   cartStore,
@@ -47,7 +48,7 @@ import {
 
 type Category = "All" | CosmeticCategory;
 type ViewMode = "shop" | "owned";
-const categories: Category[] = ["All", "Face", "Hair", "Tops", "Bottoms", "Shoe Wear", "Accessories"];
+const categories: Category[] = ["All", "Face", "Hair", "Body", "Tops", "Bottoms", "Shoe Wear", "Accessories"];
 const bundledFaceItems = cosmeticCatalog.filter((item) => item.category === "Face");
 
 const rarityStyles: Record<string, string> = {
@@ -108,7 +109,7 @@ function ShopPage() {
   } | null>(null);
 
   const catalog = useMemo(() => {
-    if (mockMode) return cosmeticCatalog;
+    if (mockMode) return [...cosmeticCatalog, ...freeBodyItems];
     const liveItems = (catalogQuery.data ?? [])
       .map((remote) => {
         const category = remote.category as CosmeticCategory;
@@ -116,10 +117,13 @@ function ShopPage() {
         const name = remote.displayName ?? "";
         const description = remote.description ?? "";
         const assetKey = remote.customData?.assetKey ?? "";
-        const imageUrl = remote.customData?.imageUrl ?? "";
         const bundledAsset = cosmeticCatalog.find(
           (candidate) => candidate.id === remote.itemId || candidate.assetKey === assetKey,
         );
+        // The bundled website catalog is the canonical art. PlayFab image URLs
+        // may be stale or point at a different product, so use them only when
+        // this item has no matching website image.
+        const imageUrl = bundledAsset?.imagePath ? "" : remote.customData?.imageUrl ?? "";
         const rarityValue = String(remote.rarity ?? "").toLowerCase();
         const rarity =
           rarityValue === "rare"
@@ -146,13 +150,14 @@ function ShopPage() {
     return [
       ...liveItems,
       ...bundledFaceItems.filter((item) => !liveItems.some((liveItem) => liveItem.id === item.id)),
+      ...freeBodyItems,
     ];
   }, [catalogQuery.data, mockMode]);
 
   const bundledFaceIds = bundledFaceItems.map((item) => item.id);
   const ownedIds = mockMode
-    ? [...new Set([...demoOwnedIds, ...bundledFaceIds])]
-    : [...new Set([...(inventoryQuery.data ?? []).map((item) => item.itemId), ...bundledFaceIds])];
+    ? [...new Set([...demoOwnedIds, ...bundledFaceIds, ...freeBodyItems.map((item) => item.id)])]
+    : [...new Set([...(inventoryQuery.data ?? []).map((item) => item.itemId), ...bundledFaceIds, ...freeBodyItems.map((item) => item.id)])];
   const balance = mockMode ? (demoWallet[0] ?? 0) : (walletQuery.data?.cCoins ?? 0);
   const loading =
     !mockMode && (catalogQuery.isLoading || walletQuery.isLoading || inventoryQuery.isLoading);
