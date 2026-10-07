@@ -3,7 +3,7 @@
 import { createStore } from "@/lib/demo/store";
 import shopProducts from "./shop-products.json";
 
-export type CosmeticCategory = "Hair" | "Tops" | "Bottoms" | "Shoe Wear" | "Accessories";
+export type CosmeticCategory = "Hair" | "Face" | "Tops" | "Bottoms" | "Shoe Wear" | "Accessories";
 
 export type CosmeticItem = {
   id: string;
@@ -38,7 +38,7 @@ export const coinPackages: CoinPackage[] = [
   { id: "pack-7500", coins: 7500, priceLabel: "\u20b1499.00", pricePhp: 499.00 },
 ];
 
-export const ownedItemsStore = createStore<string>("cos.ownedItems", ["hair-chestnut-bun", "top-utility-vest", "accessory-rectangular-frames"]);
+export const ownedItemsStore = createStore<string>("cos.ownedItems", ["hair-chestnut-bun", "face-neutral-focus", "face-set-day-scowl", "face-half-lidded", "face-side-eye-smirk", "face-big-surprise", "top-utility-vest", "accessory-rectangular-frames"]);
 export const equippedItemsStore = createStore<Record<string, string>>("cos.equippedItems", {
   Hair: "hair-chestnut-bun",
   Tops: "top-utility-vest",

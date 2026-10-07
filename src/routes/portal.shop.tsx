@@ -50,7 +50,8 @@ import {
 
 type Category = "All" | CosmeticCategory;
 type ViewMode = "shop" | "owned";
-const categories: Category[] = ["All", "Hair", "Tops", "Bottoms", "Shoe Wear", "Accessories"];
+const categories: Category[] = ["All", "Hair", "Face", "Tops", "Bottoms", "Shoe Wear", "Accessories"];
+const bundledFaceItems = cosmeticCatalog.filter((item) => item.category === "Face");
 
 const rarityStyles: Record<string, string> = {
   Common: "cos-rarity-common",
@@ -149,10 +150,16 @@ function ShopPage() {
         } satisfies CosmeticItem;
       })
       .filter((item): item is CosmeticItem => item !== null);
-    return liveItems;
+    return [
+      ...liveItems,
+      ...bundledFaceItems.filter((item) => !liveItems.some((liveItem) => liveItem.id === item.id)),
+    ];
   }, [catalogQuery.data, mockMode]);
 
-  const ownedIds = mockMode ? demoOwnedIds : (inventoryQuery.data ?? []).map((item) => item.itemId);
+  const bundledFaceIds = bundledFaceItems.map((item) => item.id);
+  const ownedIds = mockMode
+    ? [...new Set([...demoOwnedIds, ...bundledFaceIds])]
+    : [...new Set([...(inventoryQuery.data ?? []).map((item) => item.itemId), ...bundledFaceIds])];
   const balance = mockMode ? (demoWallet[0] ?? 0) : (walletQuery.data?.cCoins ?? 0);
   const loading =
     !mockMode && (catalogQuery.isLoading || walletQuery.isLoading || inventoryQuery.isLoading);
