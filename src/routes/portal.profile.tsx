@@ -457,11 +457,13 @@ function CrewProfilePage() {
 
   const hasSocials = twitter || instagram || youtube;
   const avatarCategories: Array<"All" | CosmeticItem["category"]> = ["All", "Face", "Body", "Hair", "Tops", "Bottoms", "Shoe Wear", "Accessories"];
-  const visibleAvatarItems = profileCosmeticItems.filter((item) => avatarCategory === "All" || item.category === avatarCategory);
   const avatarOwnedIds = new Set([
     ...ownedItems.map((item) => item.id),
     ...profileCosmeticItems.filter((item) => freeCosmeticIds.includes(item.id)).map((item) => item.id),
   ]);
+  const visibleAvatarItems = profileCosmeticItems.filter((item) =>
+    avatarOwnedIds.has(item.id) && (avatarCategory === "All" || item.category === avatarCategory),
+  );
   const getAvatarItem = (slot: string) => profileCosmeticItems.find((item) => item.id === avatarDraftLoadout[slot]);
 
   const openAvatarCustomizer = () => {
@@ -910,7 +912,7 @@ function CrewProfilePage() {
                     </article>;
                   })}
                 </div>
-                {visibleAvatarItems.length === 0 && <p className="rounded-xl border border-dashed border-[#121826]/20 p-8 text-center text-sm text-[#303b4c]/60">No cosmetics are listed in this category yet.</p>}
+                {visibleAvatarItems.length === 0 && <p className="rounded-xl border border-dashed border-[#121826]/20 p-8 text-center text-sm text-[#303b4c]/60">You don’t own any {avatarCategory === "All" ? "cosmetics" : avatarCategory} yet.</p>}
               </div>
             </div>
           </section>

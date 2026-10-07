@@ -193,7 +193,7 @@
     "id": "shoe-slip-ons",
     "name": "Everyday Slip-Ons",
     "category": "Shoe Wear",
-    "price": 450,
+    "price": 0,
     "rarity": "Common",
     "description": "Lightweight charcoal slip-ons with a bright, flexible sole.",
     "assetKey": "shoe-3",
