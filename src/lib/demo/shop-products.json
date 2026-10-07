@@ -288,5 +288,55 @@
     "description": "A dark protective face mask with comfortable ear loops.",
     "assetKey": "accessory-6",
     "imagePath": "/shop/accessories/accessory6.png"
+  },
+  {
+    "id": "face-neutral-focus",
+    "name": "Neutral Focus",
+    "category": "Face",
+    "price": 0,
+    "rarity": "Common",
+    "description": "A calm, neutral expression for keeping your focus on set.",
+    "assetKey": "face-neutral-focus",
+    "imagePath": "/shop/faces/face1.png"
+  },
+  {
+    "id": "face-set-day-scowl",
+    "name": "Set-Day Scowl",
+    "category": "Face",
+    "price": 0,
+    "rarity": "Common",
+    "description": "A fierce scowl for when the shoot is getting intense.",
+    "assetKey": "face-set-day-scowl",
+    "imagePath": "/shop/faces/face2.png"
+  },
+  {
+    "id": "face-half-lidded",
+    "name": "Half-Lidded",
+    "category": "Face",
+    "price": 0,
+    "rarity": "Common",
+    "description": "A relaxed, half-lidded look for a low-key day on set.",
+    "assetKey": "face-half-lidded",
+    "imagePath": "/shop/faces/face3.png"
+  },
+  {
+    "id": "face-side-eye-smirk",
+    "name": "Side-Eye Smirk",
+    "category": "Face",
+    "price": 0,
+    "rarity": "Common",
+    "description": "A knowing side-eye paired with a sly smile.",
+    "assetKey": "face-side-eye-smirk",
+    "imagePath": "/shop/faces/face4.png"
+  },
+  {
+    "id": "face-big-surprise",
+    "name": "Big Surprise",
+    "category": "Face",
+    "price": 0,
+    "rarity": "Common",
+    "description": "A wide-eyed, open-mouthed look for a big reveal.",
+    "assetKey": "face-big-surprise",
+    "imagePath": "/shop/faces/face5.png"
   }
 ]

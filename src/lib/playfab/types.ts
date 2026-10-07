@@ -23,6 +23,7 @@ export type ItemCategory =
   | "equipment"
   | "other"
   | "Hair"
+  | "Face"
   | "Tops"
   | "Bottoms"
   | "Shoe Wear"
