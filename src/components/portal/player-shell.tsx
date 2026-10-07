@@ -335,7 +335,7 @@ export function PlayerShell({ children }: { children: React.ReactNode }) {
             />
           </span>
           <p className="text-center text-xs">
-            © {new Date().getFullYear()} Crew On Set! — Player Portal. {mockMode ? "Demo progress is stored on this device." : "Progress is synced to PlayFab."}
+            © {new Date().getFullYear()} Crew On Set! — Player Portal. {mockMode ? "Demo progress is saved in this browser." : "Your game progress is saved with your account."}
           </p>
           <nav className="flex gap-4 text-xs font-bold uppercase tracking-wide">
             <Link href="/portal/settings?section=Support" className="hover:text-white">

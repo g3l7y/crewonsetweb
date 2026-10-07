@@ -113,7 +113,7 @@ function BrandPaymentResultPage() {
       iconClass: 'text-[#f4513b]',
       eyebrow: 'PAYMENT CONFIRMATION',
       title: 'We could not confirm the payment',
-      body: 'Please keep your PayMongo receipt and contact Crew On Set Partnerships so we can verify your payment and update your application.',
+      body: 'Please keep your payment receipt and contact Crew On Set Partnerships so we can verify your payment and update your application.',
     },
   }[state];
 

@@ -127,7 +127,7 @@ function mapSearchResultToPlayer(result: PlayerSearchResult): Player {
     online: result.online ?? false,
     crewId: result.playFabId,
     profileImage: result.avatarUrl ?? undefined,
-    bio: "Crew profile synced from PlayFab.",
+    bio: "Crew profile on Crew On Set.",
     joinedDate: "—",
     socials: {},
     career: {
@@ -378,7 +378,7 @@ function FriendsPage() {
         showStatus: friend.showStatus,
         crewId: friend.playFabId,
         profileImage: friend.avatarUrl,
-        bio: "Crew profile synced from PlayFab.",
+        bio: "Crew profile on Crew On Set.",
         joinedDate: "—",
         socials: {},
         career: {
@@ -782,7 +782,7 @@ function FriendsPage() {
 
     if (!mockMode) {
       void removeFriendMutation.mutateAsync(removeTarget.crewId).catch(() => {
-        setMessage("PlayFab could not remove this friend.");
+        setMessage("Couldn't remove this friend. Please try again.");
       });
     }
 
@@ -800,7 +800,7 @@ function FriendsPage() {
   function blockFriend(friend: Friend) {
     if (!mockMode) {
       setOpenMenu(null);
-      setMessage("Blocking is not available in the PlayFab friend service yet.");
+      setMessage("Blocking isn't available yet.");
       return;
     }
 

@@ -378,7 +378,7 @@ function AlmanacPage() {
               <div className="empty-results">
                 <Trophy className="empty-icon" />
                 <h3>NO ACHIEVEMENTS FOUND</h3>
-                <p>Try switching to another achievement filter.</p>
+                <p>{achievementsQuery.isError ? "Couldn't load achievements. Please refresh to try again." : "Try switching to another achievement filter."}</p>
               </div>
             )}
           </section>

@@ -133,8 +133,8 @@ export const Route = createFileRoute("/api/auth/register")({
                   : errorCode === 1009
                     ? "That username is already in use. Please choose another."
                     : errorCode === 1322
-                      ? "PlayFab is still finishing deletion of an account that used these credentials. Try again after the deletion is complete."
-                      : (pfResult.errorMessage ?? "PlayFab registration failed.");
+                      ? "An account using these credentials is still being closed. Please try again shortly."
+                      : "We couldn't create your account. Please check your details and try again.";
               return Response.json(
                 {
                   success: false,

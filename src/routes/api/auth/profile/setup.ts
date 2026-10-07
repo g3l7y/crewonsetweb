@@ -289,9 +289,9 @@ export const Route = createFileRoute("/api/auth/profile/setup")({
                 : errorCode === 1008
                   ? PASSWORD_ERROR
                   : errorCode === 1322
-                    ? "PlayFab is still finishing deletion of an account linked to this email. Try again after the deletion is complete."
+                    ? "An account linked to this email is still being closed. Please try again shortly."
                     : error instanceof Error
-                      ? error.message
+                      ? "We couldn't save your profile. Please try again."
                       : "Unable to save your username.";
           return Response.json(
             {
