@@ -21,7 +21,6 @@ import {
   cosmeticCatalog,
   coinPackages,
   ownedItemsStore,
-  equippedItemsStore,
   cartStore,
   setCheckoutPayload,
   type CosmeticCategory,
@@ -44,7 +43,6 @@ import {
   useSession,
   useNotifications,
   usePurchaseItem,
-  usePlayerLoadout,
 } from "@/lib/playfab/hooks";
 
 type Category = "All" | CosmeticCategory;
@@ -93,9 +91,6 @@ function ShopPage() {
   const mockPlayerName = profileQuery.data?.username || sessionQuery.data?.username || "CAMERA_PRO";
   const inventoryQuery = usePlayerInventory();
   const purchaseItem = usePurchaseItem();
-  const loadoutQuery = usePlayerLoadout();
-  const [demoEquipped] = equippedItemsStore.useStore();
-  const equipped = mockMode ? demoEquipped : (loadoutQuery.data ?? {});
   const realNotificationsQuery = useNotifications();
   const refreshPlayerNotifications = realNotificationsQuery.refetch;
 
@@ -625,7 +620,7 @@ function ShopPage() {
                                 <Coins /> {formatCoins(item.price)}
                               </span>
                               <span className="shop-status">
-                                {equipped[item.category] === item.id ? "Equipped" : owned ? "Owned" : inCart ? "In cart" : "Available"}
+                                {owned ? "Owned" : inCart ? "In cart" : "Available"}
                               </span>
                             </div>
                             {!owned && (
@@ -736,7 +731,7 @@ function ShopPage() {
                   <p className="shop-category">{item.category}</p>
                   <h2>{item.name}</h2>
                 <span className="shop-status">
-                  {equipped[item.category] === item.id ? "Equipped" : "Owned"}
+                  Owned
                 </span>
                 </div>
               </article>
@@ -791,7 +786,7 @@ function ShopPage() {
                 <Coins /> {formatCoins(selectedItem.price)} C-Coins
               </strong>
               <div className="modal-meta">
-                <span>{equipped[selectedItem.category] === selectedItem.id ? "Equipped" : ownedIds.includes(selectedItem.id) ? "Owned" : "Not owned"}</span>
+                <span>{ownedIds.includes(selectedItem.id) ? "Owned" : "Not owned"}</span>
                 <span>
                   {cart.some((line) => line.itemId === selectedItem.id) ? "In cart" : "Not in cart"}
                 </span>
