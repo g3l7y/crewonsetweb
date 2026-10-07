@@ -18,6 +18,7 @@ type ProductionLog = {
   preProductionScore: number | undefined;
   productionScore: number | undefined;
   postProductionScore: number | undefined;
+  bCoinsEarned: number | undefined;
   preProductionFeedback: string;
   productionFeedback: string;
   postProductionFeedback: string;
@@ -43,10 +44,33 @@ function cleanGameFeedback(value: string) {
   return value.replace(/<\/?color(?:=[^>]+)?>/gi, "").replace(/<\/?b>/gi, "").trim();
 }
 
+function getPhaseFeedback(details: Record<string, unknown>, camel: string, snake: string): string {
+  const phases = details["phases"] && typeof details["phases"] === "object" ? details["phases"] as Record<string, unknown> : {};
+  const phase = phases[camel] ?? phases[snake];
+  const phaseData = phase && typeof phase === "object" ? phase as Record<string, unknown> : {};
+  const candidates = [
+    phaseData["feedback"], phaseData["clientFeedback"], phaseData["notes"], phaseData["review"],
+    phase, details[camel + "Feedback"], details[snake + "_feedback"], details[camel + "Review"], details[snake + "_review"],
+  ];
+  const value = candidates.find((candidate) => (typeof candidate === "string" && candidate.trim()) || (Array.isArray(candidate) && candidate.length > 0));
+  return typeof value === "string" ? value.trim() : Array.isArray(value) ? value.map(String).join("\n") : "";
+}
+
+function getDecisionNotes(value: string): string {
+  let section = "decision";
+  return cleanGameFeedback(value).split(/\r?\n/).map((line) => line.trim()).filter((line) => {
+    const heading = line.replace(/[^a-z ]/gi, "").trim().toLowerCase();
+    if (heading === "your next step") { section = "next"; return false; }
+    if (heading === "budget review") { section = "budget"; return false; }
+    if (section !== "decision" || /^recorded takes\s*:/i.test(line)) return false;
+    return Boolean(line);
+  }).join("\n");
+}
+
 function mapGameProduction(log: GameProductionLog): ProductionLog {
   const sourceDetails = (log.details && typeof log.details === "object" ? log.details : {}) as Record<string, unknown>;
   const budgetDetails = (sourceDetails["budgetReview"] ?? sourceDetails["budget"]) as Record<string, unknown> | undefined;
-  const hasRootBudget = log.hasBudgetReview || [log.budgetOpeningBalance, log.budgetIncome, log.budgetUsed, log.budgetRemaining].some((value) => value != null);
+  const hasRootBudget = log.hasBudgetReview || [log.budgetOpeningBalance, log.budgetIncome, log.budgetUsed, log.budgetRemaining].some((value) => value != null) || Boolean(log.budgetFeedback);
   const details = {
     ...sourceDetails,
     ...(budgetDetails || hasRootBudget ? { budgetReview: {
@@ -75,9 +99,10 @@ function mapGameProduction(log: GameProductionLog): ProductionLog {
     preProductionScore: log.preProductionScore,
     productionScore: log.productionScore,
     postProductionScore: log.postProductionScore,
-    preProductionFeedback: log.preProductionFeedback || "",
-    productionFeedback: log.productionFeedback || "",
-    postProductionFeedback: log.postProductionFeedback || "",
+    bCoinsEarned: log.bCoinsEarned,
+    preProductionFeedback: log.preProductionFeedback || getPhaseFeedback(details, "preProduction", "pre_production"),
+    productionFeedback: log.productionFeedback || getPhaseFeedback(details, "production", "production"),
+    postProductionFeedback: log.postProductionFeedback || getPhaseFeedback(details, "postProduction", "post_production"),
     details,
     nextStep,
   };
@@ -158,10 +183,10 @@ export function ProductionLogs() {
                   const income = budget?.["income"];
                   const trackingComplete = budget?.["tracking_complete"] ?? budget?.["complete"];
                   const trackingAvailable = budget?.["available"];
-                  const hasBudgetInfo = budget && [opening, income, spent, remaining, trackingComplete, trackingAvailable].some((item) => item != null);
+                  const hasBudgetInfo = budget && ([opening, income, spent, remaining, trackingComplete, trackingAvailable].some((item) => item != null) || Boolean(budget["feedback"]));
                   return <div className="grid gap-3 sm:grid-cols-2">
-                    {hasBudgetInfo && <div className="rounded-lg border border-navy/10 p-3"><p className="text-[10px] font-black uppercase text-navy/50">Budget Review</p><p className="mt-1 text-sm text-navy/75">{[opening, income, spent, remaining].some((item) => item != null) ? `Opening balance: ${opening ?? "—"} · Income: ${income ?? "—"} · Spent: ${spent ?? "—"} · Remaining: ${remaining ?? "—"}` : "Budget information recorded."}</p>{trackingAvailable === false && <p className="mt-1 text-sm text-navy/65">Budget tracking unavailable.</p>}{typeof trackingComplete === "boolean" && <p className="mt-1 text-sm text-navy/65">Tracking {trackingComplete ? "complete" : "incomplete"}.</p>}</div>}
-                    {openLog.result && <div className="rounded-lg border border-navy/10 p-3"><p className="text-[10px] font-black uppercase text-navy/50">Client Decision</p><p className="mt-1 text-sm font-bold text-navy">{openLog.result}</p></div>}
+                    {hasBudgetInfo && <div className="rounded-lg border border-navy/10 p-3"><p className="text-[10px] font-black uppercase text-navy/50">Budget Review</p>{openLog.bCoinsEarned != null && <p className="mt-1 text-sm font-bold text-navy">This submission: +{openLog.bCoinsEarned.toLocaleString()} B-Coins</p>}{typeof budget?.["feedback"] === "string" && budget["feedback"].trim() ? <p className="mt-1 whitespace-pre-line text-sm text-navy/75">{cleanGameFeedback(budget["feedback"])}</p> : <p className="mt-1 text-sm text-navy/75">{[opening, income, spent, remaining].some((item) => item != null) ? `Opening balance: ${opening ?? "—"} · Income: ${income ?? "—"} · Spent: ${spent ?? "—"} · Remaining: ${remaining ?? "—"}` : "Budget information recorded."}</p>}{trackingAvailable === false && <p className="mt-1 text-sm text-navy/65">Budget tracking unavailable.</p>}{typeof trackingComplete === "boolean" && <p className="mt-1 text-sm text-navy/65">Tracking {trackingComplete ? "complete" : "incomplete"}.</p>}</div>}
+                    {openLog.result && <div className="rounded-lg border border-navy/10 p-3"><p className="text-[10px] font-black uppercase text-navy/50">Client Decision</p><p className="mt-1 text-sm font-bold text-navy">{openLog.result}</p>{getDecisionNotes(openLog.summary) && <p className="mt-2 whitespace-pre-line text-sm font-normal text-navy/75">{getDecisionNotes(openLog.summary)}</p>}</div>}
                   </div>;
                 })()}
                 {openLog.nextStep && <div className="rounded-lg border border-coral/25 bg-coral/[.06] p-3"><p className="text-[10px] font-black uppercase text-coral">Your Next Step</p><p className="mt-1 text-sm text-navy/75">{openLog.nextStep}</p></div>}
