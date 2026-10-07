@@ -16,7 +16,6 @@ import Image from "@/components/next-compat/image";
 import Link from "@/components/next-compat/link";
 import {
   Check,
-  Award,
   Eye,
   EyeOff,
   Instagram,
@@ -41,6 +40,7 @@ import { getProfileArtwork } from "@/lib/demo/profile-art";
 import { DEFAULT_PROFILE_PICTURE_URL } from "@/lib/profile-avatar";
 import { readImageAsDataUrl, savePlayerAvatar } from "@/lib/profile-avatar-client";
 import { isMockMode } from "@/lib/playfab/config";
+import { achievementEmoji } from "@/lib/achievement-emoji";
 import { formatSocialUsername, getSocialProfileUrl, normalizeSocialProfile } from "@/lib/profile-socials";
 import { QUERY_KEYS, useAchievements, useCatalog, usePlayerInventory, usePlayerLoadout, usePlayerProfile, usePlayerProgression, useTransactions, useUpdateProfile } from "@/lib/playfab/hooks";
 import { Coins, Lock } from "lucide-react";
@@ -692,7 +692,10 @@ function CrewProfilePage() {
                   <div className="mt-4 flex flex-wrap gap-2">
                     {(achievementsQuery.data ?? []).filter((achievement) => achievement.unlocked).map((achievement) => (
                       <span key={achievement.id} className="inline-flex items-center gap-2 rounded-md border border-yellow/20 bg-yellow/10 px-3 py-2 text-xs font-bold text-yellow">
-                        <Award className="size-4" /> {achievement.name || achievement.title}
+                        <span aria-hidden="true" className="text-base leading-none">
+                          {achievementEmoji(achievement.name || achievement.title)}
+                        </span>
+                        {achievement.name || achievement.title}
                       </span>
                     ))}
                   </div>
