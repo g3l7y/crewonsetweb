@@ -17,6 +17,12 @@ type ProductionLog = {
   setupNotes: string;
   result: string;
   stats: [string, string][];
+  details?: Record<string, unknown>;
+  preProductionScore?: number;
+  productionScore?: number;
+  postProductionScore?: number;
+  budgetUsed?: number;
+  budgetRemaining?: number;
 };
 
 const productionLogs: ProductionLog[] = [
@@ -282,7 +288,37 @@ function mapRealProductionLog(log: PlayFabProductionLog): ProductionLog {
       ? "Contract accepted in the game; production has not been completed yet."
       : log.success ? "Production completed successfully." : "Production requires review.",
     stats,
+    details: log.details,
+    preProductionScore: log.preProductionScore,
+    productionScore: log.productionScore,
+    postProductionScore: log.postProductionScore,
+    budgetUsed: log.budgetUsed,
+    budgetRemaining: log.budgetRemaining,
   };
+}
+
+function asRecord(value: unknown): Record<string, unknown> {
+  return value && typeof value === "object" ? value as Record<string, unknown> : {};
+}
+
+function feedbackText(value: unknown): string | undefined {
+  if (typeof value === "string" && value.trim()) return value.trim();
+  if (Array.isArray(value)) return value.map(feedbackText).filter(Boolean).join("\n") || undefined;
+  if (value && typeof value === "object") {
+    const record = asRecord(value);
+    return feedbackText(record.feedback ?? record.clientFeedback ?? record.notes ?? record.review ?? record.text);
+  }
+  return undefined;
+}
+
+function getDecisionNotes(value: string): string {
+  let section = "decision";
+  return value.replace(/<\/?color(?:=[^>]+)?>/gi, "").replace(/<\/?b>/gi, "").split(/\r?\n/).map((line) => line.trim()).filter((line) => {
+    const heading = line.replace(/[^a-z ]/gi, "").trim().toLowerCase();
+    if (heading === "your next step" || heading === "budget review") { section = "other"; return false; }
+    if (section !== "decision" || /^recorded takes\s*:/i.test(line)) return false;
+    return Boolean(line);
+  }).join("\n");
 }
 
 export function ProductionLogs() {
@@ -387,7 +423,38 @@ export function ProductionLogs() {
               </button>
             </header>
 
-            <div className="space-y-6 p-5 sm:p-6">
+            <div className="max-h-[70vh] space-y-6 overflow-y-auto p-5 sm:p-6">
+              {!mockMode && (() => {
+                const details = asRecord(openLog.details);
+                const phases = asRecord(details.phases);
+                const budget = asRecord(details.budgetReview);
+                const reviews = [
+                  ["Pre-Production Review", phases.preProduction, openLog.preProductionScore],
+                  ["Production Review", phases.production, openLog.productionScore],
+                  ["Post-Production Review", phases.postProduction, openLog.postProductionScore],
+                ] as const;
+                const hasReviews = reviews.some(([, phase]) => feedbackText(phase) || asRecord(phase).score != null);
+                const budgetFeedback = feedbackText(budget.feedback);
+                const decisionNotes = getDecisionNotes(openLog.summary);
+                const nextStep = feedbackText(details.nextStep ?? details.yourNextStep ?? details.next_step);
+                const decision = details.clientDecision;
+                if (!hasReviews && !budgetFeedback && !decisionNotes && !nextStep && decision == null) return null;
+                return <section className="space-y-4 rounded-lg border border-navy/10 bg-navy/[.025] p-4">
+                  <h4 className="text-[10px] font-black uppercase tracking-[.16em] text-yellow-700">Game Results</h4>
+                  {hasReviews && <div className="grid gap-3 sm:grid-cols-3">{reviews.map(([label, phase, score]) => {
+                    const record = asRecord(phase);
+                    const note = feedbackText(phase);
+                    const phaseScore = record.score ?? score;
+                    if (!note && phaseScore == null) return null;
+                    return <article key={label} className="rounded-lg border border-navy/10 p-3"><p className="text-[9px] font-black uppercase tracking-wider text-navy/55">{label}</p>{phaseScore != null && <p className="mt-1 text-sm font-bold text-navy">{String(phaseScore)}/100</p>}{note && <p className="mt-2 whitespace-pre-line text-sm leading-relaxed text-navy/75">{note}</p>}</article>;
+                  })}</div>}
+                  <div className="grid gap-3 sm:grid-cols-2">
+                    {(budgetFeedback || Object.keys(budget).length > 0) && <article className="rounded-lg border border-navy/10 p-3"><p className="text-[9px] font-black uppercase tracking-wider text-navy/55">Budget Review</p>{budgetFeedback && <p className="mt-1 whitespace-pre-line text-sm leading-relaxed text-navy/75">{budgetFeedback}</p>}{!budgetFeedback && <p className="mt-1 text-sm text-navy/70">Spent: {String(budget.spent ?? openLog.budgetUsed ?? "—")} · Remaining: {String(budget.remaining ?? openLog.budgetRemaining ?? "—")}</p>}</article>}
+                    {(decision != null || decisionNotes) && <article className="rounded-lg border border-navy/10 p-3"><p className="text-[9px] font-black uppercase tracking-wider text-navy/55">Client Decision</p>{decision != null && <p className="mt-1 text-sm font-bold text-navy">{String(decision)}</p>}{decisionNotes && <p className="mt-2 whitespace-pre-line text-sm leading-relaxed text-navy/75">{decisionNotes}</p>}</article>}
+                  </div>
+                  {nextStep && <article className="rounded-lg border border-coral/25 bg-coral/[.06] p-3"><p className="text-[9px] font-black uppercase tracking-wider text-coral">Your Next Step</p><p className="mt-1 whitespace-pre-line text-sm text-navy/75">{nextStep}</p></article>}
+                </section>;
+              })()}
               <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
                 {openLog.stats.map(([label, value]) => (
                   <div
@@ -402,7 +469,7 @@ export function ProductionLogs() {
                 ))}
               </div>
 
-              <div className="grid gap-5 sm:grid-cols-2">
+              {mockMode && <div className="grid gap-5 sm:grid-cols-2">
                 <div>
                   <p className="text-[10px] font-black uppercase tracking-[.16em] text-navy/45">
                     Shoot Summary
@@ -420,7 +487,7 @@ export function ProductionLogs() {
                     {openLog.setupNotes}
                   </p>
                 </div>
-              </div>
+              </div>}
 
               <div className="grid gap-3 sm:grid-cols-3">
                 <div className="flex items-center gap-2 rounded-lg border border-navy/10 p-3">

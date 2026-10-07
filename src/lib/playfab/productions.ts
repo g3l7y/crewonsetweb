@@ -57,6 +57,34 @@ export function mapDataToProductionLogs(data: any): ProductionLog[] {
     const date = item.date || item.completedAt ? new Date(item.date || item.completedAt).toISOString() : new Date().toISOString();
     const score = Number(item.overallScore ?? item.score ?? 0);
     const letterGrade = item.letterGrade || item.rank || (score >= 95 ? 'S' : score >= 85 ? 'A' : score >= 70 ? 'B' : 'C');
+    const sourceDetails = item.details && typeof item.details === 'object' ? item.details : {};
+    const sourcePhases = item.phases ?? sourceDetails.phases ?? {};
+    const readPhase = (camel: string, snake: string, feedbackKey: string, scoreKey: string) => {
+      const phase = sourcePhases[camel] ?? sourcePhases[snake] ?? {};
+      const feedback = phase && typeof phase === 'object' ? phase.feedback ?? phase.clientFeedback ?? phase.notes ?? phase.review : phase;
+      const fallback = item[feedbackKey] ?? item[snake + '_feedback'] ?? item[camel + 'Review'] ?? item[snake + '_review'];
+      const phaseScore = phase && typeof phase === 'object' ? phase.score : undefined;
+      return {
+        ...(feedback != null && feedback !== '' ? { feedback } : fallback != null && fallback !== '' ? { feedback: fallback } : {}),
+        ...(phaseScore != null ? { score: phaseScore } : item[scoreKey] != null ? { score: item[scoreKey] } : {}),
+      };
+    };
+    const phaseDetails = {
+      preProduction: readPhase('preProduction', 'pre_production', 'preProductionFeedback', 'pre_production_score'),
+      production: readPhase('production', 'production', 'productionFeedback', 'production_score'),
+      postProduction: readPhase('postProduction', 'post_production', 'postProductionFeedback', 'post_production_score'),
+    };
+    const rawBudget = item.budget && typeof item.budget === 'object' ? item.budget : sourceDetails.budgetReview ?? {};
+    const budgetReview = { ...rawBudget, feedback: rawBudget.feedback ?? item.budgetFeedback ?? item.budget_feedback };
+    const decision = item.clientDecision ?? item.client_decision ?? item.decision ?? sourceDetails.clientDecision;
+    const nextStep = item.nextStep ?? item.your_next_step ?? item.next_step ?? sourceDetails.nextStep;
+    const details = {
+      ...sourceDetails,
+      phases: Object.fromEntries(Object.entries(phaseDetails).filter(([, phase]) => phase.feedback != null || phase.score != null)),
+      ...(Object.keys(rawBudget).length ? { budgetReview } : {}),
+      ...(decision != null ? { clientDecision: decision } : {}),
+      ...(nextStep != null ? { nextStep } : {}),
+    };
 
     return {
       productionId: id,
@@ -75,24 +103,33 @@ export function mapDataToProductionLogs(data: any): ProductionLog[] {
       role: (item.role || item.rolePlayed || 'cameraman') as PlayerRole,
       rolePlayed: (item.role || item.rolePlayed || 'cameraman') as string,
       overallScore: score,
+      preProductionScore: optionalNumber(item.preProductionScore ?? item.preProdScore ?? item.phaseScores?.preProduction),
+      productionScore: optionalNumber(item.productionScore ?? item.phaseScores?.production),
+      postProductionScore: optionalNumber(item.postProductionScore ?? item.postProdScore ?? item.phaseScores?.postProduction),
       score,
       letterGrade,
       rank: letterGrade,
       runtime: item.runtime || '00:00',
       retakes: Number(item.retakes) || 0,
       errors: Number(item.errors) || 0,
-      budgetUsed: item.budgetUsed != null ? Number(item.budgetUsed) : undefined,
-      budgetRemaining: item.budgetRemaining != null ? Number(item.budgetRemaining) : undefined,
+      budgetUsed: item.budgetUsed != null ? Number(item.budgetUsed) : rawBudget.spent != null ? Number(rawBudget.spent) : undefined,
+      budgetRemaining: item.budgetRemaining != null ? Number(item.budgetRemaining) : rawBudget.remaining != null ? Number(rawBudget.remaining) : undefined,
       bCoinsEarned: Number(item.bCoinsEarned) || 0,
       cCoinsEarned: item.cCoinsEarned != null ? Number(item.cCoinsEarned) : 0,
-      feedback: item.feedback || 'Production completed.',
+      feedback: item.decisionFeedback || item.decision_feedback || item.result || item.summary || item.feedback || 'Production completed.',
       success: item.success !== undefined ? Boolean(item.success) : true,
       status: item.status === 'accepted' || item.status === 'completed' ? item.status : undefined,
       stats: item.stats || [
         ['Retakes', String(item.retakes || 0)],
         ['Errors', String(item.errors || 0)],
       ],
-      details: item.details || {},
+      details,
     } as ProductionLog;
   });
+}
+
+function optionalNumber(value: unknown): number | undefined {
+  if (value == null || value === "") return undefined;
+  const parsed = Number(value);
+  return Number.isFinite(parsed) ? parsed : undefined;
 }
