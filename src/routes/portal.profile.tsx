@@ -165,6 +165,9 @@ function CrewProfilePage() {
     Accessories: realOwnedItems.find((item) => item.id === (realLoadout.Accessories ?? realLoadout.Accessory ?? realLoadout.accessory ?? realLoadout.Eyeglasses ?? realLoadout.eyeglasses ?? realLoadout.decorator)),
   };
   const equippedBySlot = mockMode ? demoEquippedBySlot : realEquippedBySlot;
+  const currentAvatarLoadout = Object.fromEntries(
+    Object.entries(equippedBySlot).filter(([, item]) => item).map(([slot, item]) => [slot, item!.id]),
+  );
 
   const recentTransactions = useMemo<ProfileTransaction[]>(() => {
     const entries = mockMode
@@ -593,13 +596,9 @@ function CrewProfilePage() {
 
               <div className="flex shrink-0 flex-col items-center gap-3">
                 <div className="relative size-36 overflow-hidden rounded-full border-[6px] border-yellow bg-[#0d121c] shadow-2xl shadow-black/30">
-                  <Image
-                    src={profileImage}
-                    alt={profileDisplayName + " avatar"}
-                    fill
-                    unoptimized={profileImage.startsWith("blob:") || profileImage.startsWith("data:")}
-                    className="object-cover object-[62%_45%]"
-                  />
+                  <Suspense fallback={<Image src={profileImage} alt={profileDisplayName + " avatar"} fill className="object-cover object-[62%_45%]" />}>
+                    <Avatar3DPreview loadout={currentAvatarLoadout} displayName={profileDisplayName} portrait className="relative size-full overflow-hidden bg-[radial-gradient(ellipse_at_50%_32%,#fff8e6_0%,#ddd1b8_100%)]" />
+                  </Suspense>
                 </div>
                 <button
                   type="button"

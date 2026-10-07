@@ -5,6 +5,7 @@ export const GAME_APPEARANCE_KEY = "character_appearance";
 
 export type GameAppearance = {
   version: 1;
+  updated_at?: number;
   player_id: string;
   base_character: string;
   selected_frame?: string | null;
@@ -103,6 +104,7 @@ export function mergeLoadoutIntoGameAppearance(
     : `${Date.now().toString(16)}${Math.random().toString(16).slice(2)}`;
   return {
     version: 1,
+    updated_at: Date.now(),
     player_id: playerId,
     base_character: prior.base_character || "DefaultCharacGirlRig",
     selected_frame: prior.selected_frame ?? null,

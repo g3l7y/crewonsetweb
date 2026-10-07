@@ -20,10 +20,12 @@ function loadModel(key: string): Promise<THREE.Group> {
 type Avatar3DPreviewProps = {
   loadout: Record<string, string>;
   displayName: string;
+  portrait?: boolean;
+  className?: string;
 };
 
 /** Renders the same catalog FBX parts that Unity's customization catalog composes. */
-export function Avatar3DPreview({ loadout, displayName }: Avatar3DPreviewProps) {
+export function Avatar3DPreview({ loadout, displayName, portrait = false, className }: Avatar3DPreviewProps) {
   const hostRef = useRef<HTMLDivElement>(null);
   const [message, setMessage] = useState("Loading 3D avatar…");
   const selection = Object.entries(loadout)
@@ -137,8 +139,8 @@ export function Avatar3DPreview({ loadout, displayName }: Avatar3DPreviewProps) 
           const size = bounds.getSize(new THREE.Vector3());
           const height = Math.max(size.y, 0.5);
           // Catalog parts share a common authored origin; center only the camera, not the parts.
-          camera.position.set(center.x, center.y + height * 0.03, center.z + height * 2.1);
-          camera.lookAt(center.x, center.y, center.z);
+          camera.position.set(center.x, center.y + height * (portrait ? 0.25 : 0.03), center.z + height * (portrait ? 1.65 : 2.1));
+          camera.lookAt(center.x, center.y + height * (portrait ? 0.12 : 0), center.z);
           camera.near = Math.max(0.01, height / 100);
           camera.far = Math.max(100, height * 10);
           camera.updateProjectionMatrix();
@@ -174,11 +176,11 @@ export function Avatar3DPreview({ loadout, displayName }: Avatar3DPreviewProps) 
   }, [selection, displayName]);
 
   return (
-    <div className="relative h-64 w-full overflow-hidden rounded-xl border border-[#121826]/15 bg-[radial-gradient(ellipse_at_50%_32%,#fff8e6_0%,#ddd1b8_100%)] sm:h-72">
+    <div className={className ?? (portrait
+      ? "relative size-full overflow-hidden bg-transparent"
+      : "relative h-64 w-full overflow-hidden rounded-xl border border-[#121826]/15 bg-[radial-gradient(ellipse_at_50%_32%,#fff8e6_0%,#ddd1b8_100%)] sm:h-72")}>
       <div ref={hostRef} className="absolute inset-0" />
-      <span className="pointer-events-none absolute bottom-2 left-1/2 -translate-x-1/2 rounded-full bg-[#121826]/75 px-3 py-1 text-[9px] font-bold uppercase tracking-widest text-white">
-        {message}
-      </span>
+      {!portrait && <span className="pointer-events-none absolute bottom-2 left-1/2 -translate-x-1/2 rounded-full bg-[#121826]/75 px-3 py-1 text-[9px] font-bold uppercase tracking-widest text-white">{message}</span>}
     </div>
   );
 }
