@@ -2838,6 +2838,10 @@ html .badges-panel .badges-copy {
   -webkit-text-fill-color: #ffca28 !important;
 }
 
+.portal-theme.portal-dark .production-logs-list thead {
+  box-shadow: inset 0 -1px 0 rgba(254, 253, 248, .55);
+}
+
 .production-log-career {
   color: #0a0e19 !important;
   -webkit-text-fill-color: #0a0e19 !important;
