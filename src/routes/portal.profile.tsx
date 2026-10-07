@@ -20,12 +20,11 @@ import {
   EyeOff,
   Instagram,
   Pencil,
-  Upload,
   X,
   Twitter,
   Youtube,
 } from "lucide-react";
-import { ChangeEvent, useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { EMAIL_ERROR, USERNAME_ERROR, isValidEmail, isValidUsername } from "@/lib/validation";
 import { useQueryClient } from "@tanstack/react-query";
 import {
@@ -38,7 +37,6 @@ import { CosmeticArt } from "@/components/portal/cosmetic-art";
 import { cosmeticCatalog, equippedItemsStore, ownedItemsStore } from "@/lib/demo/portal-shop";
 import { getProfileArtwork } from "@/lib/demo/profile-art";
 import { DEFAULT_PROFILE_PICTURE_URL } from "@/lib/profile-avatar";
-import { readImageAsDataUrl, savePlayerAvatar } from "@/lib/profile-avatar-client";
 import { isMockMode } from "@/lib/playfab/config";
 import { achievementEmoji } from "@/lib/achievement-emoji";
 import { formatSocialUsername, getSocialProfileUrl, normalizeSocialProfile } from "@/lib/profile-socials";
@@ -171,9 +169,6 @@ function CrewProfilePage() {
   const [profileImage, setProfileImage] = useState(
     DEFAULT_PROFILE_PICTURE_URL
   );
-  const [pendingAvatarFile, setPendingAvatarFile] = useState<File | null>(null);
-  const [pendingAvatarDataUrl, setPendingAvatarDataUrl] = useState<string | null>(null);
-  const [avatarResetRequested, setAvatarResetRequested] = useState(false);
 
   const [account, setAccount] = useState<ProfileAccount>(defaultProfileAccount);
 
@@ -205,7 +200,6 @@ function CrewProfilePage() {
   const [confirmPasswordInput, setConfirmPasswordInput] = useState("");
   const [confirmError, setConfirmError] = useState("");
 
-  const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     const profile = profileQuery.data;
@@ -252,10 +246,6 @@ function CrewProfilePage() {
         })
       : "—";
   const openEditor = () => {
-    setProfileImage(profileQuery.data?.avatarUrl || DEFAULT_PROFILE_PICTURE_URL);
-    setPendingAvatarFile(null);
-    setPendingAvatarDataUrl(null);
-    setAvatarResetRequested(false);
     setDraftBio(bio);
     setDraftTwitter(twitter);
     setDraftInstagram(instagram);
@@ -269,11 +259,6 @@ function CrewProfilePage() {
   };
 
   const cancelEditor = () => {
-    if (profileImage.startsWith("blob:")) URL.revokeObjectURL(profileImage);
-    setProfileImage(profileQuery.data?.avatarUrl || DEFAULT_PROFILE_PICTURE_URL);
-    setPendingAvatarFile(null);
-    setPendingAvatarDataUrl(null);
-    setAvatarResetRequested(false);
     setDraftBio(bio);
     setDraftTwitter(twitter);
     setDraftInstagram(instagram);
@@ -297,12 +282,8 @@ function CrewProfilePage() {
       youtube: normalizeSocialProfile(draftYoutube, "youtube"),
     };
     const normalizedBio = draftBio.trim();
-    let avatarUrl: string | undefined;
-
     if (!mockMode) {
       try {
-        if (avatarResetRequested) avatarUrl = await savePlayerAvatar(undefined, true);
-        else if (pendingAvatarFile) avatarUrl = await savePlayerAvatar(pendingAvatarFile);
         const credentialsChanged =
           nextAccount.username.toLowerCase() !== account.username.toLowerCase() ||
           nextAccount.email.toLowerCase() !== account.email.toLowerCase();
@@ -315,7 +296,6 @@ function CrewProfilePage() {
             : {}),
           bio: normalizedBio,
           socialLinks,
-          ...(avatarUrl !== undefined ? { avatarUrl } : {}),
         });
       } catch {
         setFieldError("Couldn't save your profile changes. Please try again.");
@@ -323,8 +303,6 @@ function CrewProfilePage() {
       }
     } else {
       try {
-        if (avatarResetRequested) avatarUrl = DEFAULT_PROFILE_PICTURE_URL;
-        else if (pendingAvatarFile) avatarUrl = pendingAvatarDataUrl ?? await readImageAsDataUrl(pendingAvatarFile);
         if (nextAccount.username.toLowerCase() !== account.username.toLowerCase()) {
           const response = await fetch("/api/auth/check-username", {
             method: "POST",
@@ -337,7 +315,7 @@ function CrewProfilePage() {
           }
         }
 
-        await updateProfileMutation.mutateAsync({ bio: normalizedBio, socialLinks, ...(avatarUrl !== undefined ? { avatarUrl } : {}) });
+        await updateProfileMutation.mutateAsync({ bio: normalizedBio, socialLinks });
         window.localStorage.setItem(
           PROFILE_ACCOUNT_KEY,
           JSON.stringify(nextAccount),
@@ -348,7 +326,7 @@ function CrewProfilePage() {
           : {};
         window.localStorage.setItem(
           "player-account",
-          JSON.stringify({ ...playerAccount, ...nextAccount, bio: normalizedBio, socialLinks, ...(avatarUrl !== undefined ? { avatarUrl } : {}) }),
+          JSON.stringify({ ...playerAccount, ...nextAccount, bio: normalizedBio, socialLinks }),
         );
         if (draftPassword) {
           window.localStorage.setItem("cos.profile.password", draftPassword);
@@ -364,11 +342,6 @@ function CrewProfilePage() {
     setInstagram(socialLinks.instagram);
     setYoutube(socialLinks.youtube);
     setAccount(nextAccount);
-    if (avatarUrl !== undefined) setProfileImage(avatarUrl);
-    if (profileImage.startsWith("blob:")) URL.revokeObjectURL(profileImage);
-    setPendingAvatarFile(null);
-    setPendingAvatarDataUrl(null);
-    setAvatarResetRequested(false);
     setDraftPassword("");
     setDraftPasswordConfirm("");
     setEditMode(false);
@@ -462,43 +435,6 @@ function CrewProfilePage() {
       return;
     }
     void applySave();
-  };
-
-  const handleImageUpload = (event: ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0];
-    event.target.value = "";
-
-    if (!file) return;
-
-    if (!["image/jpeg", "image/png"].includes(file.type)) {
-      setFieldError("Please select a JPG or PNG image.");
-      return;
-    }
-    if (file.size === 0 || file.size > 5 * 1024 * 1024) {
-      setFieldError("Profile pictures must be no larger than 5 MB.");
-      return;
-    }
-
-    if (profileImage.startsWith("blob:")) URL.revokeObjectURL(profileImage);
-    setPendingAvatarFile(file);
-    setAvatarResetRequested(false);
-    setPendingAvatarDataUrl(null);
-    setFieldError("");
-    if (mockMode) {
-      void readImageAsDataUrl(file).then(setPendingAvatarDataUrl).then(() => {
-        void readImageAsDataUrl(file).then(setProfileImage);
-      }).catch(() => setFieldError("Unable to load the selected image."));
-    } else {
-      setProfileImage(URL.createObjectURL(file));
-    }
-  };
-
-  const removeProfileImage = () => {
-    if (profileImage.startsWith("blob:")) URL.revokeObjectURL(profileImage);
-    setPendingAvatarFile(null);
-    setPendingAvatarDataUrl(null);
-    setAvatarResetRequested(true);
-    setProfileImage(DEFAULT_PROFILE_PICTURE_URL);
   };
 
   const hasSocials = twitter || instagram || youtube;
@@ -918,61 +854,6 @@ function CrewProfilePage() {
             </div>
 
             <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain p-6 sm:p-8 space-y-8">
-
-              {/* =================================================
-                  PROFILE PHOTO
-              ================================================= */}
-
-              <div>
-                <label className="text-xs font-black uppercase tracking-[0.15em] text-white/40">
-                  Profile Picture
-                </label>
-
-                <div className="mt-4 flex items-center gap-5">
-
-                  <div className="relative size-24 shrink-0 overflow-hidden rounded-full border-4 border-yellow bg-[#0d121c] shadow-xl">
-                    <Image
-                      src={profileImage}
-                      alt={profileDisplayName + " profile preview"}
-                      fill
-                      unoptimized={profileImage.startsWith("blob:") || profileImage.startsWith("data:")}
-                      className="object-cover object-[62%_45%]"
-                    />
-                  </div>
-
-                  <div className="flex flex-wrap gap-2">
-
-                    <button
-                      type="button"
-                      onClick={() => fileInputRef.current?.click()}
-                      className="inline-flex items-center gap-2 rounded-md bg-coral px-4 py-3 text-xs font-black uppercase text-white shadow-lg shadow-coral/10 transition hover:bg-coral/90"
-                    >
-                      <Upload className="size-4" />
-                      Change Photo
-                    </button>
-
-
-                    <input
-                      ref={fileInputRef}
-                      type="file"
-                      accept="image/png,image/jpeg"
-                      onChange={handleImageUpload}
-                      className="hidden"
-                    />
-                    <button
-                      type="button"
-                      onClick={removeProfileImage}
-                      className="rounded-md border border-white/10 px-4 py-3 text-xs font-black uppercase text-white/50 transition hover:border-white/30 hover:text-white"
-                    >
-                      Use Default
-                    </button>
-                  </div>
-                </div>
-
-                <p className="mt-2 text-xs text-white/30">
-                  JPG or PNG, up to 5 MB. Recommended 500×500.
-                </p>
-              </div>
 
               {/* =================================================
                   ACCOUNT CREDENTIALS
