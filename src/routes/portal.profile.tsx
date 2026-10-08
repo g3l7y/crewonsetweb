@@ -70,14 +70,6 @@ const Avatar3DPreview = lazy(() =>
   })),
 );
 const AVATAR_SETUP_PENDING_KEY = "cos.avatarSetupPending";
-const STARTER_AVATAR_LOADOUT: Record<string, string> = {
-  Body: "avatar-body-girl",
-  Face: "face-neutral-focus",
-  Hair: "hair-chestnut-bun",
-  Tops: "top-white-tee",
-  Bottoms: "bottom-teal-joggers",
-  "Shoe Wear": "shoe-slip-ons",
-};
 
 function readProfileAccount(): ProfileAccount {
   if (typeof window === "undefined") return defaultProfileAccount;
@@ -157,7 +149,7 @@ function CrewProfilePage() {
   const realLoadout = loadoutQuery.data ?? {};
   const realEquippedBySlot = {
     Face: realOwnedItems.find((item) => item.id === (realLoadout.Face ?? realLoadout.face)),
-    Body: realOwnedItems.find((item) => item.id === (realLoadout.Body ?? realLoadout.body)) ?? realOwnedItems.find((item) => item.id === "avatar-body-girl"),
+    Body: realOwnedItems.find((item) => item.id === (realLoadout.Body ?? realLoadout.body)),
     Hair: realOwnedItems.find((item) => item.id === (realLoadout.Hair ?? realLoadout.hair)),
     Tops: realOwnedItems.find((item) => item.id === (realLoadout.Tops ?? realLoadout.tops ?? realLoadout.Shirt ?? realLoadout.shirt ?? realLoadout.costume)),
     Bottoms: realOwnedItems.find((item) => item.id === (realLoadout.Bottoms ?? realLoadout.bottoms)),
@@ -223,8 +215,8 @@ function CrewProfilePage() {
     setAvatarSetupPending(true);
     const saved = loadoutQuery.data ?? {};
     const savedFreeItems = Object.fromEntries(Object.entries(saved).filter(([, itemId]) => freeCosmeticIds.includes(itemId)));
-    setAvatarDraftLoadout({ ...STARTER_AVATAR_LOADOUT, ...savedFreeItems });
-    setAvatarCategory("All");
+    setAvatarDraftLoadout(savedFreeItems);
+    setAvatarCategory(savedFreeItems.Body ? "All" : "Body");
     setAvatarOpen(true);
   }, [profileQuery.isSuccess, loadoutQuery.isSuccess, loadoutQuery.data]);
 
@@ -500,15 +492,14 @@ function CrewProfilePage() {
     const equipped = Object.fromEntries(Object.entries(equippedBySlot)
       .filter(([, item]) => item)
       .map(([slot, item]) => [slot, item!.id]));
-    if (!equipped.Body) equipped.Body = "avatar-body-girl";
-    if (Object.keys(equipped).length === 1) Object.assign(equipped, { ...STARTER_AVATAR_LOADOUT, Body: equipped.Body });
     setAvatarDraftLoadout(equipped);
-    setAvatarCategory("All");
+    setAvatarCategory(equipped.Body ? "All" : "Body");
     setAvatarStatus("");
     setAvatarOpen(true);
   };
 
   const finishAvatarSetup = async () => {
+    if (!avatarDraftLoadout.Body) { setAvatarStatus("Choose Boy or Girl in BODY first."); return; }
     try {
       await updateLoadoutMutation.mutateAsync(avatarDraftLoadout);
       window.localStorage.removeItem(AVATAR_SETUP_PENDING_KEY);
@@ -521,11 +512,13 @@ function CrewProfilePage() {
   };
 
   const tryOnAvatarItem = (item: CosmeticItem) => {
+    if (item.category !== "Body" && !avatarDraftLoadout.Body) { setAvatarCategory("Body"); setAvatarStatus("Equip Boy or Girl in BODY first."); return; }
     setAvatarDraftLoadout((current) => ({ ...current, [item.category]: item.id }));
     setAvatarStatus(`Trying on ${item.name}. This preview is not saved yet.`);
   };
 
   const equipAvatarItem = async (item: CosmeticItem) => {
+    if (item.category !== "Body" && !avatarDraftLoadout.Body) { setAvatarCategory("Body"); setAvatarStatus("Equip Boy or Girl in BODY first."); return; }
     if (!avatarOwnedIds.has(item.id)) {
       setAvatarStatus("You need to own this cosmetic before equipping it.");
       return;
@@ -926,7 +919,7 @@ function CrewProfilePage() {
                 {avatarSetupPending && <p className="mb-4 rounded-lg border border-yellow/70 bg-yellow/20 px-3 py-2 text-xs font-bold text-[#51401c]">Choose from your free owned items, try them on, then save your starter look. You can add more items from the shop anytime.</p>}
                 <div className="flex flex-wrap gap-2">
                   {avatarCategories.map((category) => <button key={category} type="button" onClick={() => setAvatarCategory(category)} className={`rounded-md border px-3 py-2 text-[10px] font-black uppercase tracking-wide transition ${avatarCategory === category ? "border-[#121826] bg-yellow text-[#121826]" : "border-[#121826]/20 bg-white/60 text-[#303b4c] hover:bg-yellow/35"}`}>{category === "Shoe Wear" ? "Shoe Wear" : category}</button>)}
-                  <Link href="/portal/shop" onClick={() => setAvatarOpen(false)} className="ml-auto rounded-md border border-[#121826]/20 bg-[#121826] px-3 py-2 text-[10px] font-black uppercase tracking-wide text-yellow hover:bg-[#263246]">Shop C-Coin items</Link>
+                  {!avatarSetupPending && <Link href="/portal/shop" onClick={() => setAvatarOpen(false)} className="ml-auto rounded-md border border-[#121826]/20 bg-[#121826] px-3 py-2 text-[10px] font-black uppercase tracking-wide text-yellow hover:bg-[#263246]">Visit Shop</Link>}
                 </div>
                 {avatarStatus && <p role="status" className="mt-4 rounded-lg border border-[#aa7100]/25 bg-yellow/20 px-3 py-2 text-xs font-bold text-[#51401c]">{avatarStatus}</p>}
                 {updateLoadoutMutation.isPending && <p className="mt-3 text-xs font-bold text-[#303b4c]/65">Syncing your outfit to your game account…</p>}

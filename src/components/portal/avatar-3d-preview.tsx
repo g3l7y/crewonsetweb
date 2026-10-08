@@ -37,6 +37,12 @@ export function Avatar3DPreview({ loadout, displayName, portrait = false, classN
   useEffect(() => {
     const host = hostRef.current;
     if (!host) return;
+    const selectedKeys = selection.split("|").filter(Boolean).map(websiteCosmeticModelKey).filter((key): key is string => Boolean(key));
+    if (!selectedKeys.some((key) => key === "body_boy" || key === "body_girl")) {
+      host.replaceChildren();
+      setMessage("Choose Boy or Girl in BODY to begin");
+      return;
+    }
 
     let disposed = false;
     let frame = 0;
@@ -105,11 +111,7 @@ export function Avatar3DPreview({ loadout, displayName, portrait = false, classN
     resizeObserver.observe(host);
     resize();
 
-    const itemKeys = selection
-      .split("|")
-      .filter(Boolean)
-      .map((id) => websiteCosmeticModelKey(id))
-      .filter((key): key is string => Boolean(key));
+    const itemKeys = selectedKeys;
     const bodyKey =
       itemKeys.find((key) => key === "body_boy" || key === "body_girl") ?? "body_girl";
     const modelKeys = [bodyKey, ...itemKeys.filter((key) => key !== bodyKey)];
