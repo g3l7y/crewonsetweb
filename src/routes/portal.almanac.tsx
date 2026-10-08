@@ -277,7 +277,7 @@ function AlmanacPage() {
               </select>
             </div>
 
-            <div className="player-account-scroll-list almanac-content-scroll achievements-grid">
+            <div className={`player-account-scroll-list almanac-content-scroll achievements-grid${shownAchievements.length === 0 ? " is-empty" : ""}`}>
               {shownAchievements.map((achievement, index) => {
                 if (achievement.placeholder) {
                   return (
@@ -364,15 +364,15 @@ function AlmanacPage() {
                   </button>
                 );
               })}
-            </div>
 
-            {shownAchievements.length === 0 && (
-              <div className="empty-results">
+              {shownAchievements.length === 0 && (
+                <div className="empty-results">
                 <Trophy className="empty-icon" />
                 <h3>NO ACHIEVEMENTS FOUND</h3>
                 <p>{achievementsQuery.isError ? "Couldn't load achievements. Please refresh to try again." : "Try switching to another achievement filter."}</p>
-              </div>
-            )}
+                </div>
+              )}
+            </div>
           </section>
         )}
       </div>
@@ -717,6 +717,11 @@ function AlmanacPage() {
           grid-template-columns: 1fr;
         }
 
+        .achievements-grid.is-empty {
+          position: relative;
+          display: block;
+        }
+
         @media (min-width: 768px) {
           .achievements-grid {
             grid-template-columns: repeat(2, 1fr);
@@ -991,16 +996,17 @@ function AlmanacPage() {
 
         /* EMPTY */
         .empty-results {
+          position: absolute;
+          inset: 0;
           display: flex;
-          min-height: 220px;
           flex-direction: column;
           align-items: center;
           justify-content: center;
-          margin-top: 24px;
-          padding: 32px 24px 40px;
-          border: 1px solid rgba(19, 27, 52, 0.1);
-          border-radius: 16px;
-          background: var(--blueprint-paper-soft);
+          margin: 0;
+          padding: 32px 24px;
+          border: 0;
+          border-radius: 0;
+          background: transparent;
           text-align: center;
         }
 
@@ -1009,7 +1015,6 @@ function AlmanacPage() {
           height: 40px;
           margin: 0 auto;
           color: rgba(19, 27, 52, 0.2);
-          transform: translateY(-16px);
         }
 
         .empty-results h3 {
@@ -1017,14 +1022,12 @@ function AlmanacPage() {
           color: #131b34;
           font-weight: 900;
           text-transform: uppercase;
-          transform: translateY(-16px);
         }
 
         .empty-results p {
           margin: 8px 0 0;
           color: rgba(19, 27, 52, 0.45);
           font-size: 14px;
-          transform: translateY(-16px);
         }
 
         /* MODAL */
