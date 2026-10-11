@@ -14,12 +14,13 @@ export const Route = createFileRoute("/team")({
 
 import Image from "@/components/next-compat/image";
 import Link from "@/components/next-compat/link";
-import { useEffect, useState, type CSSProperties, type ReactNode } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 import {
   ArrowDownRight,
   ArrowRight,
   Camera,
   Clapperboard,
+  CircleUserRound,
   Code2,
   Coffee,
   Crown,
@@ -48,8 +49,6 @@ const team = [
     name: "Princess Angela Cartel",
     role: "Technical Writer, Web Developer",
     icon: Coffee,
-    image: "/assets/team-princess.jpg",
-    imagePosition: "member-one",
     description:
       "Turns production systems into clear briefs, guides, and copy the whole crew can actually use.",
     skills: ["DOCUMENTATION", "STORYTELLING", "CLARITY"],
@@ -59,8 +58,6 @@ const team = [
     name: "Mc Kelvin Bocateja",
     role: "Lead Programmer",
     icon: Code2,
-    image: "/assets/team-kelvin.jpg",
-    imagePosition: "member-two",
     description:
       "Builds the engine side — camera rig physics, lighting simulation, the editing timeline, and the live services powering the portal.",
     skills: ["CODE", "TECH", "TOOLS"],
@@ -70,8 +67,6 @@ const team = [
     name: "Rae Yshene Acido",
     role: "Designer",
     icon: Palette,
-    image: "/assets/team-rae.jpg",
-    imagePosition: "member-three",
     description:
       "Shapes the 2D visual language — characters, cosmetics, UI framing, and the ink-line look across the game and site.",
     skills: ["ART", "ANIMATION", "CHARACTERS"],
@@ -81,8 +76,6 @@ const team = [
     name: "Joseph Namuag",
     role: "System Analyst",
     icon: Gamepad2,
-    image: "/assets/team-joseph.jpg",
-    imagePosition: "member-four",
     description:
       "Maps the production loop into systems: scoring curves, the C-Coin economy, ad rules, and the data model behind the Almanac.",
     skills: ["GAMEPLAY", "SYSTEMS", "LEVEL DESIGN"],
@@ -189,12 +182,7 @@ function TeamPage() {
                       onClick={() => setActiveMember(index)}
                       aria-label={`View ${person.name}`}
                     >
-                      <Image
-                        src={person.image}
-                        alt={person.name}
-                        fill
-                        className={`mini-member-image ${person.imagePosition}`}
-                      />
+                      <CircleUserRound className="mini-member-placeholder" aria-hidden="true" />
                     </button>
                   ))}
 
@@ -375,18 +363,13 @@ function TeamPage() {
 
                 <div
                   className="crew-profile-image"
-                  style={{ "--crew-photo-bg": `url("${member.image}")` } as CSSProperties}
+                  role="img"
+                  aria-label={`Placeholder profile image for ${member.name}`}
                 >
-
-                  <Image
-                    src={member.image}
-                    alt={`${member.name} - ${member.role}`}
-                    fill
-                    priority={activeMember === 0}
-                    className={member.imagePosition}
-                  />
-
-                  <div className="crew-image-gradient" />
+                  <div className="crew-profile-placeholder" aria-hidden="true">
+                    <CircleUserRound />
+                    <span>PROFILE PHOTO</span>
+                  </div>
 
                   <div className="member-number">
                     {member.number}
@@ -494,13 +477,8 @@ function TeamPage() {
                     }
                   >
 
-                    <div>
-                      <Image
-                        src={person.image}
-                        alt={person.name}
-                        fill
-                        className={person.imagePosition}
-                      />
+                    <div aria-label={`Placeholder profile image for ${person.name}`}>
+                      <CircleUserRound aria-hidden="true" />
                     </div>
 
                   </button>
