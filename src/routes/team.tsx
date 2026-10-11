@@ -586,7 +586,7 @@ function TeamPage() {
 
                 <div className="behind-photo behind-photo-one">
                   <Image
-                    src="/assets/team-rae.png"
+                    src="/assets/team-rae.png?v=20261011"
                     alt="Behind the scenes"
                     fill
                   />
@@ -594,7 +594,7 @@ function TeamPage() {
 
                 <div className="behind-photo behind-photo-two">
                   <Image
-                    src="/assets/team-princess.png"
+                    src="/assets/team-princess.png?v=20261011"
                     alt="Team production"
                     fill
                   />
@@ -602,7 +602,7 @@ function TeamPage() {
 
                 <div className="behind-photo behind-photo-three">
                   <Image
-                    src="/assets/team-kelvin.png"
+                    src="/assets/team-kelvin.png?v=20261011"
                     alt="Game development"
                     fill
                   />
