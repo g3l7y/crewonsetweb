@@ -953,7 +953,8 @@
 }
 
 .behind-photo-one img {
-  transform: scale(1.15);
+  transform: scale(1.22);
+  transform-origin: 50% 65%;
   object-position: 15% center;
 }
 
