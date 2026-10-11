@@ -173,9 +173,12 @@
   letter-spacing: 0.15em;
 }
 
-.mini-member-image {
-  object-fit: cover;
-  transform: scale(1.7);
+.mini-member-placeholder {
+  width: 100%;
+  height: 100%;
+  padding: 4px;
+  color: #ffb52e;
+  stroke-width: 1.4;
 }
 
 .hero-crown {
@@ -484,38 +487,37 @@
 }
 
 .crew-profile-image::before {
-  content: "";
+  content: none;
+}
+
+.crew-profile-placeholder {
   position: absolute;
-  z-index: 0;
-  inset: -12px;
-  background-image: var(--crew-photo-bg);
-  background-position: center;
-  background-size: cover;
-  filter: blur(12px) saturate(0.9) brightness(0.86);
-  transform: scale(1.04);
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 18px;
+  color: rgba(255, 255, 255, 0.72);
+  background:
+    radial-gradient(circle at 50% 44%, rgba(255, 255, 255, 0.08), transparent 32%),
+    linear-gradient(145deg, #253044, #121a29 68%, #0b1117);
 }
 
-.crew-profile-image > img {
-  z-index: 1;
-  object-fit: cover;
-  transform: scale(1.04);
-  transition: transform 0.7s ease;
+.crew-profile-placeholder svg {
+  width: clamp(96px, 15vw, 190px);
+  height: clamp(96px, 15vw, 190px);
+  stroke-width: 1;
+  color: #ffb52e;
+  opacity: 0.72;
 }
 
-.member-one {
-  object-position: 18% center;
-}
-
-.member-two {
-  object-position: 40% center;
-}
-
-.member-three {
-  object-position: 63% center;
-}
-
-.member-four {
-  object-position: 88% center;
+.crew-profile-placeholder span {
+  font-family: monospace;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.2em;
+  color: rgba(255, 255, 255, 0.54);
 }
 
 .crew-image-gradient {
@@ -806,9 +808,18 @@
   overflow: hidden;
 }
 
-.crew-thumbnail img {
-  object-fit: cover;
-  transform: scale(1.55);
+.crew-thumbnail > div {
+  display: grid;
+  place-items: center;
+  color: #ffb52e;
+  background: linear-gradient(145deg, #253044, #111820);
+}
+
+.crew-thumbnail svg {
+  width: 54px;
+  height: 54px;
+  stroke-width: 1.25;
+  opacity: 0.8;
 }
 
 .thumbnail-label {
