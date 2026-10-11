@@ -148,20 +148,32 @@ function GamePage() {
     );
   }
 
-  function notifyRequirementsUpdated(title = "New game update") {
-    notificationsStore.set([
-      {
-        id: uid("requirements"),
-        title,
-        body: "The game requirements and release details have been updated. Open your dashboard to get the latest game.",
-        createdAt: new Date().toISOString(),
-        kind: "announcement",
-        read: false,
-        href: "/portal#play-now",
-        target: { kind: "all" },
-      },
-      ...notificationsStore.get(),
-    ]);
+  async function notifyPlayers(title: string, body: string, id = uid("game-update")) {
+    const createdAt = new Date().toISOString();
+    const notification = {
+      id,
+      title,
+      body,
+      createdAt,
+      kind: "announcement" as const,
+      channel: "notification" as const,
+      read: false,
+      href: "/portal#play-now",
+      target: { kind: "all" as const },
+    };
+    if (isMockMode()) {
+      notificationsStore.set([notification, ...notificationsStore.get()]);
+      return;
+    }
+
+    const response = await fetch("/api/admin/data?key=notifications", {
+      method: "POST",
+      credentials: "include",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(notification),
+    });
+    const result = (await response.json().catch(() => ({}))) as { error?: string };
+    if (!response.ok) throw new Error(result.error || "Players could not be notified.");
   }
 
   async function saveRequirements() {
@@ -239,10 +251,20 @@ function GamePage() {
         gameBuildStore.set([nextBuild]);
       }
       setBuildDraft(nextBuild);
-      notifyRequirementsUpdated();
+      let notificationError = "";
+      try {
+        await notifyPlayers(
+          "New game update",
+          "The game requirements and release details have been updated. Open your dashboard to get the latest game.",
+        );
+      } catch (error) {
+        notificationError = error instanceof Error ? error.message : "Players could not be notified.";
+      }
       setInstallerFile(null);
       if (installerInputRef.current) installerInputRef.current.value = "";
-      setSavedMessage("Saved — all game pages updated and players notified.");
+      setSavedMessage(notificationError
+        ? `Game pages saved, but players were not notified: ${notificationError}`
+        : "Saved — all game pages updated and players notified.");
       window.setTimeout(() => setSavedMessage(""), 3000);
     } catch (error) {
       setSavedMessage(error instanceof Error ? error.message : "Changes could not be saved.");
@@ -256,8 +278,11 @@ function GamePage() {
     setBuildInfo({ ...seedBuildInfo });
     systemRequirementsStore.set(seedSystemRequirements);
     buildInfoStore.set([seedBuildInfo]);
-    notifyRequirementsUpdated();
-    setSavedMessage("Reset to defaults.");
+    void notifyPlayers(
+      "New game update",
+      "The game requirements and release details have been updated. Open your dashboard to get the latest game.",
+    ).then(() => setSavedMessage("Reset to defaults — players notified."))
+      .catch((error: unknown) => setSavedMessage(error instanceof Error ? `Defaults reset, but players were not notified: ${error.message}` : "Defaults reset, but players were not notified."));
     window.setTimeout(() => setSavedMessage(""), 3000);
   }
 
@@ -282,7 +307,7 @@ function GamePage() {
     }
   }, [remoteGameBuildRows]);
 
-  function publishBrandUpdate(event: FormEvent<HTMLFormElement>) {
+  async function publishBrandUpdate(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     const url = brandUrl.trim();
     try {
@@ -305,21 +330,16 @@ function GamePage() {
         credentials: "include",
       });
     }
-    notificationsStore.set([
-      {
-        id: uid("brand-notice"),
-        title: "New brand update",
-        body: update.notes || "A new brand update is available.",
-        createdAt: update.publishedAt,
-        kind: "announcement",
-        read: false,
-        href: isMockMode()
-          ? update.url
-          : `${window.location.origin}/api/brand-updates/${encodeURIComponent(update.id)}/click`,
-        target: { kind: "all" },
-      },
-      ...notificationsStore.get(),
-    ]);
+    try {
+      await notifyPlayers(
+        "New game update",
+        update.notes || "A new game update is available. Open your dashboard to play.",
+        `brand-notice-${update.id}`,
+      );
+    } catch (error) {
+      setComposerMessage(error instanceof Error ? `Update published, but players were not notified: ${error.message}` : "Update published, but players were not notified.");
+      return;
+    }
     logAdminActivity({
       kind: "game",
       label: "Brand update published",
