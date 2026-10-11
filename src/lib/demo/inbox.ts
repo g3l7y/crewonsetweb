@@ -184,8 +184,11 @@ const playerNotificationKinds = new Set([
 
 /** Exclude broadcasts and admin-only events from a player's activity feed. */
 export function isPlayerAccountNotification(notification: NotificationLike) {
-  if (!isActivityNotification(notification) || notification.target?.kind === "all") return false;
+  if (!isActivityNotification(notification)) return false;
   const kind = notification.kind ?? "";
+  // Game announcements are intentionally broadcast to every player account.
+  if (kind === "announcement") return true;
+  if (notification.target?.kind === "all") return false;
   if (playerNotificationKinds.has(kind)) return true;
   const explicitlyTargeted =
     notification.target?.kind === "players" ||
