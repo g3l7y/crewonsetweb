@@ -68,7 +68,7 @@ const team = [
     role: "Designer",
     icon: Palette,
     description:
-      "Shapes the 2D visual language — characters, cosmetics, UI framing, and the ink-line look across the game and site.",
+      "Creates all of the game’s 2D UI and 3D assets, along with its characters, cosmetics, and signature ink-line look.",
     skills: ["ART", "ANIMATION", "CHARACTERS"],
   },
   {
