@@ -68,16 +68,16 @@ const team = [
     role: "Designer",
     icon: Palette,
     description:
-      "Creates all of the game’s 2D UI and 3D assets, along with its characters, cosmetics, and signature ink-line look.",
+      "Designer and 2D artist shaping the game’s visual language through its characters, cosmetics, UI, and signature ink-line look.",
     skills: ["ART", "ANIMATION", "CHARACTERS"],
   },
   {
     number: "04",
     name: "Joseph Namuag",
-    role: "System Analyst",
+    role: "System Analyst, 3D Artist",
     icon: Gamepad2,
     description:
-      "Maps the production loop into systems: scoring curves, the C-Coin economy, ad rules, and the data model behind the Almanac.",
+      "Maps the production loop into systems — scoring curves, the C-Coin economy, ad rules, and the Almanac data model — and creates the game’s 3D assets.",
     skills: ["GAMEPLAY", "SYSTEMS", "LEVEL DESIGN"],
   },
 ]
