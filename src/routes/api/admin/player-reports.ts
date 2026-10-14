@@ -156,7 +156,6 @@ export const Route = createFileRoute('/api/admin/player-reports')({
               uploadedAttachment = await uploadSubmissionAttachment(
                 id,
                 attachment,
-                getSecretKey(),
               );
             } catch (error) {
               const message = error instanceof Error ? error.message : 'Attachment upload failed.';
