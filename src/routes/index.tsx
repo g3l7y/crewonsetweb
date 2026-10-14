@@ -3,10 +3,10 @@ import { createFileRoute } from "@tanstack/react-router";
 export const Route = createFileRoute("/")({
   head: () => ({
     meta: [
-      { title: "Crew On Set! — Co-op Commercial Chaos" },
-      { name: "description", content: "A desktop video commercial production game. Play Director, AV Technician, Cameraman, and Editor solo or with a four-player crew." },
-      { property: "og:title", content: "Crew On Set! — Co-op Commercial Chaos" },
-      { property: "og:description", content: "A desktop video commercial production game. Play Director, AV Technician, Cameraman, and Editor solo or with a four-player crew." },
+      { title: "Crew On Set! — Make a Commercial, Solo or Together" },
+      { name: "description", content: "Make a video commercial in a desktop game. Play solo or team up with three friends and bring your production to life." },
+      { property: "og:title", content: "Crew On Set! — Make a Commercial, Solo or Together" },
+      { property: "og:description", content: "Make a video commercial in a desktop game. Play solo or team up with three friends and bring your production to life." },
     ],
   }),
   component: HomePage,
@@ -42,21 +42,21 @@ const chapters = [
   {
     number: "01",
     title: "PRE-PRODUCTION",
-    text: "Land your first commercial, plan the shoot, and get every role and responsibility ready before cameras roll.",
+    text: "Turn the client brief into a shoot plan. Pick your set, arrange the props, and get every detail ready before cameras roll.",
     icon: Building2,
     image: "/assets/home-role-director.png",
   },
   {
     number: "02",
     title: "PRODUCTION",
-    text: "Lights up, camera rolling! Direct the action, shape the shot, and capture a take your crew can be proud of.",
+    text: "Bring the set to life: shape the lighting, frame each shot, and call for another take until you have the footage you want.",
     icon: Clapperboard,
     image: "/assets/home-role-cameraman.png",
   },
   {
     number: "03",
     title: "POST-PRODUCTION",
-    text: "Choose the best footage, cut the story together, and polish the finished commercial before delivery.",
+    text: "Find the story in your footage. Cut the clips, add branding and sound, polish the color, then premiere your finished commercial.",
     icon: Timer,
     image: "/assets/home-role-editor.png",
   },
@@ -66,22 +66,22 @@ const roles = [
   {
     image: "/assets/home-role-director.png",
     title: "Director",
-    text: "Call the shots, direct the crew, and keep the entire production moving toward the final take.",
+    text: "Call the creative shots: build the set, stage products and props, position the actors, and cue the action.",
   },
   {
     image: "/assets/home-role-av-technician.png",
     title: "AV Technician",
-    text: "Control lighting, sound, and studio equipment so every scene looks and sounds ready for the take.",
+    text: "Set the mood with production lights and keep an eye on audio levels as the crew gets ready to roll.",
   },
   {
     image: "/assets/home-role-cameraman.png",
     title: "Cameraman",
-    text: "Frame the shots and capture every important moment before time runs out.",
+    text: "Find the frame that sells the story. Compose each shot, roll camera, and review your takes against the brief.",
   },
   {
     image: "/assets/home-role-editor.png",
     title: "Editor",
-    text: "Choose the strongest takes, fix production mistakes, and assemble the commercial to its perfection.",
+    text: "Shape raw footage into the final spot: pick the best takes, cut to the beat, add branding, and deliver the finished commercial.",
   },
 ];
 
@@ -158,7 +158,7 @@ function HomePage() {
             </h1>
 
             <p className="mt-5 max-w-xl text-lg font-medium leading-relaxed text-white/50 sm:text-xl">
-              Step into a desktop video commercial production game where every shoot is yours to make. Play solo and take on all four roles, or team up with three others: Director, AV Technician, Cameraman, and Editor.
+              Ready to call action? Make a video commercial from the first setup to the final cut. Play solo and run the whole shoot, or bring up to three friends and make it a full crew.
             </p>
 
             <div className="mt-8">
@@ -200,11 +200,11 @@ function HomePage() {
             </h2>
 
             <p className="mt-6 text-lg leading-relaxed text-white/70">
-              Welcome to your own studio, where clients are demanding, props go missing, and someone may have forgotten the SD card. Every brief is a new chance to bring a commercial to life.
+              Welcome to your own studio, where every client brief becomes a chance to create. Build the set, experiment with your ideas, and see how each choice shapes the commercial.
             </p>
 
             <p className="mt-4 text-lg leading-relaxed text-white/70">
-              Play all four roles yourself or share the work with your crew. Plan the set, capture the action, and edit a commercial worth remembering—then use each review to make your next cut even better.
+              Take a contract from first setup to final cut. Whether you run the whole production solo or share the four roles with your crew, each review gives you a new idea for the next take.
             </p>
 
 
@@ -308,11 +308,11 @@ function HomePage() {
             <h2 className="section-title">
               One Crew.
               <br />
-              <span className="text-coral">One Teamwork.</span>
+              <span className="text-coral">Solo or Together.</span>
             </h2>
 
             <p className="mt-5 text-lg text-navy/65">
-              Four roles. One production. Take on every job solo, or bring up to three friends and give each player a role on the crew.
+              Four roles. One production. Play solo and switch between every job, or bring up to three friends and give each player a role on the crew.
             </p>
           </div>
 
@@ -373,24 +373,24 @@ function HomePage() {
             </h2>
 
             <p className="mt-6 text-lg leading-relaxed text-white/70">
-              Make a video commercial from the first client brief to the final cut. The Director shapes the vision, the AV Technician sets the scene, the Cameraman captures the shot, and the Editor brings it all together. Play solo or split these four roles across a four-player crew.
+              Make a video commercial from the first client brief to the final cut. Direct the set, light the scene, capture the action, then edit it into a spot worth showing off. Handle all four roles solo or split them across a four-player crew.
             </p>
 
             <p className="mt-4 text-lg leading-relaxed text-white/70">
-              Experiment with each setup, chase the perfect take, and turn feedback into a better cut. Crew On Set! is a hands-on desktop game about the creative chaos of commercial production.
+              Experiment with the set, chase the perfect take, and turn feedback into a better cut. This desktop game makes commercial production hands-on, creative, and fun to play at your own pace.
             </p>
 
             <div className="mt-8 grid gap-4 sm:grid-cols-2">
               <div className="rounded-md border border-white/10 bg-white/5 px-4 py-4">
-                <span className="text-xs font-black uppercase tracking-widest text-yellow">PREPARATION</span>
+                <span className="text-xs font-black uppercase tracking-widest text-yellow">PRE-PRODUCTION</span>
                 <p className="mt-1 text-sm leading-relaxed text-white/60">
-                  Get your equipment ready, coordinate with your crew, and make sure everything is in place before the cameras roll.
+                  Read the client brief, plan the required shots, purchase and place equipment, and prepare the set, products, props, and actors.
                 </p>
               </div>
               <div className="rounded-md border border-white/10 bg-white/5 px-4 py-4">
-                <span className="text-xs font-black uppercase tracking-widest text-yellow">ON-SET PRESSURE</span>
+                <span className="text-xs font-black uppercase tracking-widest text-yellow">PRODUCTION & POST-PRODUCTION</span>
                 <p className="mt-1 text-sm leading-relaxed text-white/60">
-                  Keep the production moving, react to unexpected problems, and deliver the shot before time runs out.
+                  Record and review your takes, then arrange and trim footage, add branding and music, adjust color, and submit the exported commercial.
                 </p>
               </div>
             </div>
@@ -429,7 +429,7 @@ function HomePage() {
 
             <p className="mt-6 text-lg leading-relaxed text-navy/70">
               We&apos;re a small independent crew of artists, designers,
-              documentators and developers obsessed with co-op games and the
+              documentators and developers interested in games and the
               strange magic that happens behind the camera.
             </p>
 
@@ -489,31 +489,31 @@ function HomePage() {
 
             <div className="mt-6 flex flex-wrap gap-2">
               <a
-                href="mailto:hello@crew-on-set.game"
+                href="mailto:crewonsetgame@gmail.com"
                 className="social-link"
               >
                 <Mail />
-                crewonset1@gmail.com
+                crewonsetgame@gmail.com
               </a>
 
               <a
-                href="https://www.facebook.com/"
+                href="https://www.facebook.com/profile.php?id=61594770855744"
                 target="_blank"
                 rel="noreferrer"
                 className="social-link"
               >
                 <Facebook />
-                Crew On Set!
+                Crew On Set
               </a>
 
               <a
-                href="https://www.instagram.com/"
+                href="https://www.instagram.com/crewonset/"
                 target="_blank"
                 rel="noreferrer"
                 className="social-link"
               >
                 <Instagram />
-                @crew_on_set_game
+                @crewonset
               </a>
             </div>
           </div>
