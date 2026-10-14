@@ -151,13 +151,10 @@ function DownloadPage() {
                 What&apos;s in <span className="text-yellow">the download.</span>
               </h2>
               <p className="mt-5 leading-relaxed text-white/70">
-                Crew On Set! is a 1–4 player co-op game about running a chaotic commercial
-                production studio. This build includes the full story campaign, all four crew roles,
-                and the online co-op matchmaking lobby.
+                Crew On Set! is a desktop video commercial production game. Play solo and take on all four jobs—Director, AV Technician, Cameraman, and Editor—or team up online with three others and give each player a role. Plan the shoot, capture the footage, and edit your own commercial in the story campaign or multiplayer lobby.
               </p>
               <p className="mt-4 leading-relaxed text-white/70">
-                This is an active playtest build — expect frequent updates, new sets, and balance
-                changes as the studio grows.
+                This is an active playtest build, so you can join the production early. Expect new sets, regular updates, and refinements as the studio grows.
               </p>
 
               {publishedVersion && (

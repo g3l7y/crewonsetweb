@@ -4,9 +4,9 @@ export const Route = createFileRoute("/")({
   head: () => ({
     meta: [
       { title: "Crew On Set! — Co-op Commercial Chaos" },
-      { name: "description", content: "A playful 1-4 player co-op game about making the greatest commercial nobody asked for." },
+      { name: "description", content: "A desktop video commercial production game. Play Director, AV Technician, Cameraman, and Editor solo or with a four-player crew." },
       { property: "og:title", content: "Crew On Set! — Co-op Commercial Chaos" },
-      { property: "og:description", content: "A playful 1-4 player co-op game about making the greatest commercial nobody asked for." },
+      { property: "og:description", content: "A desktop video commercial production game. Play Director, AV Technician, Cameraman, and Editor solo or with a four-player crew." },
     ],
   }),
   component: HomePage,
@@ -42,21 +42,21 @@ const chapters = [
   {
     number: "01",
     title: "PRE-PRODUCTION",
-    text: "Your crew lands its first commercial. Different roles, different responsibilities.",
+    text: "Land your first commercial, plan the shoot, and get every role and responsibility ready before cameras roll.",
     icon: Building2,
     image: "/assets/home-role-director.png",
   },
   {
     number: "02",
     title: "PRODUCTION",
-    text: "Your crew finally gets a shot at a production. Everything is on the line",
+    text: "Lights up, camera rolling! Direct the action, shape the shot, and capture a take your crew can be proud of.",
     icon: Clapperboard,
     image: "/assets/home-role-cameraman.png",
   },
   {
     number: "03",
     title: "POST-PRODUCTION",
-    text: "Refining the footage and preparing the final product.",
+    text: "Choose the best footage, cut the story together, and polish the finished commercial before delivery.",
     icon: Timer,
     image: "/assets/home-role-editor.png",
   },
@@ -158,8 +158,7 @@ function HomePage() {
             </h1>
 
             <p className="mt-5 max-w-xl text-lg font-medium leading-relaxed text-white/50 sm:text-xl">
-              Grab your crew and make the greatest commercial nobody asked
-              for. A 1–4 player co-op game where every second on set counts.
+              Step into a desktop video commercial production game where every shoot is yours to make. Play solo and take on all four roles, or team up with three others: Director, AV Technician, Cameraman, and Editor.
             </p>
 
             <div className="mt-8">
@@ -201,15 +200,11 @@ function HomePage() {
             </h2>
 
             <p className="mt-6 text-lg leading-relaxed text-white/70">
-              Welcome to your own studio, where clients are demanding, the
-              props are puzzling, and someone definitely forgot to put an SD
-              Card into the camera.
+              Welcome to your own studio, where clients are demanding, props go missing, and someone may have forgotten the SD card. Every brief is a new chance to bring a commercial to life.
             </p>
 
             <p className="mt-4 text-lg leading-relaxed text-white/70">
-              You and your crew have one job and it is to turn contracts into
-              unforgettable commercials. Learn each other&apos;s strengths,
-              work under pressure, and get the final shot.
+              Play all four roles yourself or share the work with your crew. Plan the set, capture the action, and edit a commercial worth remembering—then use each review to make your next cut even better.
             </p>
 
 
@@ -317,8 +312,7 @@ function HomePage() {
             </h2>
 
             <p className="mt-5 text-lg text-navy/65">
-              Choose your role and work together. Every role controls a
-              different part of the production.
+              Four roles. One production. Take on every job solo, or bring up to three friends and give each player a role on the crew.
             </p>
           </div>
 
@@ -379,13 +373,11 @@ function HomePage() {
             </h2>
 
             <p className="mt-6 text-lg leading-relaxed text-white/70">
-              Every production depends on teamwork. The Director leads the vision, the AV Technician keeps the set running, the Cameraman captures the shot, and the Editor brings it all together. Work together, handle the chaos, and make every take count.
+              Make a video commercial from the first client brief to the final cut. The Director shapes the vision, the AV Technician sets the scene, the Cameraman captures the shot, and the Editor brings it all together. Play solo or split these four roles across a four-player crew.
             </p>
 
             <p className="mt-4 text-lg leading-relaxed text-white/70">
-              Miss a cue and the take is ruined. Nail it, and the crew moves
-              one step closer to wrapping the shoot on schedule — and on
-              budget.
+              Experiment with each setup, chase the perfect take, and turn feedback into a better cut. Crew On Set! is a hands-on desktop game about the creative chaos of commercial production.
             </p>
 
             <div className="mt-8 grid gap-4 sm:grid-cols-2">

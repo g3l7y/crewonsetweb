@@ -176,9 +176,9 @@ function FeaturesPage() {
                 <span className="text-coral">!</span>
               </h1>
               <p className="story-hero-description">
-                From the studio&apos;s story to the four roles that run it —
+                A desktop video commercial production game where you can
                 <br />
-                everything that makes a shoot a Crew On Set! shoot.
+                play Director, AV Technician, Cameraman, and Editor solo or with a four-player crew.
               </p>
             </div>
 
@@ -265,7 +265,7 @@ function FeaturesPage() {
           <div className="almanac-details-box">
             <div className="almanac-details-heading">
               <h2>ROLE DETAILS</h2>
-              <p>Explore the responsibilities, skills, tools, and gameplay purpose of the selected role.</p>
+              <p>Pick a role to see how you can bring a commercial to life—solo or as part of a four-player crew.</p>
             </div>
 
             <div className="almanac-role-main">
@@ -344,7 +344,7 @@ function FeaturesPage() {
           <div className="almanac-reference-heading">
             <span className="almanac-reference-eyebrow">QUICK REFERENCE</span>
             <h2>ALL ROLES AT A GLANCE</h2>
-            <p>A quick look at what each department brings to the set.</p>
+            <p>See how the Director, AV Technician, Cameraman, and Editor work together to make the spot.</p>
           </div>
 
           <div className="almanac-reference-grid">
