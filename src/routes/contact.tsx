@@ -32,15 +32,15 @@ function ContactPage() {
   const faqs = [
     {
       question: "What is Crew On Set!?",
-      answer: "Crew On Set! is a commercial filmmaking game for 1–4 players. Play solo and handle every part of a production, or team up online and divide the work among the crew roles.",
+      answer: "Crew On Set! is a desktop video commercial production game. Play solo and take on all four roles—Director, AV Technician, Cameraman, and Editor—or play online with up to three others, with each player taking a role on the crew.",
     },
     {
       question: "How can I get started playing?",
-      answer: "Visit the Download page for the current game build, system requirements, and installation details.",
+      answer: "Download the desktop game from the Download page, check the system requirements, then install it and step onto set.",
     },
     {
       question: "Can I play with friends?",
-      answer: "Yes. You can play solo or team up online with up to three other players. Multiplayer lets the crew divide the production roles; solo play lets one player handle the full process.",
+      answer: "Absolutely. Play solo and run all four roles yourself, or team up online with three others and give each player one production role.",
     },
     {
       question: "How can a brand or product team partner with Crew On Set!?",

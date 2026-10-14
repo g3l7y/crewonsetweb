@@ -6,12 +6,12 @@ export const Route = createFileRoute("/download")({
       { title: "Download — Crew On Set!" },
       {
         name: "description",
-        content: "Download Crew On Set!, system requirements, and installation instructions.",
+        content: "Download the desktop video commercial production game. Play four crew roles solo or share them with a four-player team.",
       },
       { property: "og:title", content: "Download — Crew On Set!" },
       {
         property: "og:description",
-        content: "Download Crew On Set!, system requirements, and installation instructions.",
+        content: "Download the desktop video commercial production game. Play four crew roles solo or share them with a four-player team.",
       },
     ],
   }),
@@ -91,8 +91,7 @@ function DownloadPage() {
               <span className="text-coral">!</span>
             </h1>
             <p className="mt-6 max-w-2xl text-lg leading-relaxed text-white/70 sm:text-xl">
-              Grab the latest build, check your rig against the requirements, and get your crew on
-              set in minutes.
+              Ready to call action? Download the desktop game, check your system requirements, and start turning client briefs into commercials.
             </p>
 
             <a
@@ -151,13 +150,10 @@ function DownloadPage() {
                 What&apos;s in <span className="text-yellow">the download.</span>
               </h2>
               <p className="mt-5 leading-relaxed text-white/70">
-                Crew On Set! is a commercial filmmaking game for 1–4 players. Play solo and
-                take on every part of a production, or team up online and divide the four crew
-                roles. This build includes the story campaign and online multiplayer lobby.
+                Crew On Set! is a desktop video commercial production game. Play solo and take on all four jobs—Director, AV Technician, Cameraman, and Editor—or team up online with three others and give each player a role. Plan the shoot, capture the footage, and edit your own commercial in the story campaign or multiplayer lobby.
               </p>
               <p className="mt-4 leading-relaxed text-white/70">
-                This is an active playtest build — expect frequent updates, new sets, and balance
-                changes as the studio grows.
+                This is an active playtest build, so you can join the production early. Expect new sets, regular updates, and refinements as the studio grows.
               </p>
 
               {publishedVersion && (

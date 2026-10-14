@@ -4,9 +4,9 @@ export const Route = createFileRoute("/features")({
   head: () => ({
     meta: [
       { title: "Features — Crew On Set!" },
-      { name: "description", content: "The story, the world, and the four crew roles that power every shoot in Crew On Set!" },
+      { name: "description", content: "Explore a desktop video commercial production game, with four roles to play solo or share across a four-player crew." },
       { property: "og:title", content: "Features — Crew On Set!" },
-      { property: "og:description", content: "The story, the world, and the four crew roles that power every shoot in Crew On Set!" },
+      { property: "og:description", content: "Explore a desktop video commercial production game, with four roles to play solo or share across a four-player crew." },
     ],
   }),
   component: FeaturesPage,
@@ -31,17 +31,17 @@ const timeline = [
   {
     number: "01",
     title: "PRE-PRODUCTION",
-    text: "Review and accept the contract, plan the required shots, then buy and arrange the set, products, props, actors, and equipment.",
+    text: "Take on a client brief and map out the shots. Choose your set, gather the products and props, and stage the scene before the crew rolls.",
   },
   {
     number: "02",
     title: "PRODUCTION",
-    text: "Set up lighting, frame the brief's required shots, cue actor actions when needed, and record takes you can review or try again.",
+    text: "Light the scene, direct the action, and find the frame. Record as many takes as you need to capture the commercial in your head.",
   },
   {
     number: "03",
     title: "POST-PRODUCTION",
-    text: "Arrange and trim footage on the timeline, add required branding and sound, adjust color, then export and submit for a review.",
+    text: "Choose your best footage, cut it together, add branding and sound, and polish the color before you deliver the final spot.",
   },
 ];
 
@@ -168,9 +168,9 @@ function FeaturesPage() {
                 <span className="text-coral">!</span>
               </h1>
               <p className="story-hero-description">
-                From the studio&apos;s story to the four roles that run it —
+                A desktop video commercial production game where you can
                 <br />
-                everything that makes a shoot a Crew On Set! shoot.
+                play Director, AV Technician, Cameraman, and Editor solo or with a four-player crew.
               </p>
             </div>
 
@@ -257,7 +257,7 @@ function FeaturesPage() {
           <div className="almanac-details-box">
             <div className="almanac-details-heading">
               <h2>ROLE DETAILS</h2>
-              <p>Explore the responsibilities, skills, tools, and gameplay purpose of the selected role.</p>
+              <p>Pick a role to see how you can bring a commercial to life—solo or as part of a four-player crew.</p>
             </div>
 
             <div className="almanac-role-main">
@@ -336,7 +336,7 @@ function FeaturesPage() {
           <div className="almanac-reference-heading">
             <span className="almanac-reference-eyebrow">QUICK REFERENCE</span>
             <h2>ALL ROLES AT A GLANCE</h2>
-            <p>A quick look at what each department brings to the set.</p>
+            <p>See how the Director, AV Technician, Cameraman, and Editor work together to make the spot.</p>
           </div>
 
           <div className="almanac-reference-grid">
