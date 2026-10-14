@@ -32,23 +32,23 @@ function ContactPage() {
   const faqs = [
     {
       question: "What is Crew On Set!?",
-      answer: "Crew On Set! is a desktop video commercial production game. Play solo and take on all four roles—Director, AV Technician, Cameraman, and Editor—or play online with up to three others, with each player taking a role on the crew.",
+      answer: "Crew On Set! is a desktop game about making video commercials. Play solo and take on the Director, AV Technician, Cameraman, and Editor roles, or invite up to three friends and split up the production.",
     },
     {
       question: "How can I get started playing?",
-      answer: "Download the desktop game from the Download page, check the system requirements, then install it and step onto set.",
+      answer: "Head to the Download page, check that your computer meets the requirements, then install the game and get your first production underway.",
     },
     {
       question: "Can I play with friends?",
-      answer: "Absolutely. Play solo and run all four roles yourself, or team up online with three others and give each player one production role.",
+      answer: "Of course. You can run the whole shoot solo or team up online with up to three friends. Each player can take on a different part of the production.",
     },
     {
       question: "How can a brand or product team partner with Crew On Set!?",
-      answer: "Use the partnership application below to send a production proposal. Include the product type and model, a business email, proposed budget, and advertisement duration. A product link or brief can help explain the idea.",
+      answer: "Fill out the partnership form below with your product details, business email, proposed budget, and campaign length. Add a link or a short description to help us picture your idea.",
     },
     {
       question: "Where can I ask a question or share feedback?",
-      answer: "Reach the team through the contact links on this page. For a brand proposal, use the partnership application so the production team has the details it needs.",
+      answer: "Send us a message through any of the contact links here. If you have a brand idea, the partnership form is the best way to get it in front of our team.",
     },
   ];
 

@@ -91,7 +91,7 @@ function DownloadPage() {
               <span className="text-coral">!</span>
             </h1>
             <p className="mt-6 max-w-2xl text-lg leading-relaxed text-white/70 sm:text-xl">
-              Ready to call action? Download the desktop game, check your system requirements, and start turning client briefs into commercials.
+              Your next production starts here. Download the desktop game, check the requirements, and get ready to turn a client brief into a commercial.
             </p>
 
             <a
@@ -150,10 +150,10 @@ function DownloadPage() {
                 What&apos;s in <span className="text-yellow">the download.</span>
               </h2>
               <p className="mt-5 leading-relaxed text-white/70">
-                Crew On Set! is a desktop video commercial production game. Play solo and take on all four jobs—Director, AV Technician, Cameraman, and Editor—or team up online with three others and give each player a role. Plan the shoot, capture the footage, and edit your own commercial in the story campaign or multiplayer lobby.
+                Crew On Set! puts you in charge of making a video commercial, from planning the shoot to polishing the final cut. Play on your own and run the whole production, or invite three friends and share the work. The story campaign gives you a reason to keep improving with every job, while online multiplayer lets the crew work together.
               </p>
               <p className="mt-4 leading-relaxed text-white/70">
-                This is an active playtest build, so you can join the production early. Expect new sets, regular updates, and refinements as the studio grows.
+                Try the current playtest build and help shape what comes next. New sets and improvements are on the way as the studio grows.
               </p>
 
               {publishedVersion && (
@@ -161,14 +161,14 @@ function DownloadPage() {
                   <span className="font-black uppercase tracking-wider text-yellow">
                     Version {publishedVersion}
                   </span>
-                  {releaseNotes && <> — {releaseNotes}</>}
+                  {releaseNotes && <> · {releaseNotes}</>}
                 </p>
               )}
 
               <div className="mt-8 grid gap-3 sm:grid-cols-2">
                 <div className="download-card flex items-center gap-3 rounded-md border border-[#fefaef]/80 bg-[#fefaef] px-4 py-3 text-[#0a0e19]">
                   <Gamepad2 className="size-5 shrink-0 text-yellow" />
-                  <span className="text-sm font-bold">Solo or 1–4 players</span>
+                  <span className="text-sm font-bold">Solo or up to 4 players</span>
                 </div>
                 <div className="download-card flex items-center gap-3 rounded-md border border-[#fefaef]/80 bg-[#fefaef] px-4 py-3 text-[#0a0e19]">
                   <MonitorPlay className="size-5 shrink-0 text-yellow" />
