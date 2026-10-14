@@ -4,9 +4,9 @@ export const Route = createFileRoute("/")({
   head: () => ({
     meta: [
       { title: "Crew On Set! — Make a Commercial, Solo or Together" },
-      { name: "description", content: "Step into a desktop video commercial production game. Direct, light, film, and edit solo or with a four-player crew." },
+      { name: "description", content: "Make a video commercial in a desktop game. Play solo or team up with three friends and bring your production to life." },
       { property: "og:title", content: "Crew On Set! — Make a Commercial, Solo or Together" },
-      { property: "og:description", content: "Step into a desktop video commercial production game. Direct, light, film, and edit solo or with a four-player crew." },
+      { property: "og:description", content: "Make a video commercial in a desktop game. Play solo or team up with three friends and bring your production to life." },
     ],
   }),
   component: HomePage,
@@ -158,7 +158,7 @@ function HomePage() {
             </h1>
 
             <p className="mt-5 max-w-xl text-lg font-medium leading-relaxed text-white/50 sm:text-xl">
-              Step into a desktop video commercial production game where every shoot is yours to make. Play solo and take on all four roles, or team up with three others and split the work: Director, AV Technician, Cameraman, and Editor.
+              Ready to call action? Make a video commercial from the first setup to the final cut. Play solo and run the whole shoot, or bring up to three friends and make it a full crew.
             </p>
 
             <div className="mt-8">

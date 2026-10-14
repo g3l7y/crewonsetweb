@@ -144,7 +144,8 @@ export async function uploadSubmissionAttachment(
 
   const uploaded = await fetch(upload.UploadUrl, {
     method: "PUT",
-    headers: { "Content-Type": file.type || "application/octet-stream" },
+    // PlayFab returns a pre-signed upload URL. Keep the request headers minimal
+    // so the upload matches the signed request, including for PDF files.
     body: await file.arrayBuffer(),
   });
   if (!uploaded.ok) throw new Error("The attachment could not be uploaded to PlayFab.");
