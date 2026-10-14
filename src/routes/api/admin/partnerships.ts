@@ -234,7 +234,7 @@ export const Route = createFileRoute('/api/admin/partnerships')({
           let uploadedAttachment: { attachmentUrl: string; fileName: string } | undefined;
           if (attachment) {
             try {
-              uploadedAttachment = await uploadSubmissionAttachment(id, attachment, getSecretKey());
+              uploadedAttachment = await uploadSubmissionAttachment(id, attachment);
             } catch (error) {
               const message = error instanceof Error ? error.message : 'Attachment upload failed.';
               return Response.json({ error: message }, { status: 400 });

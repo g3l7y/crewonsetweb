@@ -1,7 +1,88 @@
 import { PLAYFAB_API_BASE, PLAYFAB_TITLE_ID } from "@/lib/playfab/config";
+import { neon } from "@neondatabase/serverless";
 
 const MAX_ATTACHMENT_BYTES = 5 * 1024 * 1024;
 const ALLOWED_EXTENSIONS = new Set(["jpg", "jpeg", "png", "webp", "gif", "pdf"]);
+
+type StoredSubmissionAttachment = {
+  fileName: string;
+  contentType: string;
+  contentsBase64: string;
+};
+
+let attachmentSchemaPromise: Promise<void> | null = null;
+
+function getAttachmentSql() {
+  const databaseUrl = process.env["DATABASE_URL"]?.trim();
+  return databaseUrl ? neon(databaseUrl) : null;
+}
+
+async function ensureAttachmentSchema(sql: NonNullable<ReturnType<typeof getAttachmentSql>>) {
+  if (!attachmentSchemaPromise) {
+    attachmentSchemaPromise = sql`
+      CREATE TABLE IF NOT EXISTS submission_attachments (
+        file_name TEXT PRIMARY KEY,
+        record_id TEXT NOT NULL,
+        content_type TEXT NOT NULL,
+        contents_base64 TEXT NOT NULL,
+        created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+      )
+    `.then(() => undefined).catch((error) => {
+      attachmentSchemaPromise = null;
+      throw error;
+    });
+  }
+  await attachmentSchemaPromise;
+}
+
+function getAttachmentContentType(file: File): string {
+  const extension = getExtension(file);
+  if (extension === "pdf") return "application/pdf";
+  if (extension === "jpg" || extension === "jpeg") return "image/jpeg";
+  if (extension === "png") return "image/png";
+  if (extension === "webp") return "image/webp";
+  if (extension === "gif") return "image/gif";
+  return file.type || "application/octet-stream";
+}
+
+async function storeSubmissionAttachment(
+  recordId: string,
+  fileName: string,
+  file: File,
+): Promise<void> {
+  const sql = getAttachmentSql();
+  if (!sql) throw new Error("Attachment storage is not configured. Please contact the site administrator.");
+  await ensureAttachmentSchema(sql);
+  const contentsBase64 = Buffer.from(await file.arrayBuffer()).toString("base64");
+  await sql`
+    INSERT INTO submission_attachments (file_name, record_id, content_type, contents_base64)
+    VALUES (${fileName}, ${recordId}, ${getAttachmentContentType(file)}, ${contentsBase64})
+    ON CONFLICT (file_name) DO UPDATE SET
+      record_id = EXCLUDED.record_id,
+      content_type = EXCLUDED.content_type,
+      contents_base64 = EXCLUDED.contents_base64,
+      created_at = NOW()
+  `;
+}
+
+export async function getStoredSubmissionAttachment(fileName: string): Promise<StoredSubmissionAttachment | null> {
+  const sql = getAttachmentSql();
+  if (!sql) return null;
+  await ensureAttachmentSchema(sql);
+  const rows = await sql`
+    SELECT file_name, content_type, contents_base64
+    FROM submission_attachments
+    WHERE file_name = ${fileName}
+    LIMIT 1
+  `;
+  const row = rows[0] as Record<string, unknown> | undefined;
+  if (!row) return null;
+  return {
+    fileName: String(row["file_name"]),
+    contentType: String(row["content_type"]),
+    contentsBase64: String(row["contents_base64"]),
+  };
+}
 
 type PlayFabEntityKey = {
   Type: string;
@@ -123,46 +204,18 @@ function storageFileName(recordId: string, file: File): string {
 export async function uploadSubmissionAttachment(
   recordId: string,
   file: File,
-  secretKey: string,
 ): Promise<{ fileName: string; attachmentUrl: string }> {
   const validationError = validateSubmissionAttachment(file);
   if (validationError) throw new Error(validationError);
 
   const fileName = storageFileName(recordId, file);
-  const entityContext = await getTitleEntityContext(secretKey);
-  const initiated = await playFabFileRequest<{
-    ProfileVersion: number;
-    UploadDetails: Array<{ FileName: string; UploadUrl: string }>;
-  }>(
-    "/File/InitiateFileUploads",
-    entityContext.token,
-    { FileNames: [fileName] },
-    entityContext.entity,
-  );
-  const upload = initiated.UploadDetails?.[0];
-  if (!upload?.UploadUrl) throw new Error("PlayFab did not return an attachment upload URL.");
-
-  const uploaded = await fetch(upload.UploadUrl, {
-    method: "PUT",
-    // PlayFab returns a pre-signed upload URL. Keep the request headers minimal
-    // so the upload matches the signed request, including for PDF files.
-    body: await file.arrayBuffer(),
-  });
-  if (!uploaded.ok) throw new Error("The attachment could not be uploaded to PlayFab.");
-
-  await playFabFileRequest(
-    "/File/FinalizeFileUploads",
-    entityContext.token,
-    {
-      FileNames: [fileName],
-      ProfileVersion: initiated.ProfileVersion,
-    },
-    entityContext.entity,
-  );
-
+  if (!getAttachmentSql()) {
+    throw new Error("DATABASE_URL must be configured to store attachments without the PlayFab title file limit.");
+  }
+  await storeSubmissionAttachment(recordId, fileName, file);
   return {
     fileName,
-    attachmentUrl: `/api/admin/submission-attachments?file=${encodeURIComponent(fileName)}`,
+    attachmentUrl: `/api/admin/submission-attachments?storage=database&file=${encodeURIComponent(fileName)}`,
   };
 }
 
@@ -195,6 +248,11 @@ export async function getSubmissionAttachment(
 
 export async function deleteSubmissionAttachments(recordId: string, secretKey: string): Promise<void> {
   const safeId = recordId.replace(/[^a-z0-9_-]/gi, '_');
+  const sql = getAttachmentSql();
+  if (sql) {
+    await ensureAttachmentSchema(sql);
+    await sql`DELETE FROM submission_attachments WHERE record_id = ${recordId}`;
+  }
   const entityContext = await getTitleEntityContext(secretKey);
   const result = await playFabFileRequest<{
     Metadata?: PlayFabFileMetadata[] | Record<string, PlayFabFileMetadata>;

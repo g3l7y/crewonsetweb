@@ -1,6 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { unauthorizedSessionResponse, validateSessionFromRequest } from "@/lib/playfab/session";
-import { getSubmissionAttachment } from "@/lib/playfab/submission-attachments";
+import { getStoredSubmissionAttachment, getSubmissionAttachment } from "@/lib/playfab/submission-attachments";
 
 function getSecretKey(): string | null {
   return process.env["PLAYFAB_SECRET_KEY"] || null;
@@ -15,12 +15,28 @@ export const Route = createFileRoute("/api/admin/submission-attachments")({
         }
 
         const secretKey = getSecretKey();
-        const fileName = new URL(request.url).searchParams.get("file") || "";
-        if (!secretKey || !fileName) {
+        const url = new URL(request.url);
+        const fileName = url.searchParams.get("file") || "";
+        const databaseStorage = url.searchParams.get("storage") === "database";
+        if ((!secretKey && !databaseStorage) || !fileName) {
           return Response.json({ error: "Attachment not found." }, { status: 404 });
         }
 
         try {
+          if (databaseStorage) {
+            const attachment = await getStoredSubmissionAttachment(fileName);
+            if (!attachment) return Response.json({ error: "Attachment not found." }, { status: 404 });
+            return new Response(Buffer.from(attachment.contentsBase64, "base64"), {
+              status: 200,
+              headers: {
+                "Cache-Control": "private, no-store",
+                "Content-Disposition": `inline; filename="${attachment.fileName}"`,
+                "Content-Type": attachment.contentType,
+                "X-Content-Type-Options": "nosniff",
+              },
+            });
+          }
+
           const metadata = await getSubmissionAttachment(fileName, secretKey);
           if (!metadata?.DownloadUrl) {
             return Response.json({ error: "Attachment not found." }, { status: 404 });
