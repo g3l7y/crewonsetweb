@@ -4,9 +4,9 @@ export const Route = createFileRoute("/")({
   head: () => ({
     meta: [
       { title: "Crew On Set! — Make a Commercial, Solo or Together" },
-      { name: "description", content: "A hands-on commercial filmmaking game for 1–4 players. Explore pre-production, filming, and editing at your own pace." },
+      { name: "description", content: "Step into a desktop video commercial production game. Direct, light, film, and edit solo or with a four-player crew." },
       { property: "og:title", content: "Crew On Set! — Make a Commercial, Solo or Together" },
-      { property: "og:description", content: "A hands-on commercial filmmaking game for 1–4 players. Explore pre-production, filming, and editing at your own pace." },
+      { property: "og:description", content: "Step into a desktop video commercial production game. Direct, light, film, and edit solo or with a four-player crew." },
     ],
   }),
   component: HomePage,
@@ -42,21 +42,21 @@ const chapters = [
   {
     number: "01",
     title: "PRE-PRODUCTION",
-    text: "Review the client brief, plan the shoot, and prepare your set and equipment. Take time to explore each setup choice.",
+    text: "Turn the client brief into a shoot plan. Pick your set, arrange the props, and get every detail ready before cameras roll.",
     icon: Building2,
     image: "/assets/home-role-director.png",
   },
   {
     number: "02",
     title: "PRODUCTION",
-    text: "Frame and record the shots your brief calls for. Adjust the camera and lighting, then try another take whenever you need.",
+    text: "Bring the set to life: shape the lighting, frame each shot, and call for another take until you have the footage you want.",
     icon: Clapperboard,
     image: "/assets/home-role-cameraman.png",
   },
   {
     number: "03",
     title: "POST-PRODUCTION",
-    text: "Arrange and trim your footage, add branding and sound, adjust color, then export and submit your commercial for feedback.",
+    text: "Find the story in your footage. Cut the clips, add branding and sound, polish the color, then premiere your finished commercial.",
     icon: Timer,
     image: "/assets/home-role-editor.png",
   },
@@ -66,22 +66,22 @@ const roles = [
   {
     image: "/assets/home-role-director.png",
     title: "Director",
-    text: "Use the production tablet to plan the set, place products and props, position actors, and cue their actions.",
+    text: "Call the creative shots: build the set, stage products and props, position the actors, and cue the action.",
   },
   {
     image: "/assets/home-role-av-technician.png",
     title: "AV Technician",
-    text: "Set up and adjust production lights, and use the audio monitor to check levels while preparing the set.",
+    text: "Set the mood with production lights and keep an eye on audio levels as the crew gets ready to roll.",
   },
   {
     image: "/assets/home-role-cameraman.png",
     title: "Cameraman",
-    text: "Compose each shot with the camera controls, then record and review takes against the client brief.",
+    text: "Find the frame that sells the story. Compose each shot, roll camera, and review your takes against the brief.",
   },
   {
     image: "/assets/home-role-editor.png",
     title: "Editor",
-    text: "Review the footage, arrange and trim clips, add branding and music, adjust color, then export and submit the cut.",
+    text: "Shape raw footage into the final spot: pick the best takes, cut to the beat, add branding, and deliver the finished commercial.",
   },
 ];
 
@@ -158,7 +158,7 @@ function HomePage() {
             </h1>
 
             <p className="mt-5 max-w-xl text-lg font-medium leading-relaxed text-white/50 sm:text-xl">
-              Make a commercial your way. Play solo or with up to three others as you explore the filmmaking process, from preparing the set to editing the final cut.
+              Step into a desktop video commercial production game where every shoot is yours to make. Play solo and take on all four roles, or team up with three others and split the work: Director, AV Technician, Cameraman, and Editor.
             </p>
 
             <div className="mt-8">
@@ -200,15 +200,11 @@ function HomePage() {
             </h2>
 
             <p className="mt-6 text-lg leading-relaxed text-white/70">
-              Welcome to your own studio. Explore commercial filmmaking,
-              arrange the set, and learn by trying ideas and reviewing the
-              results.
+              Welcome to your own studio, where every client brief becomes a chance to create. Build the set, experiment with your ideas, and see how each choice shapes the commercial.
             </p>
 
             <p className="mt-4 text-lg leading-relaxed text-white/70">
-              Take a contract from the first setup choices to a finished
-              commercial. Explore the production process at your own pace and
-              use each review to guide your next edit.
+              Take a contract from first setup to final cut. Whether you run the whole production solo or share the four roles with your crew, each review gives you a new idea for the next take.
             </p>
 
 
@@ -316,7 +312,7 @@ function HomePage() {
             </h2>
 
             <p className="mt-5 text-lg text-navy/65">
-              In multiplayer, players can specialize in different roles. Playing solo? Take on every part of the production yourself.
+              Four roles. One production. Play solo and switch between every job, or bring up to three friends and give each player a role on the crew.
             </p>
           </div>
 
@@ -377,11 +373,11 @@ function HomePage() {
             </h2>
 
             <p className="mt-6 text-lg leading-relaxed text-white/70">
-              Follow a commercial from the client brief to the finished edit. The Director plans the set and cues actors, the AV Technician adjusts lights and monitors audio, the Cameraman frames and records footage, and the Editor assembles and submits the cut. Play solo and move between these tasks, or share them with a crew.
+              Make a video commercial from the first client brief to the final cut. Direct the set, light the scene, capture the action, then edit it into a spot worth showing off. Handle all four roles solo or split them across a four-player crew.
             </p>
 
             <p className="mt-4 text-lg leading-relaxed text-white/70">
-              Try different setups, review your footage, and use the feedback to guide your next edit. The game is designed as a relaxed, hands-on way to explore commercial filmmaking.
+              Experiment with the set, chase the perfect take, and turn feedback into a better cut. This desktop game makes commercial production hands-on, creative, and fun to play at your own pace.
             </p>
 
             <div className="mt-8 grid gap-4 sm:grid-cols-2">

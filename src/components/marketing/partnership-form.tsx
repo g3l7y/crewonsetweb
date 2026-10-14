@@ -17,7 +17,9 @@ export function PartnershipForm() {
   const mockMode = isMockMode();
   const [file, setFile] = useState<File | null>(null);
   const fileInput = useRef<HTMLInputElement>(null);
+  const formRef = useRef<HTMLFormElement>(null);
   const [submitted, setSubmitted] = useState(false);
+  const [submittedEmail, setSubmittedEmail] = useState("");
   const [error, setError] = useState("");
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
@@ -36,6 +38,10 @@ export function PartnershipForm() {
     const email = rawEmail.trim();
     const description = String(data.get("description") ?? "").trim();
 
+    if (!file) {
+      setError("Please attach proof of business to submit your application.");
+      return;
+    }
     if (!brandName || !productType || !exactModel || !email) {
       setError("Please fill in all required fields.");
       return;
@@ -129,6 +135,11 @@ export function PartnershipForm() {
         createdAt: application.submittedAt,
       }, ...current]);
     }
+    setSubmittedEmail(email);
+    formRef.current?.reset();
+    setFile(null);
+    if (fileInput.current) fileInput.current.value = "";
+    setError("");
     setSubmitted(true);
   }
 
@@ -138,8 +149,8 @@ export function PartnershipForm() {
         <CheckCircle2 className="mx-auto size-12 text-[#278b78]" />
         <h2 className="mt-4 text-2xl font-black uppercase text-yellow">Application submitted</h2>
         <p className="mt-3 leading-relaxed text-navy/60">
-          Thanks for applying to bring your brand onto the set. Your application status is now{" "}
-          <strong>New</strong> and our production team will review it shortly.
+          Thanks for applying to bring your brand onto the set. Our production team will review your application and contact you with updates at{" "}
+          <strong>{submittedEmail}</strong>.
         </p>
         <button
           type="button"
@@ -154,6 +165,7 @@ export function PartnershipForm() {
 
   return (
     <form
+      ref={formRef}
       onSubmit={handleSubmit}
       className="rounded-xl border border-navy/10 bg-white p-5 shadow-xl shadow-navy/5 sm:p-8"
     >
@@ -266,37 +278,40 @@ export function PartnershipForm() {
           />
         </label>
 
-        <label className="form-label sm:col-span-2">
-          FILE ATTACHMENT (OPTIONAL)
-          <span className="mt-2 flex cursor-pointer items-center gap-3 rounded-lg border-2 border-dashed border-navy/15 bg-navy/[.025] px-4 py-4 text-sm transition hover:border-coral hover:bg-coral/[.03]">
+        <div className="form-label sm:col-span-2">
+          <span>PROOF OF BUSINESS (REQUIRED)</span>
+          <div className="mt-2 flex items-center gap-3 rounded-lg border-2 border-dashed border-navy/15 bg-navy/[.025] px-4 py-4 text-sm transition hover:border-coral hover:bg-coral/[.03]">
             <FileImage className="size-5 shrink-0 text-coral" />
-            <span className="min-w-0 flex-1 truncate font-bold">
+            <label htmlFor="partnership-attachment" className="min-w-0 flex-1 cursor-pointer truncate font-bold">
               {file ? file.name : "Choose a file (image or PDF only)"}
-            </span>
+            </label>
             {file && (
               <button
                 type="button"
-                aria-label="Remove attachment"
-                onClick={(event) => {
-                  event.preventDefault();
-                  event.stopPropagation();
+                aria-label="Remove attached file"
+                title="Remove attached file"
+                onClick={() => {
                   setFile(null);
                   if (fileInput.current) fileInput.current.value = "";
                 }}
-                className="grid size-7 shrink-0 place-items-center rounded border border-navy/15 text-navy/60 transition hover:border-coral hover:text-coral"
+                className="grid size-7 shrink-0 place-items-center rounded border border-navy/15 text-navy/60 transition hover:border-coral hover:bg-coral/10 hover:text-coral"
               >
                 <X className="size-4" />
               </button>
             )}
             <input
               ref={fileInput}
+              id="partnership-attachment"
               type="file"
               accept="image/*,application/pdf,.pdf"
               className="sr-only"
-              onChange={(event) => setFile(event.target.files?.[0] ?? null)}
+              onChange={(event) => {
+                setFile(event.target.files?.[0] ?? null);
+                setError("");
+              }}
             />
-          </span>
-        </label>
+          </div>
+        </div>
       </div>
 
       {error && (
@@ -312,7 +327,7 @@ export function PartnershipForm() {
         <Send className="size-5" /> Submit Partnership Application
       </button>
       <p className="mt-4 text-center text-xs leading-relaxed text-navy/45">
-        No account is required. Every partnership application is reviewed by our production team.
+        Our production team will review your application and contact you with updates at the email address you provide.
       </p>
     </form>
   );
