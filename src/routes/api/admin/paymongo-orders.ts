@@ -18,6 +18,7 @@ type PayMongoOrder = {
   updatedAt: string;
   paidAt?: string;
   eventId?: string;
+  paymentMethod?: string;
 };
 
 type AdminTopUp = {
@@ -30,6 +31,15 @@ type AdminTopUp = {
   bank: string;
   amount: number;
   status: "Completed" | "Pending" | "Failed";
+  email?: string;
+  item?: string;
+  coins?: number;
+  packageId?: string;
+  checkoutSessionId?: string;
+  paymentMethod?: string;
+  transactionType: "top-up" | "partnership";
+  paidAt?: string;
+  eventId?: string;
 };
 
 function getStatus(
@@ -62,6 +72,15 @@ function toAdminTopUp(order: PayMongoOrder): AdminTopUp {
     bank: "PayMongo Hosted Checkout",
     amount: order.amountInCentavos / 100,
     status: getStatus(order.status),
+    email: order.email,
+    item: order.coins.toLocaleString("en-PH") + " C-Coins",
+    coins: order.coins,
+    packageId: order.packageId,
+    checkoutSessionId: order.checkoutSessionId,
+    ...(order.paymentMethod ? { paymentMethod: order.paymentMethod } : {}),
+    transactionType: "top-up",
+    ...(order.paidAt ? { paidAt: order.paidAt } : {}),
+    ...(order.eventId ? { eventId: order.eventId } : {}),
   };
 }
 
@@ -77,6 +96,13 @@ function toAdminPartnershipPayment(payment: PartnershipPayment): AdminTopUp {
     bank: "PayMongo Hosted Checkout · Brand Partnership",
     amount: payment.amountInCentavos / 100,
     status: getStatus(payment.status),
+    email: payment.email,
+    item: "Brand partnership payment",
+    checkoutSessionId: payment.checkoutSessionId,
+    ...(payment.paymentMethod ? { paymentMethod: payment.paymentMethod } : {}),
+    transactionType: "partnership",
+    ...(payment.paidAt ? { paidAt: payment.paidAt } : {}),
+    ...(payment.eventId ? { eventId: payment.eventId } : {}),
   };
 }
 
