@@ -15,18 +15,11 @@ export const Route = createFileRoute("/admin/")({
 import Link from "@/components/next-compat/link";
 import { DashboardCharts } from "@/components/admin/dashboard-charts";
 import {
-  Activity,
-  BadgeCheck,
-  BookOpen,
   CircleDollarSign,
   Clock,
   Download,
-  FileText,
   Gamepad2,
-  Images,
   MailWarning,
-  MessageSquare,
-  ServerCog,
   Trophy,
   UserCheck,
   Users,
@@ -34,7 +27,7 @@ import {
 import { useMemo } from "react";
 import { topUpsStore } from "@/lib/admin-demo-data";
 import { useAdminPayMongoOrders } from "@/lib/admin-paymongo-orders";
-import { adminActivityStore, applicationsStore, contentStatsStore, formatMoney, gameBuildStore, messagesStore, revenueStore } from "@/lib/demo/store";
+import { adminActivityStore, formatMoney, gameBuildStore, messagesStore, revenueStore } from "@/lib/demo/store";
 import { sortNewestFirst } from "@/lib/validation";
 import { isMockMode } from "@/lib/playfab/config";
 import { useAdminPlayers, useProgressLeaderboard } from "@/lib/playfab/hooks";
@@ -98,10 +91,8 @@ function AdminDashboardPage() {
   const mockMode = isMockMode();
   const adminPlayersQuery = useAdminPlayers();
   const progressLeaderboardQuery = useProgressLeaderboard();
-  const [applications] = applicationsStore.useStore();
   const [demoRevenue] = revenueStore.useStore();
   const [activity] = adminActivityStore.useStore();
-  const [contentStats] = contentStatsStore.useStore();
   const [messages] = messagesStore.useStore();
   const [gameBuilds] = gameBuildStore.useStore();
   const [demoTopUps] = topUpsStore.useStore();
@@ -112,13 +103,6 @@ function AdminDashboardPage() {
   );
 
   const gameBuild = gameBuilds[0];
-  const contentTotals = contentStats[0];
-
-  const playerActivity = useMemo(
-    () => activity.filter((entry) => entry.kind === "player").slice(0, 2),
-    [activity],
-  );
-
   const recentActivity = useMemo(() => {
     const transactionActivity = topUps
       .filter((topUp) => topUp.status === "Completed")
@@ -129,7 +113,7 @@ function AdminDashboardPage() {
         detail: `${topUp.playerName} completed ${formatMoney(topUp.amount)} payment.`,
         createdAt: topUp.timestamp || `${topUp.date}T${topUp.time || "00:00"}:00.000Z`,
       }));
-    return sortNewestFirst([...activity, ...transactionActivity], (entry) => entry.createdAt).slice(0, 6);
+    return sortNewestFirst([...activity, ...transactionActivity], (entry) => entry.createdAt);
   }, [activity, topUps]);
   const messageCounts = useMemo(() => {
     const unread = messages.filter((m) => m.status === "Unread").length;
@@ -208,28 +192,59 @@ function AdminDashboardPage() {
           </article>
         ))}
 
-        {/* SERVER STATUS */}
+        {/* CURRENT GAME BUILD */}
         <article className="admin-dashboard-stat min-w-0 rounded-lg border border-white/[0.06] bg-[#182330] p-4 shadow-xl sm:p-5">
           <div className="flex min-w-0 items-start justify-between gap-2">
-            <div className="grid size-9 shrink-0 place-items-center rounded-md bg-[#2d9d8f] text-white">
-              <ServerCog className="size-5" />
+            <div className="grid size-9 shrink-0 place-items-center rounded-md bg-[#d9a514] text-white">
+              <Gamepad2 className="size-5" />
             </div>
-
-            <span className="flex items-center gap-1.5 rounded bg-[#2d9d8f]/15 px-2 py-1 text-[10px] font-black text-[#4bc4b4]">
-              <span className="size-1.5 animate-pulse rounded-full bg-[#4bc4b4]" />
-              LIVE
-            </span>
+            <Link href="/admin/game" className="text-[10px] font-black uppercase tracking-wide !text-coral hover:!text-white">
+              Manage →
+            </Link>
           </div>
 
           <p className="admin-stat-value mt-5 max-w-full whitespace-nowrap text-[clamp(1.1rem,1.45vw,1.3rem)] font-black leading-none tracking-tight !text-white">
-            {mockMode ? "Operational" : "Unknown"}
+            v{gameBuild?.version ?? "—"} · Build {gameBuild?.buildNumber ?? "—"}
           </p>
 
-          <p className="mt-2 flex min-w-0 items-start gap-1.5 text-[11px] font-bold uppercase leading-snug tracking-wider !text-white/35">
-            <Activity className="size-3 shrink-0" />
-            <span>{mockMode ? "Server Status · 99.98% uptime" : "Server status monitoring unavailable"}</span>
+          <p className="mt-2 text-[11px] font-bold uppercase leading-snug tracking-wider !text-white/35">
+            Current Game Build
           </p>
         </article>
+      </section>
+
+      {/* GAME SECTION */}
+      <section className="mt-8">
+        <div className="flex items-center justify-between">
+          <h2 className="mb-3 flex items-center gap-2 text-sm font-black uppercase tracking-wider !text-white/60">
+            <Gamepad2 className="size-4 !text-coral" />
+            Game
+          </h2>
+          <Link
+            href="/admin/game"
+            className="mb-3 text-[11px] font-black uppercase tracking-wide !text-coral hover:!text-white"
+          >
+            Manage →
+          </Link>
+        </div>
+        <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+          {[
+            { label: "Current Version", value: gameBuild?.version ?? "—" },
+            { label: "Build Number", value: gameBuild?.buildNumber ?? "—" },
+            { label: "Windows Requirement", value: gameBuild?.minWindows ?? "—" },
+            { label: "Release Date", value: gameBuild ? formatDate(gameBuild.releasedAt) : "—" },
+          ].map((item) => (
+            <article
+              key={item.label}
+              className="admin-dashboard-card min-w-0 rounded-lg border border-white/[0.06] bg-[#182330] p-4 shadow-xl sm:p-5"
+            >
+              <p className="max-w-full truncate text-[clamp(1rem,1.2vw,1.15rem)] font-black leading-tight tracking-tight !text-white">{item.value}</p>
+              <p className="mt-2 text-[11px] font-bold uppercase leading-snug tracking-wider !text-white/35">
+                {item.label}
+              </p>
+            </article>
+          ))}
+        </div>
       </section>
 
       {/* DASHBOARD CHARTS */}
@@ -279,130 +294,6 @@ function AdminDashboardPage() {
         </div>
       </section>
 
-      {/* MANAGEMENT SUMMARY CARDS */}
-      <section
-        className={`mt-8 grid gap-4 sm:grid-cols-2 ${
-          mockMode ? "xl:mx-auto xl:max-w-6xl xl:grid-cols-3" : "xl:grid-cols-4"
-        }`}
-      >
-        <article className="admin-dashboard-card min-w-0 rounded-lg border border-white/[0.06] bg-[#182330] p-4 shadow-xl sm:p-5">
-          <div className="flex items-center justify-between">
-            <div className="grid size-10 place-items-center rounded-md bg-coral text-white">
-              <Users className="size-5" />
-            </div>
-            <Link
-              href="/admin/players"
-              className="text-[11px] font-black uppercase tracking-wide !text-coral hover:!text-white"
-            >
-              Manage →
-            </Link>
-          </div>
-          <p className="mt-5 text-sm font-black uppercase tracking-wider !text-white">Players</p>
-          <div className="mt-3 space-y-2">
-            {playerActivity.length === 0 && (
-              <p className="text-xs !text-white/35">No recent player activity.</p>
-            )}
-            {playerActivity.map((entry) => (
-              <div key={entry.id} className="rounded-md bg-[#101923] p-2.5">
-                <p className="text-xs font-bold !text-white/80">{entry.label}</p>
-                <p className="mt-0.5 truncate text-[11px] !text-white/40">{entry.detail}</p>
-              </div>
-            ))}
-          </div>
-        </article>
-
-        <article className="admin-dashboard-card min-w-0 rounded-lg border border-white/[0.06] bg-[#182330] p-4 shadow-xl sm:p-5">
-          <div className="flex items-center justify-between">
-            <div className="grid size-10 place-items-center rounded-md bg-[#7c5cff] text-white">
-              <Images className="size-5" />
-            </div>
-            <Link
-              href="/admin/game"
-              className="text-[11px] font-black uppercase tracking-wide !text-coral hover:!text-white"
-            >
-              View →
-            </Link>
-          </div>
-          <p className="mt-5 max-w-full whitespace-nowrap text-[clamp(1.2rem,1.55vw,1.4rem)] font-black leading-none tracking-tight !text-white">
-            {contentTotals?.galleryItems ?? 0}
-          </p>
-          <p className="mt-1 text-xs font-bold uppercase tracking-wider !text-white/35">
-            Gallery Items
-          </p>
-        </article>
-
-        {!mockMode && (
-          <article className="admin-dashboard-card min-w-0 rounded-lg border border-white/[0.06] bg-[#182330] p-4 shadow-xl sm:p-5">
-            <div className="flex items-center justify-between">
-              <div className="grid size-10 place-items-center rounded-md bg-[#4b9bff] text-white">
-                <MessageSquare className="size-5" />
-              </div>
-              <Link
-                href="/admin"
-                className="text-[11px] font-black uppercase tracking-wide !text-coral hover:!text-white"
-              >
-                View Inbox →
-              </Link>
-            </div>
-            <p className="mt-5 max-w-full whitespace-nowrap text-[clamp(1.2rem,1.55vw,1.4rem)] font-black leading-none tracking-tight !text-white">
-              {messageCounts.total}
-            </p>
-            <p className="mt-1 text-xs font-bold uppercase tracking-wider !text-white/35">Messages</p>
-          </article>
-        )}
-
-        <article className="admin-dashboard-card min-w-0 rounded-lg border border-white/[0.06] bg-[#182330] p-4 shadow-xl sm:p-5">
-          <div className="flex items-center justify-between">
-            <div className="grid size-10 place-items-center rounded-md bg-[#d9a514] text-white">
-              <Gamepad2 className="size-5" />
-            </div>
-            <Link
-              href="/admin/game"
-              className="text-[11px] font-black uppercase tracking-wide !text-coral hover:!text-white"
-            >
-              Manage →
-            </Link>
-          </div>
-          <p className="mt-5 max-w-full truncate text-[clamp(1rem,1.2vw,1.15rem)] font-black leading-tight tracking-tight !text-white">
-            v{gameBuild?.version ?? "—"} · Build {gameBuild?.buildNumber ?? "—"}
-          </p>
-          <p className="mt-1 text-xs font-bold uppercase tracking-wider !text-white/35">
-            Current Game Build
-          </p>
-        </article>
-      </section>
-
-      {/* CONTENT SECTION */}
-      <section className="mt-8">
-        <h2 className="mb-3 flex items-center gap-2 text-sm font-black uppercase tracking-wider !text-white/60">
-          <FileText className="size-4 !text-coral" />
-          Content
-        </h2>
-        <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-          {[
-            { label: "Published News", value: contentTotals?.publishedNews ?? 0, icon: BadgeCheck },
-            {
-              label: "Draft News / Articles",
-              value: contentTotals?.draftNews ?? 0,
-              icon: FileText,
-            },
-            { label: "Gallery Items", value: contentTotals?.galleryItems ?? 0, icon: Images },
-            { label: "FAQ Entries", value: contentTotals?.faqEntries ?? 0, icon: BookOpen },
-          ].map((item) => (
-            <article
-              key={item.label}
-              className="admin-dashboard-card min-w-0 rounded-lg border border-white/[0.06] bg-[#182330] p-4 shadow-xl sm:p-5"
-            >
-              <item.icon className="size-5 !text-white/40" />
-              <p className="mt-4 max-w-full whitespace-nowrap text-[clamp(1.2rem,1.55vw,1.4rem)] font-black leading-none tracking-tight !text-white">{item.value}</p>
-              <p className="mt-2 text-[11px] font-bold uppercase leading-snug tracking-wider !text-white/35">
-                {item.label}
-              </p>
-            </article>
-          ))}
-        </div>
-      </section>
-
       {/* COMMUNICATION SECTION */}
       <section className="mt-8">
         <h2 className="mb-3 flex items-center gap-2 text-sm font-black uppercase tracking-wider !text-white/60">
@@ -429,40 +320,6 @@ function AdminDashboardPage() {
         </div>
       </section>
 
-      {/* GAME SECTION */}
-      <section className="mt-8">
-        <div className="flex items-center justify-between">
-          <h2 className="mb-3 flex items-center gap-2 text-sm font-black uppercase tracking-wider !text-white/60">
-            <Gamepad2 className="size-4 !text-coral" />
-            Game
-          </h2>
-          <Link
-            href="/admin/game"
-            className="mb-3 text-[11px] font-black uppercase tracking-wide !text-coral hover:!text-white"
-          >
-            Manage →
-          </Link>
-        </div>
-        <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-          {[
-            { label: "Current Version", value: gameBuild?.version ?? "—" },
-            { label: "Build Number", value: gameBuild?.buildNumber ?? "—" },
-            { label: "Windows Requirement", value: gameBuild?.minWindows ?? "—" },
-            { label: "Release Date", value: gameBuild ? formatDate(gameBuild.releasedAt) : "—" },
-          ].map((item) => (
-            <article
-              key={item.label}
-              className="admin-dashboard-card min-w-0 rounded-lg border border-white/[0.06] bg-[#182330] p-4 shadow-xl sm:p-5"
-            >
-              <p className="max-w-full truncate text-[clamp(1rem,1.2vw,1.15rem)] font-black leading-tight tracking-tight !text-white">{item.value}</p>
-              <p className="mt-2 text-[11px] font-bold uppercase leading-snug tracking-wider !text-white/35">
-                {item.label}
-              </p>
-            </article>
-          ))}
-        </div>
-      </section>
-
       {/* RECENT ACTIVITY */}
       <section className="mt-8">
         <h2 className="mb-3 flex items-center gap-2 text-sm font-black uppercase tracking-wider !text-white/60">
@@ -470,29 +327,31 @@ function AdminDashboardPage() {
           Recent Activity
         </h2>
         <div className="admin-card rounded-lg border border-white/[0.06] bg-[#182330] p-4 shadow-xl">
-          <ul className="divide-y divide-white/[0.06]">
-            {recentActivity.length === 0 && (
-              <li className="py-6 text-center text-sm !text-white/35">No recent activity.</li>
-            )}
-            {recentActivity.map((entry) => (
-              <li key={entry.id} className="flex flex-wrap items-center gap-3 py-3">
-                <span
-                  className={`rounded px-2 py-1 text-[10px] font-black uppercase tracking-wide ${
-                    activityKindStyles[entry.kind] ?? "bg-white/10 text-white/60"
-                  }`}
-                >
-                  {entry.kind}
-                </span>
-                <div className="min-w-0 flex-1">
-                  <p className="truncate text-sm font-bold !text-white">{entry.label}</p>
-                  <p className="truncate text-xs !text-white/40">{entry.detail}</p>
-                </div>
-                <span className="shrink-0 text-[11px] !text-white/30">
-                  {formatDate(entry.createdAt)}
-                </span>
-              </li>
-            ))}
-          </ul>
+          <div className="h-[360px] overflow-y-scroll">
+            <ul className="divide-y divide-white/[0.06]">
+              {recentActivity.length === 0 && (
+                <li className="py-6 text-center text-sm !text-white/35">No recent activity.</li>
+              )}
+              {recentActivity.map((entry) => (
+                <li key={entry.id} className="flex flex-wrap items-center gap-3 py-3">
+                  <span
+                    className={`rounded px-2 py-1 text-[10px] font-black uppercase tracking-wide ${
+                      activityKindStyles[entry.kind] ?? "bg-white/10 text-white/60"
+                    }`}
+                  >
+                    {entry.kind}
+                  </span>
+                  <div className="min-w-0 flex-1">
+                    <p className="truncate text-sm font-bold !text-white">{entry.label}</p>
+                    <p className="truncate text-xs !text-white/40">{entry.detail}</p>
+                  </div>
+                  <span className="shrink-0 text-[11px] !text-white/30">
+                    {formatDate(entry.createdAt)}
+                  </span>
+                </li>
+              ))}
+            </ul>
+          </div>
           {mockMode && (
             <div className="mt-3 flex justify-end border-t border-white/[0.06] pt-3">
               <Link

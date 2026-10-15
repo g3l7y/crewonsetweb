@@ -35,6 +35,7 @@ type PayMongoOrder = {
   processingEventId?: string;
   paidAt?: string;
   eventId?: string;
+  paymentMethod?: string;
 };
 
 // Prevent duplicate deliveries from entering the credit section concurrently
@@ -96,6 +97,35 @@ function asRecord(value: unknown): Record<string, unknown> {
   return value && typeof value === "object" ? (value as Record<string, unknown>) : {};
 }
 
+function getPaidPaymentMethod(attributes: Record<string, unknown>): string | undefined {
+  const paymentIntent = asRecord(attributes["payment_intent"]);
+  const intentAttributes = asRecord(paymentIntent["attributes"]);
+  const payments = [
+    ...(Array.isArray(attributes["payments"]) ? attributes["payments"] : []),
+    ...(Array.isArray(intentAttributes["payments"]) ? intentAttributes["payments"] : []),
+  ];
+  const paidPayment = payments
+    .map((payment) => asRecord(payment["attributes"] ?? payment))
+    .find((payment) => String(payment["status"] || "").toLowerCase() === "paid");
+  if (!paidPayment) return undefined;
+
+  const source = asRecord(paidPayment["source"]);
+  const type = String(source["type"] || paidPayment["payment_method_type"] || "").toLowerCase();
+  if (!type) return undefined;
+  const labels: Record<string, string> = {
+    qrph: "QR Ph",
+    gcash: "GCash",
+    maya: "Maya",
+    paymaya: "Maya",
+    card: "Card",
+    grab_pay: "GrabPay",
+    shopee_pay: "ShopeePay",
+    dob: "Online Banking",
+    billease: "BillEase",
+  };
+  return labels[type] || type.replaceAll("_", " ").replace(/\b\w/g, (letter) => letter.toUpperCase());
+}
+
 export const Route = createFileRoute("/api/paymongo/webhook")({
   server: {
     handlers: {
@@ -120,6 +150,7 @@ export const Route = createFileRoute("/api/paymongo/webhook")({
           if (!paidEvent) return Response.json({ received: true });
 
           const { attributes, eventId, sessionId } = paidEvent;
+          const paymentMethod = getPaidPaymentMethod(attributes);
           const metadata = asRecord(attributes["metadata"]);
           const referenceNumber = String(attributes["reference_number"] || metadata["orderId"] || "");
           if (!referenceNumber) return Response.json({ received: true });
@@ -142,7 +173,7 @@ export const Route = createFileRoute("/api/paymongo/webhook")({
             if (brandPayment.status !== "fulfilled" && !isPaidCheckoutAmount(attributes, brandPayment.amountInCentavos)) {
               return Response.json({ received: true });
             }
-            const result = await markPartnershipPaymentPaid(brandPayment, eventId, playfabSecret);
+            const result = await markPartnershipPaymentPaid(brandPayment, eventId, playfabSecret, paymentMethod);
             if (!result.updated && !result.alreadyPaid) {
               return Response.json(
                 { error: "Brand payment could not be saved; webhook will be retried." },
@@ -354,6 +385,7 @@ export const Route = createFileRoute("/api/paymongo/webhook")({
                   paidAt: new Date().toISOString(),
                   updatedAt: new Date().toISOString(),
                   eventId,
+                  ...(paymentMethod ? { paymentMethod } : {}),
                 }),
                 playfabSecret as string,
               );

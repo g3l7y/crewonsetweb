@@ -136,6 +136,10 @@ async function startPayMongoCheckout(
     body: JSON.stringify({
       data: {
         attributes: {
+          billing: {
+            name: application.brand,
+            email: application.email,
+          },
           line_items: [{
             name: application.brand + ' partnership sponsorship',
             description: application.exactModel || 'Crew On Set brand partnership',
