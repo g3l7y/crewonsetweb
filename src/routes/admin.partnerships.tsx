@@ -764,7 +764,7 @@ function PartnershipsPage() {
                           href={selected.attachmentUrl}
                           target="_blank"
                           rel="noreferrer"
-                          className="inline-flex items-center gap-1.5 rounded-md border border-coral/40 px-2.5 py-1 text-[10px] uppercase text-coral hover:bg-coral hover:text-white"
+                          className="admin-attachment-link inline-flex items-center gap-1.5 rounded-md border px-2.5 py-1 text-[10px] uppercase"
                         >
                           <Eye className="size-3.5" /> Open attached file
                         </a>
