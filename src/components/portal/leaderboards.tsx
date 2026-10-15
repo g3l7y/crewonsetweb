@@ -3,7 +3,7 @@ import { Award, ChevronDown, Crown, Film, Star, TrendingUp, Users, X } from "luc
 import { friendRosterStore } from "@/lib/demo/friends";
 import { getProfileArtwork } from "@/lib/demo/profile-art";
 import { isMockMode } from "@/lib/playfab/config";
-import { useAchievements, useFriends, useLeaderboard, usePlayerProfile } from "@/lib/playfab/hooks";
+import { useAchievements, useFriends, usePlayerProfile, useProgressLeaderboard } from "@/lib/playfab/hooks";
 import type { Achievement, PlayerProfile } from "@/lib/playfab/types";
 import { formatSocialUsername, getSocialProfileUrl, type SocialLinks, type SocialPlatform } from "@/lib/profile-socials";
 
@@ -27,59 +27,15 @@ type PublicProfilePreview = {
   achievements: Achievement[];
 };
 
-const globalLeaders: Leader[] = [
-  {
-    name: "FRAMEPERFECT",
-    level: 42,
-    score: 1284920,
-    xp: 9820,
-    productions: 126,
-    rating: 98,
-    legendary: true,
-  },
-  {
-    name: "BOOMBUDDY",
-    level: 39,
-    score: 1120480,
-    xp: 9140,
-    productions: 118,
-    rating: 96,
-  },
-  {
-    name: "CAMERA_PRO",
-    level: 27,
-    score: 984250,
-    xp: 7020,
-    productions: 87,
-    rating: 94,
-  },
-  {
-    name: "DOLLYDASH",
-    level: 31,
-    score: 921860,
-    xp: 7780,
-    productions: 102,
-    rating: 93,
-  },
-  {
-    name: "LIGHTLEAK",
-    level: 29,
-    score: 887420,
-    xp: 7410,
-    productions: 95,
-    rating: 92,
-  },
-];
-
 const formatNumber = (value: number) => value.toLocaleString();
 
 export function Leaderboards() {
   const [leaderTab, setLeaderTab] = useState("Global");
-  const [leaderSort, setLeaderSort] = useState("Total Score");
+  const [leaderSort, setLeaderSort] = useState("Average Score");
   const [selectedLeader, setSelectedLeader] = useState<Leader | null>(null);
   const mockMode = isMockMode();
   const [friends] = friendRosterStore.useStore();
-  const realLeaderboardQuery = useLeaderboard("total_score", 100);
+  const leaderboardQuery = useProgressLeaderboard();
   const realFriendsQuery = useFriends();
   const currentProfileQuery = usePlayerProfile();
   const achievementsQuery = useAchievements();
@@ -154,63 +110,35 @@ export function Leaderboards() {
     return () => { active = false; };
   }, [achievementsQuery.data, currentPlayerName, currentProfileQuery.data, friends, mockMode, selectedLeader]);
 
-  const realGlobalLeaders = useMemo<Leader[]>(
+  const globalLeaders = useMemo<Leader[]>(
     () =>
-      (realLeaderboardQuery.data ?? []).map((entry) => ({
+      (leaderboardQuery.data ?? []).map((entry) => ({
         playFabId: entry.playFabId,
-        name: entry.username || entry.displayName,
-        level: null,
-        score: entry.statValue,
-        xp: null,
-        productions: null,
-        rating: null,
+        name: entry.displayName,
+        level: entry.level,
+        score: entry.averageScore,
+        xp: entry.totalXp,
+        productions: entry.productions,
+        rating: entry.passRate,
         ...(entry.avatarUrl ? { profileImage: entry.avatarUrl } : {}),
       })),
-    [realLeaderboardQuery.data],
+    [leaderboardQuery.data],
   );
 
   const friendLeaders = useMemo<Leader[]>(() => {
-    if (!mockMode) {
-      const friendIds = new Set(
-        [
-          currentProfileQuery.data?.playFabId,
-          ...(realFriendsQuery.data ?? [])
-            .filter((friend) => friend.status === "confirmed")
-            .map((friend) => friend.playFabId),
-        ].filter((id): id is string => Boolean(id)),
-      );
-
-      return realGlobalLeaders.filter(
-        (leader) => leader.playFabId && friendIds.has(leader.playFabId),
-      );
-    }
-
-    return [
-      {
-        name: currentPlayerName,
-        level: 27,
-        score: 984250,
-        xp: 7020,
-        productions: 87,
-        rating: 94,
-      },
-      ...friends.map((friend) => ({
-        name: friend.name,
-        level: friend.level,
-        score: friend.career.productionsCompleted * 12000 + friend.level * 1000,
-        xp: friend.career.productionsCompleted * 70 + friend.level * 40,
-        productions: friend.career.productionsCompleted,
-        rating: Math.min(99, 78 + Math.round(friend.level / 4)),
-        ...(friend.profileImage ? { profileImage: friend.profileImage } : {}),
-      })),
-    ];
+    const friendIds = new Set(
+      [
+        currentProfileQuery.data?.playFabId,
+        ...(realFriendsQuery.data ?? [])
+          .filter((friend) => friend.status === "confirmed")
+          .map((friend) => friend.playFabId),
+      ].filter((id): id is string => Boolean(id)),
+    );
+    return globalLeaders.filter((leader) => leader.playFabId && friendIds.has(leader.playFabId));
   }, [
-    currentPlayerName,
     currentProfileQuery.data?.playFabId,
-    friends,
-    mockMode,
     realFriendsQuery.data,
-    realGlobalLeaders,
+    globalLeaders,
   ]);
 
   const currentLeaders = useMemo(() => {
@@ -219,29 +147,21 @@ export function Leaderboards() {
     if (leaderTab === "Friends") {
       data = friendLeaders;
     } else {
-      data = mockMode
-        ? globalLeaders.map((leader) =>
-            leader.name === "CAMERA_PRO" ? { ...leader, name: currentPlayerName } : leader,
-          )
-        : realGlobalLeaders;
+      data = globalLeaders;
     }
 
     return [...data].sort((a, b) => {
-      if (leaderSort === "XP") {
-        return (b.xp ?? Number.NEGATIVE_INFINITY) - (a.xp ?? Number.NEGATIVE_INFINITY);
-      }
-
       if (leaderSort === "Productions") {
         return (b.productions ?? Number.NEGATIVE_INFINITY) - (a.productions ?? Number.NEGATIVE_INFINITY);
       }
 
-      if (leaderSort === "Rating") {
+      if (leaderSort === "Pass Rate") {
         return (b.rating ?? Number.NEGATIVE_INFINITY) - (a.rating ?? Number.NEGATIVE_INFINITY);
       }
 
       return b.score - a.score;
     });
-  }, [currentPlayerName, friendLeaders, leaderSort, leaderTab, mockMode, realGlobalLeaders]);
+  }, [friendLeaders, globalLeaders, leaderSort, leaderTab]);
 
   const formatMetric = (value: number | null, suffix = "") =>
     value === null ? "—" : `${formatNumber(value)}${suffix}`;
@@ -284,10 +204,9 @@ export function Leaderboards() {
             onChange={(e) => setLeaderSort(e.target.value)}
             className="leaderboard-sort-select appearance-none rounded-md border border-white/10 bg-[#151c29] px-4 py-3 pr-10 text-xs font-black uppercase tracking-[0.08em] !text-[#0a0e19] outline-none transition focus:border-coral"
           >
-            <option value="Total Score">Total Score</option>
-            <option value="XP">XP</option>
+            <option value="Average Score">Average Score</option>
             <option value="Productions">Productions</option>
-            <option value="Rating">Rating</option>
+            <option value="Pass Rate">Pass Rate</option>
           </select>
           <ChevronDown className="leaderboard-sort-arrow pointer-events-none absolute right-3 top-1/2 size-4 -translate-y-1/2 text-[#0a0e19]" aria-hidden="true" />
         </div>
@@ -331,11 +250,11 @@ export function Leaderboards() {
               </th>
 
               <th className="px-5 py-4 text-[10px] font-black uppercase tracking-wider text-white/30">
-                Rating
+                Pass Rate
               </th>
 
               <th className="px-5 py-4 text-[10px] font-black uppercase tracking-wider text-white/30">
-                Score
+                Average Score
               </th>
 
             </tr>
@@ -439,13 +358,13 @@ export function Leaderboards() {
             <Users className="mx-auto size-9 text-white/20" />
 
             <h3 className="mt-3 font-black uppercase text-white">
-              {leaderTab === "Friends" ? "No friends yet" : "No leaderboard entries yet"}
+              {leaderTab === "Friends" ? "No friends with game progress yet" : "No leaderboard entries yet"}
             </h3>
 
             <p className="mt-1 text-sm text-white/35">
               {leaderTab === "Friends"
-                ? "Add crew members as friends to compare your leaderboard performance."
-                : "Players with a recorded total score will appear here."}
+                ? "Confirmed friends will appear here after they save production progress."
+                : "Players with saved production progress will appear here."}
             </p>
 
           </div>
@@ -521,7 +440,7 @@ export function Leaderboards() {
                 <TrendingUp className="size-4 text-coral" />
 
                 <p className="mt-3 min-h-[1.5rem] break-words text-[8px] font-black uppercase leading-tight tracking-wider text-white/30 sm:text-[9px]">
-                  Score
+                  Average Score
                 </p>
 
                 <p className="mt-1 min-w-0 whitespace-nowrap text-sm font-black leading-none text-white">
@@ -563,7 +482,7 @@ export function Leaderboards() {
                 <Award className="size-4 text-coral" />
 
                 <p className="mt-3 min-h-[1.5rem] break-words text-[8px] font-black uppercase leading-tight tracking-wider text-white/30 sm:text-[9px]">
-                  Rating
+                  Pass Rate
                 </p>
 
                 <p className="mt-1 min-w-0 whitespace-nowrap text-sm font-black leading-none text-white">

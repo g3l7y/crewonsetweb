@@ -27,6 +27,7 @@ import {
   MailWarning,
   MessageSquare,
   ServerCog,
+  Trophy,
   UserCheck,
   Users,
 } from "lucide-react";
@@ -36,7 +37,7 @@ import { useAdminPayMongoOrders } from "@/lib/admin-paymongo-orders";
 import { adminActivityStore, applicationsStore, contentStatsStore, formatMoney, gameBuildStore, messagesStore, revenueStore } from "@/lib/demo/store";
 import { sortNewestFirst } from "@/lib/validation";
 import { isMockMode } from "@/lib/playfab/config";
-import { useAdminPlayers } from "@/lib/playfab/hooks";
+import { useAdminPlayers, useProgressLeaderboard } from "@/lib/playfab/hooks";
 
 const stats = [
   {
@@ -96,6 +97,7 @@ function formatDate(iso: string) {
 function AdminDashboardPage() {
   const mockMode = isMockMode();
   const adminPlayersQuery = useAdminPlayers();
+  const progressLeaderboardQuery = useProgressLeaderboard();
   const [applications] = applicationsStore.useStore();
   const [demoRevenue] = revenueStore.useStore();
   const [activity] = adminActivityStore.useStore();
@@ -234,6 +236,48 @@ function AdminDashboardPage() {
       <div className="mt-6">
           <DashboardCharts showViewMore unified={false} />
       </div>
+
+      <section className="mt-8 rounded-lg border border-white/[0.06] bg-[#182330] p-4 shadow-xl sm:p-5">
+        <div className="mb-4 flex items-center justify-between gap-4">
+          <div>
+            <h2 className="flex items-center gap-2 text-sm font-black uppercase tracking-wider !text-white">
+              <Trophy className="size-4 text-yellow" /> Player Leaderboard
+            </h2>
+            <p className="mt-1 text-xs !text-white/40">Ranked by average score from saved productions.</p>
+          </div>
+          <Link href="/admin/players" className="text-[11px] font-black uppercase tracking-wide !text-coral hover:!text-white">
+            Manage Players →
+          </Link>
+        </div>
+        <div className="max-h-[440px] overflow-auto rounded-md border border-white/[0.06]">
+          <table className="w-full min-w-[560px] text-left">
+            <thead className="sticky top-0 bg-[#101923]">
+              <tr>
+                {["Rank", "Player", "Level", "Productions", "Average Score"].map((label) => (
+                  <th key={label} className="px-3 py-3 text-[10px] font-black uppercase tracking-wider !text-white/40">{label}</th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              {(progressLeaderboardQuery.data ?? []).map((entry) => (
+                <tr key={entry.playFabId} className="border-t border-white/[0.05]">
+                  <td className="px-3 py-3 text-sm font-black !text-yellow">{entry.position}</td>
+                  <td className="px-3 py-3 text-sm font-bold !text-white">{entry.displayName}</td>
+                  <td className="px-3 py-3 text-sm !text-white/60">{entry.level}</td>
+                  <td className="px-3 py-3 text-sm !text-white/60">{entry.productions}</td>
+                  <td className="px-3 py-3 text-sm font-black !text-white">{entry.averageScore.toFixed(1)}</td>
+                </tr>
+              ))}
+              {!progressLeaderboardQuery.isLoading && (progressLeaderboardQuery.data?.length ?? 0) === 0 && (
+                <tr><td colSpan={5} className="px-4 py-8 text-center text-sm !text-white/40">No players have saved production progress yet.</td></tr>
+              )}
+              {progressLeaderboardQuery.isLoading && (
+                <tr><td colSpan={5} className="px-4 py-8 text-center text-sm !text-white/40">Loading player progress…</td></tr>
+              )}
+            </tbody>
+          </table>
+        </div>
+      </section>
 
       {/* MANAGEMENT SUMMARY CARDS */}
       <section

@@ -11,6 +11,7 @@ import type {
   KnowledgeEntry,
   ProductionLog,
   LeaderboardEntry,
+  ProgressLeaderboardEntry,
   FriendInfo,
   PlayerFriendRequest,
   Transaction,
@@ -254,6 +255,17 @@ export function useLeaderboard(statistic: string, maxResults = 100) {
     queryKey: [...QUERY_KEYS.leaderboard(statistic), maxResults] as const,
     queryFn: () => getPlayFabService().leaderboard.getGlobal(statistic, maxResults),
     staleTime: 2 * 60 * 1000,
+  });
+}
+
+export function useProgressLeaderboard() {
+  const { data: session } = useSession();
+  return useQuery<ProgressLeaderboardEntry[]>({
+    queryKey: QUERY_KEYS.leaderboard("production-progress"),
+    queryFn: () => getPlayFabService().leaderboard.getProgress(),
+    enabled: !!session,
+    staleTime: 60 * 1000,
+    refetchInterval: 2 * 60 * 1000,
   });
 }
 
