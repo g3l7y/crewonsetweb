@@ -249,7 +249,7 @@ function AdminDashboardPage() {
             Manage Players →
           </Link>
         </div>
-        <div className="max-h-[440px] overflow-auto rounded-md border border-white/[0.06]">
+        <div className="h-[280px] overflow-x-auto overflow-y-scroll rounded-md border border-white/[0.06]">
           <table className="w-full min-w-[560px] text-left">
             <thead className="sticky top-0 bg-[#101923]">
               <tr>
