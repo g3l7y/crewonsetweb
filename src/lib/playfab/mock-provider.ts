@@ -10,6 +10,7 @@ import type {
   ProductionLog,
   RoleStatistics,
   LeaderboardEntry,
+  ProgressLeaderboardEntry,
   FriendInfo,
   Transaction,
   PlayerNotification,
@@ -481,6 +482,18 @@ const MOCK_LEADERBOARDS: LeaderboardEntry[] = [
   { playFabId: 'PF-010', displayName: 'DOLLY_GRIP', position: 10, statValue: 132500, avatarUrl: DEFAULT_PROFILE_PICTURE_URL },
 ];
 
+const MOCK_PROGRESS_ENTRIES: ProgressLeaderboardEntry[] = [
+  { playFabId: 'PF-002', displayName: 'DIRECTOR_X', position: 1, level: 31, productions: 38, averageScore: 94.2, passRate: 92, totalXp: 31245 },
+  { playFabId: 'PF-003', displayName: 'LIGHT_MASTER', position: 2, level: 24, productions: 31, averageScore: 91.8, passRate: 87, totalXp: 24560 },
+  { playFabId: 'PF-004', displayName: 'EDIT_KING', position: 3, level: 19, productions: 22, averageScore: 89.6, passRate: 82, totalXp: 19830 },
+  { playFabId: 'PF-005', displayName: 'SCENE_SETTER', position: 4, level: 22, productions: 27, averageScore: 87.4, passRate: 78, totalXp: 18765 },
+  { playFabId: 'PF-006', displayName: 'FOCUS_PULLER', position: 5, level: 17, productions: 18, averageScore: 84.9, passRate: 72, totalXp: 17620 },
+  { playFabId: 'PF-007', displayName: 'BOOM_OPERATOR', position: 6, level: 15, productions: 16, averageScore: 82.7, passRate: 69, totalXp: 16580 },
+  { playFabId: 'PF-008', displayName: 'GRIP_MASTER', position: 7, level: 13, productions: 12, averageScore: 79.5, passRate: 67, totalXp: 15430 },
+  { playFabId: 'PF-009', displayName: 'SLATE_RUNNER', position: 8, level: 11, productions: 9, averageScore: 76.1, passRate: 56, totalXp: 14390 },
+  { playFabId: 'PF-010', displayName: 'DOLLY_GRIP', position: 9, level: 9, productions: 5, averageScore: 73.4, passRate: 60, totalXp: 13250 },
+];
+
 const MOCK_FRIENDS: FriendInfo[] = [
   { playFabId: 'PF-002', displayName: 'DIRECTOR_X', status: 'confirmed', role: 'director', level: 31 },
   { playFabId: 'PF-003', displayName: 'LIGHT_MASTER', status: 'confirmed', role: 'av_technician', level: 24 },
@@ -876,6 +889,30 @@ export function createMockService(): PlayFabService {
     },
 
     leaderboard: {
+      async getProgress(maxResults = 500): Promise<ProgressLeaderboardEntry[]> {
+        await randomDelay();
+        const ownerLogs = MOCK_PRODUCTION_LOGS.filter((log) => log.playerId === MOCK_PLAYER_PROFILE.playFabId || !log.playerId);
+        const entries = [...MOCK_PROGRESS_ENTRIES];
+        if (ownerLogs.length > 0) {
+          const averageScore = ownerLogs.reduce((sum, log) => sum + Number(log.overallScore || log.score || 0), 0) / ownerLogs.length;
+          const passed = ownerLogs.filter((log) => log.success).length;
+          entries.push({
+            playFabId: MOCK_PLAYER_PROFILE.playFabId,
+            displayName: MOCK_PLAYER_PROFILE.username || MOCK_PLAYER_PROFILE.displayName,
+            position: 0,
+            level: MOCK_PROGRESSION.level,
+            productions: ownerLogs.length,
+            averageScore: Math.round(averageScore * 10) / 10,
+            passRate: Math.round((passed / ownerLogs.length) * 100),
+            totalXp: MOCK_PROGRESSION.totalXp,
+            avatarUrl: getStoredMockProfileMetadata().avatarUrl || DEFAULT_PROFILE_PICTURE_URL,
+          } as ProgressLeaderboardEntry);
+        }
+        return entries
+          .sort((left, right) => right.averageScore - left.averageScore || right.productions - left.productions)
+          .slice(0, maxResults)
+          .map((entry, index) => ({ ...entry, position: index + 1 }));
+      },
       async getGlobal(_stat: string, maxResults = 10): Promise<LeaderboardEntry[]> {
         await randomDelay();
         const currentAvatar = getStoredMockProfileMetadata().avatarUrl || DEFAULT_PROFILE_PICTURE_URL;
