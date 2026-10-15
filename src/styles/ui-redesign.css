@@ -4396,3 +4396,20 @@ html[data-display-theme="dark"] .display-theme-switcher button[aria-pressed="tru
     max-height: calc(100dvh - 1rem) !important;
   }
 }
+
+/* Keep the partnership attachment action readable across admin themes and states. */
+.admin-theme .admin-attachment-link {
+  border-color: rgba(255, 98, 72, .55) !important;
+  color: #ff6248 !important;
+  transition: background-color .15s ease, color .15s ease, border-color .15s ease;
+}
+
+.admin-theme .admin-attachment-link:is(:hover, :focus-visible, :active) {
+  border-color: #ff6248 !important;
+  background-color: #ff6248 !important;
+  color: #0a0e19 !important;
+}
+
+.admin-theme .admin-attachment-link:is(:hover, :focus-visible, :active) svg {
+  color: #0a0e19 !important;
+}
