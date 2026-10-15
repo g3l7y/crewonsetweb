@@ -18,6 +18,7 @@ import type {
   AdminPlayerTransaction,
   PlayerProfile,
   PlayerProgression,
+  ProgressLeaderboardEntry,
   RoleStatistics,
 } from '@/lib/playfab/types';
 
@@ -57,6 +58,7 @@ const PLAYER_CACHE_TTL_MS = 60_000;
 let playerCache: CachedPlayers | null = null;
 let playerRequest: Promise<PlayerProfile[]> | null = null;
 const pendingDeletedPlayerIds = new Set<string>();
+let leaderboardCache: { expiresAt: number; entries: ProgressLeaderboardEntry[] } | null = null;
 
 function getSecretKey(): string | null {
   return process.env['PLAYFAB_SECRET_KEY']?.trim() || null;
@@ -407,6 +409,71 @@ async function loadAllPlayers(secretKey: string, excludedPlayFabId?: string): Pr
   try { return await playerRequest; } finally { playerRequest = null; }
 }
 
+async function loadProgressLeaderboard(secretKey: string): Promise<ProgressLeaderboardEntry[]> {
+  if (leaderboardCache && leaderboardCache.expiresAt > Date.now()) return leaderboardCache.entries;
+  const players = await loadAllPlayers(secretKey);
+  const entries: ProgressLeaderboardEntry[] = [];
+  let cursor = 0;
+
+  const workers = Array.from({ length: Math.min(8, players.length) }, async () => {
+    while (cursor < players.length) {
+      const player = players[cursor++];
+      if (!player) continue;
+      try {
+        const response = await playFabServerRequest<{
+          InfoResultPayload?: {
+            PlayerProfile?: Record<string, unknown>;
+            PlayerStatistics?: Array<{ StatisticName?: string; Value?: number }>;
+            UserData?: UserDataMap;
+          };
+        }>('/Server/GetPlayerCombinedInfo', {
+          PlayFabId: player.playFabId,
+          InfoRequestParameters: {
+            GetPlayerProfile: true,
+            GetPlayerStatistics: true,
+            GetUserData: true,
+            UserDataKeys: [PLAYFAB_DATA_KEYS.production_logs, PLAYFAB_DATA_KEYS.progression, PLAYFAB_DATA_KEYS.profile_metadata],
+            ProfileConstraints: { ShowAvatarUrl: true },
+          },
+        }, secretKey);
+
+        const info = response.InfoResultPayload;
+        const userData = info?.UserData || {};
+        const logs = mapDataToProductionLogs(parseJson<unknown>(getDataValue(userData, PLAYFAB_DATA_KEYS.production_logs), []))
+          .filter((log) => Number.isFinite(Number(log.overallScore)) && Number(log.overallScore) >= 0);
+        if (logs.length === 0) continue;
+
+        const rawMetadata = parseJson<Record<string, unknown>>(getDataValue(userData, PLAYFAB_DATA_KEYS.profile_metadata), {});
+        const progression = mapProgression(getDataValue(userData, PLAYFAB_DATA_KEYS.progression), info?.PlayerStatistics || []);
+        const profile = info?.PlayerProfile || {};
+        const score = logs.reduce((total, log) => total + Number(log.overallScore), 0) / logs.length;
+        const passCount = logs.filter((log) => log.success).length;
+        const avatarUrl = String(rawMetadata.avatarUrl || profile['AvatarUrl'] || '');
+
+        entries.push({
+          playFabId: player.playFabId,
+          displayName: String(rawMetadata.username || profile['DisplayName'] || player.displayName || 'Player'),
+          avatarUrl: isManagedProfileAvatarUrl(avatarUrl) ? avatarUrl : DEFAULT_PROFILE_PICTURE_URL,
+          position: 0,
+          level: progression.level,
+          productions: logs.length,
+          averageScore: Math.round(score * 10) / 10,
+          passRate: Math.round((passCount / logs.length) * 100),
+          totalXp: progression.totalXp,
+        });
+      } catch (error) {
+        console.warn(`[API] Leaderboard progress could not be loaded for ${player.playFabId}.`, error);
+      }
+    }
+  });
+
+  await Promise.all(workers);
+  entries.sort((left, right) => right.averageScore - left.averageScore || right.productions - left.productions || left.displayName.localeCompare(right.displayName));
+  entries.forEach((entry, index) => { entry.position = index + 1; });
+  leaderboardCache = { expiresAt: Date.now() + 60_000, entries };
+  return entries;
+}
+
 function mapAccountInfo(account: Record<string, any>, lastLogin: string) {
   const linked = Array.isArray(account['LinkedAccounts']) ? account['LinkedAccounts'] as Array<Record<string, unknown>> : [];
   const origination = String(account['TitleInfo']?.['Origination'] || '').trim();
@@ -580,13 +647,15 @@ export const Route = createFileRoute('/api/admin/players')({
   server: {
     handlers: {
       GET: async ({ request }) => {
-        const session = await validateSessionFromRequest(request, { requireAdmin: true });
-        if (!session) return unauthorizedSessionResponse();
         const url = new URL(request.url);
+        const leaderboardView = url.searchParams.get('view') === 'leaderboard';
+        const session = await validateSessionFromRequest(request, { requireAdmin: !leaderboardView });
+        if (!session) return unauthorizedSessionResponse();
         const playerId = url.searchParams.get('id');
         const secretKey = getSecretKey();
         if (!secretKey) return Response.json({ success: false, error: 'PLAYFAB_SECRET_KEY is not configured on the server.' }, { status: 503 });
         try {
+          if (leaderboardView) return Response.json({ success: true, data: await loadProgressLeaderboard(secretKey) });
           if (playerId) return Response.json({ success: true, data: await loadRealPlayerDetails(playerId, secretKey) });
           return Response.json({ success: true, data: await loadAllPlayers(secretKey, session.playFabId) });
         } catch (error) {
@@ -624,6 +693,7 @@ export const Route = createFileRoute('/api/admin/players')({
             return Response.json({ success: false, error: 'Unsupported player action.' }, { status: 400 });
           }
           playerCache = null;
+          leaderboardCache = null;
           return Response.json({ success: true });
         } catch (error) {
           console.error('[API] POST admin/players error:', error);

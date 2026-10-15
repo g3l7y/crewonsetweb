@@ -382,6 +382,15 @@ function createRealService(): PlayFabService {
     },
 
     leaderboard: {
+      getProgress: async () => {
+        const response = await fetch('/api/admin/players?view=leaderboard', {
+          credentials: 'same-origin',
+          cache: 'no-store',
+        });
+        if (!response.ok) return [];
+        const result = await response.json() as { success?: boolean; data?: import('./types').ProgressLeaderboardEntry[] };
+        return result.success ? (result.data ?? []) : [];
+      },
       getGlobal: async (statistic, maxResults) => {
         const ticket = await resolveSessionTicket();
         return getGlobalLeaderboard(statistic, 0, maxResults ?? 50, ticket);

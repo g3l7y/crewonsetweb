@@ -474,6 +474,19 @@ export interface LeaderboardEntry {
   avatarUrl?: string | undefined;
 }
 
+/** Player ranking calculated from saved production progress. */
+export interface ProgressLeaderboardEntry {
+  playFabId: string;
+  displayName: string;
+  avatarUrl?: string | undefined;
+  position: number;
+  level: number;
+  productions: number;
+  averageScore: number;
+  passRate: number;
+  totalXp: number;
+}
+
 /**
  * Friend connection details.
  */
@@ -1057,6 +1070,7 @@ export interface PlayerService {
  * Competitive leaderboard service.
  */
 export interface LeaderboardService {
+  getProgress(): Promise<ProgressLeaderboardEntry[]>;
   getGlobal(statistic: string, maxResults?: number): Promise<LeaderboardEntry[]>;
   getAroundPlayer(statistic: string, maxResults?: number): Promise<LeaderboardEntry[]>;
 }
