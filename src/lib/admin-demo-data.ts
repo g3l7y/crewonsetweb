@@ -394,6 +394,15 @@ export type TopUpRecord = {
   bank: string;
   amount: number;
   status: "Completed" | "Pending" | "Failed";
+  email?: string;
+  item?: string;
+  coins?: number;
+  packageId?: string;
+  checkoutSessionId?: string;
+  paymentMethod?: string;
+  transactionType?: "top-up" | "partnership";
+  paidAt?: string;
+  eventId?: string;
 };
 
 /** Shared demo ledger used by player checkout and admin sales views. */

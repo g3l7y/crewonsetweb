@@ -731,6 +731,7 @@ export interface PartnershipPayment {
   updatedAt: string;
   paidAt?: string | undefined;
   eventId?: string | undefined;
+  paymentMethod?: string | undefined;
 }
 /** Administrator alert and notification.
  */

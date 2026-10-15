@@ -173,6 +173,10 @@ export const Route = createFileRoute('/api/paymongo/checkout')({
             body: JSON.stringify({
               data: {
                 attributes: {
+                  billing: {
+                    name: session.displayName || session.username || undefined,
+                    email,
+                  },
                   line_items: [
                     {
                       name: totalCoins + ' C-Coins',

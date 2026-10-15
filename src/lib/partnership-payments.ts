@@ -100,11 +100,12 @@ export async function markPartnershipPaymentPaid(
   payment: PartnershipPayment,
   eventId: string,
   secretKey: string,
+  paymentMethod?: string,
 ): Promise<{ updated: boolean; alreadyPaid: boolean }> {
   const wasAlreadyPaid = payment.status === 'fulfilled';
   const paidAt = new Date().toISOString();
 
-  if (!wasAlreadyPaid) {
+  if (!wasAlreadyPaid || (paymentMethod && !payment.paymentMethod)) {
     const paymentUpdated = await updatePartnershipPayment(
       payment.id,
       (current) => ({
@@ -113,6 +114,7 @@ export async function markPartnershipPaymentPaid(
         paidAt: current.paidAt || paidAt,
         updatedAt: paidAt,
         eventId: current.eventId || eventId,
+        ...(paymentMethod ? { paymentMethod } : {}),
       }),
       secretKey,
     );
