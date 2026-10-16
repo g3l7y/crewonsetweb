@@ -280,8 +280,11 @@ export function PartnershipForm() {
 
         <div className="form-label sm:col-span-2">
           <span>PROOF OF BUSINESS</span>
-          <p className="mt-1 text-xs font-normal leading-relaxed text-navy/55">
-            Attach a business registration document, such as a DTI Business Name Certificate, SEC Certificate of Registration or Incorporation, CDA registration certificate, or local business permit. Make sure the registered business name is easy to read.
+          <p
+            className="mt-1 text-[11px] font-normal leading-relaxed text-navy/55"
+            style={{ textTransform: "none", letterSpacing: "normal" }}
+          >
+            Attach one of these documents: <strong className="font-semibold uppercase">DTI Business Name Certificate</strong>, <strong className="font-semibold uppercase">SEC Certificate of Registration or Incorporation</strong>, <strong className="font-semibold uppercase">CDA Registration Certificate</strong>, or <strong className="font-semibold uppercase">local business permit</strong>. Make sure the registered business name is easy to read.
           </p>
           <div className="mt-2 flex items-center gap-3 rounded-lg border-2 border-dashed border-navy/15 bg-navy/[.025] px-4 py-4 text-sm transition hover:border-coral hover:bg-coral/[.03]">
             <FileImage className="size-5 shrink-0 text-coral" />

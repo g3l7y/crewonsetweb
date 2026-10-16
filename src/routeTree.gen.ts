@@ -74,6 +74,7 @@ import { Route as ApiCronExpireBrandPromotionsRouteImport } from './routes/api/c
 import { Route as ApiDevMaintenanceRouteImport } from './routes/api/dev.maintenance'
 import { Route as ApiPaymongoBrandStatusRouteImport } from './routes/api/paymongo/brand-status'
 import { Route as ApiPaymongoCheckoutRouteImport } from './routes/api/paymongo/checkout'
+import { Route as ApiPaymongoOrdersRouteImport } from './routes/api/paymongo/orders'
 import { Route as ApiPaymongoReturnRouteImport } from './routes/api/paymongo/return'
 import { Route as ApiPaymongoStatusRouteImport } from './routes/api/paymongo/status'
 import { Route as ApiPaymongoWebhookRouteImport } from './routes/api/paymongo/webhook'
@@ -422,6 +423,11 @@ const ApiPaymongoCheckoutRoute = ApiPaymongoCheckoutRouteImport.update({
   path: '/api/paymongo/checkout',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiPaymongoOrdersRoute = ApiPaymongoOrdersRouteImport.update({
+  id: '/api/paymongo/orders',
+  path: '/api/paymongo/orders',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiPaymongoReturnRoute = ApiPaymongoReturnRouteImport.update({
   id: '/api/paymongo/return',
   path: '/api/paymongo/return',
@@ -598,6 +604,7 @@ export interface FileRoutesByFullPath {
   '/api/dev/maintenance': typeof ApiDevMaintenanceRoute
   '/api/paymongo/brand-status': typeof ApiPaymongoBrandStatusRoute
   '/api/paymongo/checkout': typeof ApiPaymongoCheckoutRoute
+  '/api/paymongo/orders': typeof ApiPaymongoOrdersRoute
   '/api/paymongo/return': typeof ApiPaymongoReturnRoute
   '/api/paymongo/status': typeof ApiPaymongoStatusRoute
   '/api/paymongo/webhook': typeof ApiPaymongoWebhookRoute
@@ -683,6 +690,7 @@ export interface FileRoutesByTo {
   '/api/dev/maintenance': typeof ApiDevMaintenanceRoute
   '/api/paymongo/brand-status': typeof ApiPaymongoBrandStatusRoute
   '/api/paymongo/checkout': typeof ApiPaymongoCheckoutRoute
+  '/api/paymongo/orders': typeof ApiPaymongoOrdersRoute
   '/api/paymongo/return': typeof ApiPaymongoReturnRoute
   '/api/paymongo/status': typeof ApiPaymongoStatusRoute
   '/api/paymongo/webhook': typeof ApiPaymongoWebhookRoute
@@ -771,6 +779,7 @@ export interface FileRoutesById {
   '/api/dev/maintenance': typeof ApiDevMaintenanceRoute
   '/api/paymongo/brand-status': typeof ApiPaymongoBrandStatusRoute
   '/api/paymongo/checkout': typeof ApiPaymongoCheckoutRoute
+  '/api/paymongo/orders': typeof ApiPaymongoOrdersRoute
   '/api/paymongo/return': typeof ApiPaymongoReturnRoute
   '/api/paymongo/status': typeof ApiPaymongoStatusRoute
   '/api/paymongo/webhook': typeof ApiPaymongoWebhookRoute
@@ -860,6 +869,7 @@ export interface FileRouteTypes {
     | '/api/dev/maintenance'
     | '/api/paymongo/brand-status'
     | '/api/paymongo/checkout'
+    | '/api/paymongo/orders'
     | '/api/paymongo/return'
     | '/api/paymongo/status'
     | '/api/paymongo/webhook'
@@ -945,6 +955,7 @@ export interface FileRouteTypes {
     | '/api/dev/maintenance'
     | '/api/paymongo/brand-status'
     | '/api/paymongo/checkout'
+    | '/api/paymongo/orders'
     | '/api/paymongo/return'
     | '/api/paymongo/status'
     | '/api/paymongo/webhook'
@@ -1032,6 +1043,7 @@ export interface FileRouteTypes {
     | '/api/dev/maintenance'
     | '/api/paymongo/brand-status'
     | '/api/paymongo/checkout'
+    | '/api/paymongo/orders'
     | '/api/paymongo/return'
     | '/api/paymongo/status'
     | '/api/paymongo/webhook'
@@ -1098,6 +1110,7 @@ export interface RootRouteChildren {
   ApiDevMaintenanceRoute: typeof ApiDevMaintenanceRoute
   ApiPaymongoBrandStatusRoute: typeof ApiPaymongoBrandStatusRoute
   ApiPaymongoCheckoutRoute: typeof ApiPaymongoCheckoutRoute
+  ApiPaymongoOrdersRoute: typeof ApiPaymongoOrdersRoute
   ApiPaymongoReturnRoute: typeof ApiPaymongoReturnRoute
   ApiPaymongoStatusRoute: typeof ApiPaymongoStatusRoute
   ApiPaymongoWebhookRoute: typeof ApiPaymongoWebhookRoute
@@ -1576,6 +1589,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiPaymongoCheckoutRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/paymongo/orders': {
+      id: '/api/paymongo/orders'
+      path: '/api/paymongo/orders'
+      fullPath: '/api/paymongo/orders'
+      preLoaderRoute: typeof ApiPaymongoOrdersRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/paymongo/return': {
       id: '/api/paymongo/return'
       path: '/api/paymongo/return'
@@ -1845,6 +1865,7 @@ const rootRouteChildren: RootRouteChildren = {
   ApiDevMaintenanceRoute: ApiDevMaintenanceRoute,
   ApiPaymongoBrandStatusRoute: ApiPaymongoBrandStatusRoute,
   ApiPaymongoCheckoutRoute: ApiPaymongoCheckoutRoute,
+  ApiPaymongoOrdersRoute: ApiPaymongoOrdersRoute,
   ApiPaymongoReturnRoute: ApiPaymongoReturnRoute,
   ApiPaymongoStatusRoute: ApiPaymongoStatusRoute,
   ApiPaymongoWebhookRoute: ApiPaymongoWebhookRoute,

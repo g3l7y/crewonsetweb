@@ -16,7 +16,7 @@ import {
   updateWebsiteRecord,
 } from "@/lib/playfab/websiteData";
 import { recordPlayerTopUpNotification } from "@/lib/paymongo/player-notifications";
-import { isPaidCheckoutAmount, parsePaidCheckoutEvent } from "@/lib/paymongo/verification";
+import { getPaidPaymentMethod, isPaidCheckoutAmount, parsePaidCheckoutEvent } from "@/lib/paymongo/verification";
 
 type PayMongoOrder = {
   id: string;
@@ -95,35 +95,6 @@ async function verifySignature(
 
 function asRecord(value: unknown): Record<string, unknown> {
   return value && typeof value === "object" ? (value as Record<string, unknown>) : {};
-}
-
-function getPaidPaymentMethod(attributes: Record<string, unknown>): string | undefined {
-  const paymentIntent = asRecord(attributes["payment_intent"]);
-  const intentAttributes = asRecord(paymentIntent["attributes"]);
-  const payments = [
-    ...(Array.isArray(attributes["payments"]) ? attributes["payments"] : []),
-    ...(Array.isArray(intentAttributes["payments"]) ? intentAttributes["payments"] : []),
-  ];
-  const paidPayment = payments
-    .map((payment) => asRecord(payment["attributes"] ?? payment))
-    .find((payment) => String(payment["status"] || "").toLowerCase() === "paid");
-  if (!paidPayment) return undefined;
-
-  const source = asRecord(paidPayment["source"]);
-  const type = String(source["type"] || paidPayment["payment_method_type"] || "").toLowerCase();
-  if (!type) return undefined;
-  const labels: Record<string, string> = {
-    qrph: "QR Ph",
-    gcash: "GCash",
-    maya: "Maya",
-    paymaya: "Maya",
-    card: "Card",
-    grab_pay: "GrabPay",
-    shopee_pay: "ShopeePay",
-    dob: "Online Banking",
-    billease: "BillEase",
-  };
-  return labels[type] || type.replaceAll("_", " ").replace(/\b\w/g, (letter) => letter.toUpperCase());
 }
 
 export const Route = createFileRoute("/api/paymongo/webhook")({
@@ -359,7 +330,7 @@ export const Route = createFileRoute("/api/paymongo/webhook")({
 
             let ledgerFulfilled = false;
             try {
-              ledgerFulfilled = await markPayMongoOrderFulfilled(order.id, eventId);
+              ledgerFulfilled = await markPayMongoOrderFulfilled(order.id, eventId, paymentMethod);
             } catch (error) {
               console.error(
                 "[PayMongo] Payment was accepted but ledger fulfillment could not be saved:",

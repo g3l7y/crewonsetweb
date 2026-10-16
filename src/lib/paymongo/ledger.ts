@@ -25,6 +25,8 @@ export type PayMongoLedgerOrder = {
   status: PayMongoLedgerStatus;
   createdAt: string;
   fulfilledAt?: string;
+  paymentMethod?: string;
+  eventId?: string;
 };
 
 let schemaPromise: Promise<void> | null = null;
@@ -63,6 +65,7 @@ async function ensureSchema(sql: NeonQueryFunction<false, false>): Promise<void>
         )
       `;
       await sql`ALTER TABLE paymongo_payment_ledger ADD COLUMN IF NOT EXISTS processing_at TIMESTAMPTZ`;
+      await sql`ALTER TABLE paymongo_payment_ledger ADD COLUMN IF NOT EXISTS payment_method TEXT`;
       await sql`
         UPDATE paymongo_payment_ledger
         SET processing_at = claimed_at
@@ -134,7 +137,7 @@ export async function getPayMongoOrder(
   await ensureSchema(sql);
   const rows = await sql`
     SELECT order_id, checkout_session_id, playfab_id, package_id,
-           coins, amount_in_centavos, status, claimed_at, fulfilled_at
+           coins, amount_in_centavos, status, claimed_at, fulfilled_at, payment_method, event_id
     FROM paymongo_payment_ledger
     WHERE order_id = ${orderIdOrCheckoutSessionId}
        OR checkout_session_id = ${orderIdOrCheckoutSessionId}
@@ -153,7 +156,42 @@ export async function getPayMongoOrder(
     status: String(row["status"]) as PayMongoLedgerStatus,
     createdAt: new Date(String(row["claimed_at"])).toISOString(),
     ...(row["fulfilled_at"] ? { fulfilledAt: new Date(String(row["fulfilled_at"])).toISOString() } : {}),
+    ...(row["payment_method"] ? { paymentMethod: String(row["payment_method"]) } : {}),
+    ...(row["event_id"] ? { eventId: String(row["event_id"]) } : {}),
   };
+}
+
+/** Return only the signed-in player's PayMongo order history. */
+export async function getPayMongoOrdersForPlayer(
+  playFabId: string,
+): Promise<PayMongoLedgerOrder[]> {
+  const sql = getSql();
+  await ensureSchema(sql);
+  const rows = await sql`
+    SELECT order_id, checkout_session_id, playfab_id, package_id,
+           coins, amount_in_centavos, status, claimed_at, fulfilled_at, payment_method, event_id
+    FROM paymongo_payment_ledger
+    WHERE playfab_id = ${playFabId}
+    ORDER BY claimed_at DESC
+  `;
+  return rows.map((value) => {
+    const row = value as Record<string, unknown>;
+    return {
+      orderId: String(row["order_id"]),
+      checkoutSessionId: String(row["checkout_session_id"]),
+      playFabId: String(row["playfab_id"]),
+      packageId: String(row["package_id"]),
+      coins: Number(row["coins"]),
+      amountInCentavos: Number(row["amount_in_centavos"]),
+      status: String(row["status"]) as PayMongoLedgerStatus,
+      createdAt: new Date(String(row["claimed_at"])).toISOString(),
+      ...(row["fulfilled_at"]
+        ? { fulfilledAt: new Date(String(row["fulfilled_at"])).toISOString() }
+        : {}),
+      ...(row["payment_method"] ? { paymentMethod: String(row["payment_method"]) } : {}),
+      ...(row["event_id"] ? { eventId: String(row["event_id"]) } : {}),
+    };
+  });
 }
 
 /**
@@ -233,6 +271,7 @@ export async function claimPayMongoOrder(input: PayMongoOrderInput): Promise<Pay
 export async function markPayMongoOrderFulfilled(
   orderId: string,
   eventId: string,
+  paymentMethod?: string,
 ): Promise<boolean> {
   const sql = getSql();
   await ensureSchema(sql);
@@ -241,6 +280,7 @@ export async function markPayMongoOrderFulfilled(
     SET status = 'fulfilled',
         event_id = COALESCE(${eventId || null}, event_id),
         fulfilled_at = NOW(),
+        payment_method = COALESCE(${paymentMethod || null}, payment_method),
         processing_at = NULL,
         failed_at = NULL,
         last_error = NULL

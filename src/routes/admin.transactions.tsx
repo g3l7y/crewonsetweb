@@ -10,13 +10,14 @@ export const Route = createFileRoute("/admin/transactions")({
   component: TransactionsPage,
 });
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Coins, Eye, ReceiptText, Search, Wallet2, X } from "lucide-react";
 import { formatMoney } from "@/lib/demo/store";
-import { topUpsStore } from "@/lib/admin-demo-data";
+import { topUps, topUpsStore } from "@/lib/admin-demo-data";
 import { isMockMode } from "@/lib/playfab/config";
 import { useAdminPayMongoOrders } from "@/lib/admin-paymongo-orders";
 import type { TopUpRecord } from "@/lib/admin-demo-data";
+import { PayMongoTopUpReceipt } from "@/components/transactions/paymongo-top-up-receipt";
 
 const statusStyles: Record<string, string> = {
   Completed: "bg-[#2d9d8f]/15 text-[#4bc4b4]",
@@ -30,6 +31,13 @@ function TransactionsPage() {
   const mockMode = isMockMode();
   const [demoTopUps] = topUpsStore.useStore();
   const liveTopUpsQuery = useAdminPayMongoOrders();
+  useEffect(() => {
+    if (!mockMode) return;
+    topUpsStore.set((current) => current.map((row) => {
+      const seeded = topUps.find((sample) => sample.id === row.id);
+      return seeded ? { ...seeded, ...row, amount: seeded.amount, coins: row.coins ?? seeded.coins, paymentMethod: row.paymentMethod ?? seeded.paymentMethod, email: row.email ?? seeded.email, packageId: row.packageId ?? seeded.packageId, item: row.item ?? seeded.item, timestamp: row.timestamp ?? seeded.timestamp } : row;
+    }));
+  }, [mockMode]);
   const topUps = useMemo(
     () => (mockMode ? demoTopUps : (liveTopUpsQuery.data ?? [])),
     [demoTopUps, liveTopUpsQuery.data, mockMode],
@@ -229,7 +237,22 @@ function TransactionsPage() {
             </div>
 
             <div className="max-h-[75vh] overflow-y-auto p-5 sm:p-6">
-              <div className="mx-auto max-w-xl rounded-lg bg-[#fffdf6] p-5 text-[#101923] shadow-lg sm:p-8">
+              {selectedTransaction.transactionType !== "partnership" ? (
+                <div className="mx-auto max-w-xl">
+                  <PayMongoTopUpReceipt
+                    reference={selectedTransaction.id}
+                    playerName={selectedTransaction.playerName}
+                    email={selectedTransaction.email}
+                    dateTime={selectedTransaction.timestamp || `${selectedTransaction.date}T${selectedTransaction.time}:00`}
+                    paymentMethod={selectedTransaction.paymentMethod}
+                    amountPhp={selectedTransaction.amount}
+                    coins={selectedTransaction.coins || 0}
+                    status={selectedTransaction.status}
+                    checkoutSessionId={selectedTransaction.checkoutSessionId}
+                    eventId={selectedTransaction.eventId}
+                  />
+                </div>
+              ) : <div className="mx-auto max-w-xl rounded-lg bg-[#fffdf6] p-5 text-[#101923] shadow-lg sm:p-8">
                 <div className="flex flex-wrap items-start justify-between gap-4 border-b border-[#101923]/15 pb-5">
                   <div>
                     <p className="text-xs font-black uppercase tracking-[0.16em] text-[#657080]">Crew On Set</p>
@@ -301,7 +324,7 @@ function TransactionsPage() {
                       : "Payment is not complete, so this transaction summary is not a payment receipt."}
                   </p>
                 </div>
-              </div>
+              </div>}
             </div>
           </section>
         </div>

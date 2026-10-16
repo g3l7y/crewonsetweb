@@ -231,7 +231,7 @@ export const salesChartData = [
   { date: "Aug", sales: 16400 },
 ];
 
-export const topUps = [
+const topUpSeeds = [
   {
     id: "TOP-88031",
     playerName: "FramePerfect",
@@ -382,7 +382,29 @@ export const topUps = [
     amount: 4.99,
     status: "Completed",
   },
+];
+
+const demoTopUpPackages = [
+  { packageId: "pack-7500", amount: 499, coins: 7500 },
+  { packageId: "pack-3100", amount: 249, coins: 3100 },
+  { packageId: "pack-500", amount: 49, coins: 500 },
+  { packageId: "pack-1350", amount: 119, coins: 1350 },
 ] as const;
+
+export const topUps = topUpSeeds.map((row, index) => {
+  const pack = demoTopUpPackages[index % demoTopUpPackages.length];
+  const isWallet = /gcash/i.test(row.bank);
+  return {
+    ...row,
+    amount: pack.amount,
+    coins: pack.coins,
+    packageId: pack.packageId,
+    item: pack.coins.toLocaleString("en-PH") + " C-Coins",
+    paymentMethod: isWallet ? "Demo · GCash" : "Demo · Online banking",
+    timestamp: new Date(row.date + "T" + row.time + ":00").toISOString(),
+    transactionType: "top-up" as const,
+  };
+});
 
 export type TopUpRecord = {
   id: string;

@@ -13,10 +13,11 @@ export const Route = createFileRoute("/portal/shop")({
 });
 
 import { useEffect, useMemo, useState } from "react";
-import { Check, Coins, Package, Search, ShoppingBag, ShoppingCart, Trash2, X } from "lucide-react";
+import { Check, Coins, Package, ReceiptText, Search, ShoppingBag, ShoppingCart, Trash2, X } from "lucide-react";
 import CheckoutPage from "@/components/portal/checkout";
 import { useSearchParams } from "@/components/next-compat/navigation";
 import { CosmeticArt } from "@/components/portal/cosmetic-art";
+import { PayMongoTopUpReceipt } from "@/components/transactions/paymongo-top-up-receipt";
 import {
   cosmeticCatalog,
   freeBodyItems,
@@ -46,11 +47,45 @@ import {
   useSession,
   useNotifications,
   usePurchaseItem,
+  useTransactions,
 } from "@/lib/playfab/hooks";
+import type { Transaction } from "@/lib/playfab/types";
 
 type Category = "All" | CosmeticCategory;
-type ViewMode = "shop" | "owned";
+type ViewMode = "shop" | "owned" | "transactions";
 const categories: Category[] = ["All", "Body", "Face", "Hair", "Tops", "Bottoms", "Shoe Wear", "Accessories"];
+type PayMongoOrder = {
+  id: string;
+  checkoutSessionId?: string;
+  packageId: string;
+  coins: number;
+  amountInCentavos: number;
+  status: "pending" | "active" | "processing" | "fulfilled" | "failed";
+  createdAt: string;
+  paidAt?: string;
+  paymentMethod?: string;
+  email?: string;
+  eventId?: string;
+  updatedAt?: string;
+};
+type ShopHistoryRecord = {
+  id: string;
+  title: string;
+  description: string;
+  createdAt: string;
+  amount: number;
+  isSpend?: boolean;
+  currency: string;
+  status: string;
+  payMongo: boolean;
+  reference?: string;
+  paymentMethod?: string;
+  coinsReceived?: number;
+  email?: string;
+  checkoutSessionId?: string;
+  eventId?: string;
+  payMongoStatus?: "Completed" | "Pending" | "Failed";
+};
 const bundledFaceItems = cosmeticCatalog.filter((item) => item.category === "Face");
 
 const rarityStyles: Record<string, string> = {
@@ -69,10 +104,25 @@ function cleanPaymentReturnUrl() {
   window.history.replaceState({}, "", url.pathname + url.search + url.hash);
 }
 
+function formatHistoryDate(value: string) {
+  const date = new Date(value);
+  return Number.isNaN(date.getTime())
+    ? "Date unavailable"
+    : date.toLocaleString("en-PH", { dateStyle: "medium", timeStyle: "short" });
+}
+
+function formatHistoryAmount(amount: number, currency: string) {
+  if (currency === "PHP") {
+    return new Intl.NumberFormat("en-PH", { style: "currency", currency: "PHP" }).format(amount);
+  }
+  return `${amount.toLocaleString("en-PH")} ${currency}`;
+}
+
 function ShopPage() {
   const mockMode = isMockMode();
   const searchParams = useSearchParams();
-  const requestedView: ViewMode = searchParams.get("view") === "owned" ? "owned" : "shop";
+  const viewParam = searchParams.get("view");
+  const requestedView: ViewMode = viewParam === "owned" || viewParam === "transactions" ? viewParam : "shop";
   const [view, setView] = useState<ViewMode>(requestedView);
 
   useEffect(() => {
@@ -96,12 +146,17 @@ function ShopPage() {
   const purchaseItem = usePurchaseItem();
   const realNotificationsQuery = useNotifications();
   const refreshPlayerNotifications = realNotificationsQuery.refetch;
+  const playerTransactionsQuery = useTransactions();
 
   const [demoOwnedIds, setDemoOwnedIds] = ownedItemsStore.useStore();
   const [cart, setCart] = cartStore.useStore();
   const [demoWallet, setDemoWallet] = walletStore.useStore();
   const [notifications, setNotifications] = notificationsStore.useStore();
   const [transactions, setTransactions] = transactionsStore.useStore();
+  const [payMongoOrders, setPayMongoOrders] = useState<PayMongoOrder[]>([]);
+  const [payMongoOrdersLoading, setPayMongoOrdersLoading] = useState(false);
+  const [payMongoOrdersError, setPayMongoOrdersError] = useState("");
+  const [selectedHistoryRecord, setSelectedHistoryRecord] = useState<ShopHistoryRecord | null>(null);
   const paymentResult = searchParams.get("payment");
   const paymentReference = searchParams.get("reference");
   const [paymentNotice, setPaymentNotice] = useState<{
@@ -109,6 +164,91 @@ function ShopPage() {
     coins: number;
     message: string;
   } | null>(null);
+
+  useEffect(() => {
+    if (view !== "transactions") return;
+    let cancelled = false;
+    setPayMongoOrdersLoading(true);
+    setPayMongoOrdersError("");
+    void fetch("/api/paymongo/orders", { credentials: "include", cache: "no-store" })
+      .then(async (response) => {
+        const result = (await response.json().catch(() => ({}))) as {
+          data?: PayMongoOrder[];
+          error?: string;
+        };
+        if (!response.ok) throw new Error(result.error || "Transaction history could not be loaded.");
+        if (!cancelled) setPayMongoOrders(Array.isArray(result.data) ? result.data : []);
+      })
+      .catch((error) => {
+        if (!cancelled) setPayMongoOrdersError(error instanceof Error ? error.message : "Transaction history could not be loaded.");
+      })
+      .finally(() => {
+        if (!cancelled) setPayMongoOrdersLoading(false);
+      });
+    return () => { cancelled = true; };
+  }, [paymentReference, view]);
+
+  const historyRecords = useMemo<ShopHistoryRecord[]>(() => {
+    const walletHistory: ShopHistoryRecord[] = (mockMode ? transactions : playerTransactionsQuery.data ?? []).map((transaction) => {
+      if ("kind" in transaction) {
+        const amount = transaction.amount;
+        const seededPayMongoTopUp = mockMode && transaction.id === "tx-seed-2";
+        const coinsReceived = seededPayMongoTopUp ? 7500 : Math.abs(amount);
+        const paymentAmountPhp = transaction.paymentAmountPhp ?? (seededPayMongoTopUp ? 499 : undefined);
+        return {
+          id: transaction.id,
+          title: seededPayMongoTopUp ? "C-Coin Top-Up · 7,500 C-Coins" : transaction.label,
+          description: seededPayMongoTopUp ? "Studio Bundle · Demo PayMongo checkout" : transaction.detail,
+          createdAt: transaction.createdAt,
+          amount: paymentAmountPhp ?? Math.abs(amount),
+          isSpend: transaction.kind === "purchase" || amount < 0,
+          currency: paymentAmountPhp !== undefined ? "PHP" : "C-Coins",
+          status: transaction.payMongo || seededPayMongoTopUp ? "Completed" : "Recorded",
+          payMongo: transaction.payMongo ?? seededPayMongoTopUp,
+          reference: transaction.id,
+          ...(transaction.kind === "topup" ? { coinsReceived } : {}),
+          ...(transaction.paymentMethod || seededPayMongoTopUp ? { paymentMethod: transaction.paymentMethod || "QR Ph · Demo" } : {}),
+        };
+      }
+      const playFabTransaction = transaction as Transaction;
+      const isSpend = playFabTransaction.type === "purchase" || playFabTransaction.type === "spend";
+      return {
+        id: playFabTransaction.id,
+        title: playFabTransaction.description || "Player transaction",
+        description: isSpend ? "Studio Shop purchase" : "Player wallet transaction",
+        createdAt: playFabTransaction.timestamp || playFabTransaction.date || "",
+        amount: Math.abs(playFabTransaction.amount),
+        isSpend,
+        currency: playFabTransaction.currency === "cCoins" ? "C-Coins" : "B-Coins",
+        status: "Recorded",
+        payMongo: false,
+        reference: playFabTransaction.id,
+      };
+    });
+    const topUpHistory: ShopHistoryRecord[] = payMongoOrders.map((order) => {
+      const pack = coinPackages.find((candidate) => candidate.id === order.packageId);
+      return {
+        id: order.id,
+        title: (order.coins || pack?.coins || 0).toLocaleString("en-PH") + " C-Coins",
+        description: "C-Coin top-up through PayMongo",
+        createdAt: order.paidAt || order.createdAt,
+        amount: order.amountInCentavos / 100,
+        currency: "PHP",
+        status: order.status === "fulfilled" ? "Completed" : order.status === "failed" ? "Failed" : "Pending",
+        payMongo: true,
+        reference: order.id,
+        paymentMethod: order.paymentMethod,
+        coinsReceived: order.coins,
+        email: order.email,
+        checkoutSessionId: order.checkoutSessionId,
+        eventId: order.eventId,
+        payMongoStatus: order.status === "fulfilled" ? "Completed" : order.status === "failed" ? "Failed" : "Pending",
+      };
+    });
+    return [...topUpHistory, ...walletHistory].sort((left, right) =>
+      new Date(right.createdAt).getTime() - new Date(left.createdAt).getTime(),
+    );
+  }, [mockMode, payMongoOrders, playerTransactionsQuery.data, transactions]);
 
   const catalog = useMemo(() => {
     if (mockMode) return [...cosmeticCatalog, ...freeBodyItems];
@@ -256,6 +396,11 @@ function ShopPage() {
           coins?: number;
           amountInCentavos?: number;
           timestamp?: string;
+          paymentMethod?: string;
+          packageId?: string;
+          checkoutSessionId?: string;
+          email?: string;
+          eventId?: string;
           error?: string;
         };
         if (!response.ok)
@@ -304,6 +449,12 @@ function ShopPage() {
                       timestamp: completedAt,
                       bank: "Demo Checkout",
                       amount: paymentAmount,
+                      coins: confirmedCoins,
+                      packageId: lastResult.packageId,
+                      paymentMethod: lastResult.paymentMethod,
+                      email: lastResult.email,
+                      checkoutSessionId: lastResult.checkoutSessionId,
+                      eventId: lastResult.eventId,
                       status: "Completed",
                     },
                     ...current,
@@ -548,6 +699,15 @@ function ShopPage() {
           >
             <Package /> Owned items
           </button>
+          <button
+            type="button"
+            role="tab"
+            aria-selected={view === "transactions"}
+            onClick={() => setView("transactions")}
+            className={view === "transactions" ? "active" : ""}
+          >
+            <ReceiptText /> Transactions
+          </button>
         </div>
 
         {view === "shop" ? (
@@ -691,7 +851,7 @@ function ShopPage() {
               </div>
             </section>
           </>
-        ) : (
+        ) : view === "owned" ? (
           <>
             <div className="shop-filters">
               <div className="shop-category-list" role="list" aria-label="Filter owned cosmetics by category">
@@ -752,8 +912,136 @@ function ShopPage() {
               )}
             </section>
           </>
+        ) : (
+          <section className="mt-6 rounded-2xl border border-navy/10 bg-white/70 p-4 shadow-sm sm:p-6" aria-labelledby="shop-transactions-title">
+            <div className="mb-5 flex flex-wrap items-end justify-between gap-3">
+              <div>
+                <p className="portal-kicker">YOUR PURCHASE HISTORY</p>
+                <h2 id="shop-transactions-title" className="text-2xl font-black uppercase text-navy">Transactions</h2>
+                <p className="mt-1 text-sm text-navy/60">Review C-Coin purchases, top-ups, and payment details.</p>
+              </div>
+              <button
+                type="button"
+                className="shop-secondary-button"
+                onClick={() => {
+                  setPayMongoOrdersLoading(true);
+                  void fetch("/api/paymongo/orders", { credentials: "include", cache: "no-store" })
+                    .then(async (response) => {
+                      const result = (await response.json().catch(() => ({}))) as { data?: PayMongoOrder[]; error?: string };
+                      if (!response.ok) throw new Error(result.error || "Transaction history could not be loaded.");
+                      setPayMongoOrders(Array.isArray(result.data) ? result.data : []);
+                      setPayMongoOrdersError("");
+                    })
+                    .catch((error) => setPayMongoOrdersError(error instanceof Error ? error.message : "Transaction history could not be loaded."))
+                    .finally(() => setPayMongoOrdersLoading(false));
+                }}
+                disabled={payMongoOrdersLoading}
+              >
+                {payMongoOrdersLoading ? "Refreshing…" : "Refresh"}
+              </button>
+            </div>
+            {payMongoOrdersError && <p className="mb-4 rounded-lg border border-coral/30 bg-coral/10 p-3 text-sm font-bold text-coral" role="alert">{payMongoOrdersError}</p>}
+            {payMongoOrdersLoading && historyRecords.length === 0 ? (
+              <div className="shop-empty">Loading your transactions…</div>
+            ) : historyRecords.length === 0 ? (
+              <div className="shop-empty">Your purchases and receipts will appear here.</div>
+            ) : (
+              <div className="space-y-3">
+                {historyRecords.map((record) => (
+                  <article key={record.id} className="flex flex-col gap-4 rounded-xl border border-navy/10 bg-white p-4 sm:flex-row sm:items-center sm:justify-between">
+                    <div className="min-w-0">
+                      <h3 className="truncate font-black text-navy">{record.title}</h3>
+                      <p className="mt-1 text-sm text-navy/60">{record.description}</p>
+                      <p className="mt-1 text-xs text-navy/50">{formatHistoryDate(record.createdAt)} · {record.status}</p>
+                    </div>
+                    <div className="flex shrink-0 items-center justify-between gap-4 sm:justify-end">
+                      <div className="text-right">
+                        <strong className="block text-navy">{record.isSpend ? "−" : ""}{formatHistoryAmount(record.amount, record.currency)}</strong>
+                        {record.coinsReceived !== undefined && <span className="mt-1 block text-xs font-bold text-emerald-700">+{record.coinsReceived.toLocaleString("en-PH")} C-Coins</span>}
+                      </div>
+                      <button type="button" className="shop-secondary-button" onClick={() => setSelectedHistoryRecord(record)}>
+                        {record.payMongo ? "View receipt" : "View details"}
+                      </button>
+                    </div>
+                  </article>
+                ))}
+              </div>
+            )}
+          </section>
         )}
       </div>
+
+      {selectedHistoryRecord && (
+        <div className="shop-modal-backdrop" role="presentation" onMouseDown={() => setSelectedHistoryRecord(null)}>
+          <section
+            className="max-h-[90vh] w-full max-w-xl overflow-y-auto rounded-2xl border border-navy/15 bg-[#fffdf7] text-navy shadow-2xl"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="transaction-receipt-title"
+            onMouseDown={(event) => event.stopPropagation()}
+          >
+            <div className="flex items-center justify-between gap-4 rounded-t-2xl bg-[#123c36] px-6 py-4 text-white">
+              <div className="flex items-center gap-3">
+                <ReceiptText aria-hidden="true" className="size-6 text-[#65d2b1]" />
+                <div>
+                  <p className="text-xs font-bold uppercase tracking-[.18em] text-white/65">Crew On Set</p>
+                  <p className="font-black">{selectedHistoryRecord.payMongo ? "PayMongo payment" : "Player transaction"}</p>
+                </div>
+              </div>
+              <button type="button" className="rounded-full p-2 text-white/75 transition hover:bg-white/10 hover:text-white" onClick={() => setSelectedHistoryRecord(null)} aria-label="Close transaction details">
+                <X className="size-5" />
+              </button>
+            </div>
+            {selectedHistoryRecord.payMongo ? (
+              <div className="p-5 sm:p-7">
+                <PayMongoTopUpReceipt
+                  reference={selectedHistoryRecord.reference || selectedHistoryRecord.id}
+                  playerName={profileQuery.data?.displayName || profileQuery.data?.username || sessionQuery.data?.displayName || sessionQuery.data?.username || "Player"}
+                  email={selectedHistoryRecord.email || sessionQuery.data?.email}
+                  dateTime={selectedHistoryRecord.createdAt}
+                  paymentMethod={selectedHistoryRecord.paymentMethod}
+                  amountPhp={selectedHistoryRecord.amount}
+                  coins={selectedHistoryRecord.coinsReceived || 0}
+                  status={selectedHistoryRecord.payMongoStatus || "Completed"}
+                  checkoutSessionId={selectedHistoryRecord.checkoutSessionId}
+                  eventId={selectedHistoryRecord.eventId}
+                />
+              </div>
+            ) : <div className="p-6 sm:p-8">
+              <p className="text-sm text-navy/65">Your receipt from</p>
+              <h2 id="transaction-receipt-title" className="mt-1 text-2xl font-black uppercase">Crew On Set</h2>
+              <p className="mt-3 break-all text-sm text-navy/65">Reference: <span className="font-semibold text-navy">#{selectedHistoryRecord.reference || selectedHistoryRecord.id}</span></p>
+              <p className="mt-7 text-sm">Hi {profileQuery.data?.displayName || profileQuery.data?.username || sessionQuery.data?.displayName || sessionQuery.data?.username || "Player"},</p>
+              <p className="mt-2 text-sm leading-relaxed text-navy/70">
+                {selectedHistoryRecord.payMongo
+                  ? "Thanks for your payment. Here is a copy of your Crew On Set transaction details. PayMongo may also send its own receipt to your billing email."
+                  : "Here is a copy of your Crew On Set account transaction details."}
+              </p>
+
+              <div className="mt-7 border-y border-navy/10 py-5">
+                <p className="mb-3 text-xs font-bold uppercase tracking-wider text-navy/45">Order details</p>
+                <div className="flex items-start justify-between gap-4 text-sm">
+                  <span>{selectedHistoryRecord.title} × 1</span>
+                  <strong className="shrink-0">{formatHistoryAmount(selectedHistoryRecord.amount, selectedHistoryRecord.currency)}</strong>
+                </div>
+              </div>
+              <div className="border-b border-navy/10 py-5">
+                <p className="text-xs text-navy/45">Amount {selectedHistoryRecord.payMongo ? "paid" : "recorded"}</p>
+                <p className="mt-1 text-2xl font-black">{formatHistoryAmount(selectedHistoryRecord.amount, selectedHistoryRecord.currency)}</p>
+              </div>
+              <div className="space-y-3 border-b border-navy/10 py-5 text-sm">
+                <p><span className="text-navy/45">Transaction</span><br /><strong>{selectedHistoryRecord.description}</strong></p>
+                <p><span className="text-navy/45">Payment method</span><br /><strong>{selectedHistoryRecord.paymentMethod || (selectedHistoryRecord.payMongo ? "PayMongo Hosted Checkout" : "C-Coin wallet")}</strong></p>
+                <p><span className="text-navy/45">Date</span><br /><strong>{formatHistoryDate(selectedHistoryRecord.createdAt)}</strong></p>
+                <p><span className="text-navy/45">Status</span><br /><strong className={selectedHistoryRecord.status === "Completed" || selectedHistoryRecord.status === "Recorded" ? "text-emerald-700" : selectedHistoryRecord.status === "Failed" ? "text-coral" : "text-amber-700"}>{selectedHistoryRecord.status}</strong></p>
+              </div>
+              <p className="mt-4 text-center text-xs leading-relaxed text-navy/50">
+                This is a Crew On Set transaction record. For a PayMongo payment, check your email for the provider’s receipt as well.
+              </p>
+            </div>}
+          </section>
+        </div>
+      )}
 
       {selectedItem && (
         <div
