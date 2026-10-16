@@ -57,6 +57,7 @@ export const Route = createFileRoute("/api/notifications")({
             kind?: unknown;
             title?: unknown;
             body?: unknown;
+            href?: unknown;
           };
           const kind = typeof body.kind === "string" ? body.kind.toLowerCase() : "";
           if (!["friend", "shop", "transaction"].includes(kind)) {
@@ -79,7 +80,14 @@ export const Route = createFileRoute("/api/notifications")({
             createdAt: new Date().toISOString(),
             recipientUsername: username,
             target: { kind: "players", playerIds: [session.playFabId] },
-            href: kind === "shop" || kind === "transaction" ? "/portal/shop" : "/portal/friends",
+            href:
+              kind === "shop" && typeof body.href === "string" && body.href.startsWith("/portal/shop?view=owned&category=")
+                ? body.href.slice(0, 240)
+                : kind === "shop"
+                  ? "/portal/shop?view=owned"
+                  : kind === "transaction"
+                    ? "/portal/shop?view=transactions"
+                    : "/portal/friends",
           };
           const records = await getWebsiteRecords<NotificationRecord>(
             WEBSITE_DATA_KEYS.playerNotifications,
