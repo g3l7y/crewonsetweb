@@ -4,6 +4,38 @@ function asRecord(value: unknown): JsonRecord {
   return value && typeof value === "object" ? (value as JsonRecord) : {};
 }
 
+/** Return the payment channel reported by the paid PayMongo payment resource. */
+export function getPaidPaymentMethod(attributes: JsonRecord): string | undefined {
+  const paymentIntent = asRecord(attributes["payment_intent"]);
+  const intentAttributes = asRecord(paymentIntent["attributes"]);
+  const payments = [
+    ...(Array.isArray(attributes["payments"]) ? attributes["payments"] : []),
+    ...(Array.isArray(intentAttributes["payments"]) ? intentAttributes["payments"] : []),
+  ];
+  const paidPayment = payments
+    .map((payment) => asRecord(asRecord(payment)["attributes"] ?? payment))
+    .find((payment) => String(payment["status"] || "").toLowerCase() === "paid");
+  if (!paidPayment) return undefined;
+
+  const source = asRecord(paidPayment["source"]);
+  const method = asRecord(paidPayment["payment_method"]);
+  const type = String(source["type"] || paidPayment["payment_method_type"] || method["type"] || "").toLowerCase();
+  if (!type) return undefined;
+
+  const labels: Record<string, string> = {
+    qrph: "QR Ph",
+    gcash: "GCash",
+    maya: "Maya",
+    paymaya: "Maya",
+    card: "Card",
+    grab_pay: "GrabPay",
+    shopee_pay: "ShopeePay",
+    dob: "Online Banking",
+    billease: "BillEase",
+  };
+  return labels[type] || type.replaceAll("_", " ").replace(/\b\w/g, (letter) => letter.toUpperCase());
+}
+
 export type PaidCheckoutEvent = {
   eventId: string;
   sessionId: string;
