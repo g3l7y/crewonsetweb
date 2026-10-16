@@ -12,7 +12,7 @@ import {
 import { topUpsStore, type TopUpRecord } from "@/lib/admin-demo-data";
 import { buildAlerts } from "@/components/admin/admin-alerts";
 import { isMockMode } from "@/lib/playfab/config";
-import { useAdminNotifications, useSession } from "@/lib/playfab/hooks";
+import { useAdminBugReports, useAdminNotifications, useAdminPlayerReports, useSession } from "@/lib/playfab/hooks";
 import { useDisplayTheme } from "@/components/theme/display-theme-switcher";
 import {
   Banknote,
@@ -55,6 +55,8 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
   const mockMode = isMockMode();
   const sessionQuery = useSession();
   const realAdminNotificationsQuery = useAdminNotifications();
+  const realBugReportsQuery = useAdminBugReports();
+  const realPlayerReportsQuery = useAdminPlayerReports();
   const [mockAdminNotifications] = adminNotificationsStore.useStore();
   const [demoTransactions] = topUpsStore.useStore();
   const liveTransactionsQuery = useQuery({
@@ -83,11 +85,16 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
   const [logoutConfirmOpen, setLogoutConfirmOpen] = useState(false);
   const [notificationsOpen, setNotificationsOpen] = useState(false);
   const [account] = adminAccountStore.useStore();
-  const [bugs] = bugReportsStore.useStore();
-  const [playerReports] = playerReportsStore.useStore();
+  const [demoBugs] = bugReportsStore.useStore();
+  const [demoPlayerReports] = playerReportsStore.useStore();
   const alerts = useMemo(
-    () => buildAlerts(bugs, playerReports, transactions, adminNotifications),
-    [adminNotifications, bugs, playerReports, transactions],
+    () => buildAlerts(
+      mockMode ? demoBugs : (realBugReportsQuery.data ?? []),
+      mockMode ? demoPlayerReports : (realPlayerReportsQuery.data ?? []),
+      transactions,
+      adminNotifications,
+    ),
+    [adminNotifications, demoBugs, demoPlayerReports, mockMode, realBugReportsQuery.data, realPlayerReportsQuery.data, transactions],
   );
   const [readIds, setReadIds] = alertReadStore.useStore();
   const unread = alerts.filter((alert) => !readIds.includes(alert.id)).length;

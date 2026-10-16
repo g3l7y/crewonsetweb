@@ -42,6 +42,7 @@ import {
   formatMoney,
   partnershipProductTypes,
   uid,
+  logAdminActivity,
   type ActiveAd,
   type PartnershipApplication,
   type RevenueRecord,
@@ -337,6 +338,7 @@ function PartnershipsPage() {
       setRevenue((current) => [nextAd, ...current.filter((item) => item.id !== nextAd.id)]);
     }
     if (selected?.id === id) setSelected(savedApplication);
+    logAdminActivity({ kind: "partnership", label: "Brand application status updated", detail: `${app.brand} application moved to ${status}.` });
     if (emailWarning) {
       showStatusMessage(emailWarning);
       return;
@@ -394,7 +396,9 @@ function PartnershipsPage() {
         playerId: app.id,
         date: paidAt.slice(0, 10),
         time: new Date(paidAt).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: false }),
-        bank: 'PayMongo Hosted Checkout · Brand Partnership',
+        bank: 'PayMongo · Brand Partnership',
+        paymentMethod: 'PayMongo',
+        timestamp: paidAt,
         amount: app.budget,
         status: 'Completed',
       },

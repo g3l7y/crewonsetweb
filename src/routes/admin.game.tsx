@@ -260,6 +260,13 @@ function GamePage() {
       } catch (error) {
         notificationError = error instanceof Error ? error.message : "Players could not be notified.";
       }
+      if (isMockMode()) {
+        logAdminActivity({
+          kind: "game",
+          label: "Game build and requirements updated",
+          detail: `Version ${nextBuild.version || "details"} was saved and players were notified.`,
+        });
+      }
       setInstallerFile(null);
       if (installerInputRef.current) installerInputRef.current.value = "";
       setSavedMessage(notificationError
@@ -284,6 +291,9 @@ function GamePage() {
     ).then(() => setSavedMessage("Reset to defaults — players notified."))
       .catch((error: unknown) => setSavedMessage(error instanceof Error ? `Defaults reset, but players were not notified: ${error.message}` : "Defaults reset, but players were not notified."));
     window.setTimeout(() => setSavedMessage(""), 3000);
+    if (isMockMode()) {
+      logAdminActivity({ kind: "game", label: "Game requirements reset", detail: "Default game requirements were restored and players were notified." });
+    }
   }
 
   /* -------------------------- current game download metadata */
@@ -432,6 +442,7 @@ function GamePage() {
       }
 
       setComposerMessage("In-app message sent to " + matchedPlayer.username + ".");
+      logAdminActivity({ kind: "announcement", label: "Player message sent", detail: `A message was sent to ${matchedPlayer.username}.` });
       resetMailForm();
       window.setTimeout(() => setComposerMessage(""), 3000);
       return;
@@ -490,6 +501,7 @@ function GamePage() {
 
   function saveInstallSteps() {
     installStepsStore.set(installDraft.slice(0, MAX_INSTALL_STEPS));
+    if (isMockMode()) logAdminActivity({ kind: "game", label: "Installation instructions updated", detail: `${installDraft.length} installation steps were saved.` });
     setInstallOpen(false);
     setSavedMessage("Installation instructions updated.");
     window.setTimeout(() => setSavedMessage(""), 3000);

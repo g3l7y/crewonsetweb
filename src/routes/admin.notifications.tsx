@@ -22,24 +22,29 @@ export const Route = createFileRoute("/admin/notifications")({
 });
 
 import { useMemo } from "react";
-import { Bell, Bug, CheckCheck, ChevronRight, CircleDollarSign, Flag, HandCoins } from "lucide-react";
+import { Bell, Bug, CheckCheck, ChevronRight, CircleDollarSign, FileText, Flag, Gamepad2, HandCoins } from "lucide-react";
 import { useRouter } from "@/components/next-compat/navigation";
 import { adminNotificationsStore, alertReadStore, bugReportsStore, playerReportsStore } from "@/lib/demo/store";
 import { buildAlerts, type AdminAlert } from "@/components/admin/admin-alerts";
 import { topUpsStore, type TopUpRecord } from "@/lib/admin-demo-data";
-import { useAdminNotifications, useSession } from "@/lib/playfab/hooks";
+import { useAdminBugReports, useAdminNotifications, useAdminPlayerReports, useSession } from "@/lib/playfab/hooks";
 
 const iconByKind: Record<AdminAlert["kind"], typeof Bug> = {
   bug: Bug,
   "player-report": Flag,
   transaction: CircleDollarSign,
   partnership: HandCoins,
+  game: Gamepad2,
+  content: FileText,
+  system: Bell,
 };
 
 function NotificationsPage() {
   const mockMode = isMockMode();
   const sessionQuery = useSession();
   const adminNotificationsQuery = useAdminNotifications();
+  const bugReportsQuery = useAdminBugReports();
+  const playerReportsQuery = useAdminPlayerReports();
   const [mockAdminNotifications] = adminNotificationsStore.useStore();
   const [demoTransactions] = topUpsStore.useStore();
   const liveTransactionsQuery = useQuery({
@@ -62,14 +67,19 @@ function NotificationsPage() {
     [demoTransactions, liveTransactionsQuery.data, mockMode],
   );
   const adminNotifications = mockMode ? mockAdminNotifications : (adminNotificationsQuery.data ?? []);
-  const [bugs] = bugReportsStore.useStore();
-  const [playerReports] = playerReportsStore.useStore();
+  const [demoBugs] = bugReportsStore.useStore();
+  const [demoPlayerReports] = playerReportsStore.useStore();
   const [readIds, setReadIds] = alertReadStore.useStore();
   const router = useRouter();
 
   const alerts = useMemo(
-    () => buildAlerts(bugs, playerReports, transactions, adminNotifications),
-    [adminNotifications, bugs, playerReports, transactions],
+    () => buildAlerts(
+      mockMode ? demoBugs : (bugReportsQuery.data ?? []),
+      mockMode ? demoPlayerReports : (playerReportsQuery.data ?? []),
+      transactions,
+      adminNotifications,
+    ),
+    [adminNotifications, bugReportsQuery.data, demoBugs, demoPlayerReports, mockMode, playerReportsQuery.data, transactions],
   );
   const unreadCount = alerts.filter((alert) => !readIds.includes(alert.id)).length;
 
