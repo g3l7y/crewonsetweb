@@ -15,7 +15,7 @@ import {
   updateWebsiteRecord,
 } from "@/lib/playfab/websiteData";
 import { recordPlayerTopUpNotification } from "@/lib/paymongo/player-notifications";
-import { isPaidCheckoutAmount } from "@/lib/paymongo/verification";
+import { getPaidPaymentMethod, isPaidCheckoutAmount } from "@/lib/paymongo/verification";
 
 type PayMongoOrder = {
   id: string;
@@ -32,6 +32,7 @@ type PayMongoOrder = {
   updatedAt: string;
   paidAt?: string;
   eventId?: string;
+  paymentMethod?: string;
 };
 
 type PayMongoCheckoutResponse = {
@@ -63,7 +64,7 @@ async function retrievePaidCheckout(
   checkoutSessionId: string,
   paymongoSecret: string,
   expectedAmount: number,
-): Promise<boolean> {
+): Promise<{ paid: boolean; paymentMethod?: string }> {
   const response = await fetch(
     `https://api.paymongo.com/v1/checkout_sessions/${encodeURIComponent(checkoutSessionId)}`,
     {
@@ -78,7 +79,12 @@ async function retrievePaidCheckout(
     throw new Error(`PayMongo checkout verification failed with status ${response.status}.`);
   }
 
-  return isPaidCheckoutAmount(asRecord(result.data?.attributes), expectedAmount);
+  const attributes = asRecord(result.data?.attributes);
+  const paymentMethod = getPaidPaymentMethod(attributes);
+  return {
+    paid: isPaidCheckoutAmount(attributes, expectedAmount),
+    ...(paymentMethod ? { paymentMethod } : {}),
+  };
 }
 
 async function repairWebsiteOrder(
@@ -86,6 +92,7 @@ async function repairWebsiteOrder(
   playfabSecret: string,
   status: PayMongoOrder["status"],
   eventId?: string,
+  paymentMethod?: string,
 ) {
   await updateWebsiteRecord<PayMongoOrder>(
     WEBSITE_DATA_KEYS.paymongoOrders,
@@ -94,6 +101,7 @@ async function repairWebsiteOrder(
       ...current,
       status,
       ...(status === "fulfilled" ? { paidAt: current.paidAt || new Date().toISOString() } : {}),
+      ...(paymentMethod ? { paymentMethod } : {}),
       ...(eventId ? { eventId: current.eventId || eventId } : {}),
       updatedAt: new Date().toISOString(),
     }),
@@ -105,16 +113,16 @@ async function reconcilePaidOrder(
   order: PayMongoOrder,
   mockMode: boolean,
   playfabSecret: string | null,
-) {
+): Promise<{ status: PayMongoOrder["status"]; paymentMethod?: string }> {
   const paymongoSecret = getSecret("PAYMONGO_SECRET_KEY");
   if (!paymongoSecret) throw new Error("PayMongo is not configured on this server.");
 
-  const paid = await retrievePaidCheckout(
+  const checkout = await retrievePaidCheckout(
     order.checkoutSessionId,
     paymongoSecret,
     order.amountInCentavos,
   );
-  if (!paid) return order.status;
+  if (!checkout.paid) return { status: order.status };
 
   const eventId = `return:${order.checkoutSessionId}`;
   const claim = await claimPayMongoOrder({
@@ -129,10 +137,10 @@ async function reconcilePaidOrder(
 
   if (claim.status === "fulfilled") {
     if (!mockMode && playfabSecret)
-      await repairWebsiteOrder(order.id, playfabSecret, "fulfilled", eventId);
-    return "fulfilled";
+      await repairWebsiteOrder(order.id, playfabSecret, "fulfilled", eventId, checkout.paymentMethod);
+    return { status: "fulfilled", ...(checkout.paymentMethod ? { paymentMethod: checkout.paymentMethod } : {}) };
   }
-  if (claim.status !== "claimed") return claim.status;
+  if (claim.status !== "claimed") return { status: claim.status };
 
   if (!mockMode) {
     if (!playfabSecret) throw new Error("PlayFab server credentials are missing.");
@@ -147,15 +155,15 @@ async function reconcilePaidOrder(
       await markPayMongoOrderFailed(order.id, credited.error);
       await repairWebsiteOrder(order.id, playfabSecret, "failed");
       console.error("[PayMongo] C-Coin delivery will be retried:", order.id, credited.error);
-      return "processing";
+      return { status: "processing" };
     }
   }
 
-  const fulfilled = await markPayMongoOrderFulfilled(order.id, eventId);
-  if (!fulfilled) return "fulfilled";
+  const fulfilled = await markPayMongoOrderFulfilled(order.id, eventId, checkout.paymentMethod);
+  if (!fulfilled) return { status: "fulfilled", ...(checkout.paymentMethod ? { paymentMethod: checkout.paymentMethod } : {}) };
   if (!mockMode && playfabSecret)
-    await repairWebsiteOrder(order.id, playfabSecret, "fulfilled", eventId);
-  return "fulfilled";
+    await repairWebsiteOrder(order.id, playfabSecret, "fulfilled", eventId, checkout.paymentMethod);
+  return { status: "fulfilled", ...(checkout.paymentMethod ? { paymentMethod: checkout.paymentMethod } : {}) };
 }
 
 export const Route = createFileRoute("/api/paymongo/status")({
@@ -192,6 +200,8 @@ export const Route = createFileRoute("/api/paymongo/status")({
                 createdAt: ledgerOrder.createdAt,
                 updatedAt: ledgerOrder.fulfilledAt || ledgerOrder.createdAt,
                 ...(ledgerOrder.fulfilledAt ? { paidAt: ledgerOrder.fulfilledAt } : {}),
+                ...(ledgerOrder.paymentMethod ? { paymentMethod: ledgerOrder.paymentMethod } : {}),
+                ...(ledgerOrder.eventId ? { eventId: ledgerOrder.eventId } : {}),
               }
             : null;
 
@@ -216,12 +226,15 @@ export const Route = createFileRoute("/api/paymongo/status")({
           }
 
           let status = order.status;
-          if (status !== "fulfilled") {
-            status = (await reconcilePaidOrder(
+          let paymentMethod = order.paymentMethod;
+          if (status !== "fulfilled" || !paymentMethod) {
+            const reconciliation = await reconcilePaidOrder(
               order,
               mockMode,
               playfabSecret,
-            )) as PayMongoOrder["status"];
+            );
+            status = reconciliation.status;
+            paymentMethod = reconciliation.paymentMethod || paymentMethod;
           }
 
           const settledLedger = status === "fulfilled" ? await getPayMongoOrder(orderId) : null;
@@ -250,6 +263,10 @@ export const Route = createFileRoute("/api/paymongo/status")({
             amountInCentavos: order.amountInCentavos,
             packageId: order.packageId,
             timestamp: completedAt,
+            paymentMethod,
+            checkoutSessionId: order.checkoutSessionId,
+            email: order.email || session.email || "",
+            eventId: settledLedger?.eventId || order.eventId,
           });
         } catch (error) {
           console.error("[PayMongo] Payment status/reconciliation error:", error);

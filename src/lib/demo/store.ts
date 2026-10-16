@@ -970,6 +970,10 @@ export type PlayerTransaction = {
   amount: number; // negative = spent, positive = received
   kind: PlayerTransactionKind;
   createdAt: string;
+  /** PHP charged by the mock PayMongo checkout, only used on demo top-ups. */
+  paymentAmountPhp?: number;
+  paymentMethod?: string;
+  payMongo?: boolean;
 };
 
 const daysAgo = (days: number) => new Date(Date.now() - days * 24 * 60 * 60 * 1000).toISOString();
@@ -986,10 +990,13 @@ export const seedTransactions: PlayerTransaction[] = [
   {
     id: "tx-seed-2",
     label: "C-Coin Top-Up",
-    detail: "Studio Bundle — 5,000 C-Coins",
-    amount: 5000,
+    detail: "Studio Bundle — 7,500 C-Coins",
+    amount: 7500,
     kind: "topup",
     createdAt: daysAgo(6),
+    paymentAmountPhp: 499,
+    paymentMethod: "QR Ph · Demo",
+    payMongo: true,
   },
   {
     id: "tx-seed-3",

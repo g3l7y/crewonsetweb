@@ -69,7 +69,7 @@ function toAdminTopUp(order: PayMongoOrder): AdminTopUp {
     playerId: order.playFabId,
     ...parts,
     timestamp,
-    bank: "PayMongo Hosted Checkout",
+    bank: order.paymentMethod || "PayMongo · method not returned",
     amount: order.amountInCentavos / 100,
     status: getStatus(order.status),
     email: order.email,
