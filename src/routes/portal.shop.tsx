@@ -121,11 +121,17 @@ function ShopPage() {
   const viewParam = searchParams.get("view");
   const requestedView: ViewMode = viewParam === "owned" || viewParam === "transactions" ? viewParam : "shop";
   const [view, setView] = useState<ViewMode>(requestedView);
+  const categoryParam = searchParams.get("category");
 
   useEffect(() => {
     setView(requestedView);
   }, [requestedView]);
-  const [activeCategory, setActiveCategory] = useState<Category>("All");
+  const requestedCategory = categories.find((category) => category.toLowerCase() === categoryParam?.toLowerCase()) ?? "All";
+  const [activeCategory, setActiveCategory] = useState<Category>(requestedCategory);
+
+  useEffect(() => {
+    if (requestedView === "owned" && requestedCategory !== "All") setActiveCategory(requestedCategory);
+  }, [requestedCategory, requestedView]);
   const [search, setSearch] = useState("");
   const [selectedItem, setSelectedItem] = useState<CosmeticItem | null>(null);
   const [shopError, setShopError] = useState("");
@@ -194,8 +200,8 @@ function ShopPage() {
         const paymentAmountPhp = transaction.paymentAmountPhp ?? (seededPayMongoTopUp ? 499 : undefined);
         return {
           id: transaction.id,
-          title: seededPayMongoTopUp ? "C-Coin Top-Up · 7,500 C-Coins" : transaction.label,
-          description: seededPayMongoTopUp ? "Studio Bundle · Demo PayMongo checkout" : transaction.detail,
+          title: transaction.kind === "topup" ? "C-Coin Top Up" : transaction.kind === "purchase" ? "Shop Purchase" : transaction.label,
+          description: "",
           createdAt: transaction.createdAt,
           amount: paymentAmountPhp ?? Math.abs(amount),
           isSpend: transaction.kind === "purchase" || amount < 0,
@@ -210,15 +216,10 @@ function ShopPage() {
       }
       const playFabTransaction = transaction as Transaction;
       const isSpend = playFabTransaction.type === "purchase" || playFabTransaction.type === "spend";
-      const purchasedItem = playFabTransaction.itemId
-        ? cosmeticCatalog.find((item) => item.id === playFabTransaction.itemId)?.name
-        : undefined;
       return {
         id: playFabTransaction.id,
-        title: purchasedItem || playFabTransaction.description || "Player transaction",
-        description: isSpend
-          ? `Shop purchase · ${Math.abs(playFabTransaction.amount).toLocaleString("en-PH")} C-Coins paid`
-          : "Player wallet transaction",
+        title: isSpend ? "Shop Purchase" : "C-Coin Top Up",
+        description: "",
         createdAt: playFabTransaction.timestamp || playFabTransaction.date || "",
         amount: Math.abs(playFabTransaction.amount),
         isSpend,
@@ -230,11 +231,10 @@ function ShopPage() {
       };
     });
     const topUpHistory: ShopHistoryRecord[] = payMongoOrders.map((order) => {
-      const pack = coinPackages.find((candidate) => candidate.id === order.packageId);
       return {
         id: order.id,
-        title: (order.coins || pack?.coins || 0).toLocaleString("en-PH") + " C-Coins",
-        description: "C-Coin top-up through PayMongo",
+        title: "C-Coin Top Up",
+        description: "",
         createdAt: order.paidAt || order.createdAt,
         amount: order.amountInCentavos / 100,
         currency: "PHP",
@@ -471,7 +471,7 @@ function ShopPage() {
                 kind: "transaction",
                 channel: "notification",
                 read: false,
-                href: "/portal/shop",
+                href: "/portal/shop?view=transactions",
                 recipientUsername: playerName,
                 target: { kind: "players", playerIds: [playerId] },
               },
@@ -574,16 +574,18 @@ function ShopPage() {
         const refreshedWallet = await walletQuery.refetch();
         await inventoryQuery.refetch();
         const remaining = refreshedWallet.data?.cCoins ?? Math.max(balance - confirmTotal, 0);
-        void fetch("/api/notifications", {
+        await Promise.all(confirmLines.map(({ item }) => fetch("/api/notifications", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           credentials: "include",
           body: JSON.stringify({
             kind: "shop",
-            title: "Purchased " + names.join(", "),
-            body: formatCoins(confirmTotal) + " C-Coins were spent in the Studio Shop.",
+            title: "Shop Purchase",
+            body: `${item.name} was added to your collection.`,
+            href: "/portal/shop?view=owned&category=" + encodeURIComponent(item.category),
           }),
-        }).then(() => realNotificationsQuery.refetch());
+        })));
+        await realNotificationsQuery.refetch();
         setCart(cart.filter((line) => !purchasedIds.includes(line.itemId)));
         setConfirmTarget(null);
         setPurchaseSuccess({ names, spent: confirmTotal, remaining });
@@ -602,16 +604,17 @@ function ShopPage() {
     setDemoOwnedIds([...new Set([...demoOwnedIds, ...purchasedIds])]);
     setCart(cart.filter((line) => !purchasedIds.includes(line.itemId)));
     setNotifications([
-      {
+      ...confirmLines.map(({ item }) => ({
         id: uid("ntf"),
-        title: purchasedIds.length > 1 ? "Cart purchase complete" : `Purchased ${names[0]}`,
-        body: `${formatCoins(confirmTotal)} C-Coins were spent. Your cosmetic is now in your collection.`,
+        title: "Shop Purchase",
+        body: `${item.name} was added to your collection.`,
         createdAt: new Date().toISOString(),
         kind: "shop",
         read: false,
+        href: "/portal/shop?view=owned&category=" + encodeURIComponent(item.category),
         recipientUsername: mockPlayerName,
         target: { kind: "players", playerIds: [mockPlayerId] },
-      },
+      })),
       ...notifications,
     ]);
     setTransactions([
@@ -951,7 +954,7 @@ function ShopPage() {
                   <article key={record.id} className="flex flex-col gap-4 rounded-xl border border-navy/10 bg-white p-4 sm:flex-row sm:items-center sm:justify-between">
                     <div className="min-w-0">
                       <h3 className="truncate font-black text-navy">{record.title}</h3>
-                      <p className="mt-1 text-sm text-navy/60">{record.description}</p>
+                      {record.description && <p className="mt-1 text-sm text-navy/60">{record.description}</p>}
                       <p className="mt-1 text-xs text-navy/50">{formatHistoryDate(record.createdAt)} · {record.status}</p>
                     </div>
                     <div className="flex shrink-0 items-center justify-between gap-4 sm:justify-end">
@@ -960,7 +963,7 @@ function ShopPage() {
                         {record.coinsReceived !== undefined && <span className="mt-1 block text-xs font-bold text-emerald-700">+{record.coinsReceived.toLocaleString("en-PH")} C-Coins</span>}
                       </div>
                       <button type="button" className="shop-secondary-button" onClick={() => setSelectedHistoryRecord(record)}>
-                        {record.payMongo ? "View receipt" : "View details"}
+                        View receipt
                       </button>
                     </div>
                   </article>

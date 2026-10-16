@@ -341,7 +341,7 @@ function AdminDashboardPage() {
                 <li key={entry.id}>
                   <Link href={entry.href} className="flex flex-wrap items-center gap-3 py-3 transition hover:bg-white/[0.04] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-coral">
                   <span
-                    className={`rounded px-2 py-1 text-[10px] font-black uppercase tracking-wide ${
+                    className={`flex w-[96px] shrink-0 justify-center rounded px-2 py-1 text-[10px] font-black uppercase tracking-wide ${
                       activityKindStyles[entry.kind] ?? "bg-white/10 text-white/60"
                     }`}
                   >

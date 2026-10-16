@@ -42,6 +42,10 @@ export function notificationHref(notification: NotificationLike) {
   if (isAdminAuthoredNotification(notification)) {
     return "/portal/inbox?tab=mail&contact=admin";
   }
+  const title = notification.title?.toLowerCase() ?? "";
+  if (/c[- ]coin top[- ]?up|top[- ]?up confirmed/.test(title)) {
+    return "/portal/shop?view=transactions";
+  }
   if (notification.href) return notification.href;
   if (notification.channel === "mail" || notification.kind === "report") {
     return "/portal/inbox?tab=mail";

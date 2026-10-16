@@ -51,7 +51,7 @@ export async function recordPlayerTopUpNotification(
     kind: "transaction",
     channel: "notification",
     read: false,
-    href: "/portal/shop",
+    href: "/portal/shop?view=transactions",
     target: { kind: "players", playerIds: [order.playFabId] },
     ...(order.username ? { recipientUsername: order.username } : {}),
   };

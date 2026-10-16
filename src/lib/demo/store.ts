@@ -498,7 +498,7 @@ const seedNotifications: PlayerNotification[] = [
     kind: "transaction",
     read: true,
     channel: "notification",
-    href: "/portal/shop",
+    href: "/portal/shop?view=transactions",
   },
   {
     id: "ntf-1005",
