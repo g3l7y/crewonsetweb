@@ -207,21 +207,28 @@ function ShopPage() {
           payMongo: transaction.payMongo ?? seededPayMongoTopUp,
           reference: transaction.id,
           ...(transaction.kind === "topup" ? { coinsReceived } : {}),
+          ...(transaction.kind === "purchase" ? { paymentMethod: "C-Coins" } : {}),
           ...(transaction.paymentMethod || seededPayMongoTopUp ? { paymentMethod: transaction.paymentMethod || "QR Ph · Demo" } : {}),
         };
       }
       const playFabTransaction = transaction as Transaction;
       const isSpend = playFabTransaction.type === "purchase" || playFabTransaction.type === "spend";
+      const purchasedItem = playFabTransaction.itemId
+        ? cosmeticCatalog.find((item) => item.id === playFabTransaction.itemId)?.name
+        : undefined;
       return {
         id: playFabTransaction.id,
-        title: playFabTransaction.description || "Player transaction",
-        description: isSpend ? "Studio Shop purchase" : "Player wallet transaction",
+        title: purchasedItem || playFabTransaction.description || "Player transaction",
+        description: isSpend
+          ? `Shop purchase · ${Math.abs(playFabTransaction.amount).toLocaleString("en-PH")} C-Coins paid`
+          : "Player wallet transaction",
         createdAt: playFabTransaction.timestamp || playFabTransaction.date || "",
         amount: Math.abs(playFabTransaction.amount),
         isSpend,
         currency: playFabTransaction.currency === "cCoins" ? "C-Coins" : "B-Coins",
         status: "Recorded",
         payMongo: false,
+        ...(isSpend ? { paymentMethod: "C-Coins" } : {}),
         reference: playFabTransaction.id,
       };
     });
@@ -237,7 +244,7 @@ function ShopPage() {
         status: order.status === "fulfilled" ? "Completed" : order.status === "failed" ? "Failed" : "Pending",
         payMongo: true,
         reference: order.id,
-        paymentMethod: order.paymentMethod,
+        paymentMethod: "PayMongo",
         coinsReceived: order.coins,
         email: order.email,
         checkoutSessionId: order.checkoutSessionId,
@@ -985,7 +992,7 @@ function ShopPage() {
                 <ReceiptText aria-hidden="true" className="size-6 text-[#65d2b1]" />
                 <div>
                   <p className="text-xs font-bold uppercase tracking-[.18em] text-white/65">Crew On Set</p>
-                  <p className="font-black">{selectedHistoryRecord.payMongo ? "PayMongo payment" : "Player transaction"}</p>
+              <p className="font-black">TRANSACTION DETAILS</p>
                 </div>
               </div>
               <button type="button" className="rounded-full p-2 text-white/75 transition hover:bg-white/10 hover:text-white" onClick={() => setSelectedHistoryRecord(null)} aria-label="Close transaction details">
@@ -1026,12 +1033,12 @@ function ShopPage() {
                 </div>
               </div>
               <div className="border-b border-navy/10 py-5">
-                <p className="text-xs text-navy/45">Amount {selectedHistoryRecord.payMongo ? "paid" : "recorded"}</p>
+                <p className="text-xs text-navy/45">{selectedHistoryRecord.payMongo ? "Amount paid" : selectedHistoryRecord.isSpend && selectedHistoryRecord.currency === "C-Coins" ? "C-Coins paid" : "Amount recorded"}</p>
                 <p className="mt-1 text-2xl font-black">{formatHistoryAmount(selectedHistoryRecord.amount, selectedHistoryRecord.currency)}</p>
               </div>
               <div className="space-y-3 border-b border-navy/10 py-5 text-sm">
                 <p><span className="text-navy/45">Transaction</span><br /><strong>{selectedHistoryRecord.description}</strong></p>
-                <p><span className="text-navy/45">Payment method</span><br /><strong>{selectedHistoryRecord.paymentMethod || (selectedHistoryRecord.payMongo ? "PayMongo Hosted Checkout" : "C-Coin wallet")}</strong></p>
+                <p><span className="text-navy/45">Payment method</span><br /><strong>{selectedHistoryRecord.paymentMethod || (selectedHistoryRecord.payMongo ? "PayMongo" : "C-Coins")}</strong></p>
                 <p><span className="text-navy/45">Date</span><br /><strong>{formatHistoryDate(selectedHistoryRecord.createdAt)}</strong></p>
                 <p><span className="text-navy/45">Status</span><br /><strong className={selectedHistoryRecord.status === "Completed" || selectedHistoryRecord.status === "Recorded" ? "text-emerald-700" : selectedHistoryRecord.status === "Failed" ? "text-coral" : "text-amber-700"}>{selectedHistoryRecord.status}</strong></p>
               </div>

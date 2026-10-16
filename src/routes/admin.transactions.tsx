@@ -35,7 +35,7 @@ function TransactionsPage() {
     if (!mockMode) return;
     topUpsStore.set((current) => current.map((row) => {
       const seeded = topUps.find((sample) => sample.id === row.id);
-      return seeded ? { ...seeded, ...row, amount: seeded.amount, coins: row.coins ?? seeded.coins, paymentMethod: row.paymentMethod ?? seeded.paymentMethod, email: row.email ?? seeded.email, packageId: row.packageId ?? seeded.packageId, item: row.item ?? seeded.item, timestamp: row.timestamp ?? seeded.timestamp } : row;
+      return seeded ? { ...seeded, ...row, bank: "PayMongo", amount: seeded.amount, coins: row.coins ?? seeded.coins, paymentMethod: "PayMongo", email: row.email ?? seeded.email, packageId: row.packageId ?? seeded.packageId, item: row.item ?? seeded.item, timestamp: row.timestamp ?? seeded.timestamp } : row;
     }));
   }, [mockMode]);
   const topUps = useMemo(
@@ -215,7 +215,7 @@ function TransactionsPage() {
             role="dialog"
             aria-modal="true"
             aria-labelledby="transaction-receipt-title"
-            className="relative w-full max-w-2xl overflow-hidden rounded-xl border border-white/10 bg-[#182330] shadow-2xl"
+            className="relative w-full max-w-xl overflow-hidden rounded-xl border border-white/10 bg-[#182330] shadow-2xl"
             onClick={(event) => event.stopPropagation()}
           >
             <div className="flex items-start justify-between gap-4 border-b border-white/10 p-5 sm:p-6">

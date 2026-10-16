@@ -431,6 +431,26 @@ function createRealService(): PlayFabService {
             Price: price,
             VirtualCurrency: pfCurrency,
           }, ticket);
+          const data = await getUserData(ticket, ['transactions']);
+          let transactions: Array<Record<string, unknown>> = [];
+          try {
+            const parsed: unknown = data['transactions'] ? JSON.parse(data['transactions']) : [];
+            if (Array.isArray(parsed)) transactions = parsed.filter((item): item is Record<string, unknown> => Boolean(item) && typeof item === 'object');
+          } catch {
+            transactions = [];
+          }
+          const timestamp = new Date().toISOString();
+          transactions.unshift({
+            id: `shop-${timestamp}-${itemId}`,
+            type: 'spend',
+            amount: price,
+            currency: currency === 'cCoins' ? 'cCoins' : 'bCoins',
+            description: `Purchased ${itemId}`,
+            itemId,
+            timestamp,
+          });
+          const saved = await updateUserData(ticket, { transactions: JSON.stringify(transactions.slice(0, 250)) });
+          if (!saved) console.warn('[PlayFab] Purchase completed but transaction history could not be saved.');
           return { success: true };
         } catch (error: any) {
           return { success: false, error: error?.message || 'Failed to purchase item.' };

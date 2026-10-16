@@ -393,14 +393,14 @@ const demoTopUpPackages = [
 
 export const topUps = topUpSeeds.map((row, index) => {
   const pack = demoTopUpPackages[index % demoTopUpPackages.length];
-  const isWallet = /gcash/i.test(row.bank);
   return {
     ...row,
     amount: pack.amount,
     coins: pack.coins,
     packageId: pack.packageId,
     item: pack.coins.toLocaleString("en-PH") + " C-Coins",
-    paymentMethod: isWallet ? "Demo · GCash" : "Demo · Online banking",
+    paymentMethod: "PayMongo",
+    bank: "PayMongo",
     timestamp: new Date(row.date + "T" + row.time + ":00").toISOString(),
     transactionType: "top-up" as const,
   };

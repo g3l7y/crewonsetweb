@@ -27,10 +27,11 @@ import {
 import { useMemo } from "react";
 import { topUpsStore } from "@/lib/admin-demo-data";
 import { useAdminPayMongoOrders } from "@/lib/admin-paymongo-orders";
-import { adminActivityStore, formatMoney, gameBuildStore, messagesStore, revenueStore } from "@/lib/demo/store";
-import { sortNewestFirst } from "@/lib/validation";
+import { formatMoney, gameBuildStore, messagesStore, revenueStore } from "@/lib/demo/store";
 import { isMockMode } from "@/lib/playfab/config";
-import { useAdminPlayers, useProgressLeaderboard } from "@/lib/playfab/hooks";
+import { useAdminBugReports, useAdminNotifications, useAdminPlayerReports, useAdminPlayers, useProgressLeaderboard } from "@/lib/playfab/hooks";
+import { adminNotificationsStore, bugReportsStore, playerReportsStore } from "@/lib/demo/store";
+import { buildAlerts } from "@/components/admin/admin-alerts";
 
 const stats = [
   {
@@ -73,6 +74,10 @@ const activityKindStyles: Record<string, string> = {
   almanac: "bg-[#43b581]/15 text-[#6cd6a3]",
   bug: "bg-coral/15 text-[#ff7663]",
   transaction: "bg-[#d9a514]/15 text-[#e1b42b]",
+  content: "bg-[#7c5cff]/15 text-[#a894ff]",
+  system: "bg-white/10 text-white/60",
+  partnership: "bg-[#d9a514]/15 text-[#e1b42b]",
+  "player-report": "bg-coral/15 text-[#ff7663]",
 };
 
 function formatDate(iso: string) {
@@ -91,8 +96,13 @@ function AdminDashboardPage() {
   const mockMode = isMockMode();
   const adminPlayersQuery = useAdminPlayers();
   const progressLeaderboardQuery = useProgressLeaderboard();
+  const liveBugReportsQuery = useAdminBugReports();
+  const livePlayerReportsQuery = useAdminPlayerReports();
+  const liveAdminNotificationsQuery = useAdminNotifications();
   const [demoRevenue] = revenueStore.useStore();
-  const [activity] = adminActivityStore.useStore();
+  const [demoBugs] = bugReportsStore.useStore();
+  const [demoPlayerReports] = playerReportsStore.useStore();
+  const [demoAdminNotifications] = adminNotificationsStore.useStore();
   const [messages] = messagesStore.useStore();
   const [gameBuilds] = gameBuildStore.useStore();
   const [demoTopUps] = topUpsStore.useStore();
@@ -103,18 +113,13 @@ function AdminDashboardPage() {
   );
 
   const gameBuild = gameBuilds[0];
-  const recentActivity = useMemo(() => {
-    const transactionActivity = topUps
-      .filter((topUp) => topUp.status === "Completed")
-      .map((topUp) => ({
-        id: `transaction-${topUp.id}`,
-        kind: "transaction" as const,
-        label: "C-Coin top-up received",
-        detail: `${topUp.playerName} completed ${formatMoney(topUp.amount)} payment.`,
-        createdAt: topUp.timestamp || `${topUp.date}T${topUp.time || "00:00"}:00.000Z`,
-      }));
-    return sortNewestFirst([...activity, ...transactionActivity], (entry) => entry.createdAt);
-  }, [activity, topUps]);
+  const alerts = useMemo(() => buildAlerts(
+    mockMode ? demoBugs : (liveBugReportsQuery.data ?? []),
+    mockMode ? demoPlayerReports : (livePlayerReportsQuery.data ?? []),
+    topUps,
+    mockMode ? demoAdminNotifications : (liveAdminNotificationsQuery.data ?? []),
+  ), [demoAdminNotifications, demoBugs, demoPlayerReports, liveAdminNotificationsQuery.data, liveBugReportsQuery.data, livePlayerReportsQuery.data, mockMode, topUps]);
+  const recentActivity = alerts.slice(0, 5);
   const messageCounts = useMemo(() => {
     const unread = messages.filter((m) => m.status === "Unread").length;
     const inProgress = messages.filter((m) => m.status === "In Progress").length;
@@ -327,13 +332,14 @@ function AdminDashboardPage() {
           Recent Activity
         </h2>
         <div className="admin-card rounded-lg border border-white/[0.06] bg-[#182330] p-4 shadow-xl">
-          <div className="h-[360px] overflow-y-scroll">
+          <div className="min-h-[360px] max-h-[360px] overflow-y-auto">
             <ul className="divide-y divide-white/[0.06]">
               {recentActivity.length === 0 && (
                 <li className="py-6 text-center text-sm !text-white/35">No recent activity.</li>
               )}
               {recentActivity.map((entry) => (
-                <li key={entry.id} className="flex flex-wrap items-center gap-3 py-3">
+                <li key={entry.id}>
+                  <Link href={entry.href} className="flex flex-wrap items-center gap-3 py-3 transition hover:bg-white/[0.04] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-coral">
                   <span
                     className={`rounded px-2 py-1 text-[10px] font-black uppercase tracking-wide ${
                       activityKindStyles[entry.kind] ?? "bg-white/10 text-white/60"
@@ -342,26 +348,25 @@ function AdminDashboardPage() {
                     {entry.kind}
                   </span>
                   <div className="min-w-0 flex-1">
-                    <p className="truncate text-sm font-bold !text-white">{entry.label}</p>
-                    <p className="truncate text-xs !text-white/40">{entry.detail}</p>
+                    <p className="truncate text-sm font-bold !text-white">{entry.title}</p>
+                    <p className="truncate text-xs !text-white/40">{entry.body}</p>
                   </div>
                   <span className="shrink-0 text-[11px] !text-white/30">
                     {formatDate(entry.createdAt)}
                   </span>
+                  </Link>
                 </li>
               ))}
             </ul>
           </div>
-          {mockMode && (
-            <div className="mt-3 flex justify-end border-t border-white/[0.06] pt-3">
+          <div className="mt-3 flex justify-end border-t border-white/[0.06] pt-3">
               <Link
                 href="/admin/notifications"
                 className="text-[11px] font-black uppercase tracking-[.14em] !text-coral transition hover:!text-white"
               >
                 View More
               </Link>
-            </div>
-          )}
+          </div>
         </div>
       </section>
 

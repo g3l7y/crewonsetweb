@@ -29,6 +29,7 @@ import {
   transactionsStore,
   uid,
   walletStore,
+  logAdminActivity,
 } from "@/lib/demo/store";
 import { equippedItemsStore, ownedItemsStore } from "@/lib/demo/portal-shop";
 import { isMockMode } from "@/lib/playfab/config";
@@ -820,6 +821,9 @@ function PlayersPage() {
   ): Promise<boolean> {
     const targetIds = new Set(ids.filter(Boolean));
     if (targetIds.size === 0) return false;
+    const affectedNames = playerList.filter((player) => targetIds.has(player.id)).map((player) => player.username);
+    const actionLabel = action === "status" ? `Player status changed to ${options.status ?? "updated"}`
+      : action === "reset" ? "Player progress reset" : "Player account deleted";
 
     setActionError("");
     setIsActionBusy(true);
@@ -875,6 +879,7 @@ function PlayersPage() {
             };
           });
         }
+        logAdminActivity({ kind: "player", label: actionLabel, detail: `${affectedNames.join(", ") || targetIds.size + " player(s)"} · ${action} action.` });
         return true;
       }
 
@@ -902,6 +907,7 @@ function PlayersPage() {
       } else if (selectedPlayer && targetIds.has(selectedPlayer.id)) {
         await realPlayerDetailQuery.refetch();
       }
+      logAdminActivity({ kind: "player", label: actionLabel, detail: `${affectedNames.join(", ") || targetIds.size + " player(s)"} · ${action} action.` });
       return true;
     } catch (error) {
       setActionError(
@@ -998,6 +1004,7 @@ function PlayersPage() {
       }
     }
 
+    logAdminActivity({ kind: "system", label: "Player message sent", detail: `A message was sent to ${player.username}.` });
     setContactPlayer(null);
     setContactSubject("");
     setContactMessage("");

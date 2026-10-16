@@ -73,6 +73,7 @@ function PlayerReportsRouteComponent() {
     if (!(await updateSharedRecord("cos.playerReports", updated, setStatusError))) return;
     setReports((current) => current.map((item) => (item.id === report.id ? updated : item)));
     if (selected?.id === report.id) setSelected(updated);
+    logAdminActivity({ kind: "player-report", label: "Player report status updated", detail: `${report.id} marked as ${next}.` });
     if (mockMode && report.status !== next) {
       const message = buildReportStatusMessage({
         kind: "player",
@@ -96,7 +97,7 @@ function PlayerReportsRouteComponent() {
     setReports((current) => current.filter((item) => item.id !== report.id));
     setSelected((current) => (current?.id === report.id ? null : current));
     setDeleteTarget(null);
-    logAdminActivity({ kind: "bug", label: "Player report deleted", detail: `${report.id} was removed from the queue.` });
+    logAdminActivity({ kind: "player-report", label: "Player report deleted", detail: `${report.id} was removed from the queue.` });
   }
 
   function deleteSelected() {
@@ -111,7 +112,7 @@ function PlayerReportsRouteComponent() {
     const ids = new Set(bulkDeleteTarget.map((report) => report.id));
     setReports((current) => current.filter((report) => !ids.has(report.id)));
     setSelectedIds([]);
-    logAdminActivity({ kind: "bug", label: "Player reports bulk deleted", detail: `${bulkDeleteTarget.length} reports were removed.` });
+    logAdminActivity({ kind: "player-report", label: "Player reports bulk deleted", detail: `${bulkDeleteTarget.length} reports were removed.` });
     setBulkDeleteTarget(null);
   }
 
