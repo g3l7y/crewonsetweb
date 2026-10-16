@@ -6,7 +6,7 @@ export type AdminAlert = {
   id: string;
   title: string;
   body: string;
-  kind: "bug" | "player-report" | "transaction" | "partnership";
+  kind: "bug" | "player-report" | "transaction" | "partnership" | "game" | "content" | "system";
   /** In-app destination this alert links to when clicked. */
   href: string;
   /** Used to keep the bell and the full Notifications page in newest-first order. */
@@ -58,13 +58,20 @@ export function buildAlerts(
   });
 
   notifications.forEach((notification) => {
-    if (notification.kind !== "partnership" && notification.kind !== "application") return;
+    const kind = notification.kind;
+    const alertKind: AdminAlert["kind"] =
+      kind === "partnership" || kind === "application" ? "partnership"
+        : kind === "bug" ? "bug"
+          : kind === "player-report" ? "player-report"
+        : kind === "game" || kind === "announcement" ? "game"
+          : kind === "news" || kind === "gallery" || kind === "content" ? "content"
+            : "system";
     alerts.push({
       id: notification.id,
       title: notification.title,
-      body: notification.body || "A brand partnership application was updated.",
-      kind: "partnership",
-      href: notification.href || "/admin/partnerships",
+      body: notification.body || "An administrator action was recorded.",
+      kind: alertKind,
+      href: notification.href || (alertKind === "partnership" ? "/admin/partnerships" : alertKind === "game" ? "/admin/game" : "/admin"),
       createdAt: notification.createdAt,
     });
   });

@@ -39,7 +39,6 @@ export function PayMongoTopUpReceipt({
   playerName,
   email,
   dateTime,
-  paymentMethod,
   amountPhp,
   coins,
   status,
@@ -78,7 +77,7 @@ export function PayMongoTopUpReceipt({
           </div>
           <div>
             <p className="text-[10px] font-black uppercase tracking-[.14em] text-[#7b8580]">Payment method</p>
-            <p className="mt-1 font-semibold">{paymentMethod || "Not returned by PayMongo"}</p>
+            <p className="mt-1 font-semibold">PayMongo</p>
           </div>
         </section>
 

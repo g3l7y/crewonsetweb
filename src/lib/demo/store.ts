@@ -1259,7 +1259,7 @@ export const loadoutStore = createStore<LoadoutPiece>("cos.loadout", [
 /* ------------------------------------------------------ admin activity log */
 
 export type AdminActivityKind =
-  "player" | "news" | "gallery" | "game" | "announcement" | "almanac" | "bug";
+  "player" | "player-report" | "news" | "gallery" | "game" | "announcement" | "almanac" | "bug" | "partnership" | "system";
 
 export type AdminActivity = {
   id: string;
@@ -1322,6 +1322,35 @@ export function logAdminActivity(entry: Omit<AdminActivity, "id" | "createdAt">)
     createdAt: new Date().toISOString(),
   };
   adminActivityStore.set([next, ...adminActivityStore.get()].slice(0, 40));
+  const href = /username|email|password|setting/i.test(entry.label) ? "/admin/settings"
+    : entry.kind === "bug" ? "/admin/bugs"
+      : entry.kind === "player-report" ? "/admin/player-reports"
+    : entry.kind === "player" ? "/admin/players"
+      : entry.kind === "partnership" ? "/admin/partnerships"
+      : entry.kind === "game" || entry.kind === "announcement" ? "/admin/game"
+          : "/admin";
+  const notice: AdminNotification = {
+    id: next.id,
+    title: entry.label,
+    body: entry.detail,
+    kind: entry.kind === "game" || entry.kind === "announcement" ? "game"
+      : entry.kind === "partnership" ? "partnership"
+        : entry.kind === "bug" || entry.kind === "player-report" ? entry.kind
+      : entry.kind === "news" || entry.kind === "gallery" || entry.kind === "almanac" ? "content"
+        : "system",
+    href,
+    read: false,
+    createdAt: next.createdAt,
+  };
+  adminNotificationsStore.set([notice, ...adminNotificationsStore.get()].slice(0, 100));
+  if (typeof window !== "undefined") {
+    void fetch("/api/admin/data?key=notifications", {
+      method: "POST",
+      credentials: "include",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(notice),
+    }).catch(() => undefined);
+  }
 }
 
 /* -------------------------------------------------------------- admin inbox */

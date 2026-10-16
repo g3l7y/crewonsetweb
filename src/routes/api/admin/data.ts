@@ -68,6 +68,39 @@ async function writeAdminData(key: string, value: unknown, secretKey: string): P
     ? setWebsiteRecords(key, value as Array<{ id: string }>, secretKey)
     : setWebsiteValue(key, value, secretKey);
 }
+async function recordAdminDataChange(key: string, method: "created" | "updated" | "deleted") {
+  if ([DATA_KEYS.notifications, DATA_KEYS.alertRead, DATA_KEYS.activity, DATA_KEYS.brandUpdates].includes(key)) return;
+  const labels: Record<string, { label: string; href: string; kind: string }> = {
+    [DATA_KEYS.gameBuild]: { label: "Game build", href: "/admin/game", kind: "game" },
+    [DATA_KEYS.buildHistory]: { label: "Build history", href: "/admin/game", kind: "game" },
+    [DATA_KEYS.systemRequirements]: { label: "System requirements", href: "/admin/game", kind: "game" },
+    [DATA_KEYS.buildInfo]: { label: "Game information", href: "/admin/game", kind: "game" },
+    [DATA_KEYS.installSteps]: { label: "Installation instructions", href: "/admin/game", kind: "game" },
+    [DATA_KEYS.ads]: { label: "Advertisement", href: "/admin/partnerships", kind: "partnership" },
+    [DATA_KEYS.revenue]: { label: "Ad revenue", href: "/admin/ad-revenue", kind: "partnership" },
+    [DATA_KEYS.messages]: { label: "Inbox message", href: "/admin/notifications", kind: "system" },
+    [DATA_KEYS.socialLinks]: { label: "Social links", href: "/admin/settings", kind: "system" },
+  };
+  const subject = labels[key];
+  if (!subject) return;
+  const createdAt = new Date().toISOString();
+  const notification = {
+    id: `admin-action-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+    title: `${subject.label} ${method}`,
+    body: `An administrator ${method} ${subject.label.toLowerCase()}.`,
+    kind: subject.kind,
+    href: subject.href,
+    read: false,
+    createdAt,
+  };
+  try {
+    const secretKey = getSecretKey();
+    const existing = await getWebsiteRecords<{ id: string }>(DATA_KEYS.notifications, secretKey);
+    await setWebsiteRecords(DATA_KEYS.notifications, [notification, ...existing].slice(0, 100), secretKey);
+  } catch (error) {
+    console.error("[API] Admin activity notification could not be saved:", error);
+  }
+}
 function isRecord(value: unknown): value is Record<string, unknown> {
   return Boolean(value) && typeof value === "object" && !Array.isArray(value);
 }
@@ -125,6 +158,7 @@ export const Route = createFileRoute("/api/admin/data")({
             return Response.json({ error: "Data is required." }, { status: 400 });
           }
           const success = await writeAdminData(key, body.data, getSecretKey());
+          if (success) await recordAdminDataChange(key, "updated");
           return success
             ? Response.json({ success: true })
             : Response.json({ error: "Failed to save admin data." }, { status: 500 });
@@ -150,6 +184,7 @@ export const Route = createFileRoute("/api/admin/data")({
             ...current.filter((item) => !isRecord(item) || item["id"] !== incoming["id"]),
           ];
           const success = await writeAdminData(key, next, getSecretKey());
+          if (success) await recordAdminDataChange(key, "created");
           return success
             ? Response.json({ success: true, data: incoming }, { status: 201 })
             : Response.json({ error: "Failed to create admin record." }, { status: 500 });
@@ -178,6 +213,7 @@ export const Route = createFileRoute("/api/admin/data")({
           });
           if (!found) return Response.json({ error: "Record not found." }, { status: 404 });
           const success = await writeAdminData(key, next, getSecretKey());
+          if (success) await recordAdminDataChange(key, "updated");
           return success
             ? Response.json({ success: true })
             : Response.json({ error: "Failed to update admin record." }, { status: 500 });
@@ -203,6 +239,7 @@ export const Route = createFileRoute("/api/admin/data")({
             (item) => !isRecord(item) || typeof item["id"] !== "string" || !ids.has(item["id"]),
           );
           const success = await writeAdminData(key, next, getSecretKey());
+          if (success) await recordAdminDataChange(key, "deleted");
           return success
             ? Response.json({ success: true })
             : Response.json({ error: "Failed to delete admin records." }, { status: 500 });

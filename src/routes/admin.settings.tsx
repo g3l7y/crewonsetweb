@@ -22,6 +22,7 @@ import { DisplayThemeSwitcher } from "@/components/theme/display-theme-switcher"
 import { PasswordRecoveryModal } from "@/components/password-recovery-modal";
 import { isMockMode } from "@/lib/playfab/config";
 import { QUERY_KEYS, useSession } from "@/lib/playfab/hooks";
+import { logAdminActivity } from "@/lib/demo/store";
 
 function PasswordField({
   label,
@@ -160,6 +161,7 @@ function SettingsPage() {
     setUsernameConfirmOpen(false);
     setUsernameConfirmPassword("");
     await queryClient.invalidateQueries({ queryKey: QUERY_KEYS.session });
+    logAdminActivity({ kind: "system", label: "Admin username updated", detail: `Administrator username changed to ${updatedUsername}.` });
     toast.success("Username updated.");
   }
 
@@ -217,6 +219,7 @@ function SettingsPage() {
       setEmailChangeDemoLink("");
       setEmailChangeToken("");
       await queryClient.invalidateQueries({ queryKey: QUERY_KEYS.session });
+      logAdminActivity({ kind: "system", label: "Admin email updated", detail: `Administrator email changed to ${updatedEmail}.` });
       toast.success(result.message ?? "Email updated.");
     } catch (error) {
       setEmailChangeError(error instanceof Error ? error.message : "Unable to update the administrator email.");
@@ -253,6 +256,7 @@ function SettingsPage() {
     }
 
     if (mockMode) setAccount([{ ...admin, password: newPassword }]);
+    logAdminActivity({ kind: "system", label: "Admin password updated", detail: "Administrator password was changed." });
     setCurrentPassword("");
     setNewPassword("");
     setConfirmPassword("");
