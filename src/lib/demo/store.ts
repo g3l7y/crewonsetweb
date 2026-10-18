@@ -1137,8 +1137,51 @@ export const gameBuildStore = createStore<GameBuild>("cos.gameBuild", [
   },
 ]);
 
-export type BrandUpdate = { id: string; url: string; notes: string; publishedAt: string };
+export type BrandUpdate = {
+  id: string;
+  url: string;
+  notes: string;
+  publishedAt: string;
+  packageId?: string;
+  packageName?: string;
+  packagePricePhp?: number;
+  packagePlacement?: string;
+  packageReporting?: string;
+  durationDays?: number;
+  expiresAt?: string;
+  mockClicks?: number;
+  mockImpressions?: number;
+  mockVisits?: number;
+  mockVisitorIds?: string[];
+};
 export const brandUpdatesStore = createStore<BrandUpdate>("cos.brandUpdates", []);
+
+/** Mock-only stand-in for the server-side brand update click/impression tracker. */
+export function recordMockBrandUpdateEvent(updateId: string, event: "impression" | "click"): string | undefined {
+  if (!isMockMode() || !isBrowser()) return undefined;
+  const updates = brandUpdatesStore.get();
+  const update = updates.find((item) => item.id === updateId);
+  if (!update) return undefined;
+  const isInCampaignWindow = !update.expiresAt || Date.now() <= new Date(update.expiresAt).getTime();
+  let visitorId = window.localStorage.getItem("cos-brand-update-mock-visitor");
+  if (!visitorId) {
+    visitorId = uid("visitor");
+    window.localStorage.setItem("cos-brand-update-mock-visitor", visitorId);
+  }
+  const knownVisitors = update.mockVisitorIds || [];
+  const isNewVisitor = !knownVisitors.includes(visitorId);
+  const nextUpdate = isInCampaignWindow
+    ? {
+        ...update,
+        ...(event === "click" ? { mockClicks: (update.mockClicks || 0) + 1 } : { mockImpressions: (update.mockImpressions || 0) + 1 }),
+        ...(event === "click" && isNewVisitor
+          ? { mockVisits: (update.mockVisits || 0) + 1, mockVisitorIds: [...knownVisitors, visitorId] }
+          : {}),
+      }
+    : update;
+  brandUpdatesStore.set(updates.map((item) => item.id === updateId ? nextUpdate : item));
+  return update.url;
+}
 
 /** Archive of previously uploaded builds, newest first. */
 export const buildHistoryStore = createStore<GameBuild>("cos.buildHistory", []);

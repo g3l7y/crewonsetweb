@@ -10,12 +10,15 @@ export const Route = createFileRoute("/api/brand-updates/$id/click")({
         const secret = process.env["PLAYFAB_SECRET_KEY"]?.trim();
         if (!secret) return new Response("Brand link is unavailable.", { status: 503 });
         try {
-          const updates = await getWebsiteRecords<{ id: string; url: string }>(
+          const updates = await getWebsiteRecords<{ id: string; url: string; expiresAt?: string }>(
             "website_admin_brand_updates",
             secret,
           );
           const update = updates.find((entry) => entry.id === params.id);
           if (!update) return new Response("Brand update not found.", { status: 404 });
+          const destination = new URL(update.url);
+          if (!["http:", "https:"].includes(destination.protocol))
+            return new Response("Brand link is invalid.", { status: 422 });
           if (!isMockMode()) {
             const cookie = request.headers.get("cookie") ?? "";
             const raw = cookie
@@ -27,8 +30,15 @@ export const Route = createFileRoute("/api/brand-updates/$id/click")({
               .join("=");
             const existing = raw ? decodeURIComponent(raw) : "";
             const visitor = /^[0-9a-f-]{36}$/i.test(existing) ? existing : crypto.randomUUID();
-            await recordBrandUpdateEvent(update.id, visitor, "click");
-            const headers = new Headers({ Location: update.url, "Cache-Control": "no-store" });
+            const campaignActive = !update.expiresAt || Date.now() <= new Date(update.expiresAt).getTime();
+            if (campaignActive) {
+              try {
+                await recordBrandUpdateEvent(update.id, visitor, "click");
+              } catch (error) {
+                console.error("[Brand update] Click metric could not be saved; continuing redirect", error);
+              }
+            }
+            const headers = new Headers({ Location: destination.toString(), "Cache-Control": "no-store" });
             if (!existing)
               headers.append(
                 "Set-Cookie",
@@ -36,7 +46,7 @@ export const Route = createFileRoute("/api/brand-updates/$id/click")({
               );
             return new Response(null, { status: 302, headers });
           }
-          return Response.redirect(update.url, 302);
+          return Response.redirect(destination.toString(), 302);
         } catch (error) {
           console.error("[Brand update] Click tracking failed", error);
           return new Response("Brand link tracking is temporarily unavailable.", { status: 503 });

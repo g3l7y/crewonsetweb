@@ -1,4 +1,4 @@
-import { FormEvent, useRef, useState } from "react";
+import { type FormEvent, type KeyboardEvent, useEffect, useRef, useState } from "react";
 import { CheckCircle2, FileImage, Send, X } from "lucide-react";
 
 import { EMAIL_ERROR, isValidEmail } from "@/lib/validation";
@@ -7,12 +7,39 @@ import { BRAND_PROMOTION_DELIVERY_TERMS, BRAND_PROMOTION_PACKAGES, getBrandPromo
 import {
   applicationsStore,
   adminNotificationsStore,
+  brandUpdatesStore,
   insertSharedRecord,
   readAttachmentAsDataUrl,
   partnershipProductTypes,
   uid,
+  type BrandUpdate,
   type PartnershipApplication,
 } from "@/lib/demo/store";
+
+type PromotionForecast = {
+  sampleSize: number;
+  clicks: { min: number; max: number };
+  visits: { min: number; max: number };
+};
+
+function mockPromotionForecast(updates: BrandUpdate[], durationDays: number): PromotionForecast | undefined {
+  const completed = updates.filter((update) =>
+    update.expiresAt && new Date(update.expiresAt).getTime() < Date.now() &&
+    update.durationDays === durationDays && (update.mockImpressions ?? 0) > 0,
+  );
+  if (completed.length < 3) return undefined;
+  return {
+    sampleSize: completed.length,
+    clicks: {
+      min: Math.min(...completed.map((update) => update.mockClicks ?? 0)),
+      max: Math.max(...completed.map((update) => update.mockClicks ?? 0)),
+    },
+    visits: {
+      min: Math.min(...completed.map((update) => update.mockVisits ?? 0)),
+      max: Math.max(...completed.map((update) => update.mockVisits ?? 0)),
+    },
+  };
+}
 
 export function PartnershipForm() {
   const mockMode = isMockMode();
@@ -22,6 +49,36 @@ export function PartnershipForm() {
   const [submitted, setSubmitted] = useState(false);
   const [submittedEmail, setSubmittedEmail] = useState("");
   const [error, setError] = useState("");
+  const [selectedPackageId, setSelectedPackageId] = useState(BRAND_PROMOTION_PACKAGES[1]?.id ?? BRAND_PROMOTION_PACKAGES[0]!.id);
+  const [brandUpdates] = brandUpdatesStore.useStore();
+  const [realForecasts, setRealForecasts] = useState<Record<string, PromotionForecast>>({});
+
+  useEffect(() => {
+    if (mockMode) return;
+    let active = true;
+    void fetch("/api/brand-promotions/forecast", { credentials: "include", cache: "no-store" })
+      .then((response) => response.ok ? response.json() as Promise<{ available?: boolean; forecasts?: Record<string, PromotionForecast> }> : undefined)
+      .then((result) => {
+        if (active && result?.available && result.forecasts) setRealForecasts(result.forecasts);
+      })
+      .catch(() => undefined);
+    return () => { active = false; };
+  }, [mockMode]);
+
+  function forecastFor(durationDays: number) {
+    return mockMode ? mockPromotionForecast(brandUpdates, durationDays) : realForecasts[String(durationDays)];
+  }
+
+  function handlePackageKeyDown(event: KeyboardEvent<HTMLButtonElement>, index: number) {
+    const direction = event.key === "ArrowRight" || event.key === "ArrowDown" ? 1 : event.key === "ArrowLeft" || event.key === "ArrowUp" ? -1 : 0;
+    if (!direction) return;
+    event.preventDefault();
+    const nextIndex = (index + direction + BRAND_PROMOTION_PACKAGES.length) % BRAND_PROMOTION_PACKAGES.length;
+    const nextPackage = BRAND_PROMOTION_PACKAGES[nextIndex];
+    if (!nextPackage) return;
+    setSelectedPackageId(nextPackage.id);
+    document.getElementById(`promotion-package-${nextPackage.id}`)?.focus();
+  }
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -234,29 +291,37 @@ export function PartnershipForm() {
 
         <fieldset className="form-label sm:col-span-2">
           <legend>CHOOSE A PROMOTION PACKAGE</legend>
-          <div className="mt-2 grid gap-3 md:grid-cols-3">
+          <input type="hidden" name="packageId" value={selectedPackageId} />
+          <div className="mt-2 grid gap-3 md:grid-cols-3" role="radiogroup" aria-label="Promotion package">
             {BRAND_PROMOTION_PACKAGES.map((promotionPackage, index) => (
-              <label key={promotionPackage.id} className="cursor-pointer">
-                <input
-                  className="peer sr-only"
-                  type="radio"
-                  name="packageId"
-                  value={promotionPackage.id}
-                  defaultChecked={index === 1}
-                  required
-                />
-                <span className="block h-full rounded-lg border-2 border-navy/15 bg-white p-4 transition peer-checked:border-coral peer-checked:bg-coral/[.04] peer-focus-visible:outline peer-focus-visible:outline-2 peer-focus-visible:outline-offset-2 peer-focus-visible:outline-coral">
+              <button
+                key={promotionPackage.id}
+                id={`promotion-package-${promotionPackage.id}`}
+                type="button"
+                role="radio"
+                aria-checked={selectedPackageId === promotionPackage.id}
+                tabIndex={selectedPackageId === promotionPackage.id ? 0 : -1}
+                onClick={() => setSelectedPackageId(promotionPackage.id)}
+                onKeyDown={(event) => handlePackageKeyDown(event, index)}
+                className={`h-full w-full cursor-pointer rounded-lg border-2 p-4 text-left transition focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-coral ${selectedPackageId === promotionPackage.id ? "border-coral bg-coral/[.06] shadow-md shadow-coral/10 ring-2 ring-coral/15" : "border-navy/15 bg-white hover:border-coral/50 hover:bg-coral/[.025]"}`}
+              >
                   <span className="block text-xs font-black uppercase tracking-wide">{promotionPackage.name}</span>
                   <span className="mt-2 block text-2xl font-black text-coral">₱{promotionPackage.pricePhp.toLocaleString("en-PH")}</span>
                   <span className="mt-1 block text-xs font-bold text-navy/65">{promotionPackage.durationDays} days</span>
                   <span className="mt-3 block text-xs font-normal leading-relaxed text-navy/60" style={{ textTransform: "none", letterSpacing: "normal" }}>{promotionPackage.placement}</span>
-                  <span className="mt-2 block text-[11px] font-normal leading-relaxed text-navy/55" style={{ textTransform: "none", letterSpacing: "normal" }}>{promotionPackage.reporting}</span>
-                </span>
-              </label>
+                  {(() => {
+                    const forecast = forecastFor(promotionPackage.durationDays);
+                    return forecast ? (
+                      <span className="mt-2 block text-[11px] font-normal leading-relaxed text-navy/55" style={{ textTransform: "none", letterSpacing: "normal" }}>
+                        {mockMode ? "Mock results. " : ""}From {forecast.sampleSize} past promotions, we saw {forecast.clicks.min} to {forecast.clicks.max} link clicks and {forecast.visits.min} to {forecast.visits.max} different browsers clicking through. Your results may differ.
+                      </span>
+                    ) : null;
+                  })()}
+              </button>
             ))}
           </div>
           <p className="mt-3 text-[11px] font-normal leading-relaxed text-navy/60" style={{ textTransform: "none", letterSpacing: "normal" }}>
-            Pilot pricing covers the scheduled placement and reporting. We do not yet promise a number of views, clicks, website visits, leads, or sales; actual reach is reported after launch and can be used to establish future forecasts.
+            Your product promotion stays displayed for the selected number of days. We will share how many people clicked the link and how many different browsers clicked it. Your results may differ.
           </p>
           <details className="mt-3 rounded-md border border-navy/10 bg-navy/[.025] p-3 text-[11px] font-normal leading-relaxed text-navy/65" style={{ textTransform: "none", letterSpacing: "normal" }}>
             <summary className="cursor-pointer font-bold text-navy">Delivery and under-delivery policy</summary>
