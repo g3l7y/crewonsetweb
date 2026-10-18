@@ -17,11 +17,13 @@ import { Check, ChevronDown, ListChecks, Mail, UploadCloud, X } from "lucide-rea
 import { players } from "@/lib/admin-demo-data";
 import { useAdminPlayers } from "@/lib/playfab/hooks";
 import { isMockMode } from "@/lib/playfab/config";
+import { BRAND_PROMOTION_PACKAGES, getBrandPromotionPackage } from "@/lib/brand-promotion-packages";
 import { isValidEmail } from "@/lib/validation";
 import { saveMockInstaller } from "@/lib/game-download";
 import {
   brandUpdatesStore,
   buildInfoStore,
+  insertSharedRecord,
   gameBuildStore,
   installStepsStore,
   logAdminActivity,
@@ -66,6 +68,7 @@ function GamePage() {
   const [composerTab, setComposerTab] = useState<"brand" | "mail">("brand");
   const [brandUrl, setBrandUrl] = useState("");
   const [brandNotes, setBrandNotes] = useState("");
+  const [brandPackageId, setBrandPackageId] = useState(BRAND_PROMOTION_PACKAGES[0]?.id ?? "pilot-7-day");
   const [mailTo, setMailTo] = useState("");
   const [mailSubject, setMailSubject] = useState("");
   const [mailBody, setMailBody] = useState("");
@@ -148,7 +151,7 @@ function GamePage() {
     );
   }
 
-  async function notifyPlayers(title: string, body: string, id = uid("game-update")) {
+  async function notifyPlayers(title: string, body: string, id = uid("game-update"), href = "/portal#play-now") {
     const createdAt = new Date().toISOString();
     const notification = {
       id,
@@ -158,7 +161,7 @@ function GamePage() {
       kind: "announcement" as const,
       channel: "notification" as const,
       read: false,
-      href: "/portal#play-now",
+      href,
       target: { kind: "all" as const },
     };
     if (isMockMode()) {
@@ -327,24 +330,40 @@ function GamePage() {
       setComposerMessage("Enter a valid https:// brand URL.");
       return;
     }
+    const selectedPackage = getBrandPromotionPackage(brandPackageId);
+    if (!selectedPackage) {
+      setComposerMessage("Choose a campaign period before publishing.");
+      return;
+    }
+    const publishedAt = new Date().toISOString();
+    const expiresAt = new Date(Date.now() + selectedPackage.durationDays * 24 * 60 * 60 * 1000).toISOString();
     const update = {
       id: uid("brand-update"),
       url,
       notes: brandNotes.trim(),
-      publishedAt: new Date().toISOString(),
+      publishedAt,
+      packageId: selectedPackage.id,
+      packageName: selectedPackage.name,
+      packagePricePhp: selectedPackage.pricePhp,
+      packagePlacement: selectedPackage.placement,
+      packageReporting: selectedPackage.reporting,
+      durationDays: selectedPackage.durationDays,
+      expiresAt,
     };
-    brandUpdatesStore.set([update, ...brandUpdatesStore.get()]);
     if (!isMockMode()) {
-      void fetch(`/api/admin/brand-updates/${encodeURIComponent(update.id)}/metrics`, {
-        method: "POST",
-        credentials: "include",
-      });
+      const saved = await insertSharedRecord("cos.brandUpdates", update, (message) => setComposerMessage(message));
+      if (!saved) {
+        setComposerMessage((current) => current || "The brand update could not be published. Please try again.");
+        return;
+      }
     }
+    brandUpdatesStore.set([update, ...brandUpdatesStore.get()]);
     try {
       await notifyPlayers(
-        "New game update",
-        update.notes || "A new game update is available. Open your dashboard to play.",
+        "New brand promotion",
+        update.notes || "A new brand partner link is available. Tap to visit the brand website.",
         `brand-notice-${update.id}`,
+        `/api/brand-updates/${encodeURIComponent(update.id)}/click`,
       );
     } catch (error) {
       setComposerMessage(error instanceof Error ? `Update published, but players were not notified: ${error.message}` : "Update published, but players were not notified.");
@@ -746,7 +765,11 @@ function GamePage() {
           <h2 className="font-black uppercase !text-white">Published Brand Updates</h2>
           <div className="mt-4 space-y-3">
             {brandUpdates.map((update) => {
-              const metrics = brandMetrics[update.id];
+              const metrics = brandMetrics[update.id] ?? (isMockMode() ? {
+                clicks: update.mockClicks ?? 0,
+                visits: update.mockVisits ?? 0,
+                impressions: update.mockImpressions ?? 0,
+              } : undefined);
               return (
                 <article
                   key={update.id}
@@ -765,13 +788,18 @@ function GamePage() {
                   </p>
                   <p className="mt-2 text-[10px] uppercase tracking-wider text-white/35">
                     Published {new Date(update.publishedAt).toLocaleString()}
+                    {update.packageName ? ` · ${update.packageName} · PHP ${(update.packagePricePhp ?? 0).toLocaleString()} · ${update.durationDays} days` : ""}
+                    {update.expiresAt ? ` · Featured through ${new Date(update.expiresAt).toLocaleDateString()}` : ""}
                   </p>
+                  {update.packagePlacement && (
+                    <p className="mt-2 text-xs leading-relaxed !text-white/50">
+                      {update.packagePlacement} {update.packageReporting}
+                    </p>
+                  )}
                   <p className="mt-2 text-[10px] font-bold uppercase tracking-wider text-white/45">
                     {metrics
-                      ? `${metrics.impressions} impressions · ${metrics.clicks} clicks · ${metrics.visits} visits`
-                      : isMockMode()
-                        ? "Mock tracking active"
-                        : "Loading metrics…"}
+                      ? `${metrics.impressions} dashboard views · ${metrics.clicks} clicks · ${metrics.visits} unique browsers`
+                      : "Loading metrics…"}
                   </p>
                 </article>
               );
@@ -847,6 +875,23 @@ function GamePage() {
               />
             </label>
             <label className="block text-[10px] font-black uppercase tracking-wider !text-white/45">
+              Campaign package
+              <select
+                value={brandPackageId}
+                onChange={(event) => setBrandPackageId(event.target.value)}
+                className="admin-input mt-2 w-full rounded-md border border-white/10 bg-[#101923] px-3 py-2.5 text-sm font-bold !text-white outline-none transition focus:border-coral"
+              >
+                {BRAND_PROMOTION_PACKAGES.map((promotionPackage) => (
+                  <option key={promotionPackage.id} value={promotionPackage.id}>
+                    {promotionPackage.name} · {promotionPackage.durationDays} days · PHP {promotionPackage.pricePhp.toLocaleString()}
+                  </option>
+                ))}
+              </select>
+              <span className="mt-1 block text-[10px] normal-case tracking-normal !text-white/45">
+                {getBrandPromotionPackage(brandPackageId)?.placement} {getBrandPromotionPackage(brandPackageId)?.reporting}
+              </span>
+            </label>
+            <label className="block text-[10px] font-black uppercase tracking-wider !text-white/45">
               Notes
               <textarea
                 value={brandNotes}
@@ -869,6 +914,7 @@ function GamePage() {
                 onClick={() => {
                   setBrandUrl("");
                   setBrandNotes("");
+                  setBrandPackageId(BRAND_PROMOTION_PACKAGES[0]?.id ?? "pilot-7-day");
                 }}
                 className="rounded-md border border-white/10 px-4 py-2.5 text-xs font-black uppercase !text-white/60 transition hover:!text-white"
               >

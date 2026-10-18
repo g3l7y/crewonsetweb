@@ -70,6 +70,7 @@ import { Route as ApiAuthProfileRouteImport } from './routes/api/auth/profile'
 import { Route as ApiAuthRegisterRouteImport } from './routes/api/auth/register'
 import { Route as ApiAuthSessionRouteImport } from './routes/api/auth/session'
 import { Route as ApiBrandPromotionsClickRouteImport } from './routes/api/brand-promotions.click'
+import { Route as ApiBrandPromotionsForecastRouteImport } from './routes/api/brand-promotions.forecast'
 import { Route as ApiCronExpireBrandPromotionsRouteImport } from './routes/api/cron/expire-brand-promotions'
 import { Route as ApiDevMaintenanceRouteImport } from './routes/api/dev.maintenance'
 import { Route as ApiPaymongoBrandStatusRouteImport } from './routes/api/paymongo/brand-status'
@@ -402,6 +403,12 @@ const ApiBrandPromotionsClickRoute = ApiBrandPromotionsClickRouteImport.update({
   path: '/click',
   getParentRoute: () => ApiBrandPromotionsRoute,
 } as any)
+const ApiBrandPromotionsForecastRoute =
+  ApiBrandPromotionsForecastRouteImport.update({
+    id: '/forecast',
+    path: '/forecast',
+    getParentRoute: () => ApiBrandPromotionsRoute,
+  } as any)
 const ApiCronExpireBrandPromotionsRoute =
   ApiCronExpireBrandPromotionsRouteImport.update({
     id: '/api/cron/expire-brand-promotions',
@@ -600,6 +607,7 @@ export interface FileRoutesByFullPath {
   '/api/auth/register': typeof ApiAuthRegisterRoute
   '/api/auth/session': typeof ApiAuthSessionRoute
   '/api/brand-promotions/click': typeof ApiBrandPromotionsClickRoute
+  '/api/brand-promotions/forecast': typeof ApiBrandPromotionsForecastRoute
   '/api/cron/expire-brand-promotions': typeof ApiCronExpireBrandPromotionsRoute
   '/api/dev/maintenance': typeof ApiDevMaintenanceRoute
   '/api/paymongo/brand-status': typeof ApiPaymongoBrandStatusRoute
@@ -686,6 +694,7 @@ export interface FileRoutesByTo {
   '/api/auth/register': typeof ApiAuthRegisterRoute
   '/api/auth/session': typeof ApiAuthSessionRoute
   '/api/brand-promotions/click': typeof ApiBrandPromotionsClickRoute
+  '/api/brand-promotions/forecast': typeof ApiBrandPromotionsForecastRoute
   '/api/cron/expire-brand-promotions': typeof ApiCronExpireBrandPromotionsRoute
   '/api/dev/maintenance': typeof ApiDevMaintenanceRoute
   '/api/paymongo/brand-status': typeof ApiPaymongoBrandStatusRoute
@@ -775,6 +784,7 @@ export interface FileRoutesById {
   '/api/auth/register': typeof ApiAuthRegisterRoute
   '/api/auth/session': typeof ApiAuthSessionRoute
   '/api/brand-promotions/click': typeof ApiBrandPromotionsClickRoute
+  '/api/brand-promotions/forecast': typeof ApiBrandPromotionsForecastRoute
   '/api/cron/expire-brand-promotions': typeof ApiCronExpireBrandPromotionsRoute
   '/api/dev/maintenance': typeof ApiDevMaintenanceRoute
   '/api/paymongo/brand-status': typeof ApiPaymongoBrandStatusRoute
@@ -865,6 +875,7 @@ export interface FileRouteTypes {
     | '/api/auth/register'
     | '/api/auth/session'
     | '/api/brand-promotions/click'
+    | '/api/brand-promotions/forecast'
     | '/api/cron/expire-brand-promotions'
     | '/api/dev/maintenance'
     | '/api/paymongo/brand-status'
@@ -951,6 +962,7 @@ export interface FileRouteTypes {
     | '/api/auth/register'
     | '/api/auth/session'
     | '/api/brand-promotions/click'
+    | '/api/brand-promotions/forecast'
     | '/api/cron/expire-brand-promotions'
     | '/api/dev/maintenance'
     | '/api/paymongo/brand-status'
@@ -1039,6 +1051,7 @@ export interface FileRouteTypes {
     | '/api/auth/register'
     | '/api/auth/session'
     | '/api/brand-promotions/click'
+    | '/api/brand-promotions/forecast'
     | '/api/cron/expire-brand-promotions'
     | '/api/dev/maintenance'
     | '/api/paymongo/brand-status'
@@ -1561,6 +1574,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiBrandPromotionsClickRouteImport
       parentRoute: typeof ApiBrandPromotionsRoute
     }
+    '/api/brand-promotions/forecast': {
+      id: '/api/brand-promotions/forecast'
+      path: '/forecast'
+      fullPath: '/api/brand-promotions/forecast'
+      preLoaderRoute: typeof ApiBrandPromotionsForecastRouteImport
+      parentRoute: typeof ApiBrandPromotionsRoute
+    }
     '/api/cron/expire-brand-promotions': {
       id: '/api/cron/expire-brand-promotions'
       path: '/api/cron/expire-brand-promotions'
@@ -1800,10 +1820,12 @@ const PortalRouteWithChildren =
 
 interface ApiBrandPromotionsRouteChildren {
   ApiBrandPromotionsClickRoute: typeof ApiBrandPromotionsClickRoute
+  ApiBrandPromotionsForecastRoute: typeof ApiBrandPromotionsForecastRoute
 }
 
 const ApiBrandPromotionsRouteChildren: ApiBrandPromotionsRouteChildren = {
   ApiBrandPromotionsClickRoute: ApiBrandPromotionsClickRoute,
+  ApiBrandPromotionsForecastRoute: ApiBrandPromotionsForecastRoute,
 }
 
 const ApiBrandPromotionsRouteWithChildren =
