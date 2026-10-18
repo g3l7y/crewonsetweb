@@ -95,6 +95,8 @@ export function usePlayerProgression() {
     queryFn: () => getPlayFabService().player.getProgression(),
     enabled: !!session,
     staleTime: 2 * 60 * 1000,
+    refetchInterval: 30 * 1000,
+    refetchIntervalInBackground: false,
   });
 }
 
@@ -176,7 +178,7 @@ export function useFriends() {
     queryKey: QUERY_KEYS.friends,
     queryFn: () => getPlayFabService().player.getFriends(),
     enabled: !!session,
-    refetchInterval: 30_000,
+    refetchInterval: 5_000,
     refetchIntervalInBackground: false,
     refetchOnWindowFocus: true,
     staleTime: 2 * 60 * 1000,
@@ -198,7 +200,7 @@ export function usePlayerMail() {
     },
     enabled: !!session && !isMockMode(),
     staleTime: 15_000,
-    refetchInterval: 30_000,
+    refetchInterval: 5_000,
     refetchIntervalInBackground: false,
   });
 }
@@ -244,7 +246,7 @@ export function useNotifications() {
     queryFn: () => getPlayFabService().player.getNotifications(),
     enabled: !!session,
     staleTime: 15_000,
-    refetchInterval: 30_000,
+    refetchInterval: 5_000,
     refetchIntervalInBackground: false,
   });
 }
@@ -335,8 +337,8 @@ export function useAdminPartnerships() {
     queryKey: QUERY_KEYS.adminPartnerships,
     queryFn: () => getPlayFabService().admin.getPartnerships(),
     enabled: !!session && (session.role === "admin" || session.role === "developer"),
-    refetchInterval: 30_000,
-    staleTime: 2 * 60 * 1000,
+    refetchInterval: 5_000,
+    staleTime: 0,
   });
 }
 
@@ -418,7 +420,7 @@ export function useAdminNotifications() {
     queryFn: () => getPlayFabService().admin.getNotifications(),
     enabled: !!session && (session.role === "admin" || session.role === "developer"),
     staleTime: 0,
-    refetchInterval: isMockMode() ? false : 15_000,
+    refetchInterval: isMockMode() ? false : 5_000,
   });
 }
 

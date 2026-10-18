@@ -670,6 +670,14 @@ export interface PartnershipApplication {
   duration?: number | undefined;
   /** Duration unit (e.g. "Days" | "Months") */
   durationUnit?: string | undefined;
+  /** Selected fixed-price promotion package (new applications). */
+  packageId?: string | undefined;
+  packageName?: string | undefined;
+  packagePlacement?: string | undefined;
+  packageReporting?: string | undefined;
+  /** Verified placement downtime credited to the end date. */
+  deliveryAdjustments?: Array<{ days: number; reason: string; recordedAt: string; revisedEndAt: string }> | undefined;
+  deliveryMakeGoodDays?: number | undefined;
   /** Contact email */
   email: string;
   /** Additional campaign details */
@@ -803,6 +811,18 @@ export interface AdEntry {
   contract?: string | undefined;
   /** Unique-visitor count for the placement. */
   visits?: number | undefined;
+  packageId?: string | undefined;
+  packageName?: string | undefined;
+  packagePlacement?: string | undefined;
+  packageReporting?: string | undefined;
+  packageDurationDays?: number | undefined;
+    brandPromotionUrl?: string | undefined;
+  deliveryAdjustments?: Array<{ days: number; reason: string; recordedAt: string; revisedEndAt: string }> | undefined;
+  deliveryMakeGoodDays?: number | undefined;
+  /** Requests classified as likely automated and excluded from click totals. */
+  automatedRequests?: number | undefined;
+  /** Clicks opened through the admin-only test link and excluded from totals. */
+  testClicks?: number | undefined;
   /** ISO timestamp used by the live countdown. */
   expiresAt?: string | undefined;
   /** Submitted destination URL and first-party tracked redirect. */

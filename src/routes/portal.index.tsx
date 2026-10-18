@@ -66,6 +66,7 @@ import {
 import { isMockMode } from "@/lib/playfab/config";
 import { sortNewestFirst } from "@/lib/validation";
 import { achievementEmoji } from "@/lib/achievement-emoji";
+import { hasRecordedGameProgress } from "@/lib/playfab/progression";
 
 const bundledFaceItems = cosmeticCatalog.filter((item) => item.category === "Face");
 const bundledFaceIds = bundledFaceItems.map((item) => item.id);
@@ -201,9 +202,10 @@ function PlayerDashboardPage() {
   const displayAvatar = mockMode
     ? getProfileArtwork(displayName)
     : profileQuery.data?.avatarUrl || getProfileArtwork(displayName);
-  const level = mockMode ? 27 : (progressionQuery.data?.level ?? 1);
-  const currentXp = mockMode ? 6820 : (progressionQuery.data?.currentXp ?? 0);
-  const xpToNextLevel = mockMode ? 10000 : (progressionQuery.data?.xpToNextLevel ?? 0);
+  const hasGameProgress = hasRecordedGameProgress(progressionQuery.data);
+  const level = progressionQuery.data?.level;
+  const currentXp = progressionQuery.data?.currentXp ?? 0;
+  const xpToNextLevel = progressionQuery.data?.xpToNextLevel ?? 0;
   const progressPercent =
     xpToNextLevel > 0 ? Math.min(100, Math.round((currentXp / xpToNextLevel) * 100)) : 0;
   const dashboardCareer = mockMode
@@ -410,20 +412,22 @@ function PlayerDashboardPage() {
               <h2 className="mt-1 text-3xl font-black uppercase tracking-tight text-navy sm:text-4xl">
                 Welcome back, {displayName}!
               </h2>
-              <div className="mt-4 flex items-center gap-3">
-                <span className="rounded bg-yellow px-3 py-1 text-xs font-black text-navy">
-                  LEVEL {level}
-                </span>
-                <div className="h-2 max-w-md flex-1 overflow-hidden rounded-full bg-navy/10">
-                  <div
-                    className="h-full rounded-full bg-coral"
-                    style={{ width: progressPercent + "%" }}
-                  />
+              {hasGameProgress && level !== undefined && (
+                <div className="mt-4 flex items-center gap-3">
+                  <span className="rounded bg-yellow px-3 py-1 text-xs font-black text-navy">
+                    LEVEL {level}
+                  </span>
+                  <div className="h-2 max-w-md flex-1 overflow-hidden rounded-full bg-navy/10">
+                    <div
+                      className="h-full rounded-full bg-coral"
+                      style={{ width: progressPercent + "%" }}
+                    />
+                  </div>
+                  <span className="text-xs font-bold text-navy/45">
+                    {currentXp.toLocaleString()} / {xpToNextLevel.toLocaleString()} XP
+                  </span>
                 </div>
-                <span className="text-xs font-bold text-navy/45">
-                  {currentXp.toLocaleString()} / {xpToNextLevel.toLocaleString()} XP
-                </span>
-              </div>
+              )}
             </div>
 
             <Link

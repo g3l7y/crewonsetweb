@@ -145,8 +145,8 @@ function AdRevenuePage() {
 
   const summaries = [
     { label: "Total Ad Revenue", value: formatMoney(totals.revenue), icon: Wallet2, color: "bg-[#d9a514] text-[#101923]" },
-    { label: "Total Ad Clicks", value: totals.clicks.toLocaleString(), icon: MousePointerClick, color: "bg-coral text-white" },
-    { label: "Total Visits", value: totals.visits.toLocaleString(), icon: Users, color: "bg-[#243241] text-white" },
+    { label: "Tracked Click-Throughs", value: totals.clicks.toLocaleString(), icon: MousePointerClick, color: "bg-coral text-white" },
+    { label: "Unique Browsers", value: totals.visits.toLocaleString(), icon: Users, color: "bg-[#243241] text-white" },
     { label: "Total Impressions", value: totals.impressions.toLocaleString(), icon: MonitorPlay, color: "bg-[#2d9d8f] text-white" },
   ];
 
@@ -177,6 +177,9 @@ function AdRevenuePage() {
           </article>
         ))}
       </section>
+      <p className="mt-3 text-xs leading-relaxed !text-white/45">
+        {isMockMode() ? "Sample metrics are shown in mock mode; live click tracking is disabled." : "Click-through totals exclude requests that look automated. Unique browser counts are cookie-based estimates and do not confirm that a brand website loaded. Player usernames and PlayFab IDs are not collected or shown."}
+      </p>
 
       {/* APPROVED APPLICATIONS */}
       <section className="mt-10">
@@ -277,7 +280,7 @@ function AdRevenuePage() {
                   <dl className="mt-4 grid grid-cols-2 gap-3 border-t border-white/[0.06] pt-4">
                     <div>
                       <dt className="flex items-center gap-1.5 text-[9px] font-black uppercase tracking-wide !text-white/30">
-                        <MousePointerClick className="size-3" /> Clicks
+                        <MousePointerClick className="size-3" /> Click-Throughs
                       </dt>
                       <dd className="mt-1 text-sm font-bold !text-white/85">
                         {ad ? ad.clicks.toLocaleString() : "—"}
@@ -285,7 +288,7 @@ function AdRevenuePage() {
                     </div>
                     <div>
                       <dt className="flex items-center gap-1.5 text-[9px] font-black uppercase tracking-wide !text-white/30">
-                        <Users className="size-3" /> Visits
+                        <Users className="size-3" /> Unique Browsers
                       </dt>
                       <dd className="mt-1 text-sm font-bold !text-white/85">
                         {ad ? ad.visits.toLocaleString() : "—"}

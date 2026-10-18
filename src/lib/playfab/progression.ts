@@ -3,6 +3,22 @@ import { getUserData } from './player';
 import { PLAYFAB_DATA_KEYS, PLAYFAB_STATISTICS } from './constants';
 import type { PlayerProgression, RoleStatistics } from './types';
 
+/** True when PlayFab has recorded gameplay progress beyond its empty defaults. */
+export function hasRecordedGameProgress(progression: PlayerProgression | undefined): boolean {
+  if (!progression) return false;
+
+  return progression.level > 1
+    || progression.totalXp > 0
+    || progression.currentXp > 0
+    || progression.highestLevelUnlocked > 1
+    || (Array.isArray(progression.completedLevels) && progression.completedLevels.length > 0)
+    || Object.values(progression.completedStages ?? {}).some((stages) => Array.isArray(stages) && stages.length > 0)
+    || progression.tutorialProgress > 0
+    || progression.tutorialsCompleted
+    || progression.campaignCompleted
+    || progression.multiplayerUnlocked;
+}
+
 /**
  * Get comprehensive player progression.
  * Priority 1: User Data key 'progression' (JSON object written by Unity/backend).

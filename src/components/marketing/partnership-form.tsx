@@ -3,6 +3,7 @@ import { CheckCircle2, FileImage, Send, X } from "lucide-react";
 
 import { EMAIL_ERROR, isValidEmail } from "@/lib/validation";
 import { isMockMode } from "@/lib/playfab/config";
+import { BRAND_PROMOTION_DELIVERY_TERMS, BRAND_PROMOTION_PACKAGES, getBrandPromotionPackage } from "@/lib/brand-promotion-packages";
 import {
   applicationsStore,
   adminNotificationsStore,
@@ -31,9 +32,7 @@ export function PartnershipForm() {
     const exactModel = String(data.get("exactModel") ?? "").trim();
     const rawLink = String(data.get("link") ?? "").trim();
     const link = rawLink && (/^https?:\/\//i.test(rawLink) ? rawLink : `https://${rawLink}`);
-    const budget = Number(data.get("budget"));
-    const duration = Number(data.get("duration"));
-    const durationUnit = String(data.get("durationUnit") ?? "Days") as "Days" | "Months";
+    const selectedPackage = getBrandPromotionPackage(data.get("packageId"));
     const rawEmail = String(data.get("email") ?? "");
     const email = rawEmail.trim();
     const description = String(data.get("description") ?? "").trim();
@@ -50,12 +49,8 @@ export function PartnershipForm() {
       setError(EMAIL_ERROR);
       return;
     }
-    if (!Number.isFinite(budget) || budget <= 0) {
-      setError("Please enter a valid proposed budget.");
-      return;
-    }
-    if (!Number.isFinite(duration) || duration <= 0) {
-      setError("Please enter a valid advertisement duration.");
+    if (!selectedPackage) {
+      setError("Please choose a promotion package.");
       return;
     }
     if (link) {
@@ -107,9 +102,13 @@ export function PartnershipForm() {
       fileName: file?.name ?? "",
       ...(attachmentUrl ? { attachmentUrl } : {}),
       ...(file?.type ? { attachmentType: file.type } : {}),
-      budget,
-      duration,
-      durationUnit,
+      budget: selectedPackage.pricePhp,
+      duration: selectedPackage.durationDays,
+      durationUnit: "Days",
+      packageId: selectedPackage.id,
+      packageName: selectedPackage.name,
+      packagePlacement: selectedPackage.placement,
+      packageReporting: selectedPackage.reporting,
       email,
       description,
       submittedAt: new Date().toISOString(),
@@ -233,40 +232,37 @@ export function PartnershipForm() {
           />
         </label>
 
-        <label className="form-label">
-          PROPOSED BUDGET (₱ PHP)
-          <input
-            className="form-input"
-            name="budget"
-            type="number"
-            min={1}
-            step={1}
-            required
-            placeholder="10000"
-          />
-        </label>
-
-        <div className="grid grid-cols-2 gap-3">
-          <label className="form-label">
-            AD DURATION
-            <input
-              className="form-input"
-              name="duration"
-              type="number"
-              min={1}
-              step={1}
-              required
-              placeholder="30"
-            />
-          </label>
-          <label className="form-label">
-            UNIT
-            <select className="form-input" name="durationUnit" defaultValue="Days">
-              <option>Days</option>
-              <option>Months</option>
-            </select>
-          </label>
-        </div>
+        <fieldset className="form-label sm:col-span-2">
+          <legend>CHOOSE A PROMOTION PACKAGE</legend>
+          <div className="mt-2 grid gap-3 md:grid-cols-3">
+            {BRAND_PROMOTION_PACKAGES.map((promotionPackage, index) => (
+              <label key={promotionPackage.id} className="cursor-pointer">
+                <input
+                  className="peer sr-only"
+                  type="radio"
+                  name="packageId"
+                  value={promotionPackage.id}
+                  defaultChecked={index === 1}
+                  required
+                />
+                <span className="block h-full rounded-lg border-2 border-navy/15 bg-white p-4 transition peer-checked:border-coral peer-checked:bg-coral/[.04] peer-focus-visible:outline peer-focus-visible:outline-2 peer-focus-visible:outline-offset-2 peer-focus-visible:outline-coral">
+                  <span className="block text-xs font-black uppercase tracking-wide">{promotionPackage.name}</span>
+                  <span className="mt-2 block text-2xl font-black text-coral">₱{promotionPackage.pricePhp.toLocaleString("en-PH")}</span>
+                  <span className="mt-1 block text-xs font-bold text-navy/65">{promotionPackage.durationDays} days</span>
+                  <span className="mt-3 block text-xs font-normal leading-relaxed text-navy/60" style={{ textTransform: "none", letterSpacing: "normal" }}>{promotionPackage.placement}</span>
+                  <span className="mt-2 block text-[11px] font-normal leading-relaxed text-navy/55" style={{ textTransform: "none", letterSpacing: "normal" }}>{promotionPackage.reporting}</span>
+                </span>
+              </label>
+            ))}
+          </div>
+          <p className="mt-3 text-[11px] font-normal leading-relaxed text-navy/60" style={{ textTransform: "none", letterSpacing: "normal" }}>
+            Pilot pricing covers the scheduled placement and reporting. We do not yet promise a number of views, clicks, website visits, leads, or sales; actual reach is reported after launch and can be used to establish future forecasts.
+          </p>
+          <details className="mt-3 rounded-md border border-navy/10 bg-navy/[.025] p-3 text-[11px] font-normal leading-relaxed text-navy/65" style={{ textTransform: "none", letterSpacing: "normal" }}>
+            <summary className="cursor-pointer font-bold text-navy">Delivery and under-delivery policy</summary>
+            <p className="mt-2">{BRAND_PROMOTION_DELIVERY_TERMS}</p>
+          </details>
+        </fieldset>
 
         <label className="form-label sm:col-span-2">
           DESCRIPTION
@@ -284,7 +280,7 @@ export function PartnershipForm() {
             className="mt-1 text-[11px] font-normal leading-relaxed text-navy/55"
             style={{ textTransform: "none", letterSpacing: "normal" }}
           >
-            Attach one of these documents: <strong className="font-semibold uppercase">DTI Business Name Certificate</strong>, <strong className="font-semibold uppercase">SEC Certificate of Registration or Incorporation</strong>, <strong className="font-semibold uppercase">CDA Registration Certificate</strong>, or <strong className="font-semibold uppercase">local business permit</strong>. Make sure the registered business name is easy to read.
+            Attach one of these documents: <strong className="font-semibold">DTI Business Name Certificate</strong>, <strong className="font-semibold">SEC Certificate of Registration or Incorporation</strong>, <strong className="font-semibold">CDA Registration Certificate</strong>, or <strong className="font-semibold">Local Business Permit</strong>. Make sure the registered business name is easy to read.
           </p>
           <div className="mt-2 flex items-center gap-3 rounded-lg border-2 border-dashed border-navy/15 bg-navy/[.025] px-4 py-4 text-sm transition hover:border-coral hover:bg-coral/[.03]">
             <FileImage className="size-5 shrink-0 text-coral" />

@@ -17,7 +17,7 @@ import { Check, Coins, Package, ReceiptText, Search, ShoppingBag, ShoppingCart, 
 import CheckoutPage from "@/components/portal/checkout";
 import { useSearchParams } from "@/components/next-compat/navigation";
 import { CosmeticArt } from "@/components/portal/cosmetic-art";
-import { PayMongoTopUpReceipt } from "@/components/transactions/paymongo-top-up-receipt";
+import { PayMongoTopUpReceipt, ShopPurchaseReceipt } from "@/components/transactions/paymongo-top-up-receipt";
 import {
   cosmeticCatalog,
   coinPackages,
@@ -67,6 +67,7 @@ type PayMongoOrder = {
 type ShopHistoryRecord = {
   id: string;
   title: string;
+  itemName?: string;
   description: string;
   createdAt: string;
   amount: number;
@@ -201,6 +202,7 @@ function ShopPage() {
         return {
           id: transaction.id,
           title: transaction.kind === "topup" ? "C-Coin Top Up" : transaction.kind === "purchase" ? "Shop Purchase" : transaction.label,
+          ...(transaction.kind === "purchase" ? { itemName: transaction.label } : {}),
           description: "",
           createdAt: transaction.createdAt,
           amount: paymentAmountPhp ?? Math.abs(amount),
@@ -216,9 +218,13 @@ function ShopPage() {
       }
       const playFabTransaction = transaction as Transaction;
       const isSpend = playFabTransaction.type === "purchase" || playFabTransaction.type === "spend";
+      const itemName = playFabTransaction.itemId
+        ? cosmeticCatalog.find((item) => item.id === playFabTransaction.itemId)?.name || playFabTransaction.description || playFabTransaction.itemId
+        : playFabTransaction.description;
       return {
         id: playFabTransaction.id,
         title: isSpend ? "Shop Purchase" : "C-Coin Top Up",
+        ...(isSpend ? { itemName } : {}),
         description: "",
         createdAt: playFabTransaction.timestamp || playFabTransaction.date || "",
         amount: Math.abs(playFabTransaction.amount),
@@ -1010,16 +1016,24 @@ function ShopPage() {
                   eventId={selectedHistoryRecord.eventId}
                 />
               </div>
+            ) : selectedHistoryRecord.isSpend && selectedHistoryRecord.currency === "C-Coins" ? (
+              <div className="p-5 sm:p-7">
+                <ShopPurchaseReceipt
+                  reference={selectedHistoryRecord.reference || selectedHistoryRecord.id}
+                  playerName={profileQuery.data?.displayName || profileQuery.data?.username || sessionQuery.data?.displayName || sessionQuery.data?.username || "Player"}
+                  email={sessionQuery.data?.email || profileQuery.data?.email}
+                  dateTime={selectedHistoryRecord.createdAt}
+                  itemName={selectedHistoryRecord.itemName || selectedHistoryRecord.title}
+                  coinsPaid={selectedHistoryRecord.amount}
+                  status={selectedHistoryRecord.status === "Completed" || selectedHistoryRecord.status === "Pending" || selectedHistoryRecord.status === "Failed" ? selectedHistoryRecord.status : "Recorded"}
+                />
+              </div>
             ) : <div className="p-6 sm:p-8">
               <p className="text-sm text-navy/65">Your receipt from</p>
               <h2 id="transaction-receipt-title" className="mt-1 text-2xl font-black uppercase">Crew On Set</h2>
               <p className="mt-3 break-all text-sm text-navy/65">Reference: <span className="font-semibold text-navy">#{selectedHistoryRecord.reference || selectedHistoryRecord.id}</span></p>
               <p className="mt-7 text-sm">Hi {profileQuery.data?.displayName || profileQuery.data?.username || sessionQuery.data?.displayName || sessionQuery.data?.username || "Player"},</p>
-              <p className="mt-2 text-sm leading-relaxed text-navy/70">
-                {selectedHistoryRecord.payMongo
-                  ? "Thanks for your payment. Here is a copy of your Crew On Set transaction details. PayMongo may also send its own receipt to your billing email."
-                  : "Here is a copy of your Crew On Set account transaction details."}
-              </p>
+              <p className="mt-2 text-sm leading-relaxed text-navy/70">Here is a copy of your Crew On Set account transaction details.</p>
 
               <div className="mt-7 border-y border-navy/10 py-5">
                 <p className="mb-3 text-xs font-bold uppercase tracking-wider text-navy/45">Order details</p>
@@ -1038,9 +1052,7 @@ function ShopPage() {
                 <p><span className="text-navy/45">Date</span><br /><strong>{formatHistoryDate(selectedHistoryRecord.createdAt)}</strong></p>
                 <p><span className="text-navy/45">Status</span><br /><strong className={selectedHistoryRecord.status === "Completed" || selectedHistoryRecord.status === "Recorded" ? "text-emerald-700" : selectedHistoryRecord.status === "Failed" ? "text-coral" : "text-amber-700"}>{selectedHistoryRecord.status}</strong></p>
               </div>
-              <p className="mt-4 text-center text-xs leading-relaxed text-navy/50">
-                This is a Crew On Set transaction record. For a PayMongo payment, check your email for the provider’s receipt as well.
-              </p>
+              <p className="mt-4 text-center text-xs leading-relaxed text-navy/50">This is a Crew On Set transaction record.</p>
             </div>}
           </section>
         </div>

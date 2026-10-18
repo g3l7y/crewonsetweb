@@ -182,6 +182,28 @@ export async function updatePartnershipStatus(
     return { success: false, error: "The status change could not be completed." };
   }
 }
+
+export async function recordPartnershipMakeGood(
+  application: Pick<PartnershipApplication, "id">,
+  days: number,
+  reason: string,
+): Promise<{ success: boolean; data?: PartnershipApplication; error?: string; emailWarning?: string }> {
+  if (isMockMode()) return { success: true, data: application };
+  const endpoint = sharedEndpoints["cos.applications"];
+  if (!endpoint) return { success: false, error: "The partnership endpoint is unavailable." };
+  try {
+    const response = await fetch(endpoint, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ id: application.id, makeGoodDays: days, makeGoodReason: reason }),
+    });
+    const body = (await response.json().catch(() => ({}))) as { error?: string; data?: PartnershipApplication; emailWarning?: string };
+    if (!response.ok || !body.data) return { success: false, error: body.error || "The campaign extension could not be saved." };
+    return { success: true, data: body.data, ...(body.emailWarning ? { emailWarning: body.emailWarning } : {}) };
+  } catch {
+    return { success: false, error: "The campaign extension could not be completed." };
+  }
+}
 export async function deleteSharedRecord(key: string, id: string) {
   return deleteSharedRecords(key, [id]);
 }
@@ -647,6 +669,12 @@ export type PartnershipApplication = {
   budget: number;
   duration: number;
   durationUnit: "Days" | "Months";
+  packageId?: string;
+  packageName?: string;
+  packagePlacement?: string;
+  packageReporting?: string;
+  deliveryAdjustments?: Array<{ days: number; reason: string; recordedAt: string; revisedEndAt: string }>;
+  deliveryMakeGoodDays?: number;
   email: string;
   description?: string;
   submittedAt: string;
@@ -768,6 +796,16 @@ export type ActiveAd = {
   revenue: number;
   clicks: number;
   visits: number;
+  packageId?: string;
+  packageName?: string;
+  packagePlacement?: string;
+  packageReporting?: string;
+  packageDurationDays?: number;
+  brandPromotionUrl?: string;
+  deliveryAdjustments?: Array<{ days: number; reason: string; recordedAt: string; revisedEndAt: string }>;
+  deliveryMakeGoodDays?: number;
+  automatedRequests?: number;
+  testClicks?: number;
   /** Ad displays / impressions served for this placement. */
   impressions: number;
   placement: string;

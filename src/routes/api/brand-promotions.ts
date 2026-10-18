@@ -3,6 +3,7 @@ import { WEBSITE_DATA_KEYS, getWebsiteRecords } from '@/lib/playfab/websiteData'
 import type { PartnershipApplication } from '@/lib/playfab/types';
 import { getPromotionEndDate, processExpiredPromotions } from '@/lib/brand-promotion-lifecycle';
 import { getBrandPromotionMetrics, isBrandPromotionTrackingConfigured } from '@/lib/brand-promotion-tracking';
+import { BRAND_PROMOTION_DELIVERY_TERMS } from '@/lib/brand-promotion-packages';
 
 function getSecretKey(): string {
   const key = process.env['PLAYFAB_SECRET_KEY'];
@@ -46,6 +47,15 @@ export const Route = createFileRoute('/api/brand-promotions')({
               exactModel: application.exactModel,
               productType: application.productType,
               description: application.description,
+              packageId: application.packageId,
+              packageName: application.packageName,
+              packagePrice: application.budget,
+              packageDurationDays: application.duration,
+              packagePlacement: application.packagePlacement,
+              packageReporting: application.packageReporting,
+              deliveryAdjustments: application.deliveryAdjustments || [],
+              deliveryMakeGoodDays: application.deliveryMakeGoodDays || 0,
+              deliveryTerms: BRAND_PROMOTION_DELIVERY_TERMS,
               link: application.link,
               submittedLink: application.link,
               trackedLink: application.status === 'On-going' && isBrandPromotionTrackingConfigured()
@@ -61,6 +71,8 @@ export const Route = createFileRoute('/api/brand-promotions')({
               performance: {
                 clicks: trackedMetrics?.clicks ?? Number(source['adClicks'] || 0),
                 visits: trackedMetrics?.visits ?? Number(source['adVisits'] || 0),
+                automatedRequests: trackedMetrics?.automatedRequests ?? 0,
+                testClicks: trackedMetrics?.testClicks ?? 0,
                 impressions: Number(source['adImpressions'] || 0),
                 revenue: Number(source['adRevenue'] ?? application.budget ?? 0),
               },
