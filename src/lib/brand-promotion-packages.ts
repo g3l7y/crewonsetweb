@@ -14,29 +14,29 @@ export const BRAND_PROMOTION_PACKAGES: BrandPromotionPackage[] = [
     name: 'Pilot',
     durationDays: 7,
     pricePhp: 3_500,
-    placement: 'One in-game sponsored placement for 7 days.',
-    reporting: 'Aggregate tracked click-throughs and unique-browser estimates.',
+    placement: 'Your product promotion is valid for 7 days and will be displayed during this period.',
+    reporting: 'Aggregate promotion views, tracked click-throughs, and unique-browser estimates.',
   },
   {
     id: 'campaign-14-day',
     name: 'Campaign',
     durationDays: 14,
     pricePhp: 7_000,
-    placement: 'One in-game sponsored placement for 14 days.',
-    reporting: 'Aggregate tracked click-throughs and unique-browser estimates.',
+    placement: 'Your product promotion is valid for 14 days and will be displayed during this period.',
+    reporting: 'Aggregate promotion views, tracked click-throughs, and unique-browser estimates.',
   },
   {
     id: 'featured-30-day',
     name: 'Featured Campaign',
     durationDays: 30,
     pricePhp: 15_000,
-    placement: 'One in-game sponsored placement for 30 days.',
-    reporting: 'Aggregate tracked click-throughs and unique-browser estimates.',
+    placement: 'Your product promotion is valid for 30 days and will be displayed during this period.',
+    reporting: 'Aggregate promotion views, tracked click-throughs, and unique-browser estimates.',
   },
 ];
 
 export const BRAND_PROMOTION_DELIVERY_TERMS =
-  'The package guarantees the scheduled campaign duration, not a minimum number of impressions, clicks, website visits, leads, or sales. Click-through tracking records the outbound redirect; it cannot confirm the destination site loaded. If the agreed in-game placement is unavailable because of a verified Crew On Set service issue, the affected days are added to the campaign at no charge. If replacement days cannot be delivered, the brand may request a pro-rated refund for verified undelivered days, calculated as package price × undelivered days ÷ package duration and processed manually through the original payment provider. Missing or late brand materials, an invalid destination link, or the brand website being unavailable do not count as Crew On Set placement downtime.';
+  'Your package covers the selected display period, not a guaranteed number of clicks or visits. If a verified Crew On Set issue interrupts the promotion, we’ll add the missed days or offer a prorated refund if we can’t. Delays or problems with your materials, link, or website aren’t covered.';
 
 export function getBrandPromotionPackage(packageId: unknown): BrandPromotionPackage | undefined {
   return typeof packageId === 'string'

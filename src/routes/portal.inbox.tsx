@@ -36,6 +36,7 @@ import { friendRosterStore } from "@/lib/demo/friends";
 import {
   notificationsStore,
   playerMailStore,
+  recordMockBrandUpdateEvent,
   type PlayerMail,
   type PlayerNotification,
 } from "@/lib/demo/store";
@@ -537,7 +538,18 @@ function InboxPage() {
 
   function openNotification(notification: InboxNotification) {
     markNotificationRead(notification.id);
-    router.push(notificationHref(notification));
+    const href = notificationHref(notification);
+    const trackerMatch = href.match(/^\/api\/brand-updates\/([^/]+)\/click$/);
+    if (trackerMatch) {
+      if (mockMode) {
+        const destination = recordMockBrandUpdateEvent(decodeURIComponent(trackerMatch[1]!), "click");
+        if (destination) window.location.assign(destination);
+      } else {
+        window.location.assign(href);
+      }
+      return;
+    }
+    router.push(href);
   }
 
   function sendFriendMessage(event: FormEvent<HTMLFormElement>) {

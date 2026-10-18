@@ -11,12 +11,15 @@ export const Route = createFileRoute("/api/brand-updates/$id/impression")({
         const secret = process.env["PLAYFAB_SECRET_KEY"]?.trim();
         if (!secret) return Response.json({ error: "Tracking unavailable." }, { status: 503 });
         try {
-          const updates = await getWebsiteRecords<{ id: string }>(
+          const updates = await getWebsiteRecords<{ id: string; expiresAt?: string }>(
             "website_admin_brand_updates",
             secret,
           );
-          if (!updates.some((entry) => entry.id === params.id))
+          const update = updates.find((entry) => entry.id === params.id);
+          if (!update)
             return Response.json({ error: "Not found." }, { status: 404 });
+          if (update.expiresAt && Date.now() > new Date(update.expiresAt).getTime())
+            return Response.json({ success: true, expired: true });
           const cookie = request.headers.get("cookie") ?? "";
           const raw = cookie
             .split(";")

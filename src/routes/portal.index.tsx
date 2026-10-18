@@ -41,7 +41,7 @@ import {
   Settings2,
 } from "lucide-react";
 import { cosmeticCatalog, ownedItemsStore } from "@/lib/demo/portal-shop";
-import { brandUpdatesStore, gameBuildStore, notificationsStore } from "@/lib/demo/store";
+import { brandUpdatesStore, gameBuildStore, notificationsStore, recordMockBrandUpdateEvent } from "@/lib/demo/store";
 import { downloadMockInstaller, getInstallerDownloadUrl } from "@/lib/game-download";
 import {
   dedupeNotifications,
@@ -188,14 +188,16 @@ function PlayerDashboardPage() {
   const [demoNotifications] = notificationsStore.useStore();
   const currentBuild = gameBuilds[0];
   const playNowHref = getInstallerDownloadUrl(currentBuild?.downloadUrl);
-  const featuredBrandUpdate = brandUpdates[0];
+  const featuredBrandUpdate = brandUpdates.find(
+    (update) => !update.expiresAt || new Date(update.expiresAt).getTime() > Date.now(),
+  );
   useEffect(() => {
-    if (featuredBrandUpdate && !mockMode) {
-      void fetch(`/api/brand-updates/${encodeURIComponent(featuredBrandUpdate.id)}/impression`, {
-        method: "POST",
-        credentials: "include",
-      });
-    }
+    if (!featuredBrandUpdate) return;
+    if (mockMode) recordMockBrandUpdateEvent(featuredBrandUpdate.id, "impression");
+    else void fetch(`/api/brand-updates/${encodeURIComponent(featuredBrandUpdate.id)}/impression`, {
+      method: "POST",
+      credentials: "include",
+    });
   }, [featuredBrandUpdate?.id, mockMode]);
 
   const displayName = profileQuery.data?.username || profileQuery.data?.displayName || "CAMERA_PRO";
@@ -477,11 +479,13 @@ function PlayerDashboardPage() {
             </a>
             {featuredBrandUpdate && (
               <a
-                href={
-                  mockMode
-                    ? featuredBrandUpdate.url
-                    : `/api/brand-updates/${encodeURIComponent(featuredBrandUpdate.id)}/click`
-                }
+                href={`/api/brand-updates/${encodeURIComponent(featuredBrandUpdate.id)}/click`}
+                onClick={(event) => {
+                  if (!mockMode) return;
+                  event.preventDefault();
+                  const destination = recordMockBrandUpdateEvent(featuredBrandUpdate.id, "click");
+                  if (destination) window.location.assign(destination);
+                }}
                 className="mt-4 block max-w-xl rounded-lg border border-white/15 bg-black/25 p-4 text-sm text-white transition hover:border-yellow/60"
               >
                 <span className="block text-[10px] font-black uppercase tracking-widest text-yellow">
