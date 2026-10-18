@@ -42,6 +42,7 @@ import { achievementEmoji } from "@/lib/achievement-emoji";
 import { formatSocialUsername, getSocialProfileUrl, normalizeSocialProfile } from "@/lib/profile-socials";
 import { QUERY_KEYS, useAchievements, useCatalog, usePlayerInventory, usePlayerLoadout, usePlayerProfile, usePlayerProgression, useTransactions, useUpdateProfile } from "@/lib/playfab/hooks";
 import { Coins, Lock } from "lucide-react";
+import { hasRecordedGameProgress } from "@/lib/playfab/progression";
 
 type ProfileTransaction = {
   id: string;
@@ -230,9 +231,10 @@ function CrewProfilePage() {
   const profileDisplayName = mockMode
     ? account.username
     : profileQuery.data?.username || profileQuery.data?.displayName || account.username;
-  const profileLevel = mockMode ? 27 : progressionQuery.data?.level ?? 1;
-  const profileCurrentXp = mockMode ? 6820 : progressionQuery.data?.currentXp ?? 0;
-  const profileXpToNextLevel = mockMode ? 10000 : progressionQuery.data?.xpToNextLevel ?? 0;
+  const profileHasGameProgress = hasRecordedGameProgress(progressionQuery.data);
+  const profileLevel = progressionQuery.data?.level;
+  const profileCurrentXp = progressionQuery.data?.currentXp ?? 0;
+  const profileXpToNextLevel = progressionQuery.data?.xpToNextLevel ?? 0;
   const profileXpPercent = profileXpToNextLevel > 0
     ? Math.min(100, Math.max(0, (profileCurrentXp / profileXpToNextLevel) * 100))
     : 0;
@@ -520,14 +522,16 @@ function CrewProfilePage() {
                     {profileDisplayName}
                   </h2>
 
-                  <span className="rounded-full border border-yellow/20 bg-yellow/10 px-3 py-1.5 text-xs font-black uppercase tracking-[0.12em] text-yellow">
-                    Level {profileLevel}
-                  </span>
+                  {profileHasGameProgress && profileLevel !== undefined && (
+                    <span className="rounded-full border border-yellow/20 bg-yellow/10 px-3 py-1.5 text-xs font-black uppercase tracking-[0.12em] text-yellow">
+                      Level {profileLevel}
+                    </span>
+                  )}
                 </div>
 
                 {/* XP */}
 
-                <div className="mt-5 flex max-w-xl items-center gap-3">
+                {profileHasGameProgress && profileLevel !== undefined && <div className="mt-5 flex max-w-xl items-center gap-3">
                   <strong className="whitespace-nowrap text-xs font-black text-white">
                     LEVEL {profileLevel}
                   </strong>
@@ -539,7 +543,7 @@ function CrewProfilePage() {
                   <span className="whitespace-nowrap text-xs text-white/40">
                     {profileCurrentXp.toLocaleString("en-US")} / {profileXpToNextLevel.toLocaleString("en-US")} XP
                   </span>
-                </div>
+                </div>}
               </div>
             </div>
 

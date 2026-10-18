@@ -16,7 +16,12 @@ function numberValue(value: unknown): number {
   return Number.isFinite(number) && number >= 0 ? number : 0;
 }
 
-function toAdEntry(application: PartnershipApplication, request: Request, metrics?: { clicks: number; visits: number }): AdEntry {
+function toAdEntry(application: PartnershipApplication, request: Request, metrics?: {
+  clicks: number;
+  visits: number;
+  automatedRequests: number;
+  testClicks: number;
+}): AdEntry {
   const source = application as PartnershipApplication & Record<string, unknown>;
   const isApproved = application.status === 'Approved';
   const startDate = isApproved ? undefined : application.promotionStartedAt || application.paymentPaidAt || application.submittedAt;
@@ -30,9 +35,21 @@ function toAdEntry(application: PartnershipApplication, request: Request, metric
     exactModel: application.exactModel,
     productType: application.productType,
     contract: application.description || 'Crew On Set brand promotion placement.',
+    packageId: application.packageId,
+    packageName: application.packageName,
+    packagePlacement: application.packagePlacement,
+    packageReporting: application.packageReporting,
+    packageDurationDays: application.duration,
+    brandPromotionUrl: application.brandPromotionToken
+      ? baseUrl + '/brand-promotions/' + encodeURIComponent(application.brandPromotionToken)
+      : undefined,
+    deliveryAdjustments: application.deliveryAdjustments,
+    deliveryMakeGoodDays: application.deliveryMakeGoodDays,
     impressions: numberValue(source['adImpressions']),
     clicks: metrics?.clicks ?? numberValue(source['adClicks']),
     visits: metrics?.visits ?? numberValue(source['adVisits']),
+    automatedRequests: metrics?.automatedRequests ?? 0,
+    testClicks: metrics?.testClicks ?? 0,
     revenue: numberValue(source['adRevenue'] ?? application.budget),
     ...(startDate ? { startDate } : {}),
     ...(expiresAt ? { endDate: expiresAt, expiresAt } : {}),

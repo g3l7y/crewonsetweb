@@ -21,6 +21,7 @@ import { getProfileArtwork } from "@/lib/demo/profile-art";
 import type { NotificationBellPreferences } from "@/lib/demo/inbox";
 import { isMockMode } from "@/lib/playfab/config";
 import { usePlayerProfile, usePlayerProgression } from "@/lib/playfab/hooks";
+import { hasRecordedGameProgress } from "@/lib/playfab/progression";
 
 const navigation = [
   { label: "Dashboard", href: "/portal", icon: LayoutDashboard },
@@ -60,7 +61,7 @@ export function PlayerShell({ children }: { children: React.ReactNode }) {
   const { data: profile } = usePlayerProfile();
   const { data: progression } = usePlayerProgression();
   const accountName = profile?.username || profile?.displayName || "PLAYER";
-  const accountLevel = progression?.level ?? 1;
+  const accountLevel = hasRecordedGameProgress(progression) ? progression?.level : undefined;
   const accountAvatar = profile?.avatarUrl || getProfileArtwork(accountName);
   const [mobileOpen, setMobileOpen] = useState(false);
   const [confirmingSignOut, setConfirmingSignOut] = useState(false);
@@ -191,7 +192,7 @@ export function PlayerShell({ children }: { children: React.ReactNode }) {
                 </span>
                 <span className="text-left leading-tight">
                   <span className="player-account-name block text-xs font-bold text-[#fffdf7]">{accountName}</span>
-                  <span className="player-account-level block text-[10px] text-[#b8c4d6]">Level {accountLevel}</span>
+                  {accountLevel !== undefined && <span className="player-account-level block text-[10px] text-[#b8c4d6]">Level {accountLevel}</span>}
                 </span>
                 <ChevronDown className="size-3.5 text-[#b8c4d6]" />
               </button>
@@ -281,7 +282,7 @@ export function PlayerShell({ children }: { children: React.ReactNode }) {
             </span>
             <span>
               <span className="player-account-name block text-sm font-bold">{accountName}</span>
-              <span className="player-account-level block text-xs text-white/40">Level {accountLevel}</span>
+              {accountLevel !== undefined && <span className="player-account-level block text-xs text-white/40">Level {accountLevel}</span>}
             </span>
           </div>
 
@@ -337,11 +338,6 @@ export function PlayerShell({ children }: { children: React.ReactNode }) {
           <p className="text-center text-xs">
             © {new Date().getFullYear()} Crew On Set! — Player Portal. {mockMode ? "Demo progress is saved in this browser." : "Your game progress is saved with your account."}
           </p>
-          <nav className="flex gap-4 text-xs font-bold uppercase tracking-wide">
-            <Link href="/portal/settings?section=Support" className="hover:text-white">
-              Contact
-            </Link>
-          </nav>
         </div>
       </footer>
 
