@@ -481,6 +481,22 @@ body { min-width: 320px; }
 .marketing-theme .contact-page form :where(h2, p, span) { color: var(--cos-ink) !important; }
 .marketing-theme .contact-page .form-input { background: var(--cos-card) !important; }
 
+.marketing-theme .contact-page form .promotion-package-card {
+  background-color: #d7d5d5 !important;
+  border-color: rgba(10, 14, 25, .24) !important;
+  color: #101216 !important;
+}
+.marketing-theme .contact-page form .peer:checked + .promotion-package-card {
+  background-color: #fff0e6 !important;
+  border-color: #ff6248 !important;
+}
+.marketing-theme .contact-page form .promotion-package-card > span { color: #101216 !important; }
+.marketing-theme .contact-page form .promotion-package-card > .text-coral { color: #d84b37 !important; }
+.marketing-theme .contact-page form .promotion-package-card > .text-navy\/60,
+.marketing-theme .contact-page form .promotion-package-card > .text-navy\/55 { color: #484744 !important; }
+.marketing-theme .contact-page form details > summary { color: #101216 !important; }
+.marketing-theme .contact-page form details > p { color: #3d3b38 !important; }
+
 .marketing-theme .contact-page button[type="submit"] {
   background: var(--cos-gold) !important;
   color: var(--cos-ink) !important;
