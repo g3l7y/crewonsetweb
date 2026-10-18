@@ -1,3 +1,5 @@
+import { cosmeticCatalog } from "@/lib/demo/portal-shop";
+
 export type NotificationLike = {
   id?: string | undefined;
   title?: string | undefined;
@@ -45,6 +47,18 @@ export function notificationHref(notification: NotificationLike) {
   const title = notification.title?.toLowerCase() ?? "";
   if (/c[- ]coin top[- ]?up|top[- ]?up confirmed/.test(title)) {
     return "/portal/shop?view=transactions";
+  }
+  const isShopPurchase =
+    ["shop", "shop_purchase", "purchase"].includes(notification.kind?.toLowerCase() ?? "") ||
+    /shop purchase|purchased /.test(title);
+  if (isShopPurchase) {
+    if (notification.href?.startsWith("/portal/shop?view=owned&category=")) return notification.href;
+    const content = `${notification.title ?? ""} ${notification.body ?? ""}`.toLowerCase();
+    const purchasedItem = cosmeticCatalog.find((item) => content.includes(item.name.toLowerCase()));
+    if (purchasedItem) {
+      return "/portal/shop?view=owned&category=" + encodeURIComponent(purchasedItem.category);
+    }
+    return "/portal/shop?view=owned";
   }
   if (notification.href) return notification.href;
   if (notification.channel === "mail" || notification.kind === "report") {

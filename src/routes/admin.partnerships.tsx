@@ -17,6 +17,7 @@ import { useEffect, useMemo, useState } from "react";
 import Link from "@/components/next-compat/link";
 import { normalizeExternalHttpUrl } from "@/lib/external-url";
 import { PartnershipStatusDropdown } from "@/components/admin/partnership-status-dropdown";
+import { BRAND_PROMOTION_DELIVERY_TERMS } from "@/lib/brand-promotion-packages";
 import { isMockMode } from "@/lib/playfab/config";
 import { topUpsStore } from "@/lib/admin-demo-data";
 import {
@@ -100,6 +101,14 @@ function buildMockAd(application: PartnershipApplication, status: ActiveAd['stat
     exactModel: application.exactModel,
     productType: application.productType,
     contract: application.description || 'Crew On Set brand promotion placement.',
+    packageId: application.packageId,
+    packageName: application.packageName,
+    packagePlacement: application.packagePlacement,
+    packageReporting: application.packageReporting,
+    packageDurationDays: application.duration,
+    brandPromotionUrl: application.brandPromotionToken ? '/brand-promotions/' + encodeURIComponent(application.brandPromotionToken) : undefined,
+    deliveryAdjustments: application.deliveryAdjustments,
+    deliveryMakeGoodDays: application.deliveryMakeGoodDays,
     ...(isLive ? {
       startDate: startDate || new Date().toISOString(),
       expiresAt: application.promotionEndsAt || buildMockPromotionEnd(startDate || new Date().toISOString(), application.duration, application.durationUnit),
@@ -144,7 +153,7 @@ function PartnershipsPage() {
         }
       };
       void refresh();
-      const interval = window.setInterval(() => void refresh(), 30_000);
+      const interval = window.setInterval(() => void refresh(), 5_000);
       return () => {
         active = false;
         window.clearInterval(interval);
@@ -280,6 +289,13 @@ function PartnershipsPage() {
       return;
     }
 
+    if (!isMockMode()) {
+      const optimisticApplication = { ...app, status };
+      setApplications((current) => current.map((item) => item.id === id ? optimisticApplication : item));
+      setSelected((current) => current?.id === id ? optimisticApplication : current);
+      showStatusMessage('Saving status…');
+    }
+
     let savedApplication: PartnershipApplication;
     let emailWarning: string | undefined;
     if (isMockMode()) {
@@ -316,6 +332,8 @@ function PartnershipsPage() {
     } else {
       const result = await updatePartnershipStatus(app, status, completionReason);
       if (!result.success || !result.data) {
+        setApplications((current) => current.map((item) => item.id === id ? app : item));
+        setSelected((current) => current?.id === id ? app : current);
         showStatusMessage(result.error || 'The status change could not be saved.');
         return;
       }
@@ -792,6 +810,12 @@ function PartnershipsPage() {
                   </dd>
                 </div>
                 <div>
+                  <dt className="text-[9px] font-black uppercase tracking-wide !text-white/30">Selected Package</dt>
+                  <dd className="mt-1.5 text-sm font-bold !text-white/80">{selected.packageName || "Legacy custom proposal"}</dd>
+                  {selected.packagePlacement && <p className="mt-1 text-xs leading-relaxed !text-white/50">{selected.packagePlacement}</p>}
+                  {selected.packageReporting && <p className="mt-1 text-xs leading-relaxed !text-white/50">{selected.packageReporting}</p>}
+                </div>
+                <div>
                   <dt className="flex items-center gap-2 text-[9px] font-black uppercase tracking-wide !text-white/30">
                     <CalendarClock className="size-3.5" /> Advertisement Duration
                   </dt>
@@ -808,6 +832,25 @@ function PartnershipsPage() {
                   </dd>
                 </div>
               </dl>
+              {selected.packageName && (
+                <details className="mt-4 rounded-md border border-white/[.08] bg-white/[.03] p-3 text-xs leading-relaxed !text-white/55">
+                  <summary className="cursor-pointer font-bold uppercase !text-white/75">Package delivery and make-good terms</summary>
+                  <p className="mt-2">{BRAND_PROMOTION_DELIVERY_TERMS}</p>
+                </details>
+              )}
+              {(selected.deliveryAdjustments?.length ?? 0) > 0 && (
+                <div className="mt-4 rounded-md border border-[#2d9d8f]/25 bg-[#2d9d8f]/[.06] p-3">
+                  <p className="text-[9px] font-black uppercase tracking-wide !text-[#4bc4b4]">Make-good history · {selected.deliveryMakeGoodDays || 0} days added</p>
+                  {selected.deliveryAdjustments?.map((adjustment, index) => (
+                    <p key={adjustment.recordedAt + index} className="mt-2 text-xs leading-relaxed !text-white/60">{adjustment.days} day{adjustment.days === 1 ? "" : "s"} · {adjustment.reason} · Revised end {formatDate(adjustment.revisedEndAt)}</p>
+                  ))}
+                </div>
+              )}
+              {selected.brandPromotionToken && ['On-going', 'Done'].includes(selected.status) && (
+                <a href={'/brand-promotions/' + encodeURIComponent(selected.brandPromotionToken)} target="_blank" rel="noreferrer" className="mt-4 inline-flex items-center gap-2 text-xs font-bold !text-[#f3c747] hover:underline">
+                  <Link2 className="size-3.5" /> Open brand promotion report
+                </a>
+              )}
               {selected.paymentStatus && (
                 <div className="mt-5 rounded-md border border-white/[.08] bg-white/[.03] p-4">
                   <div className="flex flex-wrap items-center justify-between gap-3">

@@ -1,8 +1,9 @@
 import { createFileRoute } from '@tanstack/react-router';
 import { processExpiredPromotions, getPromotionEndDate } from '@/lib/brand-promotion-lifecycle';
-import { isBrandPromotionTrackingConfigured, recordBrandPromotionClick } from '@/lib/brand-promotion-tracking';
+import { isBrandPromotionTrackingConfigured, isLikelyAutomatedClick, recordBrandPromotionClick } from '@/lib/brand-promotion-tracking';
 import { normalizeExternalHttpUrl } from '@/lib/external-url';
 import { isMockMode } from '@/lib/playfab/config';
+import { validateSessionFromRequest } from '@/lib/playfab/session';
 import { WEBSITE_DATA_KEYS, getWebsiteRecords } from '@/lib/playfab/websiteData';
 import type { PartnershipApplication } from '@/lib/playfab/types';
 
@@ -63,7 +64,15 @@ export const Route = createFileRoute('/api/brand-promotions/click')({
           // Persist the event before redirecting. If storage is unavailable, return
           // an explicit error rather than silently losing a click while claiming it
           // was tracked.
-          await recordBrandPromotionClick(application.id, visitorId);
+          const testModeRequested = url.searchParams.get('test') === '1';
+          const testModeAuthorized = testModeRequested
+            && Boolean(await validateSessionFromRequest(request, { requireAdmin: true }));
+          const trafficType = testModeAuthorized
+            ? 'test'
+            : isLikelyAutomatedClick(request.headers.get('user-agent'))
+              ? 'automated'
+              : 'valid';
+          await recordBrandPromotionClick(application.id, visitorId, trafficType);
           const headers = new Headers({ 'Cache-Control': 'no-store, private', 'Referrer-Policy': 'no-referrer' });
           if (!hasValidVisitor) {
             headers.append('Set-Cookie', cookieName + '=' + encodeURIComponent(visitorId) + '; Path=/; Max-Age=31536000; HttpOnly; Secure; SameSite=Lax');

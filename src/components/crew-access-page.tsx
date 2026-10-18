@@ -888,6 +888,10 @@ function SignupPolicyDialog({ kind, onClose }: { kind: PolicyKind; onClose: () =
             body: "We use this information to create and secure accounts, provide game and community features, restore access, process and reconcile purchases, respond to support requests, review reports, prevent abuse, and improve the service.",
           },
           {
+            title: "Promotion link reporting",
+            body: "When you follow a tracked brand promotion link from the game, we record the click time and use a random first-party browser cookie to estimate unique browsers. We do not attach your player username or PlayFab ID to these reports. Admins and participating brands see aggregate click-through and browser counts, not player identities. These counts do not confirm that the brand's website finished loading.",
+          },
+          {
             title: "How your information is handled",
             body: "Trusted service providers may process information needed to support account access, game features, hosting, payments, and service messages. Each receives only the information needed to provide its service.",
           },

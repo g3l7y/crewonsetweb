@@ -132,3 +132,46 @@ export async function sendPartnershipStatusEmail(options: PartnershipEmailOption
     throw new Error('The partnership email could not be delivered.');
   }
 }
+
+export async function sendPartnershipDeliveryAdjustmentEmail(
+  application: PartnershipApplication,
+  adjustment: { days: number; reason: string; revisedEndAt: string },
+): Promise<void> {
+  const smtpHost = process.env['SMTP_HOST']?.trim() || 'smtp.gmail.com';
+  const smtpPort = Number(process.env['SMTP_PORT']?.trim() || '587');
+  const smtpUser = process.env['SMTP_USERNAME']?.trim() || process.env['SMTP_USER']?.trim();
+  const smtpPassword = (process.env['SMTP_APP_PASSWORD']?.trim() || process.env['SMTP_PASSWORD']?.trim())?.replace(/\s+/g, '');
+  const from = process.env['PARTNERSHIP_EMAIL_FROM']?.trim() || smtpUser;
+  const recipient = application.email?.trim();
+  if (!smtpUser || !smtpPassword || !from || !Number.isFinite(smtpPort) || smtpPort <= 0) {
+    throw new Error('Transactional email is not configured.');
+  }
+  if (!recipient) throw new Error('The partnership application does not contain a contact email.');
+
+  const brand = escapeHtml(application.brand || 'your brand');
+  const safeReason = escapeHtml(adjustment.reason);
+  const endDate = new Date(adjustment.revisedEndAt).toLocaleString('en-PH', { dateStyle: 'medium', timeStyle: 'short' });
+  const subject = 'Campaign extension confirmed for ' + (application.brand || 'your brand');
+  const body = 'We recorded ' + adjustment.days + ' make-good day' + (adjustment.days === 1 ? '' : 's') + ' for your ' + (application.brand || 'brand') + ' campaign because of a verified Crew On Set placement interruption. The campaign end date is now ' + endDate + '. Reason: ' + adjustment.reason;
+  const html = '<!doctype html><html><body style="font-family:Arial,sans-serif;color:#0a0e19;line-height:1.6"><h1>Campaign extension confirmed</h1><p>We added <strong>' + adjustment.days + ' make-good day' + (adjustment.days === 1 ? '' : 's') + '</strong> to the ' + brand + ' campaign after a verified Crew On Set placement interruption.</p><p><strong>Reason:</strong> ' + safeReason + '</p><p><strong>Revised end date:</strong> ' + escapeHtml(endDate) + '</p><p>Your live promotion page will show the updated campaign dates and adjustment history.</p><p style="color:#667085;font-size:12px">Crew On Set Partnerships<br>crewonsetgame@gmail.com</p></body></html>';
+  const transporter = nodemailer.createTransport({
+    host: smtpHost,
+    port: smtpPort,
+    secure: smtpPort === 465,
+    requireTLS: smtpPort === 587,
+    auth: { user: smtpUser, pass: smtpPassword },
+  });
+  try {
+    await transporter.sendMail({
+      from: 'Crew On Set Partnerships <' + from + '>',
+      to: recipient,
+      replyTo: smtpUser,
+      subject,
+      html,
+      text: body,
+    });
+  } catch (error) {
+    console.error('[Email] Partnership make-good notice delivery failed:', error);
+    throw new Error('The partnership make-good email could not be delivered.');
+  }
+}

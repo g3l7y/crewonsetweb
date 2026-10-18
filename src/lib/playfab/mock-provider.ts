@@ -35,13 +35,8 @@ import type {
 import { cosmeticCatalog, freeBodyItems } from '@/lib/demo/portal-shop';
 import { DEFAULT_PROFILE_PICTURE_URL } from '@/lib/profile-avatar';
 
-// Helper for simulated delay
-function delay(ms: number): Promise<void> {
-  return new Promise((resolve) => setTimeout(resolve, ms));
-}
-
 function randomDelay(): Promise<void> {
-  return delay(50 + Math.random() * 100);
+  return Promise.resolve();
 }
 
 function uid(prefix: string): string {

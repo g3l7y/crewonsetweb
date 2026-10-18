@@ -71,11 +71,11 @@ const BUG_REPORT_PLAYER_ID = "COS-2847-CP";
 const DEMO_PASSWORD = "player";
 
 const sections = [
-  { name: "Account", icon: UserCircle },
-  { name: "Display", icon: Monitor },
-  { name: "Privacy", icon: Shield },
-  { name: "Notifications", icon: Bell },
-  { name: "Support", icon: Bug },
+  { name: "Account", icon: UserCircle, disabled: false },
+  { name: "Display", icon: Monitor, disabled: false },
+  { name: "Privacy", icon: Shield, disabled: false },
+  { name: "Notifications", icon: Bell, disabled: false },
+  { name: "Support", icon: Bug, disabled: true },
 ];
 
 type AccountData = {
@@ -124,7 +124,7 @@ function SettingsPage() {
   useEffect(() => {
     const requestedSection = new URLSearchParams(window.location.search).get("section");
 
-    if (requestedSection && sections.some((item) => item.name === requestedSection)) {
+    if (requestedSection && sections.some((item) => item.name === requestedSection && !item.disabled)) {
       setSection(requestedSection);
     }
   }, []);
@@ -906,8 +906,11 @@ function SettingsPage() {
               <button
                 type="button"
                 key={item.name}
+                disabled={item.disabled}
                 onClick={() => setSection(item.name)}
-                className={`settings-nav-item flex w-full items-center gap-3 rounded-md px-4 py-3 text-left text-sm font-bold transition ${
+                aria-disabled={item.disabled || undefined}
+                title={item.disabled ? "Support reports are currently unavailable." : undefined}
+                className={`settings-nav-item flex w-full items-center gap-3 rounded-md px-4 py-3 text-left text-sm font-bold transition ${item.disabled ? "cursor-not-allowed opacity-40" : ""} ${
                   section === item.name
                     ? "settings-nav-item-active bg-[#0d121c] text-white shadow-sm"
                     : "text-white/40 hover:bg-white/[0.04] hover:text-white/75"

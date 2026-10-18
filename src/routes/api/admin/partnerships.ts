@@ -16,6 +16,8 @@ import { createPartnershipPaymentId, ensureApprovedPartnershipEmail, findPartner
 import { sendPartnershipStatusEmail } from '@/lib/partnership-email';
 import { getPromotionEndDate, processExpiredPromotions, sendPromotionCompletionEmail } from '@/lib/brand-promotion-lifecycle';
 import { ensureBrandPromotionExpiryWorkflow } from '@/lib/brand-promotion-scheduler';
+import { getBrandPromotionPackage } from '@/lib/brand-promotion-packages';
+import { sendPartnershipDeliveryAdjustmentEmail } from '@/lib/partnership-email';
 import { isMockMode } from '@/lib/playfab/config';
 
 function getSecretKey(): string {
@@ -220,9 +222,7 @@ export const Route = createFileRoute('/api/admin/partnerships')({
             productType,
             exactModel,
             link,
-            budget,
-            duration,
-            durationUnit,
+            packageId,
             email,
             description,
             attachmentName,
@@ -232,6 +232,10 @@ export const Route = createFileRoute('/api/admin/partnerships')({
 
           if (!brand || !productType || !exactModel || !email) {
             return Response.json({ error: 'Brand, product type, exact model, and email are required.' }, { status: 400 });
+          }
+          const selectedPackage = getBrandPromotionPackage(packageId);
+          if (!selectedPackage) {
+            return Response.json({ error: 'Choose one of the available promotion packages.' }, { status: 400 });
           }
 
           const id = uid('APP');
@@ -253,9 +257,13 @@ export const Route = createFileRoute('/api/admin/partnerships')({
             link: link
               ? (/^https?:\/\//i.test(String(link).trim()) ? String(link).trim() : 'https://' + String(link).trim())
               : undefined,
-            budget: budget ? Number(budget) : undefined,
-            duration: duration ? Number(duration) : undefined,
-            durationUnit: durationUnit ? String(durationUnit) : undefined,
+            budget: selectedPackage.pricePhp,
+            duration: selectedPackage.durationDays,
+            durationUnit: 'Days',
+            packageId: selectedPackage.id,
+            packageName: selectedPackage.name,
+            packagePlacement: selectedPackage.placement,
+            packageReporting: selectedPackage.reporting,
             email: String(email).trim().toLowerCase(),
             description: description ? String(description) : undefined,
             fileName: attachment?.name || fileName || undefined,
@@ -282,13 +290,68 @@ export const Route = createFileRoute('/api/admin/partnerships')({
           return unauthorizedSessionResponse();
         }
         try {
-          const body = (await request.json()) as { id?: string; status?: unknown; adminNotes?: string; completionReason?: string };
+          const body = (await request.json()) as { id?: string; status?: unknown; adminNotes?: string; completionReason?: string; makeGoodDays?: unknown; makeGoodReason?: string };
           if (!body.id) return Response.json({ error: 'Application ID is required.' }, { status: 400 });
 
           const secretKey = getSecretKey();
           const applications = await getWebsiteRecords<PartnershipApplication>(WEBSITE_DATA_KEYS.partnerships, secretKey);
           const application = applications.find((item) => item.id === body.id);
           if (!application) return Response.json({ error: 'Application not found.' }, { status: 404 });
+
+          if (body.makeGoodDays !== undefined) {
+            const days = Number(body.makeGoodDays);
+            const reason = typeof body.makeGoodReason === 'string' ? body.makeGoodReason.trim().slice(0, 600) : '';
+            if (application.status !== 'On-going') {
+              return Response.json({ error: 'Make-good days can only be added to an active promotion.' }, { status: 409 });
+            }
+            if (!Number.isInteger(days) || days < 1 || days > 365 || !reason) {
+              return Response.json({ error: 'Enter 1 to 365 make-good days and a reason for the adjustment.' }, { status: 400 });
+            }
+            const previousEndAt = getPromotionEndDate(application);
+            const revisedEnd = new Date(previousEndAt);
+            if (!Number.isFinite(revisedEnd.getTime())) {
+              return Response.json({ error: 'The current campaign end date is invalid.' }, { status: 409 });
+            }
+            revisedEnd.setUTCDate(revisedEnd.getUTCDate() + days);
+            const adjustment = { days, reason, recordedAt: new Date().toISOString(), revisedEndAt: revisedEnd.toISOString() };
+            const nextApplication: PartnershipApplication = {
+              ...application,
+              promotionEndsAt: revisedEnd.toISOString(),
+              deliveryMakeGoodDays: (application.deliveryMakeGoodDays || 0) + days,
+              deliveryAdjustments: [...(application.deliveryAdjustments || []), adjustment],
+            };
+            const saved = await updateWebsiteRecord<PartnershipApplication>(
+              WEBSITE_DATA_KEYS.partnerships,
+              application.id,
+              (current) => current.status === 'On-going' && getPromotionEndDate(current) === previousEndAt
+                ? nextApplication
+                : current,
+              secretKey,
+            );
+            if (!saved) return Response.json({ error: 'The campaign extension could not be saved.' }, { status: 500 });
+            const refreshed = (await getWebsiteRecords<PartnershipApplication>(WEBSITE_DATA_KEYS.partnerships, secretKey))
+              .find((item) => item.id === application.id);
+            if (!refreshed || refreshed.promotionEndsAt !== revisedEnd.toISOString()) {
+              return Response.json({ error: 'The campaign extension could not be confirmed. Refresh and try again.' }, { status: 409 });
+            }
+            let emailWarning: string | undefined;
+            try {
+              await sendPartnershipDeliveryAdjustmentEmail(refreshed, adjustment);
+            } catch (error) {
+              console.error('[API] Make-good saved but brand email failed:', application.id, error);
+              emailWarning = 'The extra campaign days were saved, but the brand email could not be delivered.';
+            }
+            let responseApplication = refreshed;
+            if (!isMockMode()) {
+              try {
+                responseApplication = await ensureBrandPromotionExpiryWorkflow(refreshed, secretKey);
+              } catch (error) {
+                console.error('[API] Make-good saved but expiry schedule could not be refreshed:', application.id, error);
+                emailWarning = [emailWarning, 'The campaign end date changed, but its automatic expiry schedule could not be refreshed.'].filter(Boolean).join(' ');
+              }
+            }
+            return Response.json({ success: true, data: responseApplication, emailWarning });
+          }
 
           if (body.status === undefined) {
             const saved = await updateWebsiteRecord<PartnershipApplication>(
@@ -383,13 +446,6 @@ export const Route = createFileRoute('/api/admin/partnerships')({
             }
             if (payment.checkoutUrl && payment.status !== 'failed') {
               nextApplication.paymentCheckoutUrl = payment.checkoutUrl;
-              const emailError = await trySendPartnershipStatusEmail({
-                application,
-                status: 'Pending',
-                paymentUrl: payment.checkoutUrl,
-              });
-              if (emailError) emailWarning = 'The status was saved, but the payment email could not be delivered: ' + emailError;
-              else nextApplication.paymentEmailSentAt = new Date().toISOString();
             } else {
               emailWarning = paymongoSecret
                 ? 'The status was saved as Pending, but a payment checkout link could not be created. Select Pending again to retry.'
@@ -399,9 +455,6 @@ export const Route = createFileRoute('/api/admin/partnerships')({
             if (application.paymentStatus !== 'Paid') {
               return Response.json({ error: 'The application cannot be approved until the brand payment is completed.' }, { status: 409 });
             }
-            const emailError = await trySendPartnershipStatusEmail({ application, status: 'Approved' });
-            if (emailError) emailWarning = 'The status was saved, but the approval email could not be delivered: ' + emailError;
-            else nextApplication.approvalEmailSentAt = new Date().toISOString();
           } else if (nextStatus === 'On-going') {
             if (application.paymentStatus !== 'Paid') {
               return Response.json({ error: 'The application cannot go on-going until the brand payment is completed.' }, { status: 409 });
@@ -415,15 +468,6 @@ export const Route = createFileRoute('/api/admin/partnerships')({
               application.duration,
               application.durationUnit,
             );
-            const emailError = await trySendPartnershipStatusEmail({
-              application: nextApplication,
-              status: nextStatus,
-              promotionUrl: getPromotionUrl(request, brandPromotionToken),
-            });
-            if (emailError) emailWarning = 'The status was saved, but the promotion email could not be delivered: ' + emailError;
-          } else if (!completesPromotion && !(nextStatus === 'Pending' && application.paymentStatus === 'Paid')) {
-            const emailError = await trySendPartnershipStatusEmail({ application, status: nextStatus });
-            if (emailError) emailWarning = 'The status was saved, but the partnership email could not be delivered: ' + emailError;
           }
 
           const saved = await updateWebsiteRecord<PartnershipApplication>(
@@ -434,6 +478,48 @@ export const Route = createFileRoute('/api/admin/partnerships')({
           );
           if (!saved) return Response.json({ error: 'Failed to update partnership application.' }, { status: 500 });
           let responseApplication = nextApplication;
+          // Persist the status before attempting email delivery so slow mail providers never
+          // leave the admin UI waiting while the application still appears unchanged.
+          try {
+            let emailError: string | undefined;
+            if (nextStatus === 'Pending' && application.paymentStatus !== 'Paid') {
+              if (nextApplication.paymentCheckoutUrl) {
+                emailError = await trySendPartnershipStatusEmail({
+                  application,
+                  status: 'Pending',
+                  paymentUrl: nextApplication.paymentCheckoutUrl,
+                });
+                if (!emailError) {
+                  const sentAt = new Date().toISOString();
+                  nextApplication.paymentEmailSentAt = sentAt;
+                  await updateWebsiteRecord<PartnershipApplication>(WEBSITE_DATA_KEYS.partnerships, application.id,
+                    (current) => ({ ...current, paymentEmailSentAt: sentAt }), secretKey);
+                }
+              }
+            } else if (application.status === 'Pending' && nextStatus === 'Approved') {
+              emailError = await trySendPartnershipStatusEmail({ application, status: 'Approved' });
+              if (!emailError) {
+                const sentAt = new Date().toISOString();
+                nextApplication.approvalEmailSentAt = sentAt;
+                await updateWebsiteRecord<PartnershipApplication>(WEBSITE_DATA_KEYS.partnerships, application.id,
+                  (current) => ({ ...current, approvalEmailSentAt: sentAt }), secretKey);
+              }
+            } else if (nextStatus === 'On-going') {
+              emailError = await trySendPartnershipStatusEmail({
+                application: nextApplication,
+                status: nextStatus,
+                promotionUrl: nextApplication.brandPromotionToken
+                  ? getPromotionUrl(request, nextApplication.brandPromotionToken)
+                  : undefined,
+              });
+            } else if (!completesPromotion && !(nextStatus === 'Pending' && application.paymentStatus === 'Paid')) {
+              emailError = await trySendPartnershipStatusEmail({ application, status: nextStatus });
+            }
+            if (emailError) emailWarning = 'The status was saved, but the partnership email could not be delivered: ' + emailError;
+          } catch (error) {
+            console.error('[API] Partnership status email failed after status save:', application.id, error);
+            emailWarning = 'The status was saved, but its email could not be delivered.';
+          }
           if (nextStatus === 'On-going' && !isMockMode()) {
             try {
               responseApplication = await ensureBrandPromotionExpiryWorkflow(nextApplication, secretKey);
