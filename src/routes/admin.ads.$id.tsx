@@ -12,7 +12,6 @@ export const Route = createFileRoute("/admin/ads/$id")({
 
 import { useEffect, useRef, useState, type FormEvent } from "react";
 import { isMockMode } from "@/lib/playfab/config";
-import { BRAND_PROMOTION_DELIVERY_TERMS } from "@/lib/brand-promotion-packages";
 import { useAdminAds } from "@/lib/playfab/hooks";
 import type { AdEntry } from "@/lib/playfab/types";
 import Link from "@/components/next-compat/link";
@@ -312,7 +311,7 @@ function AdDetailPage() {
               {ad.packageReporting && <p className="mt-1 text-xs leading-relaxed !text-white/55">{ad.packageReporting}</p>}
               <details className="mt-3 border-t border-white/10 pt-3 text-xs leading-relaxed !text-white/55">
                 <summary className="cursor-pointer font-bold !text-white/75">Delivery and under-delivery policy</summary>
-                <p className="mt-2">{BRAND_PROMOTION_DELIVERY_TERMS}</p>
+                <p className="mt-2">The package covers the selected display period. Clicks and visits are not guaranteed. For verified Crew On Set downtime, add replacement days. If that is not possible, arrange a prorated refund for the undelivered days. Delays or issues with brand materials, links, or the brand website are not covered.</p>
               </details>
             </div>
           )}
