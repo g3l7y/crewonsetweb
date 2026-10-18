@@ -69,17 +69,6 @@ export function PartnershipForm() {
     return mockMode ? mockPromotionForecast(brandUpdates, durationDays) : realForecasts[String(durationDays)];
   }
 
-  function handlePackageKeyDown(event: KeyboardEvent<HTMLButtonElement>, index: number) {
-    const direction = event.key === "ArrowRight" || event.key === "ArrowDown" ? 1 : event.key === "ArrowLeft" || event.key === "ArrowUp" ? -1 : 0;
-    if (!direction) return;
-    event.preventDefault();
-    const nextIndex = (index + direction + BRAND_PROMOTION_PACKAGES.length) % BRAND_PROMOTION_PACKAGES.length;
-    const nextPackage = BRAND_PROMOTION_PACKAGES[nextIndex];
-    if (!nextPackage) return;
-    setSelectedPackageId(nextPackage.id);
-    document.getElementById(`promotion-package-${nextPackage.id}`)?.focus();
-  }
-
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     const data = new FormData(event.currentTarget);
@@ -291,20 +280,19 @@ export function PartnershipForm() {
 
         <fieldset className="form-label sm:col-span-2">
           <legend>CHOOSE A PROMOTION PACKAGE</legend>
-          <input type="hidden" name="packageId" value={selectedPackageId} />
           <div className="mt-2 grid gap-3 md:grid-cols-3" role="radiogroup" aria-label="Promotion package">
-            {BRAND_PROMOTION_PACKAGES.map((promotionPackage, index) => (
-              <button
-                key={promotionPackage.id}
-                id={`promotion-package-${promotionPackage.id}`}
-                type="button"
-                role="radio"
-                aria-checked={selectedPackageId === promotionPackage.id}
-                tabIndex={selectedPackageId === promotionPackage.id ? 0 : -1}
-                onClick={() => setSelectedPackageId(promotionPackage.id)}
-                onKeyDown={(event) => handlePackageKeyDown(event, index)}
-                className={`h-full w-full cursor-pointer rounded-lg border-2 p-4 text-left transition focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-coral ${selectedPackageId === promotionPackage.id ? "border-coral bg-coral/[.06] shadow-md shadow-coral/10 ring-2 ring-coral/15" : "border-navy/15 bg-white hover:border-coral/50 hover:bg-coral/[.025]"}`}
-              >
+            {BRAND_PROMOTION_PACKAGES.map((promotionPackage) => (
+              <label key={promotionPackage.id} className="cursor-pointer">
+                <input
+                  className="peer sr-only"
+                  type="radio"
+                  name="packageId"
+                  value={promotionPackage.id}
+                  checked={selectedPackageId === promotionPackage.id}
+                  onChange={() => setSelectedPackageId(promotionPackage.id)}
+                  required
+                />
+                <span className="promotion-package-card block h-full rounded-lg border-2 border-navy/20 bg-[#d7d5d5] p-4 text-navy transition hover:border-coral/60 hover:bg-[#e3e0e0] peer-checked:border-coral peer-checked:bg-[#fff0e6] peer-checked:shadow-md peer-checked:shadow-coral/10 peer-focus-visible:outline peer-focus-visible:outline-2 peer-focus-visible:outline-offset-2 peer-focus-visible:outline-coral">
                   <span className="block text-xs font-black uppercase tracking-wide">{promotionPackage.name}</span>
                   <span className="mt-2 block text-2xl font-black text-coral">₱{promotionPackage.pricePhp.toLocaleString("en-PH")}</span>
                   <span className="mt-1 block text-xs font-bold text-navy/65">{promotionPackage.durationDays} days</span>
@@ -317,15 +305,16 @@ export function PartnershipForm() {
                       </span>
                     ) : null;
                   })()}
-              </button>
+                </span>
+              </label>
             ))}
           </div>
           <p className="mt-3 text-[11px] font-normal leading-relaxed text-navy/60" style={{ textTransform: "none", letterSpacing: "normal" }}>
             Your product promotion stays displayed for the selected number of days. We will share how many people clicked the link and how many different browsers clicked it. Your results may differ.
           </p>
-          <details className="mt-3 rounded-md border border-navy/10 bg-navy/[.025] p-3 text-[11px] font-normal leading-relaxed text-navy/65" style={{ textTransform: "none", letterSpacing: "normal" }}>
-            <summary className="cursor-pointer font-bold text-navy">Delivery and under-delivery policy</summary>
-            <p className="mt-2">{BRAND_PROMOTION_DELIVERY_TERMS}</p>
+          <details className="mt-3 rounded-md border border-navy/20 bg-[#f4f0e8] p-3 text-xs font-normal leading-relaxed text-[#252525]" style={{ textTransform: "none", letterSpacing: "normal" }}>
+            <summary className="cursor-pointer font-bold text-[#101216]" style={{ textTransform: "none", letterSpacing: "normal" }}>Delivery and under-delivery policy</summary>
+            <p className="mt-2 text-[#3d3b38]">{BRAND_PROMOTION_DELIVERY_TERMS}</p>
           </details>
         </fieldset>
 
