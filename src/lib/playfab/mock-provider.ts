@@ -13,6 +13,8 @@ import type {
   ProgressLeaderboardEntry,
   FriendInfo,
   Transaction,
+  AdminPlayerActivity,
+  AdminPlayerTransaction,
   PlayerNotification,
   BugReport,
   PlayerReport,
@@ -64,11 +66,25 @@ let MOCK_PLAYER_PROFILE: PlayerProfile = {
   primaryRole: 'cameraman',
   crewId: 'COS-2847-CP',
   joinedAt: '2025-03-14T08:00:00Z',
-  lastLoginAt: new Date().toISOString(),
+  lastLoginAt: '',
 };
 
 type StoredMockProfileMetadata = Pick<PlayerProfile, 'bio' | 'avatarUrl' | 'socialLinks' | 'showStatus' | 'profileVisibility' | 'showCrewActivity'>;
 const MOCK_PROFILE_METADATA_KEY = 'cos.profile.metadata';
+const MOCK_LAST_LOGIN_KEY = 'cos.profile.lastLoginAt';
+
+function getStoredMockLastLogin(): string {
+  if (typeof window === 'undefined') return MOCK_PLAYER_PROFILE.lastLoginAt;
+  try { return window.localStorage.getItem(MOCK_LAST_LOGIN_KEY) || MOCK_PLAYER_PROFILE.lastLoginAt; } catch { return MOCK_PLAYER_PROFILE.lastLoginAt; }
+}
+
+function recordMockLogin() {
+  const lastLoginAt = new Date().toISOString();
+  MOCK_PLAYER_PROFILE.lastLoginAt = lastLoginAt;
+  if (typeof window !== 'undefined') {
+    try { window.localStorage.setItem(MOCK_LAST_LOGIN_KEY, lastLoginAt); } catch { /* current mock session still has the timestamp */ }
+  }
+}
 
 function getStoredMockProfileMetadata(): StoredMockProfileMetadata {
   if (typeof window === 'undefined') return {};
@@ -254,6 +270,9 @@ const MOCK_NOTIFICATIONS: PlayerNotification[] = [
 
 const MOCK_PLAYER_ADMIN_STATE_KEY = 'cos.mock.adminPlayerState';
 let mockPlayerAdminStatus: 'Active' | 'Banned' = 'Active';
+let mockPlayerBannedUntil: string | null = null;
+let mockPlayerBanId: string | null = null;
+let mockPlayerBanStartedAt: string | null = null;
 let mockPlayerDeleted = false;
 let mockPlayerWasReset = false;
 let mockPlayerResetApplied = false;
@@ -262,15 +281,28 @@ function readMockPlayerAdminState() {
   if (typeof window === 'undefined') return;
   try {
     const saved = JSON.parse(window.localStorage.getItem(MOCK_PLAYER_ADMIN_STATE_KEY) || '{}') as {
-      status?: 'Active' | 'Banned'; deleted?: boolean;
+      status?: 'Active' | 'Banned'; bannedUntil?: string | null; banId?: string | null; banStartedAt?: string | null; deleted?: boolean;
       reset?: boolean;
     };
     mockPlayerAdminStatus = saved.status === 'Banned' ? 'Banned' : 'Active';
+    mockPlayerBannedUntil = typeof saved.bannedUntil === 'string' ? saved.bannedUntil : null;
+    mockPlayerBanId = typeof saved.banId === 'string' ? saved.banId : null;
+    mockPlayerBanStartedAt = typeof saved.banStartedAt === 'string' ? saved.banStartedAt : null;
+    if (mockPlayerAdminStatus === 'Banned' && mockPlayerBannedUntil && Date.parse(mockPlayerBannedUntil) <= Date.now()) {
+      mockPlayerAdminStatus = 'Active';
+      mockPlayerBannedUntil = null;
+      mockPlayerBanId = null;
+      mockPlayerBanStartedAt = null;
+      saveMockPlayerAdminState();
+    }
     mockPlayerDeleted = saved.deleted === true;
     mockPlayerWasReset = saved.reset === true;
     if (mockPlayerWasReset && !mockPlayerResetApplied) resetMockPlayerAccountData(false);
   } catch {
     mockPlayerAdminStatus = 'Active';
+    mockPlayerBannedUntil = null;
+    mockPlayerBanId = null;
+    mockPlayerBanStartedAt = null;
     mockPlayerDeleted = false;
     mockPlayerWasReset = false;
   }
@@ -280,6 +312,9 @@ function saveMockPlayerAdminState() {
   if (typeof window !== 'undefined') {
     window.localStorage.setItem(MOCK_PLAYER_ADMIN_STATE_KEY, JSON.stringify({
       status: mockPlayerAdminStatus,
+      bannedUntil: mockPlayerBannedUntil,
+      banId: mockPlayerBanId,
+      banStartedAt: mockPlayerBanStartedAt,
       deleted: mockPlayerDeleted,
       reset: mockPlayerWasReset,
     }));
@@ -289,6 +324,20 @@ function saveMockPlayerAdminState() {
 export function getMockPlayerAdminStatus(): 'Active' | 'Banned' {
   readMockPlayerAdminState();
   return mockPlayerAdminStatus;
+}
+
+export function getMockPlayerBannedUntil(): string | null {
+  readMockPlayerAdminState();
+  return mockPlayerBannedUntil;
+}
+
+export function getMockPlayerBanDetails() {
+  readMockPlayerAdminState();
+  return {
+    banId: mockPlayerBanId || (mockPlayerAdminStatus === 'Banned' ? 'mock-active-ban' : null),
+    startsAt: mockPlayerBanStartedAt || null,
+    endsAt: mockPlayerBannedUntil,
+  };
 }
 
 export function isMockPlayerAccountDeleted() {
@@ -301,14 +350,26 @@ export function isMockPlayerAccountReset() {
   return mockPlayerWasReset;
 }
 
-export function setMockPlayerAdminStatus(status: 'Active' | 'Banned') {
+export function setMockPlayerAdminStatus(status: 'Active' | 'Banned', options: { permanent?: boolean; bannedUntil?: string | null } = {}) {
   mockPlayerAdminStatus = status;
+  mockPlayerBannedUntil = status === 'Banned' && !options.permanent ? options.bannedUntil ?? null : null;
+  if (status === 'Active') {
+    mockPlayerBanId = null;
+    mockPlayerBanStartedAt = null;
+  } else {
+    mockPlayerBanId = `mock-ban-${Date.now()}`;
+    mockPlayerBanStartedAt = new Date().toISOString();
+  }
+  if (status === 'Banned' && mockSession?.playFabId === 'MOCK-PLAYER-001') mockSession = null;
   saveMockPlayerAdminState();
 }
 
 export function deleteMockPlayerAccount() {
   mockPlayerDeleted = true;
   mockPlayerAdminStatus = 'Banned';
+  mockPlayerBannedUntil = null;
+  mockPlayerBanId = null;
+  mockPlayerBanStartedAt = null;
   saveMockPlayerAdminState();
 }
 
@@ -368,8 +429,9 @@ export function purgeMockPlayerAccountData() {
     primaryRole: 'cameraman',
     crewId: 'COS-2847-CP',
     joinedAt: '2025-03-14T08:00:00Z',
-    lastLoginAt: new Date().toISOString(),
+    lastLoginAt: '',
   };
+  if (typeof window !== 'undefined') window.localStorage.removeItem(MOCK_LAST_LOGIN_KEY);
   saveMockPlayerAdminState();
 }
 
@@ -495,6 +557,7 @@ export function createMockService(): PlayFabService {
             displayName: 'CAMERA_PRO',
             email: 'player@crewonset.com',
           };
+          recordMockLogin();
           return { success: true, destination: '/portal', session: mockSession };
         }
         if (mockPlayerDeleted) return { success: false, error: 'This player account no longer exists.' };
@@ -506,6 +569,7 @@ export function createMockService(): PlayFabService {
           displayName: (email.split('@')[0] ?? 'PLAYER').toUpperCase(),
           email,
         };
+        recordMockLogin();
         return { success: true, destination: '/portal', session: mockSession };
       },
       async register({ email, username }: RegisterRequest): Promise<AuthResponse> {
@@ -525,7 +589,10 @@ export function createMockService(): PlayFabService {
       async getSession(): Promise<SessionData | null> {
         await randomDelay();
         readMockPlayerAdminState();
-        if (mockSession?.playFabId === 'MOCK-PLAYER-001' && (mockPlayerDeleted || mockPlayerAdminStatus === 'Banned')) return null;
+        if (mockSession?.playFabId === 'MOCK-PLAYER-001' && (mockPlayerDeleted || mockPlayerAdminStatus === 'Banned')) {
+          mockSession = null;
+          return null;
+        }
         return mockSession;
       },
       async isAdmin(): Promise<boolean> {
@@ -716,10 +783,29 @@ export function createMockService(): PlayFabService {
       async getPlayer(id: string) {
         await randomDelay();
         const isCurrentPlayer = id === MOCK_PLAYER_PROFILE.playFabId;
+        const transactions: AdminPlayerTransaction[] = isCurrentPlayer ? MOCK_TRANSACTIONS.map((item) => ({
+          id: item.id,
+          type: item.type,
+          item: item.description,
+          amount: `${item.type === 'spend' ? '-' : ''}${item.amount.toLocaleString()} ${item.currency}`,
+          status: 'Completed',
+          date: new Date(item.timestamp).toLocaleString(),
+        })) : [];
+        const activity: AdminPlayerActivity[] = isCurrentPlayer ? [
+          ...MOCK_ACHIEVEMENTS.filter((item) => item.unlocked && item.unlockedAt).map((item) => ({
+            id: `achievement-${item.id}`,
+            label: 'Achievement unlocked',
+            detail: item.title,
+            timestamp: new Date(item.unlockedAt!).toLocaleString(),
+          })),
+          ...transactions.map((item) => ({ id: `transaction-${item.id}`, label: 'Transaction', detail: `${item.item} ${item.amount}`, timestamp: item.date })),
+        ].sort((left, right) => Date.parse(right.timestamp) - Date.parse(left.timestamp)).slice(0, 8) : [];
+        const progressionRecorded = isCurrentPlayer && (MOCK_PROGRESSION.totalXp > 0 || MOCK_PROGRESSION.completedLevels.length > 0);
         return {
           profile: {
             ...MOCK_PLAYER_PROFILE,
             ...(isCurrentPlayer ? getStoredMockProfileMetadata() : {}),
+            lastLoginAt: isCurrentPlayer ? getStoredMockLastLogin() : '',
             avatarUrl: isCurrentPlayer ? getStoredMockProfileMetadata().avatarUrl || DEFAULT_PROFILE_PICTURE_URL : DEFAULT_PROFILE_PICTURE_URL,
             playFabId: id,
           },
@@ -728,6 +814,18 @@ export function createMockService(): PlayFabService {
           inventory: MOCK_INVENTORY,
           achievements: MOCK_ACHIEVEMENTS,
           statistics: MOCK_ROLE_STATISTICS,
+          activity,
+          transactions,
+          accountInfo: {
+            platform: isCurrentPlayer ? 'Mock account' : 'Not recorded',
+            lastLogin: isCurrentPlayer && getStoredMockLastLogin() ? new Date(getStoredMockLastLogin()).toLocaleString() : 'Not recorded',
+          },
+          career: {
+            productionScore: null,
+            gamesPlayed: isCurrentPlayer ? MOCK_ROLE_STATISTICS.reduce((sum, item) => sum + item.productions, 0) : null,
+            playtime: 'Not recorded',
+            currentLevel: progressionRecorded ? MOCK_PROGRESSION.level : null,
+          },
         };
       },
       async getBugReports(): Promise<BugReport[]> {

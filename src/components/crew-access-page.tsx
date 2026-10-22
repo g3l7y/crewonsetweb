@@ -665,6 +665,14 @@ export function CrewAccessPage({ mode, scope = "player" }: CrewAccessPageProps) 
               )}
             </p>
           )}
+          {!isAdmin && isLogin && (
+            <p className="mt-3 text-center text-xs text-navy/45">
+              Account banned?{" "}
+              <Link href="/ban-appeal" className="font-black text-coral underline-offset-4 hover:underline">
+                Submit an appeal.
+              </Link>
+            </p>
+          )}
         </section>
       </div>
 

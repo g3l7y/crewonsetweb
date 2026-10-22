@@ -378,6 +378,7 @@ function createRealService(): PlayFabService {
         if (stored?.change_id !== appearance.change_id) {
           throw new Error('Your outfit changed on another device. Refresh your wardrobe before equipping again.');
         }
+        if (typeof window !== 'undefined') window.dispatchEvent(new Event('cos:avatar-updated'));
       },
     },
 
@@ -521,7 +522,11 @@ function createRealService(): PlayFabService {
         const res = await fetch('/api/admin/data?key=notifications', { cache: 'no-store' });
         if (!res.ok) throw new Error('Failed to fetch admin notifications');
         const json = await res.json();
-        return json.data ?? [];
+        return (json.data ?? []).filter((item: unknown) => {
+          if (!item || typeof item !== 'object') return false;
+          const target = (item as { target?: unknown }).target;
+          return !target || typeof target !== 'object' || (target as { kind?: unknown }).kind !== 'all';
+        });
       },
       submitBugReport: async (report) => {
         const res = await fetch('/api/admin/bug-reports', {

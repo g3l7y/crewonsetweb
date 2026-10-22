@@ -64,7 +64,9 @@ export function clearSessionCookies(): string[] {
 }
 
 export function unauthorizedSessionResponse(status = 403): Response {
-  return Response.json({ error: 'Unauthorized' }, { status });
+  const headers = new Headers({ 'Cache-Control': 'no-store, private' });
+  for (const cookie of clearSessionCookies()) headers.append('Set-Cookie', cookie);
+  return Response.json({ error: 'Unauthorized' }, { status, headers });
 }
 
 /**

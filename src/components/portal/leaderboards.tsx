@@ -6,6 +6,7 @@ import { isMockMode } from "@/lib/playfab/config";
 import { useAchievements, useFriends, usePlayerProfile, useProgressLeaderboard } from "@/lib/playfab/hooks";
 import type { Achievement, PlayerProfile } from "@/lib/playfab/types";
 import { formatSocialUsername, getSocialProfileUrl, type SocialLinks, type SocialPlatform } from "@/lib/profile-socials";
+import { SyncedPlayerAvatar } from "@/components/portal/player-avatar";
 
 type Leader = {
   playFabId?: string;
@@ -296,11 +297,7 @@ export function Leaderboards() {
 
                       <div className="relative grid size-9 place-items-center overflow-hidden rounded-full border-2 border-yellow bg-coral text-xs font-black text-white">
                         {(leader.profileImage ?? friends.find((friend) => friend.name === leader.name)?.profileImage ?? getProfileArtwork(leader.name)) ? (
-                          <img
-                            src={leader.profileImage ?? friends.find((friend) => friend.name === leader.name)?.profileImage ?? getProfileArtwork(leader.name)}
-                            alt={`${leader.name} portrait`}
-                            className="size-full object-cover"
-                          />
+                          <SyncedPlayerAvatar playFabId={leader.playFabId} displayName={leader.name} fallbackUrl={leader.profileImage ?? friends.find((friend) => friend.name === leader.name)?.profileImage ?? getProfileArtwork(leader.name)} className="size-full object-cover" />
                         ) : (
                           leader.name.slice(0, 2)
                         )}
@@ -392,11 +389,7 @@ export function Leaderboards() {
               <div className="flex items-center gap-4">
 
                 <div className="relative grid size-16 place-items-center overflow-hidden rounded-full border-2 border-yellow bg-coral text-lg font-black text-white">
-                  <img
-                    src={selectedLeader.profileImage ?? friends.find((friend) => friend.name === selectedLeader.name)?.profileImage ?? getProfileArtwork(selectedLeader.name)}
-                    alt={`${selectedLeader.name} portrait`}
-                    className="size-full object-cover"
-                  />
+                  <SyncedPlayerAvatar playFabId={selectedLeader.playFabId} displayName={selectedLeader.name} fallbackUrl={selectedLeader.profileImage ?? friends.find((friend) => friend.name === selectedLeader.name)?.profileImage ?? getProfileArtwork(selectedLeader.name)} className="size-full object-cover" />
                 </div>
 
                 <div>

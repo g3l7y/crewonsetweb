@@ -118,13 +118,18 @@ export interface PlayerProfile {
   bannedUntil?: string | null | undefined;
 }
 
+/** PlayFab-backed measurements shown in the admin player list. Null means the title has not recorded that value. */
+export interface AdminPlayerListEntry extends PlayerProfile {
+  currentLevel?: number | null;
+  productionScore?: number | null;
+  gamesPlayed?: number | null;
+  playtime?: string | null;
+  playtimeMinutes?: number | null;
+}
+
 export interface AdminPlayerAccountInfo {
   platform: string;
-  device: string;
-  loginMethod: string;
-  twoFactor: string;
   lastLogin: string;
-  lastIp?: string | undefined;
 }
 
 export interface AdminPlayerActivity {
@@ -156,9 +161,10 @@ export interface AdminPlayerDetails {
   activity?: AdminPlayerActivity[] | undefined;
   career?:
     | {
-        productionScore: number;
-        gamesPlayed: number;
+        productionScore: number | null;
+        gamesPlayed: number | null;
         playtime: string;
+        currentLevel?: number | null | undefined;
       }
     | undefined;
 }
@@ -1118,7 +1124,7 @@ export interface ShopService {
  * Administrative console management and moderation service.
  */
 export interface AdminService {
-  getPlayers(): Promise<PlayerProfile[]>;
+  getPlayers(): Promise<AdminPlayerListEntry[]>;
   getPlayer(playFabId: string): Promise<AdminPlayerDetails | PlayerProfile | null>;
   getBugReports(): Promise<BugReport[]>;
   updateBugReport(id: string, updates: Partial<BugReport>): Promise<BugReport | void>;

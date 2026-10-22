@@ -407,7 +407,7 @@ export function createStore<T>(key: string, seed: T[]) {
           ? window.setInterval(() => setItems((current) => reconcileExpired(key, current)), 1_000)
           : undefined;
       const sharedRefreshInterval =
-        usesServerApi && key === "cos.topUps"
+        usesServerApi && (key === "cos.topUps" || key === "cos.playerReports")
           ? window.setInterval(refresh, 15_000)
           : usesServerApi && key === "cos.gameBuild"
             ? window.setInterval(refresh, 30_000)
@@ -586,6 +586,44 @@ const seedPlayerMail: PlayerMail[] = [
 ];
 
 export const playerMailStore = createStore<PlayerMail>("cos.playerMail", seedPlayerMail);
+
+export function addMockPlayerAccountMessage(args: { subject: string; body: string; noticeTitle: string; noticeBody: string; href?: string }) {
+  if (!isMockMode()) return;
+  const createdAt = new Date().toISOString();
+  const messageId = uid("mock-account-mail");
+  playerMailStore.set([
+    {
+      id: messageId,
+      threadId: "admin-MOCK-PLAYER-001",
+      subject: args.subject,
+      body: args.body,
+      senderUsername: "ADMINISTRATOR",
+      recipientUsername: "CAMERA_PRO",
+      createdAt,
+      read: false,
+      kind: "admin",
+      adminMessage: true,
+    },
+    ...playerMailStore.get(),
+  ]);
+  notificationsStore.set([
+    {
+      id: `${messageId}-notice`,
+      title: args.noticeTitle,
+      body: args.noticeBody,
+      createdAt,
+      kind: "system",
+      channel: "notification",
+      read: false,
+      href: args.href ?? "/portal/inbox?tab=mail&contact=admin",
+      senderUsername: "ADMINISTRATOR",
+      adminMessage: true,
+      recipientUsername: "CAMERA_PRO",
+      target: { kind: "players", playerIds: ["MOCK-PLAYER-001"] },
+    },
+    ...notificationsStore.get(),
+  ]);
+}
 
 export function addReportFeedback(args: {
   recipientUsername: string;
@@ -1287,6 +1325,16 @@ export type PlayerReport = {
   attachmentType?: string;
   /** Admin-only triage state. Never shown in the player portal. */
   status: PlayerReportStatus;
+  /** Ban appeals are submitted outside an authenticated player session. */
+  banAppeal?: boolean;
+  appealStatus?: "Pending" | "Approved" | "Denied";
+  banId?: string;
+  banStartsAt?: string;
+  banEndsAt?: string | null;
+  verifiedEmail?: string;
+  newInformation?: boolean;
+  decidedAt?: string;
+  adminNotes?: string;
 };
 
 export const playerReportTypes = ["Trolling", "Negative Attitude", "Verbal Abuse", "Other"];
