@@ -74,6 +74,8 @@ export function useSession() {
     queryFn: () => getPlayFabService().auth.getSession(),
     staleTime: 5 * 60 * 1000,
     retry: false,
+    refetchInterval: (query) => query.state.data?.role === "player" ? 15_000 : false,
+    refetchIntervalInBackground: false,
   });
 }
 
@@ -295,7 +297,9 @@ export function useAdminPlayers(enabled = true) {
     queryKey: QUERY_KEYS.adminPlayers,
     queryFn: () => getPlayFabService().admin.getPlayers(),
     enabled: enabled && !!session && (session.role === "admin" || session.role === "developer"),
-    staleTime: 2 * 60 * 1000,
+    staleTime: 30_000,
+    refetchInterval: 60_000,
+    refetchIntervalInBackground: false,
   });
 }
 
@@ -305,7 +309,9 @@ export function useAdminPlayer(id: string) {
     queryKey: QUERY_KEYS.adminPlayer(id),
     queryFn: () => getPlayFabService().admin.getPlayer(id),
     enabled: !!session && !!id && (session.role === "admin" || session.role === "developer"),
-    staleTime: 2 * 60 * 1000,
+    staleTime: 0,
+    refetchInterval: id ? 15_000 : false,
+    refetchIntervalInBackground: false,
   });
 }
 

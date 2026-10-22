@@ -354,10 +354,26 @@ function createRealService(): PlayFabService {
 
       updateLoadout: async (loadout) => {
         const ticket = await resolveSessionTicket();
-        if (!ticket) return;
-        await updateUserData(ticket, {
-          [PLAYFAB_DATA_KEYS.loadout]: JSON.stringify(loadout),
+        if (!ticket) throw new Error('Please sign in again to save your avatar.');
+        const session = await fetch('/api/auth/session', { credentials: 'same-origin', cache: 'no-store' }).then((response) => response.ok ? response.json() : null).catch(() => null);
+        const playerId = String(session?.session?.playFabId ?? session?.session?.PlayFabId ?? '');
+        if (!playerId) throw new Error('Please sign in again to sync your avatar to the game.');
+        const current = await getUserData(ticket, [GAME_APPEARANCE_KEY, PLAYFAB_DATA_KEYS.loadout], true);
+        let existing: unknown = undefined;
+        try { existing = current[GAME_APPEARANCE_KEY] ? JSON.parse(current[GAME_APPEARANCE_KEY]) : undefined; } catch { /* Replace malformed appearance with the selected website outfit. */ }
+        const appearance = mergeLoadoutIntoGameAppearance(loadout, playerId, existing);
+        const completeLoadout = gameAppearanceToLoadout(appearance);
+        const saved = await updateUserData(ticket, {
+          [GAME_APPEARANCE_KEY]: JSON.stringify(appearance),
+          [PLAYFAB_DATA_KEYS.loadout]: JSON.stringify(completeLoadout),
         });
+        if (!saved) throw new Error('PlayFab could not save your avatar. Please try again.');
+        const confirmed = await getUserData(ticket, [GAME_APPEARANCE_KEY], true);
+        const stored = JSON.parse(confirmed[GAME_APPEARANCE_KEY] || 'null');
+        if (stored?.change_id !== appearance.change_id) {
+          throw new Error('Your outfit changed on another device. Refresh your wardrobe before equipping again.');
+        }
+        if (typeof window !== 'undefined') window.dispatchEvent(new Event('cos:avatar-updated'));
       },
     },
 
@@ -501,7 +517,11 @@ function createRealService(): PlayFabService {
         const res = await fetch('/api/admin/data?key=notifications', { cache: 'no-store' });
         if (!res.ok) throw new Error('Failed to fetch admin notifications');
         const json = await res.json();
-        return json.data ?? [];
+        return (json.data ?? []).filter((item: unknown) => {
+          if (!item || typeof item !== 'object') return false;
+          const target = (item as { target?: unknown }).target;
+          return !target || typeof target !== 'object' || (target as { kind?: unknown }).kind !== 'all';
+        });
       },
       submitBugReport: async (report) => {
         const res = await fetch('/api/admin/bug-reports', {

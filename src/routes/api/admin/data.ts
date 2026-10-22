@@ -21,6 +21,7 @@ const DATA_KEYS: Record<string, string> = {
   messages: "website_admin_messages",
   contentStats: "website_admin_content_stats",
   notifications: "website_admin_notifications",
+  playerNotifications: "website_player_notifications",
   alertRead: "website_admin_alert_read",
 };
 
@@ -45,6 +46,7 @@ const RECORD_COLLECTION_KEYS = new Set([
   "website_admin_activity",
   "website_admin_messages",
   "website_admin_notifications",
+  "website_player_notifications",
 ]);
 
 const DEFAULT_SYSTEM_REQUIREMENTS = [
@@ -69,7 +71,7 @@ async function writeAdminData(key: string, value: unknown, secretKey: string): P
     : setWebsiteValue(key, value, secretKey);
 }
 async function recordAdminDataChange(key: string, method: "created" | "updated" | "deleted") {
-  if ([DATA_KEYS.notifications, DATA_KEYS.alertRead, DATA_KEYS.activity, DATA_KEYS.brandUpdates].includes(key)) return;
+  if ([DATA_KEYS.notifications, DATA_KEYS.playerNotifications, DATA_KEYS.alertRead, DATA_KEYS.activity, DATA_KEYS.brandUpdates].includes(key)) return;
   const labels: Record<string, { label: string; href: string; kind: string }> = {
     [DATA_KEYS.gameBuild]: { label: "Game build", href: "/admin/game", kind: "game" },
     [DATA_KEYS.buildHistory]: { label: "Build history", href: "/admin/game", kind: "game" },

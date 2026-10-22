@@ -14,13 +14,15 @@ import {
   Users,
   X,
 } from "lucide-react";
-import { useEffect, useRef, useState } from "react";
+import { lazy, Suspense, useEffect, useRef, useState } from "react";
 import { NotificationBell } from "@/components/portal/notification-bell";
 import { useDisplayTheme } from "@/components/theme/display-theme-switcher";
 import { getProfileArtwork } from "@/lib/demo/profile-art";
 import type { NotificationBellPreferences } from "@/lib/demo/inbox";
 import { isMockMode } from "@/lib/playfab/config";
-import { usePlayerProfile, usePlayerProgression } from "@/lib/playfab/hooks";
+import { usePlayerLoadout, usePlayerProfile, usePlayerProgression, useSession } from "@/lib/playfab/hooks";
+
+const Avatar3DPortrait = lazy(() => import("@/components/portal/avatar-3d-preview").then((module) => ({ default: module.Avatar3DPreview })));
 import { hasRecordedGameProgress } from "@/lib/playfab/progression";
 
 const navigation = [
@@ -60,6 +62,7 @@ export function PlayerShell({ children }: { children: React.ReactNode }) {
   const mockMode = isMockMode();
   const { data: profile } = usePlayerProfile();
   const { data: progression } = usePlayerProgression();
+  const sessionQuery = useSession();
   const accountName = profile?.username || profile?.displayName || "PLAYER";
   const accountLevel = hasRecordedGameProgress(progression) ? progression?.level : undefined;
   const accountAvatar = profile?.avatarUrl || getProfileArtwork(accountName);
@@ -69,6 +72,10 @@ export function PlayerShell({ children }: { children: React.ReactNode }) {
   const [scrolled, setScrolled] = useState(false);
   const [playerPreferences, setPlayerPreferences] = useState(defaultPlayerPreferences);
   const accountRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (sessionQuery.isFetched && !sessionQuery.data) router.replace("/login");
+  }, [router, sessionQuery.data, sessionQuery.isFetched]);
 
   useEffect(() => {
     const loadPlayerPreferences = () => {
@@ -379,3 +386,4 @@ export function PlayerShell({ children }: { children: React.ReactNode }) {
     </div>
   );
 }
+

@@ -51,6 +51,7 @@ import {
   relativeTime,
 } from "@/lib/demo/inbox";
 import { getProfileArtwork } from "@/lib/demo/profile-art";
+import { SyncedPlayerAvatar } from "@/components/portal/player-avatar";
 import { isMockMode } from "@/lib/playfab/config";
 import {
   useFriends,
@@ -787,12 +788,7 @@ function InboxPage() {
                           }
                         >
                           <span className="relative size-10 shrink-0 overflow-hidden rounded-full border border-white/15 bg-yellow">
-                            <Image
-                              src={friend.profileImage || getProfileArtwork(friend.name)}
-                              alt={friend.name + " profile"}
-                              fill
-                              className="object-cover"
-                            />
+                            <SyncedPlayerAvatar playFabId={friend.playFabId} displayName={friend.name} fallbackUrl={friend.profileImage || getProfileArtwork(friend.name)} className="size-full object-cover" />
                           </span>
                           <span className="min-w-0 flex-1">
                             <span className="flex items-center gap-2">
@@ -917,11 +913,13 @@ function InboxPage() {
                                         : "relative mt-1 size-8 shrink-0 overflow-hidden rounded-full border border-white/15 bg-yellow"
                                     }
                                   >
-                                    <Image
-                                      src={avatarFor(mail.senderUsername)}
-                                      alt={mail.senderUsername + " profile"}
-                                      fill
-                                      className="object-cover"
+                                    <SyncedPlayerAvatar
+                                      playFabId={mail.senderUsername.toLowerCase() === currentUsername.toLowerCase()
+                                        ? currentPlayerId
+                                        : allFriends.find((friend) => friend.name.toLowerCase() === mail.senderUsername.toLowerCase())?.playFabId}
+                                      displayName={mail.senderUsername}
+                                      fallbackUrl={avatarFor(mail.senderUsername)}
+                                      className="size-full object-cover"
                                     />
                                   </span>
                                   <div className="min-w-0">

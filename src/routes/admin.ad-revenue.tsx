@@ -12,7 +12,7 @@ export const Route = createFileRoute("/admin/ad-revenue")({
   component: AdRevenuePage,
 });
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { isMockMode } from "@/lib/playfab/config";
 import { useAdminAds, useAdminPartnerships } from "@/lib/playfab/hooks";
 import type { AdEntry } from "@/lib/playfab/types";
@@ -30,6 +30,7 @@ import {
 } from "lucide-react";
 import {
   applicationsStore,
+  brandUpdatesStore,
   revenueStore,
   formatMoney,
   partnershipProductTypes,
@@ -83,6 +84,7 @@ function fromServiceAd(ad: AdEntry): ActiveAd {
 
 function AdRevenuePage() {
   const [localApplications] = applicationsStore.useStore();
+  const [brandUpdates] = brandUpdatesStore.useStore();
   const [localRevenue] = revenueStore.useStore();
   const realApplicationsQuery = useAdminPartnerships();
   const realAdsQuery = useAdminAds();
@@ -94,7 +96,30 @@ function AdRevenuePage() {
   const [query, setQuery] = useState("");
   const [productTypeFilter, setProductTypeFilter] = useState("All Product Types");
   const [statusFilter, setStatusFilter] = useState("All Statuses");
+  const [brandUpdateMetrics, setBrandUpdateMetrics] = useState<Record<string, { impressions: number }>>({});
   const router = useRouter();
+
+  useEffect(() => {
+    if (isMockMode()) {
+      setBrandUpdateMetrics(Object.fromEntries(brandUpdates.map((update) => [update.id, { impressions: update.mockImpressions ?? 0 }])));
+      return;
+    }
+    let active = true;
+    void Promise.all(brandUpdates.map(async (update) => {
+      const response = await fetch(`/api/admin/brand-updates/${encodeURIComponent(update.id)}/metrics`, {
+        credentials: "include",
+        cache: "no-store",
+      });
+      if (!response.ok) return null;
+      const body = (await response.json()) as { data?: { impressions: number } };
+      return body.data ? ([update.id, { impressions: body.data.impressions }] as const) : null;
+    }))
+      .then((rows) => {
+        if (active) setBrandUpdateMetrics(Object.fromEntries(rows.filter((row): row is NonNullable<typeof row> => row !== null)));
+      })
+      .catch(() => undefined);
+    return () => { active = false; };
+  }, [brandUpdates]);
 
   // "Approved" advertisement applications also includes those already running
   // (On-going) or wrapped (Done) — every application that made it past review.
@@ -112,6 +137,11 @@ function AdRevenuePage() {
       ad: findAdForApplication(app, revenue),
     })),
     [approved, revenue],
+  );
+
+  const brandUpdateImpressions = brandUpdates.reduce(
+    (total, update) => total + (brandUpdateMetrics[update.id]?.impressions ?? 0),
+    0,
   );
 
   const filteredRows = useMemo(() => {
@@ -139,21 +169,21 @@ function AdRevenuePage() {
           visits: acc.visits + (ad?.visits ?? 0),
           impressions: acc.impressions + (ad?.impressions ?? 0),
         }),
-        { revenue: 0, clicks: 0, visits: 0, impressions: 0 },
+        { revenue: 0, clicks: 0, visits: 0, impressions: brandUpdateImpressions },
       ),
-    [rows],
+    [rows, brandUpdateImpressions],
   );
 
   const summaries = [
     { label: "Total Ad Revenue", value: formatMoney(totals.revenue), icon: Wallet2, color: "bg-[#d9a514] text-[#101923]" },
     { label: "Tracked Click-Throughs", value: totals.clicks.toLocaleString(), icon: MousePointerClick, color: "bg-coral text-white" },
     { label: "Unique Browsers", value: totals.visits.toLocaleString(), icon: Users, color: "bg-[#243241] text-white" },
-    { label: "Total Impressions", value: totals.impressions.toLocaleString(), icon: MonitorPlay, color: "bg-[#2d9d8f] text-white" },
+    { label: "Ad Displays / Impressions", value: totals.impressions.toLocaleString(), icon: MonitorPlay, color: "bg-[#2d9d8f] text-white" },
   ];
 
   function openApplication(row: (typeof rows)[number]) {
     if (row.ad) {
-      router.push(`/admin/ads/${row.ad.id}`);
+      router.push(`/admin/ads/${row.ad.id}?source=ad-revenue`);
     }
   }
 

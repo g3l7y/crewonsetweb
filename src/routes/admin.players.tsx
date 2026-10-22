@@ -18,9 +18,6 @@ import {
 
 import {
   players as initialPlayers,
-  getPlayerAccountInfo,
-  getPlayerActivity,
-  getPlayerTransactions,
   topUpsStore,
 } from "@/lib/admin-demo-data";
 import {
@@ -30,14 +27,17 @@ import {
   uid,
   walletStore,
   logAdminActivity,
+  addMockPlayerAccountMessage,
 } from "@/lib/demo/store";
 import { equippedItemsStore, ownedItemsStore } from "@/lib/demo/portal-shop";
 import { isMockMode } from "@/lib/playfab/config";
 import { DEFAULT_PROFILE_PICTURE_URL } from "@/lib/profile-avatar";
+import { SyncedPlayerAvatar } from "@/components/portal/player-avatar";
 import { useAdminPlayer, useAdminPlayers } from "@/lib/playfab/hooks";
 import {
   deleteMockPlayerAccount,
   getMockPlayerAdminStatus,
+  getMockPlayerBannedUntil,
   isMockPlayerAccountDeleted,
   isMockPlayerAccountReset,
   resetMockPlayerAccountData,
@@ -68,7 +68,11 @@ type Player = {
   email: string;
   status: PlayerStatus;
   joined: string;
-  score: number;
+  score: number | null;
+  currentLevel?: number | null;
+  gamesPlayed?: number | null;
+  playtime?: string | null;
+  playtimeMinutes?: number | null;
   role?: string;
   bannedUntil?: string | null;
   avatarUrl: string;
@@ -111,30 +115,6 @@ const statusDotStyles: Record<PlayerStatus, string> = {
    HELPERS
    ========================================================= */
 
-function getLevel(score: number) {
-  return Math.max(1, Math.floor(score / 100));
-}
-
-function getGamesPlayed(score: number) {
-  return Math.max(1, Math.floor(score / 35));
-}
-
-function getPlaytimeMinutes(score: number) {
-  const hours = Math.max(1, Math.floor(score / 70));
-
-  const minutes = Math.floor(score % 60);
-
-  return hours * 60 + minutes;
-}
-
-function getPlaytime(score: number) {
-  const hours = Math.max(1, Math.floor(score / 70));
-
-  const minutes = Math.floor(score % 60);
-
-  return `${hours}h ${minutes}m`;
-}
-
 function formatJoinedDate(value: string) {
   if (!value) {
     return "—";
@@ -153,7 +133,19 @@ function formatJoinedDate(value: string) {
   }).format(parsed);
 }
 
-function mapPlayFabPlayer(player: PlayerProfile): Player {
+function toLocalDateTimeInput(date: Date) {
+  const offset = date.getTimezoneOffset() * 60_000;
+  return new Date(date.getTime() - offset).toISOString().slice(0, 16);
+}
+
+function formatAdminTimestamp(value: string) {
+  if (!value) return "—";
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return "—";
+  return new Intl.DateTimeFormat("en-US", { month: "short", day: "2-digit", year: "numeric", hour: "2-digit", minute: "2-digit" }).format(date);
+}
+
+function mapPlayFabPlayer(player: PlayerProfile & { currentLevel?: number | null; productionScore?: number | null; gamesPlayed?: number | null; playtime?: string | null; playtimeMinutes?: number | null }): Player {
   const id = player.playFabId || player.id || player.username;
   const username = player.username || player.displayName || `Player ${id}`;
 
@@ -163,7 +155,11 @@ function mapPlayFabPlayer(player: PlayerProfile): Player {
     email: player.email || "—",
     status: player.adminStatus === "Banned" ? "Banned" : "Active",
     joined: formatJoinedDate(player.joinedAt),
-    score: 0,
+    score: player.productionScore ?? null,
+    currentLevel: player.currentLevel,
+    gamesPlayed: player.gamesPlayed,
+    playtime: player.playtime,
+    playtimeMinutes: player.playtimeMinutes,
     role: player.primaryRole || player.role || "Player",
     avatarUrl: player.avatarUrl || DEFAULT_PROFILE_PICTURE_URL,
   };
@@ -337,14 +333,8 @@ function PlayersPage() {
   const [selectedPlayers, setSelectedPlayers] = useState<string[]>([]);
 
   const [selectedPlayer, setSelectedPlayer] = useState<Player | null>(null);
-  const realPlayerDetailQuery = useAdminPlayer(
-    !mockMode && selectedPlayer ? selectedPlayer.id : "",
-  );
+  const realPlayerDetailQuery = useAdminPlayer(selectedPlayer?.id ?? "");
   const [topUps] = topUpsStore.useStore();
-  const selectedPlayerTransactions = useMemo(
-    () => (selectedPlayer ? getPlayerTransactions(selectedPlayer.username) : []),
-    [selectedPlayer, topUps],
-  );
   const livePlayerDetail =
     realPlayerDetailQuery.data && "profile" in realPlayerDetailQuery.data
       ? (realPlayerDetailQuery.data as AdminPlayerDetails)
@@ -353,27 +343,33 @@ function PlayersPage() {
   const mockPlayerWasReset =
     mockMode && selectedPlayer?.id === "MOCK-PLAYER-001" && isMockPlayerAccountReset();
   const displayScore =
-    livePlayerDetail?.career?.productionScore ?? (mockMode ? (selectedPlayer?.score ?? 0) : 0);
+    livePlayerDetail?.career?.productionScore ?? (mockMode ? selectedPlayer?.score ?? null : null);
   const displayGamesPlayed =
-    (mockPlayerWasReset ? 0 : livePlayerDetail?.career?.gamesPlayed) ??
-    (mockMode && selectedPlayer ? getGamesPlayed(selectedPlayer.score) : 0);
+    (mockPlayerWasReset ? 0 : livePlayerDetail?.career?.gamesPlayed) ?? selectedPlayer?.gamesPlayed ?? null;
   const displayPlaytime =
-    (mockPlayerWasReset ? "0h 0m" : livePlayerDetail?.career?.playtime) ??
-    (mockMode && selectedPlayer ? getPlaytime(selectedPlayer.score) : "0h 0m");
+    (mockPlayerWasReset ? "Not recorded" : livePlayerDetail?.career?.playtime) ?? selectedPlayer?.playtime ?? "Not recorded";
   const displayLevel =
-    (mockPlayerWasReset ? 1 : livePlayerDetail?.progression.level) ??
-    (mockMode && selectedPlayer ? getLevel(selectedPlayer.score) : 1);
+    mockPlayerWasReset
+      ? null
+      : livePlayerDetail?.career
+        ? livePlayerDetail.career.currentLevel ?? null
+        : selectedPlayer?.currentLevel ?? null;
   const displayActivity =
-    (mockPlayerWasReset ? [] : livePlayerDetail?.activity) ??
-    (mockMode && selectedPlayer
-      ? getPlayerActivity(selectedPlayer.id, selectedPlayer.username)
-      : []);
-  const displayTransactions =
-    (mockPlayerWasReset ? [] : livePlayerDetail?.transactions) ??
-    (mockMode ? selectedPlayerTransactions : []);
-  const displayAccount =
-    livePlayerDetail?.accountInfo ??
-    (mockMode && selectedPlayer ? getPlayerAccountInfo(selectedPlayer.id) : null);
+    mockPlayerWasReset ? [] : livePlayerDetail?.activity ?? [];
+  const mockPayMongoTransactions = mockMode && selectedPlayer
+    ? topUps.filter((topUp) => topUp.playerId === selectedPlayer.id || topUp.playerName.toLowerCase() === selectedPlayer.username.toLowerCase()).map((topUp) => ({
+        id: topUp.id,
+        type: "PayMongo top-up",
+        item: topUp.item || "C-Coin top-up",
+        amount: `₱${topUp.amount.toLocaleString("en-PH")}`,
+        status: topUp.status,
+        date: topUp.timestamp ? new Date(topUp.timestamp).toLocaleString() : `${topUp.date} ${topUp.time}`,
+      }))
+    : [];
+  const displayTransactions = mockPlayerWasReset
+    ? []
+    : [...(livePlayerDetail?.transactions ?? []), ...mockPayMongoTransactions];
+  const displayAccount = livePlayerDetail?.accountInfo ?? null;
 
   const [contactPlayer, setContactPlayer] = useState<Player | null>(null);
 
@@ -398,6 +394,9 @@ function PlayersPage() {
   const [showBulkStatus, setShowBulkStatus] = useState(false);
 
   const [bulkStatus, setBulkStatus] = useState<PlayerStatus>("Active");
+  const [banStartsAt, setBanStartsAt] = useState(() => toLocalDateTimeInput(new Date()));
+  const [banEndsAt, setBanEndsAt] = useState(() => toLocalDateTimeInput(new Date(Date.now() + 7 * 24 * 60 * 60 * 1000)));
+  const [permanentBan, setPermanentBan] = useState(false);
 
 
   /* =======================================================
@@ -434,8 +433,10 @@ function PlayersPage() {
           username: "CAMERA_PRO",
           email: "player@crewonset.com",
           status: getMockPlayerAdminStatus(),
+          bannedUntil: getMockPlayerBannedUntil(),
           joined: "Mar 14, 2025",
-          score: isMockPlayerAccountReset() ? 0 : 276820,
+          score: null,
+          currentLevel: isMockPlayerAccountReset() ? null : 27,
           role: "Cameraman",
           avatarUrl: DEFAULT_PROFILE_PICTURE_URL,
         },
@@ -450,6 +451,18 @@ function PlayersPage() {
         ),
       ].filter((player) => player.id !== "MOCK-PLAYER-001" || !isMockPlayerAccountDeleted()),
     );
+  }, [mockMode]);
+
+  useEffect(() => {
+    if (!mockMode) return;
+    const syncMockBanState = () => {
+      const status = getMockPlayerAdminStatus();
+      const bannedUntil = getMockPlayerBannedUntil();
+      setPlayerList((current) => current.map((player) => player.id === "MOCK-PLAYER-001" ? { ...player, status, bannedUntil } : player));
+      setSelectedPlayer((current) => current?.id === "MOCK-PLAYER-001" ? { ...current, status, bannedUntil } : current);
+    };
+    const interval = window.setInterval(syncMockBanState, 15_000);
+    return () => window.clearInterval(interval);
   }, [mockMode]);
 
   useEffect(() => {
@@ -635,14 +648,14 @@ function PlayersPage() {
              LEVEL
              =============================================== */
 
-      const playerLevel = getLevel(player.score);
+      const playerLevel = player.currentLevel;
 
       const levelValue = Number(appliedLevelFilter);
 
       const matchesLevel =
         !appliedFilters.includes("Level") ||
         !appliedLevelFilter ||
-        (Number.isFinite(levelValue) && playerLevel >= levelValue);
+        (Number.isFinite(levelValue) && playerLevel != null && playerLevel >= levelValue);
 
       /* ===============================================
              PRODUCTION SCORE
@@ -653,20 +666,20 @@ function PlayersPage() {
       const matchesScore =
         !appliedFilters.includes("Production Score") ||
         !appliedScoreFilter ||
-        (Number.isFinite(scoreValue) && player.score >= scoreValue);
+        (Number.isFinite(scoreValue) && player.score != null && player.score >= scoreValue);
 
       /* ===============================================
              PLAYTIME
              =============================================== */
 
-      const playtimeHours = getPlaytimeMinutes(player.score) / 60;
+      const playtimeHours = player.playtimeMinutes == null ? null : player.playtimeMinutes / 60;
 
       const playtimeValue = Number(appliedPlaytimeFilter);
 
       const matchesPlaytime =
         !appliedFilters.includes("Playtime") ||
         !appliedPlaytimeFilter ||
-        (Number.isFinite(playtimeValue) && playtimeHours >= playtimeValue);
+        (Number.isFinite(playtimeValue) && playtimeHours != null && playtimeHours >= playtimeValue);
 
       /* ===============================================
              FINAL RESULT
@@ -714,16 +727,16 @@ function PlayersPage() {
 
       switch (sortKey) {
         case "playtime":
-          aValue = getPlaytimeMinutes(a.score);
+          aValue = a.playtimeMinutes ?? -1;
 
-          bValue = getPlaytimeMinutes(b.score);
+          bValue = b.playtimeMinutes ?? -1;
 
           break;
 
         case "score":
-          aValue = a.score;
+          aValue = a.score ?? -1;
 
-          bValue = b.score;
+          bValue = b.score ?? -1;
 
           break;
 
@@ -735,9 +748,9 @@ function PlayersPage() {
           break;
 
         case "gamesPlayed":
-          aValue = getGamesPlayed(a.score);
+          aValue = a.gamesPlayed ?? -1;
 
-          bValue = getGamesPlayed(b.score);
+          bValue = b.gamesPlayed ?? -1;
 
           break;
       }
@@ -817,7 +830,7 @@ function PlayersPage() {
   async function runPlayerAction(
     action: "status" | "reset" | "delete",
     ids: string[],
-    options: { status?: PlayerStatus } = {},
+    options: { status?: PlayerStatus; permanent?: boolean; banStartsAt?: string; banEndsAt?: string } = {},
   ): Promise<boolean> {
     const targetIds = new Set(ids.filter(Boolean));
     if (targetIds.size === 0) return false;
@@ -831,7 +844,24 @@ function PlayersPage() {
     try {
       if (mockMode) {
         if (targetIds.has("MOCK-PLAYER-001")) {
-          if (action === "status") setMockPlayerAdminStatus(options.status ?? "Active");
+          if (action === "status") {
+            setMockPlayerAdminStatus(options.status ?? "Active", {
+              permanent: options.permanent,
+              bannedUntil: options.status === "Banned" && !options.permanent && options.banEndsAt
+                ? new Date(options.banEndsAt).toISOString()
+                : null,
+            });
+            if (options.status === "Banned") {
+              const endText = options.permanent ? "This is a permanent ban." : `This ban is scheduled to end on ${new Date(options.banEndsAt || "").toLocaleString()}.`;
+              addMockPlayerAccountMessage({
+                subject: "Your Crew On Set account has been banned",
+                body: `Hello CAMERA_PRO, your player account has been banned. ${endText} You cannot sign in to the website or game while the ban is active. If you think this was a mistake, you can submit an appeal at /ban-appeal.`,
+                noticeTitle: "Account banned",
+                noticeBody: `Your account is banned. ${endText} Open this notice to read the admin message and submit an appeal.`,
+                href: "/ban-appeal",
+              });
+            }
+          }
           if (action === "delete") deleteMockPlayerAccount();
           if (action === "reset") {
             resetMockPlayerAccountData();
@@ -859,7 +889,9 @@ function PlayersPage() {
             return {
               ...player,
               status: options.status ?? player.status,
-              bannedUntil: null,
+              bannedUntil: action === "status" && options.status === "Banned" && !options.permanent && options.banEndsAt
+                ? new Date(options.banEndsAt).toISOString()
+                : null,
             };
           });
         });
@@ -875,7 +907,9 @@ function PlayersPage() {
             return {
               ...current,
               status: options.status ?? current.status,
-              bannedUntil: null,
+              bannedUntil: options.status === "Banned" && !options.permanent && options.banEndsAt
+                ? new Date(options.banEndsAt).toISOString()
+                : null,
             };
           });
         }
@@ -890,15 +924,24 @@ function PlayersPage() {
           action,
           ids: Array.from(targetIds),
           ...(options.status ? { status: options.status } : {}),
+          ...(options.status === "Banned" ? {
+            permanent: options.permanent === true,
+            ...(options.permanent ? {} : {
+              banStartsAt: options.banStartsAt ? new Date(options.banStartsAt).toISOString() : undefined,
+              banEndsAt: options.banEndsAt ? new Date(options.banEndsAt).toISOString() : undefined,
+            }),
+          } : {}),
         }),
       });
       const payload = (await response.json().catch(() => null)) as {
         success?: boolean;
         error?: string;
+        emailWarning?: string;
       } | null;
       if (!response.ok || payload?.success === false) {
         throw new Error(payload?.error || "The player action could not be completed.");
       }
+      if (payload?.emailWarning) setActionError(payload.emailWarning);
 
       await realPlayersQuery.refetch();
       if (action === "delete") {
@@ -1015,8 +1058,17 @@ function PlayersPage() {
      ========================================================= */
 
   function applyBulkStatus() {
+    if (bulkStatus === "Banned" && !permanentBan && (!banEndsAt || new Date(banEndsAt).getTime() <= Date.now())) {
+      setActionError("Choose a ban end date and time in the future.");
+      return;
+    }
     void runPlayerAction("status", selectedPlayers, {
       status: bulkStatus,
+      ...(bulkStatus === "Banned" ? {
+        permanent: permanentBan,
+        banStartsAt,
+        banEndsAt,
+      } : {}),
     }).then((success) => {
       if (success) setShowBulkStatus(false);
     });
@@ -1447,7 +1499,7 @@ function PlayersPage() {
                     Status
                   </th>
 
-                  <SortableHeader label="Playtime" sort="playtime" />
+                  <SortableHeader label="Recorded Runtime" sort="playtime" />
 
                   <SortableHeader label="Score" sort="score" />
 
@@ -1506,7 +1558,7 @@ function PlayersPage() {
                       <td className="px-4 py-3">
                         <div className="flex items-center gap-3">
                           <div className="size-8 shrink-0 overflow-hidden rounded-full border border-white/10 bg-[#222b31]">
-                            <img src={player.avatarUrl || DEFAULT_PROFILE_PICTURE_URL} alt={player.username + " avatar"} className="size-full object-cover" />
+                            <SyncedPlayerAvatar playFabId={player.id} displayName={player.username} fallbackUrl={player.avatarUrl || DEFAULT_PROFILE_PICTURE_URL} className="size-full object-cover" />
                           </div>
 
                           <div className="min-w-0">
@@ -1515,7 +1567,7 @@ function PlayersPage() {
                             </p>
 
                             <p className="mt-0.5 text-[9px] text-white/25">
-                              Level {getLevel(player.score)}
+                              {player.currentLevel == null ? "Level —" : `Level ${player.currentLevel}`}
                             </p>
                           </div>
                         </div>
@@ -1559,7 +1611,7 @@ function PlayersPage() {
 
                       <td className="px-4 py-3">
                         <span className="text-[10px] text-white/45">
-                          {getPlaytime(player.score)}
+                          {player.playtime ?? "—"}
                         </span>
                       </td>
 
@@ -1567,7 +1619,7 @@ function PlayersPage() {
 
                       <td className="px-4 py-3">
                         <span className="text-[11px] font-bold text-white/60">
-                          {player.score.toLocaleString()}
+                          {player.score == null ? "—" : player.score.toLocaleString()}
                         </span>
                       </td>
 
@@ -1581,7 +1633,7 @@ function PlayersPage() {
 
                       <td className="px-4 py-3">
                         <span className="text-[10px] text-white/40">
-                          {getGamesPlayed(player.score)}
+                          {player.gamesPlayed ?? "—"}
                         </span>
                       </td>
 
@@ -1653,7 +1705,14 @@ function PlayersPage() {
 
               <div className="relative">
                 <button
-                  onClick={() => setShowBulkStatus((current) => !current)}
+                  onClick={() => setShowBulkStatus((current) => {
+                    if (!current) {
+                      const now = new Date();
+                      setBanStartsAt(toLocalDateTimeInput(now));
+                      setBanEndsAt(toLocalDateTimeInput(new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000)));
+                    }
+                    return !current;
+                  })}
                   className="flex items-center gap-2 rounded-md border border-white/10 px-3 py-2 text-[10px] font-bold text-white/50 hover:border-white/20 hover:text-white/75"
                 >
                   <ShieldCheck className="size-3.5" />
@@ -1689,10 +1748,17 @@ function PlayersPage() {
 
                     {bulkStatus === "Banned" && (
                       <div className="mt-2 border-t border-white/[.06] pt-3">
-                        <p className="text-[9px] leading-4 text-white/40">
-                          This is a permanent ban. The player cannot sign in until an admin sets
-                          their status to Active.
-                        </p>
+                        <label className="mb-2 flex items-center gap-2 text-[10px] font-bold text-white/70">
+                          <input type="checkbox" checked={permanentBan} onChange={(event) => setPermanentBan(event.target.checked)} />
+                          Permanently ban
+                        </label>
+                        {!permanentBan && <>
+                          <label className="mb-1 block text-[9px] font-bold text-white/45">Starts now</label>
+                          <input type="datetime-local" value={banStartsAt} readOnly className="mb-2 h-8 w-full rounded border border-white/10 bg-[#090e12] px-2 text-[10px] text-white/70" />
+                          <label className="mb-1 block text-[9px] font-bold text-white/45">Ban ends</label>
+                          <input type="datetime-local" min={toLocalDateTimeInput(new Date(Date.now() + 60_000))} value={banEndsAt} onChange={(event) => setBanEndsAt(event.target.value)} className="h-8 w-full rounded border border-white/10 bg-[#090e12] px-2 text-[10px] text-white" />
+                        </>}
+                        <p className="mt-2 text-[9px] leading-4 text-white/40">The ban blocks sign-in and ends automatically at the selected time. An admin can restore access sooner.</p>
                       </div>
                     )}
 
@@ -1769,11 +1835,7 @@ function PlayersPage() {
               <div className="flex items-center gap-5">
                 <div className="relative">
                   <div className="size-[105px] overflow-hidden rounded-2xl border-2 border-[#f5c431] bg-[#202a3a]">
-                    <img
-                      src={displayProfile?.avatarUrl || selectedPlayer.avatarUrl || DEFAULT_PROFILE_PICTURE_URL}
-                      alt={selectedPlayer.username + " avatar"}
-                      className="size-full object-cover"
-                    />
+                    <SyncedPlayerAvatar playFabId={selectedPlayer.id} displayName={selectedPlayer.username} fallbackUrl={displayProfile?.avatarUrl || selectedPlayer.avatarUrl || DEFAULT_PROFILE_PICTURE_URL} className="size-full object-cover" />
                   </div>
 
                   <span
@@ -1799,7 +1861,7 @@ function PlayersPage() {
                   </p>
 
                   <div className="mt-3 flex gap-3 text-[10px] font-black uppercase text-white/25">
-                    <span>LEVEL {displayLevel}</span>
+                    <span>{displayLevel == null ? "LEVEL —" : `LEVEL ${displayLevel}`}</span>
 
                     <span>•</span>
                   </div>
@@ -1839,7 +1901,7 @@ function PlayersPage() {
                     <div className="mt-5 grid gap-4 sm:grid-cols-2">
                       <div className="rounded-xl border border-white/[.07] bg-[#1c2636] p-5">
                         <p className="text-3xl font-black text-white">
-                          {displayScore.toLocaleString()}
+                          {displayScore == null ? "—" : displayScore.toLocaleString()}
                         </p>
 
                         <p className="mt-1 text-[9px] font-black uppercase tracking-wide text-white/30">
@@ -1848,7 +1910,7 @@ function PlayersPage() {
                       </div>
 
                       <div className="rounded-xl border border-white/[.07] bg-[#1c2636] p-5">
-                        <p className="text-3xl font-black text-white">{displayGamesPlayed}</p>
+                        <p className="text-3xl font-black text-white">{displayGamesPlayed ?? "—"}</p>
 
                         <p className="mt-1 text-[9px] font-black uppercase tracking-wide text-white/30">
                           Games Played
@@ -1858,10 +1920,11 @@ function PlayersPage() {
 
                     <div className="mt-4 rounded-xl border border-white/[.07] bg-[#1c2636] p-5">
                       <p className="text-[9px] font-black uppercase tracking-wide text-white/30">
-                        PLAYTIME
+                        RECORDED RUNTIME
                       </p>
 
                       <p className="mt-2 text-lg font-black text-white/75">{displayPlaytime}</p>
+                      <p className="mt-1 text-[10px] text-white/30">Only runtime saved by the game is included.</p>
                     </div>
                   </section>
 
@@ -1944,6 +2007,9 @@ function PlayersPage() {
                           <p className="mt-1.5 text-xs text-white/45">{entry.detail}</p>
                         </div>
                       ))}
+                      {displayActivity.length === 0 && (
+                        <p className="rounded-xl border border-white/[.07] bg-[#1c2636] p-4 text-xs text-white/40">No recent activity recorded.</p>
+                      )}
                     </div>
                   </section>
 
@@ -1954,7 +2020,7 @@ function PlayersPage() {
                   <section className="mt-10">
                     <h3 className="flex items-center gap-3 text-2xl font-black uppercase text-white">
                       <span className="h-7 w-1 rounded-full bg-[#ff6248]" />
-                      Relevant Transactions
+                      Transactions
                     </h3>
 
                     <div className="mt-5 space-y-3">
@@ -1980,6 +2046,9 @@ function PlayersPage() {
                           </div>
                         </div>
                       ))}
+                      {displayTransactions.length === 0 && (
+                        <p className="rounded-xl border border-white/[.07] bg-[#1c2636] p-4 text-xs text-white/40">No transactions recorded.</p>
+                      )}
                     </div>
                   </section>
                 </div>
@@ -2010,7 +2079,7 @@ function PlayersPage() {
                           : selectedPlayer.joined,
                       ],
                       ["Current Role", displayProfile?.role || selectedPlayer.role || "Player"],
-                      ["Level", `Level ${displayLevel}`],
+                      ["Level", displayLevel == null ? "—" : `Level ${displayLevel}`],
                     ].map(([label, value], index, rows) => (
                       <div
                         key={label}
@@ -2055,9 +2124,6 @@ function PlayersPage() {
                     {displayAccount ? (
                       [
                         ["Platform", displayAccount.platform],
-                        ["Device", displayAccount.device],
-                        ["Login Method", displayAccount.loginMethod],
-                        ["Two-Factor Auth", displayAccount.twoFactor],
                         ["Last Login", displayAccount.lastLogin],
                       ].map(([label, value], index, rows) => (
                         <div
