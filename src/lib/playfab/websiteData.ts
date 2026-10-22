@@ -24,6 +24,7 @@ const MAX_VALUE_BYTES = 9500; // Leave headroom for encoding overhead
 export const WEBSITE_DATA_KEYS = {
   bugReports: "website_bug_reports",
   playerReports: "website_player_reports",
+  banAppealVerifications: "website_ban_appeal_verifications",
   partnerships: "website_partnerships",
   notifications: "website_admin_notifications",
   playerNotifications: "website_player_notifications",

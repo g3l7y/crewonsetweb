@@ -4,9 +4,11 @@ import { PLAYFAB_API_BASE } from '@/lib/playfab/config';
 import { DEFAULT_PROFILE_PICTURE_URL, isManagedProfileAvatarUrl } from '@/lib/profile-avatar';
 import { PLAYFAB_DATA_KEYS } from '@/lib/playfab/constants';
 import { deletePlayerEmailIdentity } from '@/lib/playfab/email-login-identities';
+import { sendPlayerBanNoticeEmail } from '@/lib/account-email';
 import { getCcoinCurrencyCode } from '@/lib/playfab/economy';
 import { mapDataToAchievements } from '@/lib/playfab/achievements';
-import { mapDataToProductionLogs } from '@/lib/playfab/productions';
+import { mapDataToProductionLogs, mapUserDataToProductionLogs } from '@/lib/playfab/productions';
+import { getHighestGameCareerLevel } from '@/lib/playfab/game-careers';
 import {
   WEBSITE_DATA_KEYS,
   getWebsiteRecords,
@@ -15,6 +17,7 @@ import {
 import type {
   AdminPlayerActivity,
   AdminPlayerDetails,
+  AdminPlayerListEntry,
   AdminPlayerTransaction,
   PlayerProfile,
   PlayerProgression,
@@ -52,7 +55,7 @@ type PayMongoOrder = {
   eventId?: string;
 };
 
-type CachedPlayers = { expiresAt: number; players: PlayerProfile[] };
+type CachedPlayers = { expiresAt: number; players: AdminPlayerListEntry[] };
 
 const PLAYER_CACHE_TTL_MS = 60_000;
 let playerCache: CachedPlayers | null = null;
@@ -207,6 +210,23 @@ function parseJson<T>(value: string, fallback: T): T {
   try { return JSON.parse(value) as T; } catch { return fallback; }
 }
 
+function getRecordedProductions(userData: UserDataMap): ReturnType<typeof mapDataToProductionLogs> {
+  const values = Object.fromEntries(Object.keys(userData).map((key) => [key, getDataValue(userData, key)]));
+  try {
+    return mapUserDataToProductionLogs(values);
+  } catch {
+    return mapDataToProductionLogs(parseJson<unknown>(values[PLAYFAB_DATA_KEYS.production_logs] || '', []));
+  }
+}
+
+function getRecordedCareerLevel(userData: UserDataMap): number | undefined {
+  try {
+    return getHighestGameCareerLevel(Object.fromEntries(Object.keys(userData).map((key) => [key, getDataValue(userData, key)])));
+  } catch {
+    return undefined;
+  }
+}
+
 function toNumber(value: unknown, fallback = 0): number {
   const numeric = Number(value);
   return Number.isFinite(numeric) ? numeric : fallback;
@@ -352,6 +372,26 @@ async function getBanState(playFabId: string, secretKey: string): Promise<{ stat
   return { status: active ? 'Banned' : 'Active', bannedUntil: active?.Expires ? toIsoDate(active.Expires) : null };
 }
 
+async function getRegisteredPlayerEmail(playFabId: string, secretKey: string): Promise<string> {
+  const account = await playFabServerRequest<{
+    AccountInfo?: { PrivateInfo?: { Email?: string } };
+  }>('/Admin/GetUserAccountInfo', { PlayFabId: playFabId }, secretKey);
+  const privateEmail = account.AccountInfo?.PrivateInfo?.Email?.trim();
+  if (privateEmail) return privateEmail;
+  const userData = await playFabServerRequest<{ Data?: Record<string, { Value?: string }> }>('/Server/GetUserData', {
+    PlayFabId: playFabId,
+    Keys: ['profile_metadata'],
+  }, secretKey);
+  const rawMetadata = userData.Data?.profile_metadata?.Value;
+  if (!rawMetadata) return '';
+  try {
+    const metadata = JSON.parse(rawMetadata) as { email?: unknown };
+    return typeof metadata.email === 'string' ? metadata.email.trim() : '';
+  } catch {
+    return '';
+  }
+}
+
 async function wait(milliseconds: number): Promise<void> {
   await new Promise((resolve) => setTimeout(resolve, milliseconds));
 }
@@ -367,7 +407,40 @@ async function getSegmentExportIndexUrl(exportId: string, secretKey: string): Pr
   throw new Error('PlayFab player export is still processing. Please try again shortly.');
 }
 
-async function loadAllPlayers(secretKey: string, excludedPlayFabId?: string): Promise<PlayerProfile[]> {
+async function loadPlayerListMetrics(playerId: string, secretKey: string): Promise<Pick<AdminPlayerListEntry, 'currentLevel' | 'productionScore' | 'gamesPlayed' | 'playtime' | 'playtimeMinutes'>> {
+  const result = await playFabServerRequest<{ InfoResultPayload?: { PlayerStatistics?: Array<{ StatisticName?: string; Value?: number }>; UserData?: UserDataMap } }>('/Server/GetPlayerCombinedInfo', {
+    PlayFabId: playerId,
+    InfoRequestParameters: { GetPlayerStatistics: true, GetUserData: true },
+  }, secretKey);
+  const userData = result.InfoResultPayload?.UserData || {};
+  const statistics = result.InfoResultPayload?.PlayerStatistics || [];
+  const stats = Object.fromEntries(statistics.map((item) => [String(item.StatisticName || '').toLowerCase(), toNumber(item.Value)]));
+  const progressionRaw = parseJson<Record<string, unknown>>(getDataValue(userData, PLAYFAB_DATA_KEYS.progression), {});
+  const productions = getRecordedProductions(userData);
+  const scoredProductions = productions.filter((log) => Number.isFinite(Number(log.overallScore)) && Number(log.overallScore) >= 0);
+  const completedLevels = Array.isArray(progressionRaw['completedLevels']) ? progressionRaw['completedLevels'] : [];
+  const careerLevel = getRecordedCareerLevel(userData);
+  const progressionLevel = toNumber(progressionRaw['level'], 1);
+  const highestProgressionLevel = toNumber(progressionRaw['highestLevelUnlocked'] ?? progressionRaw['highest_level']);
+  const hasRecordedLevel = productions.some((log) => Number(log.level) >= 1) || completedLevels.length > 0 ||
+    toNumber(progressionRaw['totalXp'] ?? progressionRaw['total_xp']) > 0 || progressionLevel > 1 || highestProgressionLevel > 1 ||
+    toNumber(stats['total_xp']) > 0 || toNumber(stats['level']) > 1 || toNumber(stats['highest_level']) > 1 || (careerLevel ?? 1) > 1;
+  const currentLevel = hasRecordedLevel ? Math.max(mapProgression(getDataValue(userData, PLAYFAB_DATA_KEYS.progression), statistics).level, careerLevel ?? 1) : null;
+  const productionScore = scoredProductions.length ? scoredProductions.reduce((sum, log) => sum + Number(log.overallScore), 0) / scoredProductions.length : null;
+  const gamesPlayed = productions.length || (Object.hasOwn(stats, 'games_played') ? stats['games_played'] : Object.hasOwn(stats, 'gamesplayed') ? stats['gamesplayed'] : null);
+  const measuredPlaytime = productions.reduce((total, log) => total + parseRuntimeMinutes(log.runtime), 0);
+  const hasPlaytimeStatistic = Object.hasOwn(stats, 'playtime_minutes');
+  const playtimeMinutes = measuredPlaytime > 0 ? measuredPlaytime : hasPlaytimeStatistic ? stats['playtime_minutes'] ?? 0 : null;
+  return {
+    currentLevel,
+    productionScore,
+    gamesPlayed,
+    playtimeMinutes,
+    playtime: playtimeMinutes == null ? null : formatPlaytime(playtimeMinutes),
+  };
+}
+
+async function loadAllPlayers(secretKey: string, excludedPlayFabId?: string): Promise<AdminPlayerListEntry[]> {
   const now = Date.now();
   if (playerCache && playerCache.expiresAt > now) return playerCache.players;
   if (playerRequest) return playerRequest;
@@ -393,10 +466,13 @@ async function loadAllPlayers(secretKey: string, excludedPlayFabId?: string): Pr
     const playerStates = await Promise.all(uniquePlayers.map(async (player) => {
       const tags = await getPlayerTags(player.playFabId, secretKey);
       if (tags.some(isAdminTag)) return null;
-      const ban = await getBanState(player.playFabId, secretKey);
-      return { ...player, adminStatus: ban.status, bannedUntil: ban.bannedUntil };
+      const [ban, metrics] = await Promise.all([
+        getBanState(player.playFabId, secretKey),
+        loadPlayerListMetrics(player.playFabId, secretKey),
+      ]);
+      return { ...player, ...metrics, adminStatus: ban.status, bannedUntil: ban.bannedUntil };
     }));
-    const nonAdminPlayers = playerStates.filter((player): player is PlayerProfile => Boolean(player));
+    const nonAdminPlayers = playerStates.filter((player): player is AdminPlayerListEntry => Boolean(player));
     nonAdminPlayers.sort((a, b) => {
       const aTime = Date.parse(a.joinedAt || '') || 0;
       const bTime = Date.parse(b.joinedAt || '') || 0;
@@ -432,14 +508,13 @@ async function loadProgressLeaderboard(secretKey: string): Promise<ProgressLeade
             GetPlayerProfile: true,
             GetPlayerStatistics: true,
             GetUserData: true,
-            UserDataKeys: [PLAYFAB_DATA_KEYS.production_logs, PLAYFAB_DATA_KEYS.progression, PLAYFAB_DATA_KEYS.profile_metadata],
             ProfileConstraints: { ShowAvatarUrl: true },
           },
         }, secretKey);
 
         const info = response.InfoResultPayload;
         const userData = info?.UserData || {};
-        const logs = mapDataToProductionLogs(parseJson<unknown>(getDataValue(userData, PLAYFAB_DATA_KEYS.production_logs), []))
+        const logs = getRecordedProductions(userData)
           .filter((log) => Number.isFinite(Number(log.overallScore)) && Number(log.overallScore) >= 0);
         if (logs.length === 0) continue;
 
@@ -479,17 +554,25 @@ function mapAccountInfo(account: Record<string, any>, lastLogin: string) {
   const origination = String(account['TitleInfo']?.['Origination'] || '').trim();
   const linkedPlatform = String(linked[0]?.['Platform'] || '').trim();
   const platform = origination || linkedPlatform || 'Not available';
-  const loginMethod = linkedPlatform
-    ? linkedPlatform.replace('GooglePlay', 'Google')
-    : account['Username'] ? 'PlayFab username' : account['PrivateInfo']?.['Email'] ? 'Email' : 'Not available';
-  return {
-    platform,
-    device: String(account['TitleInfo']?.['Device'] || account['Device'] || 'Not available'),
-    loginMethod,
-    twoFactor: 'Not available',
-    lastLogin: formatAdminTimestamp(lastLogin),
-    ...(account['TitleInfo']?.['LastLoginIP'] ? { lastIp: String(account['TitleInfo']['LastLoginIP']) } : {}),
-  };
+  return { platform, lastLogin: formatAdminTimestamp(lastLogin) };
+}
+
+function mapPlayFabTransactions(raw: unknown): AdminPlayerTransaction[] {
+  if (!Array.isArray(raw)) return [];
+  return raw.filter((item): item is Record<string, unknown> => Boolean(item) && typeof item === 'object').map((item, index) => {
+    const timestamp = String(item['timestamp'] || item['date'] || '');
+    const amount = toNumber(item['amount']);
+    const type = String(item['type'] || (amount < 0 ? 'Purchase' : 'Earned'));
+    const isDebit = amount < 0 || ['spend', 'purchase', 'payment'].includes(type.toLowerCase());
+    return {
+      id: String(item['id'] || `playfab-${timestamp || index}-${index}`),
+      type,
+      item: String(item['description'] || item['label'] || item['itemId'] || 'Player transaction'),
+      amount: `${isDebit ? '-' : ''}${Math.abs(amount).toLocaleString()} ${String(item['currency'] || '')}`.trim(),
+      status: 'Completed',
+      date: formatAdminTimestamp(timestamp),
+    };
+  });
 }
 
 async function loadRealPlayerDetails(playerId: string, secretKey: string): Promise<AdminPlayerDetails> {
@@ -523,15 +606,28 @@ async function loadRealPlayerDetails(playerId: string, secretKey: string): Promi
   const lastLoginAt = account['TitleInfo']?.['LastLogin'] ? new Date(account['TitleInfo']['LastLogin']).toISOString() : '';
   const ban = await getBanState(playerId, secretKey);
   const progression = mapProgression(getDataValue(userData, PLAYFAB_DATA_KEYS.progression), rawStats);
-  const productionLogs = mapDataToProductionLogs(parseJson<unknown>(getDataValue(userData, PLAYFAB_DATA_KEYS.production_logs), []));
+  const productionLogs = getRecordedProductions(userData);
+  const completedLevels = Array.isArray(progression['completedLevels']) ? progression['completedLevels'] : [];
+  const careerLevel = getRecordedCareerLevel(userData);
+  const hasRecordedLevel = productionLogs.some((log) => Number(log.level) >= 1) || completedLevels.length > 0 ||
+    progression.totalXp > 0 || progression.level > 1 || progression.highestLevelUnlocked > 1 || (careerLevel ?? 1) > 1;
   const achievements = mapDataToAchievements(parseJson<unknown>(getDataValue(userData, PLAYFAB_DATA_KEYS.achievements), []));
   const orders = await getWebsiteRecords<PayMongoOrder>(WEBSITE_DATA_KEYS.paymongoOrders, secretKey);
-  const transactions = mapTransactions(orders.filter((order) => order.playFabId === playerId));
+  const transactions = [
+    ...mapTransactions(orders.filter((order) => order.playFabId === playerId)),
+    ...mapPlayFabTransactions(parseJson<unknown>(getDataValue(userData, PLAYFAB_DATA_KEYS.transactions), [])),
+  ];
   const activity = buildActivity(productionLogs, achievements, transactions);
   const statsByName = Object.fromEntries(rawStats.map((stat) => [String(stat.StatisticName || '').toLowerCase(), toNumber(stat.Value)]));
-  const playtimeMinutes = productionLogs.reduce((total, log) => total + parseRuntimeMinutes(log.runtime), 0) || toNumber(statsByName.playtime_minutes);
-  const productionScore = productionLogs.reduce((total, log) => total + toNumber(log.overallScore), 0) || toNumber(statsByName.production_score);
-  const gamesPlayed = productionLogs.length || toNumber(statsByName.games_played ?? statsByName.gamesplayed);
+  const scoredProductions = productionLogs.filter((log) => Number.isFinite(Number(log.overallScore)) && Number(log.overallScore) >= 0);
+  const recordedPlaytime = productionLogs.reduce((total, log) => total + parseRuntimeMinutes(log.runtime), 0);
+  const hasPlaytimeStatistic = Object.hasOwn(statsByName, 'playtime_minutes');
+  const playtimeMinutes = recordedPlaytime > 0 ? recordedPlaytime : hasPlaytimeStatistic ? statsByName.playtime_minutes ?? 0 : null;
+  const productionScore = scoredProductions.length
+    ? scoredProductions.reduce((total, log) => total + Number(log.overallScore), 0) / scoredProductions.length
+    : null;
+  const hasGamesPlayedStatistic = Object.hasOwn(statsByName, 'games_played') || Object.hasOwn(statsByName, 'gamesplayed');
+  const gamesPlayed = productionLogs.length || (hasGamesPlayedStatistic ? toNumber(statsByName.games_played ?? statsByName.gamesplayed) : null);
   const username = String(rawMetadata.username || profileRecord['DisplayName'] || account['Username'] || 'Player');
   const email = String(rawMetadata.email || account['PrivateInfo']?.['Email'] || '');
   const joinedAt = account['Created'] ? new Date(account['Created']).toISOString() : '';
@@ -568,7 +664,12 @@ async function loadRealPlayerDetails(playerId: string, secretKey: string): Promi
     transactions,
     activity,
     accountInfo: mapAccountInfo(account, lastLoginAt),
-    career: { productionScore, gamesPlayed, playtime: formatPlaytime(playtimeMinutes) },
+    career: {
+      productionScore,
+      gamesPlayed,
+      playtime: playtimeMinutes == null ? 'Not recorded' : formatPlaytime(playtimeMinutes),
+      currentLevel: hasRecordedLevel ? Math.max(progression.level, careerLevel ?? 1) : null,
+    },
   };
 }
 
@@ -668,7 +769,12 @@ export const Route = createFileRoute('/api/admin/players')({
         const secretKey = getSecretKey();
         if (!secretKey) return Response.json({ success: false, error: 'PLAYFAB_SECRET_KEY is not configured on the server.' }, { status: 503 });
         try {
-          const body = await request.json() as { action?: string; ids?: unknown; id?: unknown; status?: unknown };
+          const body = await request.json() as { action?: string; ids?: unknown; id?: unknown; status?: unknown; permanent?: unknown; banStartsAt?: unknown; banEndsAt?: unknown };
+          if (body.action === 'refresh') {
+            playerCache = null;
+            leaderboardCache = null;
+            return Response.json({ success: true });
+          }
           const ids = Array.from(new Set([
             ...(Array.isArray(body.ids) ? body.ids : []),
             ...(typeof body.id === 'string' ? [body.id] : []),
@@ -679,9 +785,53 @@ export const Route = createFileRoute('/api/admin/players')({
             if (body.status === 'Active') {
               await Promise.all(ids.map((id) => playFabServerRequest('/Server/RevokeAllBansForUser', { PlayFabId: id }, secretKey)));
             } else {
+              const priorBanStates = await Promise.all(ids.map((id) => getBanState(id, secretKey)));
+              let durationInHours: number | undefined;
+              let banEndsAt: string | null = null;
+              if (body.permanent !== true) {
+                const startsAt = typeof body.banStartsAt === 'string' ? Date.parse(body.banStartsAt) : Number.NaN;
+                const parsedEndsAt = typeof body.banEndsAt === 'string' ? Date.parse(body.banEndsAt) : Number.NaN;
+                const now = Date.now();
+                if (!Number.isFinite(startsAt) || startsAt > now + 60_000) {
+                  return Response.json({ success: false, error: 'A ban must start now or earlier.' }, { status: 400 });
+                }
+                if (!Number.isFinite(parsedEndsAt) || parsedEndsAt <= now) {
+                  return Response.json({ success: false, error: 'Choose an end date and time in the future.' }, { status: 400 });
+                }
+                durationInHours = (parsedEndsAt - now) / (60 * 60 * 1000);
+                banEndsAt = new Date(parsedEndsAt).toISOString();
+              }
               await playFabServerRequest('/Server/BanUsers', {
-                Bans: ids.map((id) => ({ PlayFabId: id, Reason: 'Account banned by a studio administrator.' })),
+                Bans: ids.map((id) => ({
+                  PlayFabId: id,
+                  Reason: 'Account banned by a studio administrator.',
+                  ...(durationInHours === undefined ? {} : { DurationInHours: durationInHours }),
+                })),
               }, secretKey);
+              const newlyBannedIds = ids.filter((_, index) => priorBanStates[index]?.status !== 'Banned');
+              const configuredOrigin = process.env['PUBLIC_APP_URL']?.trim() || new URL(request.url).origin;
+              const appealUrl = new URL('/ban-appeal', configuredOrigin).toString();
+              const startsAt = new Date().toISOString();
+              const emailFailures: string[] = [];
+              await Promise.all(newlyBannedIds.map(async (id) => {
+                try {
+                  const email = await getRegisteredPlayerEmail(id, secretKey);
+                  if (!email) {
+                    emailFailures.push(id);
+                    return;
+                  }
+                  const player = playerCache?.players.find((entry) => entry.playFabId === id);
+                  await sendPlayerBanNoticeEmail(email, player?.username || 'Crew Player', startsAt, banEndsAt, appealUrl);
+                } catch (error) {
+                  console.error(`[Admin Players] Ban notice email failed for ${id}:`, error);
+                  emailFailures.push(id);
+                }
+              }));
+              if (emailFailures.length) {
+                playerCache = null;
+                leaderboardCache = null;
+                return Response.json({ success: true, emailWarning: `Ban applied, but an email could not be sent to ${emailFailures.length} account${emailFailures.length === 1 ? '' : 's'}.` });
+              }
             }
           } else if (body.action === 'reset') {
             // These resets also update shared inbox collections. Serialize them

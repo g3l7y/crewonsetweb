@@ -7,10 +7,12 @@ import {
   appendWebsiteRecord,
   updateWebsiteRecord,
   deleteWebsiteRecords,
+  setWebsiteRecords,
 } from '@/lib/playfab/websiteData';
 import type { PlayerReport } from '@/lib/playfab/types';
 import { persistAdminPlayerMessage } from '@/lib/playfab/admin-player-message';
 import { buildReportStatusMessage } from '@/lib/report-investigation-message';
+import { sendBanAppealDecisionEmail } from '@/lib/account-email';
 import {
   parseSubmissionRequest,
   uploadSubmissionAttachment,
@@ -103,6 +105,21 @@ export const Route = createFileRoute('/api/admin/player-reports')({
         } catch (error) {
           console.error('[API] GET player-reports error:', error);
           return Response.json({ error: 'Failed to fetch player reports.' }, { status: 500 });
+        }
+      },
+
+      /** PUT — persist local admin report updates (admin-only). */
+      PUT: async ({ request }) => {
+        if (!(await validateSessionFromRequest(request, { requireAdmin: true }))) return unauthorizedSessionResponse();
+        try {
+          const body = await request.json() as { data?: PlayerReport[] };
+          if (!Array.isArray(body.data)) return Response.json({ error: 'Report data is required.' }, { status: 400 });
+          const success = await setWebsiteRecords(WEBSITE_DATA_KEYS.playerReports, body.data, getSecretKey());
+          if (!success) return Response.json({ error: 'Failed to save player reports.' }, { status: 500 });
+          return Response.json({ success: true });
+        } catch (error) {
+          console.error('[API] PUT player-reports error:', error);
+          return Response.json({ error: 'Failed to save player reports.' }, { status: 500 });
         }
       },
 
@@ -201,10 +218,11 @@ export const Route = createFileRoute('/api/admin/player-reports')({
           return unauthorizedSessionResponse();
         }
         try {
-          const { id, status, adminNotes } = (await request.json()) as {
+          const { id, status, adminNotes, appealDecision } = (await request.json()) as {
             id?: string;
             status?: string;
             adminNotes?: string;
+            appealDecision?: 'Approved' | 'Denied';
           };
 
           if (!id) {
@@ -219,6 +237,53 @@ export const Route = createFileRoute('/api/admin/player-reports')({
           const reports = await getWebsiteRecords<PlayerReport>(WEBSITE_DATA_KEYS.playerReports, secretKey);
           const current = reports.find((report) => report.id === id);
           if (!current) return Response.json({ error: 'Report not found.' }, { status: 404 });
+
+          if (appealDecision !== undefined) {
+            const appeal = current as PlayerReport & { banAppeal?: boolean; appealStatus?: string; verifiedEmail?: string; banEndsAt?: string | null };
+            if (!appeal.banAppeal || !['Approved', 'Denied'].includes(appealDecision)) {
+              return Response.json({ error: 'This is not a reviewable ban appeal.' }, { status: 400 });
+            }
+            if (appeal.appealStatus !== 'Pending') {
+              return Response.json({ error: 'This appeal has already been reviewed.' }, { status: 409 });
+            }
+            const secretKey = getSecretKey();
+            if (appealDecision === 'Approved') {
+              if (!appeal.reporterId) return Response.json({ error: 'The appeal is not linked to an account.' }, { status: 409 });
+              const response = await fetch(`${PLAYFAB_API_BASE}/Server/RevokeAllBansForUser`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', 'X-SecretKey': secretKey },
+                body: JSON.stringify({ PlayFabId: appeal.reporterId }),
+              });
+              const result = await response.json().catch(() => ({})) as { code?: number; errorMessage?: string };
+              if (!response.ok || result.code !== 200) {
+                return Response.json({ error: result.errorMessage || 'PlayFab could not restore this account.' }, { status: 502 });
+              }
+            }
+
+            const updated = await updateWebsiteRecord<PlayerReport>(
+              WEBSITE_DATA_KEYS.playerReports,
+              id,
+              (report) => ({
+                ...report,
+                status: 'Resolved',
+                appealStatus: appealDecision,
+                decidedAt: new Date().toISOString(),
+                ...(adminNotes !== undefined ? { adminNotes } : {}),
+              }),
+              secretKey,
+            );
+            if (!updated) return Response.json({ error: 'The appeal could not be updated.' }, { status: 500 });
+            let emailWarning: string | undefined;
+            if (appeal.verifiedEmail) {
+              try {
+                await sendBanAppealDecisionEmail(appeal.verifiedEmail, appeal.reporterName || 'Crew Player', appealDecision, adminNotes, appeal.banEndsAt);
+              } catch (error) {
+                console.error('[Ban Appeals] Decision email failed:', error);
+                emailWarning = 'The decision was saved, but the email could not be sent.';
+              }
+            }
+            return Response.json({ success: true, ...(emailWarning ? { emailWarning } : {}) });
+          }
 
           if (status !== undefined) {
             const order: Record<string, number> = { New: 0, Investigating: 1, Resolved: 2 };

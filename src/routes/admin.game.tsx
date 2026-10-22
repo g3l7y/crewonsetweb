@@ -169,7 +169,7 @@ function GamePage() {
       return;
     }
 
-    const response = await fetch("/api/admin/data?key=notifications", {
+    const response = await fetch("/api/admin/data?key=playerNotifications", {
       method: "POST",
       credentials: "include",
       headers: { "Content-Type": "application/json" },
@@ -360,8 +360,8 @@ function GamePage() {
     brandUpdatesStore.set([update, ...brandUpdatesStore.get()]);
     try {
       await notifyPlayers(
-        "New brand promotion",
-        update.notes || "A new brand partner link is available. Tap to visit the brand website.",
+        "Check this out",
+        update.notes || "A new brand partner is featured. Tap to visit their website.",
         `brand-notice-${update.id}`,
         `/api/brand-updates/${encodeURIComponent(update.id)}/click`,
       );

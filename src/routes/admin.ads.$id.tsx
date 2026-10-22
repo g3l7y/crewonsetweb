@@ -1,6 +1,9 @@
 import { createFileRoute } from "@tanstack/react-router";
 
 export const Route = createFileRoute("/admin/ads/$id")({
+  validateSearch: (search: Record<string, unknown>) => ({
+    source: search.source === "ad-revenue" ? "ad-revenue" as const : "partnerships" as const,
+  }),
   head: () => ({
     meta: [
       { title: "Advertisement Revenue — Crew On Set! Admin" },
@@ -99,6 +102,9 @@ function fromServiceAd(ad: AdEntry): ActiveAd {
 
 function AdDetailPage() {
   const { id } = Route.useParams();
+  const { source } = Route.useSearch();
+  const backHref = source === "ad-revenue" ? "/admin/ad-revenue" : "/admin/partnerships";
+  const backLabel = source === "ad-revenue" ? "Back to Ad Revenue" : "Back to Partnerships & Ads";
   const [localAds, setAds] = adsStore.useStore();
   const [applications, setApplications] = applicationsStore.useStore();
   const realAdsQuery = useAdminAds();
@@ -231,11 +237,11 @@ function AdDetailPage() {
           No advertisement matches ID "{id}". It may have been removed or the link is incorrect.
         </p>
         <Link
-          href="/admin/partnerships"
+          href={backHref}
           className="inline-flex items-center gap-2 rounded-md border border-white/10 bg-white/[0.03] px-4 py-2.5 text-xs font-black uppercase text-white/60 transition hover:border-coral hover:text-white"
         >
           <ArrowLeft className="size-4" />
-          Back to Partnerships & Ads
+          {backLabel}
         </Link>
       </div>
     );
@@ -250,11 +256,11 @@ function AdDetailPage() {
   return (
     <div className="admin-page h-full overflow-y-auto bg-[#101923] text-white">
       <Link
-        href="/admin/partnerships"
+        href={backHref}
         className="mb-6 inline-flex items-center gap-2 text-xs font-bold !text-white/45 transition hover:!text-white"
       >
         <ArrowLeft className="size-4" />
-        Back to Partnerships & Ads
+        {backLabel}
       </Link>
 
       <header className="mb-6 flex flex-col justify-between gap-4 sm:flex-row sm:items-start">

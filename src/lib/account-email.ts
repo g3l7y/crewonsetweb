@@ -91,6 +91,61 @@ export async function sendPlayerWelcomeEmail(to: string, username: string) {
   });
 }
 
+export async function sendBanAppealVerificationCode(to: string, code: string) {
+  const mailer = getMailer();
+  const subject = "Verify your Crew On Set ban appeal";
+  const body = `Use this code to verify your identity and submit a ban appeal: ${code}. It expires in 10 minutes. If you did not request this, you can ignore this email.`;
+  await mailer.transporter.sendMail({
+    from: mailer.from,
+    replyTo: mailer.replyTo,
+    to,
+    subject,
+    text: `${body}\n\nCrew On Set!`,
+    html: `<!doctype html><html><body style="font-family:Arial,sans-serif;color:#0a0e19;line-height:1.6"><h1>Verify your ban appeal</h1><p>${escapeHtml(body)}</p><p style="font-size:28px;font-weight:700;letter-spacing:8px">${escapeHtml(code)}</p><p style="color:#667085;font-size:12px">Crew On Set!</p></body></html>`,
+  });
+}
+
+export async function sendPlayerBanNoticeEmail(to: string, username: string, startsAt: string, endsAt: string | null, appealUrl: string) {
+  const mailer = getMailer();
+  const subject = "Your Crew On Set account has been banned";
+  const dateText = (value: string) => new Intl.DateTimeFormat("en-PH", {
+    dateStyle: "medium",
+    timeStyle: "short",
+    timeZone: "Asia/Manila",
+  }).format(new Date(value));
+  const duration = endsAt ? `This ban started on ${dateText(startsAt)} and is scheduled to end on ${dateText(endsAt)} (Philippine time).` : `This is a permanent ban, effective ${dateText(startsAt)} (Philippine time).`;
+  const body = `Hello ${username}, your Crew On Set player account has been banned. ${duration} You cannot sign in to the website or game while the ban is active. If you think this was a mistake, you can submit an appeal using the link below.`;
+  const safeUrl = escapeHtml(appealUrl);
+  await mailer.transporter.sendMail({
+    from: mailer.from,
+    replyTo: mailer.replyTo,
+    to,
+    subject,
+    text: `${body}\n\nSubmit an appeal: ${appealUrl}\n\nCrew On Set!`,
+    html: `<!doctype html><html><body style="font-family:Arial,sans-serif;color:#0a0e19;line-height:1.6"><h1>Account banned</h1><p>${escapeHtml(body)}</p><p><a href="${safeUrl}" style="display:inline-block;background:#f4513b;color:#fff;padding:13px 20px;border-radius:7px;text-decoration:none;font-weight:700">Submit an appeal</a></p><p style="color:#667085;font-size:12px">Crew On Set!</p></body></html>`,
+  });
+}
+
+export async function sendBanAppealDecisionEmail(to: string, username: string, decision: "Approved" | "Denied", notes?: string, banEndsAt?: string | null) {
+  const mailer = getMailer();
+  const approved = decision === "Approved";
+  const subject = approved ? "Your Crew On Set ban appeal was approved" : "Update on your Crew On Set ban appeal";
+  const banEndNotice = !approved && banEndsAt
+    ? ` You can sign in after the ban ends on ${new Intl.DateTimeFormat("en-PH", { dateStyle: "medium", timeStyle: "short", timeZone: "Asia/Manila" }).format(new Date(banEndsAt))} Philippine time.`
+    : !approved ? " This ban is permanent, so the account remains banned unless an administrator restores access later." : "";
+  const body = approved
+    ? `Hello ${username}, your appeal was approved and your account ban has been lifted. Your account is active again and you can sign in to the website and game.`
+    : `Hello ${username}, your ban appeal was reviewed and denied. Your account remains banned.${banEndNotice}${notes?.trim() ? ` Admin note: ${notes.trim()}` : ""}`;
+  await mailer.transporter.sendMail({
+    from: mailer.from,
+    replyTo: mailer.replyTo,
+    to,
+    subject,
+    text: `${body}\n\nCrew On Set!`,
+    html: `<!doctype html><html><body style="font-family:Arial,sans-serif;color:#0a0e19;line-height:1.6"><h1>${approved ? "Appeal approved" : "Appeal update"}</h1><p>${escapeHtml(body)}</p><p style="color:#667085;font-size:12px">Crew On Set!</p></body></html>`,
+  });
+}
+
 export function accountEmailActionUrl(request: Request, path: string, token: string) {
   const configuredOrigin = process.env["PUBLIC_APP_URL"]?.trim();
   const origin = configuredOrigin || new URL(request.url).origin;

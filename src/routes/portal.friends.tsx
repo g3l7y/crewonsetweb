@@ -47,6 +47,7 @@ import {
   type SocialPlatform,
 } from "@/lib/profile-socials";
 import { isMockMode } from "@/lib/playfab/config";
+import { SyncedPlayerAvatar } from "@/components/portal/player-avatar";
 import {
   useAddFriend,
   useFriendRequests,
@@ -74,6 +75,7 @@ type CareerOverview = {
 };
 
 type Friend = {
+  playFabId?: string;
   name: string;
   level: number;
   role: string;
@@ -91,6 +93,7 @@ type Friend = {
 };
 
 type FriendRequest = {
+  playFabId?: string;
   id: string;
   name: string;
   level: number;
@@ -99,6 +102,7 @@ type FriendRequest = {
 };
 
 type SentRequest = {
+  playFabId?: string;
   id: string;
   name: string;
   level: number;
@@ -121,6 +125,7 @@ function samePlayer(left: Pick<Player, "crewId" | "name">, right: Pick<Player, "
 
 function mapSearchResultToPlayer(result: PlayerSearchResult): Player {
   return {
+    playFabId: result.playFabId,
     name: result.username || result.displayName || "Player",
     level: result.level ?? 1,
     role: result.role ?? "Crew Member",
@@ -329,6 +334,7 @@ const searchablePlayers: Player[] = [
 ];
 
 function resolveProfile(entry: {
+  playFabId?: string;
   name: string;
   level: number;
   role: string;
@@ -371,6 +377,7 @@ function FriendsPage() {
   const realFriends = useMemo<Friend[]>(
     () =>
       (friendsQuery.data ?? []).map((friend) => ({
+        playFabId: friend.playFabId,
         name: friend.username || friend.displayName,
         level: friend.level ?? 1,
         role: String(friend.role ?? "Crew Member"),
@@ -426,6 +433,7 @@ function FriendsPage() {
           )
           .map((request) => ({
             id: request.id,
+            playFabId: request.senderPlayFabId,
             name: request.senderUsername,
             level: request.senderLevel,
             role: request.senderRole,
@@ -433,6 +441,7 @@ function FriendsPage() {
           }))
       : (friendRequestsQuery.data?.incoming ?? []).map((request) => ({
           id: request.id,
+          playFabId: request.senderPlayFabId,
           name: request.senderUsername,
           level: request.senderLevel,
           role: request.senderRole,
@@ -449,6 +458,7 @@ function FriendsPage() {
           )
           .map((request) => ({
             id: request.id,
+            playFabId: request.recipientPlayFabId,
             name: request.recipientUsername,
             level: request.recipientLevel,
             role: request.recipientRole,
@@ -457,6 +467,7 @@ function FriendsPage() {
           }))
       : (friendRequestsQuery.data?.outgoing ?? []).map((request) => ({
           id: request.id,
+          playFabId: request.recipientPlayFabId,
           name: request.recipientUsername,
           level: request.recipientLevel,
           role: request.recipientRole,
@@ -1615,11 +1626,7 @@ function PlayerProfile({
               <div className="relative mx-auto shrink-0 sm:mx-0">
                 <div className="size-28 overflow-hidden rounded-2xl border-[3px] border-yellow bg-[#151c29] shadow-[0_10px_30px_rgba(0,0,0,0.35)] sm:size-32">
                   {profileImage ? (
-                    <img
-                      src={profileImage}
-                      alt={`${player.name} profile`}
-                      className="h-full w-full object-cover"
-                    />
+                    <SyncedPlayerAvatar playFabId={player.playFabId} displayName={player.name} fallbackUrl={profileImage} className="h-full w-full object-cover" />
                   ) : (
                     <div className="grid h-full w-full place-items-center text-2xl font-black text-yellow">
                       {player.name.slice(0, 2).toUpperCase()}
@@ -1914,11 +1921,7 @@ function PlayerAvatar({
   return (
     <div className="relative grid size-12 shrink-0 place-items-center overflow-hidden rounded-full bg-[#0d121c] text-xs font-black text-yellow">
       {profileImage ? (
-        <img
-          src={profileImage}
-          alt={`${player.name} profile`}
-          className="h-full w-full object-cover"
-        />
+        <SyncedPlayerAvatar playFabId={player.playFabId} displayName={player.name} fallbackUrl={profileImage} className="h-full w-full object-cover" />
       ) : (
         player.name.slice(0, 2).toUpperCase()
       )}

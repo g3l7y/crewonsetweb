@@ -12,6 +12,7 @@ import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as AdminRouteImport } from './routes/admin'
 import { Route as AlmanacRouteImport } from './routes/almanac'
+import { Route as BanAppealRouteImport } from './routes/ban-appeal'
 import { Route as BrandPaymentResultRouteImport } from './routes/brand-payment-result'
 import { Route as ContactRouteImport } from './routes/contact'
 import { Route as DownloadRouteImport } from './routes/download'
@@ -35,6 +36,7 @@ import { Route as AdminPlayersRouteImport } from './routes/admin.players'
 import { Route as AdminSettingsRouteImport } from './routes/admin.settings'
 import { Route as AdminTransactionsRouteImport } from './routes/admin.transactions'
 import { Route as AdminLoginRouteImport } from './routes/admin_.login'
+import { Route as ApiBanAppealsRouteImport } from './routes/api/ban-appeals'
 import { Route as ApiBrandPromotionsRouteImport } from './routes/api/brand-promotions'
 import { Route as ApiGameInstallerRouteImport } from './routes/api/game-installer'
 import { Route as ApiMailRouteImport } from './routes/api/mail'
@@ -80,6 +82,7 @@ import { Route as ApiPaymongoReturnRouteImport } from './routes/api/paymongo/ret
 import { Route as ApiPaymongoStatusRouteImport } from './routes/api/paymongo/status'
 import { Route as ApiPaymongoWebhookRouteImport } from './routes/api/paymongo/webhook'
 import { Route as ApiPlayfabClientRouteImport } from './routes/api/playfab/client'
+import { Route as ApiPlayfabPlayerAvatarRouteImport } from './routes/api/playfab/player-avatar'
 import { Route as ApiPlayfabProfileAvatarRouteImport } from './routes/api/playfab/profile-avatar'
 import { Route as ApiAuthEmailChangeCompleteRouteImport } from './routes/api/auth/email-change/complete'
 import { Route as ApiAuthEmailChangeRequestRouteImport } from './routes/api/auth/email-change/request'
@@ -110,6 +113,11 @@ const AdminRoute = AdminRouteImport.update({
 const AlmanacRoute = AlmanacRouteImport.update({
   id: '/almanac',
   path: '/almanac',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const BanAppealRoute = BanAppealRouteImport.update({
+  id: '/ban-appeal',
+  path: '/ban-appeal',
   getParentRoute: () => rootRouteImport,
 } as any)
 const BrandPaymentResultRoute = BrandPaymentResultRouteImport.update({
@@ -225,6 +233,11 @@ const AdminTransactionsRoute = AdminTransactionsRouteImport.update({
 const AdminLoginRoute = AdminLoginRouteImport.update({
   id: '/admin_/login',
   path: '/admin/login',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiBanAppealsRoute = ApiBanAppealsRouteImport.update({
+  id: '/api/ban-appeals',
+  path: '/api/ban-appeals',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ApiBrandPromotionsRoute = ApiBrandPromotionsRouteImport.update({
@@ -455,6 +468,11 @@ const ApiPlayfabClientRoute = ApiPlayfabClientRouteImport.update({
   path: '/api/playfab/client',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiPlayfabPlayerAvatarRoute = ApiPlayfabPlayerAvatarRouteImport.update({
+  id: '/api/playfab/player-avatar',
+  path: '/api/playfab/player-avatar',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiPlayfabProfileAvatarRoute = ApiPlayfabProfileAvatarRouteImport.update({
   id: '/api/playfab/profile-avatar',
   path: '/api/playfab/profile-avatar',
@@ -549,6 +567,7 @@ export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/admin': typeof AdminRouteWithChildren
   '/almanac': typeof AlmanacRoute
+  '/ban-appeal': typeof BanAppealRoute
   '/brand-payment-result': typeof BrandPaymentResultRoute
   '/contact': typeof ContactRoute
   '/download': typeof DownloadRoute
@@ -571,6 +590,7 @@ export interface FileRoutesByFullPath {
   '/admin/settings': typeof AdminSettingsRoute
   '/admin/transactions': typeof AdminTransactionsRoute
   '/admin/login': typeof AdminLoginRoute
+  '/api/ban-appeals': typeof ApiBanAppealsRoute
   '/api/brand-promotions': typeof ApiBrandPromotionsRouteWithChildren
   '/api/game-installer': typeof ApiGameInstallerRoute
   '/api/mail': typeof ApiMailRoute
@@ -617,6 +637,7 @@ export interface FileRoutesByFullPath {
   '/api/paymongo/status': typeof ApiPaymongoStatusRoute
   '/api/paymongo/webhook': typeof ApiPaymongoWebhookRoute
   '/api/playfab/client': typeof ApiPlayfabClientRoute
+  '/api/playfab/player-avatar': typeof ApiPlayfabPlayerAvatarRoute
   '/api/playfab/profile-avatar': typeof ApiPlayfabProfileAvatarRoute
   '/api/auth/email-change/complete': typeof ApiAuthEmailChangeCompleteRoute
   '/api/auth/email-change/request': typeof ApiAuthEmailChangeRequestRoute
@@ -637,6 +658,7 @@ export interface FileRoutesByFullPath {
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/almanac': typeof AlmanacRoute
+  '/ban-appeal': typeof BanAppealRoute
   '/brand-payment-result': typeof BrandPaymentResultRoute
   '/contact': typeof ContactRoute
   '/download': typeof DownloadRoute
@@ -658,6 +680,7 @@ export interface FileRoutesByTo {
   '/admin/settings': typeof AdminSettingsRoute
   '/admin/transactions': typeof AdminTransactionsRoute
   '/admin/login': typeof AdminLoginRoute
+  '/api/ban-appeals': typeof ApiBanAppealsRoute
   '/api/brand-promotions': typeof ApiBrandPromotionsRouteWithChildren
   '/api/game-installer': typeof ApiGameInstallerRoute
   '/api/mail': typeof ApiMailRoute
@@ -704,6 +727,7 @@ export interface FileRoutesByTo {
   '/api/paymongo/status': typeof ApiPaymongoStatusRoute
   '/api/paymongo/webhook': typeof ApiPaymongoWebhookRoute
   '/api/playfab/client': typeof ApiPlayfabClientRoute
+  '/api/playfab/player-avatar': typeof ApiPlayfabPlayerAvatarRoute
   '/api/playfab/profile-avatar': typeof ApiPlayfabProfileAvatarRoute
   '/api/auth/email-change/complete': typeof ApiAuthEmailChangeCompleteRoute
   '/api/auth/email-change/request': typeof ApiAuthEmailChangeRequestRoute
@@ -726,6 +750,7 @@ export interface FileRoutesById {
   '/': typeof IndexRoute
   '/admin': typeof AdminRouteWithChildren
   '/almanac': typeof AlmanacRoute
+  '/ban-appeal': typeof BanAppealRoute
   '/brand-payment-result': typeof BrandPaymentResultRoute
   '/contact': typeof ContactRoute
   '/download': typeof DownloadRoute
@@ -748,6 +773,7 @@ export interface FileRoutesById {
   '/admin/settings': typeof AdminSettingsRoute
   '/admin/transactions': typeof AdminTransactionsRoute
   '/admin_/login': typeof AdminLoginRoute
+  '/api/ban-appeals': typeof ApiBanAppealsRoute
   '/api/brand-promotions': typeof ApiBrandPromotionsRouteWithChildren
   '/api/game-installer': typeof ApiGameInstallerRoute
   '/api/mail': typeof ApiMailRoute
@@ -794,6 +820,7 @@ export interface FileRoutesById {
   '/api/paymongo/status': typeof ApiPaymongoStatusRoute
   '/api/paymongo/webhook': typeof ApiPaymongoWebhookRoute
   '/api/playfab/client': typeof ApiPlayfabClientRoute
+  '/api/playfab/player-avatar': typeof ApiPlayfabPlayerAvatarRoute
   '/api/playfab/profile-avatar': typeof ApiPlayfabProfileAvatarRoute
   '/api/auth/email-change/complete': typeof ApiAuthEmailChangeCompleteRoute
   '/api/auth/email-change/request': typeof ApiAuthEmailChangeRequestRoute
@@ -817,6 +844,7 @@ export interface FileRouteTypes {
     | '/'
     | '/admin'
     | '/almanac'
+    | '/ban-appeal'
     | '/brand-payment-result'
     | '/contact'
     | '/download'
@@ -839,6 +867,7 @@ export interface FileRouteTypes {
     | '/admin/settings'
     | '/admin/transactions'
     | '/admin/login'
+    | '/api/ban-appeals'
     | '/api/brand-promotions'
     | '/api/game-installer'
     | '/api/mail'
@@ -885,6 +914,7 @@ export interface FileRouteTypes {
     | '/api/paymongo/status'
     | '/api/paymongo/webhook'
     | '/api/playfab/client'
+    | '/api/playfab/player-avatar'
     | '/api/playfab/profile-avatar'
     | '/api/auth/email-change/complete'
     | '/api/auth/email-change/request'
@@ -905,6 +935,7 @@ export interface FileRouteTypes {
   to:
     | '/'
     | '/almanac'
+    | '/ban-appeal'
     | '/brand-payment-result'
     | '/contact'
     | '/download'
@@ -926,6 +957,7 @@ export interface FileRouteTypes {
     | '/admin/settings'
     | '/admin/transactions'
     | '/admin/login'
+    | '/api/ban-appeals'
     | '/api/brand-promotions'
     | '/api/game-installer'
     | '/api/mail'
@@ -972,6 +1004,7 @@ export interface FileRouteTypes {
     | '/api/paymongo/status'
     | '/api/paymongo/webhook'
     | '/api/playfab/client'
+    | '/api/playfab/player-avatar'
     | '/api/playfab/profile-avatar'
     | '/api/auth/email-change/complete'
     | '/api/auth/email-change/request'
@@ -993,6 +1026,7 @@ export interface FileRouteTypes {
     | '/'
     | '/admin'
     | '/almanac'
+    | '/ban-appeal'
     | '/brand-payment-result'
     | '/contact'
     | '/download'
@@ -1015,6 +1049,7 @@ export interface FileRouteTypes {
     | '/admin/settings'
     | '/admin/transactions'
     | '/admin_/login'
+    | '/api/ban-appeals'
     | '/api/brand-promotions'
     | '/api/game-installer'
     | '/api/mail'
@@ -1061,6 +1096,7 @@ export interface FileRouteTypes {
     | '/api/paymongo/status'
     | '/api/paymongo/webhook'
     | '/api/playfab/client'
+    | '/api/playfab/player-avatar'
     | '/api/playfab/profile-avatar'
     | '/api/auth/email-change/complete'
     | '/api/auth/email-change/request'
@@ -1083,6 +1119,7 @@ export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AdminRoute: typeof AdminRouteWithChildren
   AlmanacRoute: typeof AlmanacRoute
+  BanAppealRoute: typeof BanAppealRoute
   BrandPaymentResultRoute: typeof BrandPaymentResultRoute
   ContactRoute: typeof ContactRoute
   DownloadRoute: typeof DownloadRoute
@@ -1094,6 +1131,7 @@ export interface RootRouteChildren {
   StoryRoute: typeof StoryRoute
   TeamRoute: typeof TeamRoute
   AdminLoginRoute: typeof AdminLoginRoute
+  ApiBanAppealsRoute: typeof ApiBanAppealsRoute
   ApiBrandPromotionsRoute: typeof ApiBrandPromotionsRouteWithChildren
   ApiGameInstallerRoute: typeof ApiGameInstallerRoute
   ApiMailRoute: typeof ApiMailRoute
@@ -1128,6 +1166,7 @@ export interface RootRouteChildren {
   ApiPaymongoStatusRoute: typeof ApiPaymongoStatusRoute
   ApiPaymongoWebhookRoute: typeof ApiPaymongoWebhookRoute
   ApiPlayfabClientRoute: typeof ApiPlayfabClientRoute
+  ApiPlayfabPlayerAvatarRoute: typeof ApiPlayfabPlayerAvatarRoute
   ApiPlayfabProfileAvatarRoute: typeof ApiPlayfabProfileAvatarRoute
   ApiAuthEmailChangeCompleteRoute: typeof ApiAuthEmailChangeCompleteRoute
   ApiAuthEmailChangeRequestRoute: typeof ApiAuthEmailChangeRequestRoute
@@ -1166,6 +1205,13 @@ declare module '@tanstack/react-router' {
       path: '/almanac'
       fullPath: '/almanac'
       preLoaderRoute: typeof AlmanacRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/ban-appeal': {
+      id: '/ban-appeal'
+      path: '/ban-appeal'
+      fullPath: '/ban-appeal'
+      preLoaderRoute: typeof BanAppealRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/brand-payment-result': {
@@ -1327,6 +1373,13 @@ declare module '@tanstack/react-router' {
       path: '/admin/login'
       fullPath: '/admin/login'
       preLoaderRoute: typeof AdminLoginRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/ban-appeals': {
+      id: '/api/ban-appeals'
+      path: '/api/ban-appeals'
+      fullPath: '/api/ban-appeals'
+      preLoaderRoute: typeof ApiBanAppealsRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/api/brand-promotions': {
@@ -1644,6 +1697,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiPlayfabClientRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/playfab/player-avatar': {
+      id: '/api/playfab/player-avatar'
+      path: '/api/playfab/player-avatar'
+      fullPath: '/api/playfab/player-avatar'
+      preLoaderRoute: typeof ApiPlayfabPlayerAvatarRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/playfab/profile-avatar': {
       id: '/api/playfab/profile-avatar'
       path: '/api/playfab/profile-avatar'
@@ -1847,6 +1907,7 @@ const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AdminRoute: AdminRouteWithChildren,
   AlmanacRoute: AlmanacRoute,
+  BanAppealRoute: BanAppealRoute,
   BrandPaymentResultRoute: BrandPaymentResultRoute,
   ContactRoute: ContactRoute,
   DownloadRoute: DownloadRoute,
@@ -1858,6 +1919,7 @@ const rootRouteChildren: RootRouteChildren = {
   StoryRoute: StoryRoute,
   TeamRoute: TeamRoute,
   AdminLoginRoute: AdminLoginRoute,
+  ApiBanAppealsRoute: ApiBanAppealsRoute,
   ApiBrandPromotionsRoute: ApiBrandPromotionsRouteWithChildren,
   ApiGameInstallerRoute: ApiGameInstallerRoute,
   ApiMailRoute: ApiMailRoute,
@@ -1892,6 +1954,7 @@ const rootRouteChildren: RootRouteChildren = {
   ApiPaymongoStatusRoute: ApiPaymongoStatusRoute,
   ApiPaymongoWebhookRoute: ApiPaymongoWebhookRoute,
   ApiPlayfabClientRoute: ApiPlayfabClientRoute,
+  ApiPlayfabPlayerAvatarRoute: ApiPlayfabPlayerAvatarRoute,
   ApiPlayfabProfileAvatarRoute: ApiPlayfabProfileAvatarRoute,
   ApiAuthEmailChangeCompleteRoute: ApiAuthEmailChangeCompleteRoute,
   ApiAuthEmailChangeRequestRoute: ApiAuthEmailChangeRequestRoute,
