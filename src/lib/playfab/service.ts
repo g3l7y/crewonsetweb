@@ -9,12 +9,13 @@ import { getCcoinCurrencyCode, getVirtualCurrency } from './economy';
 import { getInventory } from './inventory';
 import { getAchievements } from './achievements';
 import { getKnowledge } from './almanac';
-import { getProductionLogs } from './productions';
+import { getProductionHistory, getProductionLogs } from './productions';
 import { getTransactions } from './transactions';
 import { getNotifications } from './notifications';
 import { getGlobalLeaderboard, getLeaderboardAroundPlayer } from './leaderboard';
 import { getFriendsList } from './friends';
 import { DEFAULT_PROFILE_PICTURE_URL, isManagedProfileAvatarUrl } from '../profile-avatar';
+import { GAME_APPEARANCE_KEY, gameAppearanceToLoadout, mergeLoadoutIntoGameAppearance } from './game-appearance';
 
 // Cached session ticket in memory for fast authenticated Client API calls
 let _cachedTicket: string | null = null;
@@ -276,19 +277,18 @@ function createRealService(): PlayFabService {
 
       getLoadout: async () => {
         const ticket = await resolveSessionTicket();
-        if (!ticket) return {};
-        try {
-          const data = await getUserData(ticket, [PLAYFAB_DATA_KEYS.loadout]);
-          const rawLoadout = data[PLAYFAB_DATA_KEYS.loadout];
-          if (rawLoadout) {
-            return JSON.parse(rawLoadout);
-          }
-        } catch { /* Ignore malformed saved loadout and use an empty loadout. */ }
+        if (!ticket) throw new Error('Please sign in again to load your avatar.');
+        const data = await getUserData(ticket, [GAME_APPEARANCE_KEY, PLAYFAB_DATA_KEYS.loadout], true);
+        const rawAppearance = data[GAME_APPEARANCE_KEY];
+        if (rawAppearance) return gameAppearanceToLoadout(JSON.parse(rawAppearance));
+        const rawLoadout = data[PLAYFAB_DATA_KEYS.loadout];
+        if (rawLoadout) return JSON.parse(rawLoadout);
         return {};
       },
 
       getAchievements: async () => {
         const ticket = await resolveSessionTicket();
+        if (!ticket) throw new Error('Please sign in again to load game achievements.');
         return getAchievements(ticket);
       },
 
@@ -299,8 +299,13 @@ function createRealService(): PlayFabService {
 
       getProductionLogs: async () => {
         const ticket = await resolveSessionTicket();
-        if (!ticket) return [];
+        if (!ticket) throw new Error('Please sign in again to load game production history.');
         return getProductionLogs(ticket);
+      },
+      getProductionHistory: async () => {
+        const ticket = await resolveSessionTicket();
+        if (!ticket) throw new Error('Please sign in again to load saved game progress.');
+        return getProductionHistory(ticket);
       },
 
       getTransactions: async () => {

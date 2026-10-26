@@ -35,6 +35,7 @@ const sharedEndpoints: Record<string, string> = {
 };
 
 export const reportStatusColors = {
+  New: "#F3C747",
   Investigating: "#F39A5A",
   Resolved: "#4BC4B4",
 } as const;
@@ -1356,9 +1357,9 @@ export const adminNotificationsStore = createStore<AdminNotification>("cos.admin
 
 /* --------------------------------------------------------- equipped loadout */
 
-export type LoadoutSlot = "Hair" | "Tops" | "Bottoms" | "Shoe Wear" | "Accessories";
+export type LoadoutSlot = "Face" | "Body" | "Hair" | "Tops" | "Bottoms" | "Shoe Wear" | "Accessories";
 
-export const loadoutSlots: LoadoutSlot[] = ["Hair", "Tops", "Bottoms", "Shoe Wear", "Accessories"];
+export const loadoutSlots: LoadoutSlot[] = ["Face", "Body", "Hair", "Tops", "Bottoms", "Shoe Wear", "Accessories"];
 
 export type LoadoutPiece = {
   slot: LoadoutSlot;

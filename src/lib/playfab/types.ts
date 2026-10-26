@@ -257,6 +257,8 @@ export interface InventoryItem {
  */
 export interface Loadout {
   /** Current portal cosmetic slots. */
+  Face?: string | undefined;
+  Body?: string | undefined;
   Hair?: string | undefined;
   Tops?: string | undefined;
   Bottoms?: string | undefined;
@@ -276,6 +278,8 @@ export interface Loadout {
  * In-game achievement tracking.
  */
 export interface Achievement {
+  /** Career name supplied by the Unity save; milestones are per career. */
+  careerName?: string | undefined;
   /** Unique achievement identifier */
   id: string;
   /** Title / display name */
@@ -327,9 +331,24 @@ export interface KnowledgeEntry {
 /**
  * Production wrap log recorded at completion of a shoot.
  */
+export interface CareerProgressSummary {
+  id: string;
+  name: string;
+  level: number;
+  balance: number | undefined;
+  updatedUtc: string;
+  completedAttempts: number;
+  activeLevel: number | undefined;
+  takes: number | undefined;
+  transactions: { item: string; category: string; amount: number }[];
+}
+export interface ProductionHistory {
+  logs: ProductionLog[];
+  careers: CareerProgressSummary[];
+}
 export interface ProductionLog {
   /** Game contract lifecycle state when reported by the game client. */
-  status?: "accepted" | "completed" | undefined;
+  status?: "accepted" | "completed" | "failed" | undefined;
   /** Unique production record identifier */
   productionId?: string | undefined;
   /** Contract ID if tied to a client contract */
@@ -338,6 +357,18 @@ export interface ProductionLog {
   clientName?: string | undefined;
   /** Optional brand name when the production title is a separate product/contract name */
   clientBrandName?: string | undefined;
+  /** Contract/product name reported by the game. */
+  production?: string | undefined;
+  /** Crew roles reported by the game, especially for solo productions. */
+  roles?: string[] | undefined;
+  /** Game submission identifier used to deduplicate synced records. */
+  submissionId?: string | undefined;
+  preProductionFeedback?: string | undefined;
+  productionFeedback?: string | undefined;
+  postProductionFeedback?: string | undefined;
+  budgetFeedback?: string | undefined;
+  clientDecision?: string | undefined;
+  nextStep?: string | undefined;
   /** Production level index */
   level: number;
   /** Production stage name or identifier */
@@ -354,6 +385,8 @@ export interface ProductionLog {
   role: PlayerRole;
   /** Overall wrap score (0 - 100) */
   overallScore?: number | undefined;
+  hasPhaseScores?: boolean | undefined;
+  hasBudgetReview?: boolean | undefined;
   /** Pre-production phase score */
   preProductionScore?: number | undefined;
   /** Production shoot phase score */
@@ -374,6 +407,8 @@ export interface ProductionLog {
   budgetUsed?: number | undefined;
   /** Budget surplus remaining */
   budgetRemaining?: number | undefined;
+  budgetOpeningBalance?: number | undefined;
+  budgetIncome?: number | undefined;
   /** Soft currency awarded */
   bCoinsEarned: number;
   /** Hard currency awarded */
@@ -1034,6 +1069,7 @@ export interface AuthService {
  * Player profile, progression, loadout, and social service.
  */
 export interface PlayerService {
+  getProductionHistory(): Promise<ProductionHistory>;
   getProfile(): Promise<PlayerProfile>;
   getProgression(): Promise<PlayerProgression>;
   getWallet(): Promise<PlayerWallet>;

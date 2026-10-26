@@ -30,6 +30,8 @@ export function PasswordRecoveryModal({ scope, onClose }: PasswordRecoveryModalP
   const [recoveryToken, setRecoveryToken] = useState("");
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
+  const [passwordVisible, setPasswordVisible] = useState(false);
+  const [confirmationVisible, setConfirmationVisible] = useState(false);
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
 

@@ -61,6 +61,7 @@ export function PlayerShell({ children }: { children: React.ReactNode }) {
   const portalModeClass = displayTheme === "dark" ? "portal-dark" : "portal-light";
   const mockMode = isMockMode();
   const { data: profile } = usePlayerProfile();
+  const { data: avatarLoadout = {} } = usePlayerLoadout();
   const { data: progression } = usePlayerProgression();
   const sessionQuery = useSession();
   const accountName = profile?.username || profile?.displayName || "PLAYER";
@@ -190,12 +191,9 @@ export function PlayerShell({ children }: { children: React.ReactNode }) {
                 className="player-account-trigger flex items-center gap-3 rounded-lg border border-white/20 bg-white/10 py-2 pl-2 pr-3 text-[#fffdf7] shadow-sm transition hover:bg-white/15"
               >
                 <span className="relative size-8 shrink-0 overflow-hidden rounded-full border-2 border-yellow">
-                  <Image
-                    src={accountAvatar}
-                    alt={accountName + " avatar"}
-                    fill
-                    className="object-cover object-[62%_45%]"
-                  />
+                  <Suspense fallback={<Image src={accountAvatar} alt={accountName + " avatar"} fill className="object-cover object-[62%_45%]" />}>
+                    <Avatar3DPortrait loadout={avatarLoadout} displayName={accountName} portrait className="relative size-full overflow-hidden bg-[#e5dac3]" />
+                  </Suspense>
                 </span>
                 <span className="text-left leading-tight">
                   <span className="player-account-name block text-xs font-bold text-[#fffdf7]">{accountName}</span>
@@ -280,12 +278,9 @@ export function PlayerShell({ children }: { children: React.ReactNode }) {
 
           <div className="flex items-center gap-3 border-b border-white/10 px-5 py-4">
             <span className="relative size-11 shrink-0 overflow-hidden rounded-full border-2 border-yellow">
-              <Image
-                src={accountAvatar}
-                alt={accountName + " avatar"}
-                fill
-                className="object-cover object-[62%_45%]"
-              />
+              <Suspense fallback={<Image src={accountAvatar} alt={accountName + " avatar"} fill className="object-cover object-[62%_45%]" />}>
+                <Avatar3DPortrait loadout={avatarLoadout} displayName={accountName} portrait className="relative size-full overflow-hidden bg-[#e5dac3]" />
+              </Suspense>
             </span>
             <span>
               <span className="player-account-name block text-sm font-bold">{accountName}</span>

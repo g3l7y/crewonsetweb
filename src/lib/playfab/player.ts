@@ -41,15 +41,13 @@ export async function updateDisplayName(sessionTicket: string, displayName: stri
 }
 
 /**
- * Get specific arbitrary data keys for the player.
+ * Get specific arbitrary data keys for the player, or all keys when omitted.
  */
-export async function getUserData(sessionTicket: string, keys: string[]): Promise<Record<string, string>> {
+export async function getUserData(sessionTicket: string, keys?: string[], throwOnError = false): Promise<Record<string, string>> {
   try {
     const data = await playfabClientApi<{
       Data: Record<string, { Value: string; LastUpdated: string }>;
-    }>('/Client/GetUserData', {
-      Keys: keys,
-    }, sessionTicket);
+    }>('/Client/GetUserData', keys ? { Keys: keys } : {}, sessionTicket);
 
     const result: Record<string, string> = {};
     if (data.Data) {
@@ -59,7 +57,9 @@ export async function getUserData(sessionTicket: string, keys: string[]): Promis
     }
     return result;
   } catch (error) {
-    return {};
+    console.error('Failed to fetch PlayFab user data:', error);
+    if (!throwOnError) return {};
+    throw error;
   }
 }
 
