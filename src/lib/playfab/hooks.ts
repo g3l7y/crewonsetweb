@@ -76,7 +76,7 @@ export function useSession() {
     // Recheck immediately on portal mount so player-specific queries use the new ID.
     staleTime: 0,
     retry: false,
-    refetchInterval: (query) => query.state.data?.role === "player" ? 15_000 : false,
+    refetchInterval: false,
     refetchIntervalInBackground: false,
   });
 }

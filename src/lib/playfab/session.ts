@@ -13,10 +13,14 @@ type PlayFabSessionAccount = {
 
 type PlayFabSessionResult = {
   code?: number;
+  errorCode?: number;
   error?: string;
   errorMessage?: string;
   data?: { AccountInfo?: PlayFabSessionAccount };
 };
+
+const verifiedSessionCache = new Map<string, { expiresAt: number; session: SessionData }>();
+const VERIFIED_SESSION_CACHE_MS = 10_000;
 
 /**
  * Cookie builder helper.
@@ -75,17 +79,13 @@ export function unauthorizedSessionResponse(status = 403): Response {
  */
 export function parseSessionFromRequest(request: Request): SessionData | null {
   const cookieHeader = request.headers.get('cookie') ?? '';
-  const cookies = Object.fromEntries(
-    cookieHeader.split(';').map(c => {
-      const [key, ...rest] = c.trim().split('=');
-      return [key, decodeURIComponent(rest.join('='))];
-    })
-  );
-
-  const sessionCookie = cookies[PLAYFAB_SESSION_COOKIE];
-  if (!sessionCookie) return null;
-
   try {
+    const encodedSessionCookie = cookieHeader.split(';')
+      .map((cookie) => cookie.trim())
+      .find((cookie) => cookie.startsWith(`${PLAYFAB_SESSION_COOKIE}=`))
+      ?.slice(PLAYFAB_SESSION_COOKIE.length + 1);
+    if (!encodedSessionCookie) return null;
+    const sessionCookie = decodeURIComponent(encodedSessionCookie);
     const session = JSON.parse(sessionCookie) as Partial<SessionData>;
     if (!session.sessionTicket) return null;
     return {
@@ -134,9 +134,22 @@ export async function validateSessionFromRequest(
 
   if (isMockMode()) {
     const account = getMockAccountBySessionTicket(parsed.sessionTicket);
-    if (!account || (options.requireAdmin && account.role !== 'admin')) return null;
-    return account;
+    if (account) return options.requireAdmin && account.role !== 'admin' ? null : account;
+    // Mock deployments may route signup and later requests to different
+    // serverless instances. Carry the mock player's identity in the HttpOnly
+    // session cookie so a fresh instance does not mistake that for logout.
+    if (!options.requireAdmin && parsed.playFabId !== 'MOCK-PLAYER-001'
+      && /^MOCK-PLAYER-[a-z0-9-]+$/i.test(parsed.playFabId)
+      && /^mock-player-ticket-[a-z0-9-]+$/i.test(parsed.sessionTicket)) return parsed;
+    return null;
   }
+
+  const cached = verifiedSessionCache.get(parsed.sessionTicket);
+  if (cached && cached.expiresAt > Date.now()) {
+    if (options.requireAdmin && cached.session.role !== 'admin') return null;
+    return cached.session;
+  }
+  if (cached) verifiedSessionCache.delete(parsed.sessionTicket);
 
   try {
     let accountResponse: Response | null = null;
@@ -166,13 +179,16 @@ export async function validateSessionFromRequest(
     // its current ban state. This keeps a banned account from using protected
     // website endpoints during a provider outage.
     if (!accountResponse.ok || accountResult.code !== 200) {
-      const temporaryFailure = accountResponse.status === 429 || accountResponse.status >= 500 || (typeof accountResult.code === 'number' && accountResult.code >= 500);
-      return temporaryFailure && !options.requireAdmin ? parsed : null;
+      const invalidTicket = accountResult.errorCode === 1001 || accountResult.errorCode === 1074 || accountResult.errorCode === 1100
+        || /invalidsessionticket|notauthenticated|accountnotfound/i.test(accountResult.error ?? '');
+      // Provider errors and request throttling should not expire a player's
+      // website session. Only explicit invalid-ticket/account responses do.
+      return !invalidTicket && !options.requireAdmin ? parsed : null;
     }
 
     const account = accountResult.data?.AccountInfo;
     const playFabId = account?.PlayFabId;
-    if (!playFabId) return null;
+    if (!playFabId) return options.requireAdmin ? null : parsed;
 
     const secretKey = process.env['PLAYFAB_SECRET_KEY']?.trim();
     if (!secretKey) return options.requireAdmin ? null : parsed;
@@ -233,7 +249,7 @@ export async function validateSessionFromRequest(
     }
 
     const resolvedUsername = savedUsername || accountDisplayName || 'Player';
-    return {
+    const session: SessionData = {
       playFabId,
       sessionTicket: parsed.sessionTicket,
       role,
@@ -244,6 +260,8 @@ export async function validateSessionFromRequest(
       // its verified email alias flow. Prefer the current app credential.
       email: savedEmail || account?.PrivateInfo?.Email || parsed.email || '',
     };
+    verifiedSessionCache.set(parsed.sessionTicket, { expiresAt: Date.now() + VERIFIED_SESSION_CACHE_MS, session });
+    return session;
   } catch {
     // Do not turn a short PlayFab outage into an apparent logout for players.
     // Admin authorization still fails closed when the role cannot be checked.

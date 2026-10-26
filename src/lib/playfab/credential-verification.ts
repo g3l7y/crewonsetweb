@@ -14,6 +14,7 @@ type PlayFabAccountInfo = {
 type PlayFabResult = {
   code?: number;
   errorCode?: number;
+  error?: string;
   errorMessage?: string;
   data?: {
     UserInfo?: PlayFabAccountInfo;
@@ -73,8 +74,9 @@ export async function findPlayFabAccountByIdentifier(identifier: string): Promis
     body = { TitleDisplayName: value };
   }
   const { response, result } = await request("/Admin/GetUserAccountInfo", body, { "X-SecretKey": secretKey });
-  if (!response.ok || result.code !== 200) return null;
-  return accountFromResult(result);
+  if (response.ok && result.code === 200) return accountFromResult(result);
+  if (Number(result.errorCode) === 1001 || result.error === "AccountNotFound") return null;
+  throw new Error("PlayFab could not verify account availability. Please try again shortly.");
 }
 
 export type PlayFabLoginResolution = {

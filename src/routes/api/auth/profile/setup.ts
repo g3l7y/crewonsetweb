@@ -154,7 +154,7 @@ export const Route = createFileRoute("/api/auth/profile/setup")({
               metadata = {};
             }
           }
-          if (metadata.googleProfileSetupPending !== true || metadata.googleProfileSetup === true) {
+          if (metadata["googleProfileSetupPending"] !== true || metadata["googleProfileSetup"] === true) {
             return Response.json(
               {
                 success: false,
@@ -200,51 +200,56 @@ export const Route = createFileRoute("/api/auth/profile/setup")({
           // Attach PlayFab username/password authentication to the same account
           // that was created or opened with Google; this does not create a
           // second player profile.
+          let credentialUsername = linkedUsername || username;
           if (!linkedUsername) {
-            try {
-              await playFabClientRequest("/Client/AddUsernamePassword", session.sessionTicket, {
-                Email: loginEmail,
-                Username: username,
-                Password: password,
-              });
-            } catch (error) {
-              if (!(error instanceof PlayFabClientError) || error.errorCode !== 1006) throw error;
+            let credentialEmail = loginEmail;
+            let usedInternalUsername = false;
+            let usedInternalEmail = false;
+            let credentialsSaved = false;
+            for (let attempt = 0; attempt < 3; attempt += 1) {
+              try {
+                await playFabClientRequest("/Client/AddUsernamePassword", session.sessionTicket, {
+                  Email: credentialEmail,
+                  Username: credentialUsername,
+                  Password: password,
+                });
+                credentialsSaved = true;
+                break;
+              } catch (error) {
+                if (!(error instanceof PlayFabClientError)) throw error;
+                if (error.errorCode === 1009 && !usedInternalUsername) {
+                  credentialUsername = `COS_${crypto.randomUUID().replace(/-/g, "").slice(0, 16)}`;
+                  usedInternalUsername = true;
+                  continue;
+                }
+                if (error.errorCode !== 1006 || usedInternalEmail) throw error;
 
-              // Google sign-in can already own this email on the same PlayFab
-              // account. PlayFab's AddUsernamePassword endpoint still rejects
-              // that address, so use a private, non-deliverable login address
-              // and keep the real email as this player's website login alias.
-              const [emailOwner, resolvedAlias] = await Promise.all([
-                findEmailAccountOwner(loginEmail),
-                isEmailLoginIdentityStoreConfigured() ? findEmailLoginAlias(loginEmail) : null,
-              ]);
-              let emailAlias = resolvedAlias;
-              if (emailAlias && (await isPlayFabAccountDeleted(emailAlias.playfab_id))) {
-                await deletePlayerEmailIdentity(emailAlias.playfab_id);
-                emailAlias = null;
-              }
-              const ownerIsAnotherPlayer = [emailOwner, emailAlias?.playfab_id].some(
-                (ownerId) => ownerId && ownerId !== session.playFabId,
-              );
-              if (
-                ownerIsAnotherPlayer ||
-                (!emailOwner && !emailAlias && googleEmail !== loginEmail)
-              ) {
-                throw new Error("That email is already in use. Please choose another.");
-              }
-              if (!isEmailLoginIdentityStoreConfigured()) {
-                throw new Error(
-                  "Email sign-in for Google accounts is not configured. Please contact support or continue signing in with Google.",
+                // Google may already own the real email on this same account.
+                // If PlayFab rejects that email, retain it as the website login
+                // alias and use a private PlayFab-only email address.
+                const [emailOwner, resolvedAlias] = await Promise.all([
+                  findEmailAccountOwner(loginEmail),
+                  isEmailLoginIdentityStoreConfigured() ? findEmailLoginAlias(loginEmail) : null,
+                ]);
+                let emailAlias = resolvedAlias;
+                if (emailAlias && (await isPlayFabAccountDeleted(emailAlias.playfab_id))) {
+                  await deletePlayerEmailIdentity(emailAlias.playfab_id);
+                  emailAlias = null;
+                }
+                const ownerIsAnotherPlayer = [emailOwner, emailAlias?.playfab_id].some(
+                  (ownerId) => ownerId && ownerId !== session.playFabId,
                 );
+                if (ownerIsAnotherPlayer || (!emailOwner && !emailAlias && googleEmail !== loginEmail)) {
+                  throw new Error("That email is already in use. Please choose another.");
+                }
+                if (!isEmailLoginIdentityStoreConfigured()) {
+                  throw new Error("Email sign-in for Google accounts is not configured. Please contact support or continue signing in with Google.");
+                }
+                credentialEmail = `player-${session.playFabId.toLowerCase()}@login.crewonset.invalid`;
+                usedInternalEmail = true;
               }
-
-              const internalLoginEmail = `player-${session.playFabId.toLowerCase()}@login.crewonset.invalid`;
-              await playFabClientRequest("/Client/AddUsernamePassword", session.sessionTicket, {
-                Email: internalLoginEmail,
-                Username: username,
-                Password: password,
-              });
             }
+            if (!credentialsSaved) throw new Error("Unable to save your account credentials. Please try again.");
           }
 
           // The site resolves this verified address to the PlayFab username
@@ -274,7 +279,7 @@ export const Route = createFileRoute("/api/auth/profile/setup")({
           for (const cookie of createSessionCookies({
             ...session,
             username,
-            playFabUsername: username,
+            playFabUsername: credentialUsername,
             displayName: username,
           }))
             headers.append("Set-Cookie", cookie);
