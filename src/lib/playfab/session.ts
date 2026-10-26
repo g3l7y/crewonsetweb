@@ -161,23 +161,27 @@ export async function validateSessionFromRequest(
       if (!retryable || attempt === 1) break;
     }
 
-    if (!accountResponse || !accountResult) return null;
+    if (!accountResponse || !accountResult) return options.requireAdmin ? null : parsed;
     // Do not honor a cached session when PlayFab cannot verify the account and
     // its current ban state. This keeps a banned account from using protected
     // website endpoints during a provider outage.
-    if (!accountResponse.ok || accountResult.code !== 200) return null;
+    if (!accountResponse.ok || accountResult.code !== 200) {
+      const temporaryFailure = accountResponse.status === 429 || accountResponse.status >= 500 || (typeof accountResult.code === 'number' && accountResult.code >= 500);
+      return temporaryFailure && !options.requireAdmin ? parsed : null;
+    }
 
     const account = accountResult.data?.AccountInfo;
     const playFabId = account?.PlayFabId;
     if (!playFabId) return null;
 
     const secretKey = process.env['PLAYFAB_SECRET_KEY']?.trim();
-    if (!secretKey) return null;
+    if (!secretKey) return options.requireAdmin ? null : parsed;
     try {
       if (await hasActivePlayFabBan(playFabId, secretKey)) return null;
     } catch {
-      // Real-mode moderation must fail closed when ban status cannot be verified.
-      return null;
+      // Keep player sessions intact through temporary provider outages. Admin
+      // authorization still fails closed because it requires fresh verification.
+      return options.requireAdmin ? null : parsed;
     }
 
     let role: 'admin' | 'player' = 'player';

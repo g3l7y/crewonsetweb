@@ -32,12 +32,12 @@ import {
 import { equippedItemsStore, ownedItemsStore } from "@/lib/demo/portal-shop";
 import { isMockMode } from "@/lib/playfab/config";
 import { DEFAULT_PROFILE_PICTURE_URL } from "@/lib/profile-avatar";
-import { SyncedPlayerAvatar } from "@/components/portal/player-avatar";
 import { useAdminPlayer, useAdminPlayers } from "@/lib/playfab/hooks";
 import {
   deleteMockPlayerAccount,
   getMockPlayerAdminStatus,
   getMockPlayerBannedUntil,
+  getMockPlayerAvatarUrl,
   isMockPlayerAccountDeleted,
   isMockPlayerAccountReset,
   resetMockPlayerAccountData,
@@ -438,7 +438,7 @@ function PlayersPage() {
           score: null,
           currentLevel: isMockPlayerAccountReset() ? null : 27,
           role: "Cameraman",
-          avatarUrl: DEFAULT_PROFILE_PICTURE_URL,
+          avatarUrl: getMockPlayerAvatarUrl(),
         },
         ...initialPlayers.map(
         (player) =>
@@ -1558,7 +1558,7 @@ function PlayersPage() {
                       <td className="px-4 py-3">
                         <div className="flex items-center gap-3">
                           <div className="size-8 shrink-0 overflow-hidden rounded-full border border-white/10 bg-[#222b31]">
-                            <SyncedPlayerAvatar playFabId={player.id} displayName={player.username} fallbackUrl={player.avatarUrl || DEFAULT_PROFILE_PICTURE_URL} className="size-full object-cover" />
+                            <img src={player.avatarUrl || DEFAULT_PROFILE_PICTURE_URL} alt={`${player.username} avatar`} className="size-full rounded-full object-cover" />
                           </div>
 
                           <div className="min-w-0">
@@ -1835,7 +1835,7 @@ function PlayersPage() {
               <div className="flex items-center gap-5">
                 <div className="relative">
                   <div className="size-[105px] overflow-hidden rounded-2xl border-2 border-[#f5c431] bg-[#202a3a]">
-                    <SyncedPlayerAvatar playFabId={selectedPlayer.id} displayName={selectedPlayer.username} fallbackUrl={displayProfile?.avatarUrl || selectedPlayer.avatarUrl || DEFAULT_PROFILE_PICTURE_URL} className="size-full object-cover" />
+                    <img src={displayProfile?.avatarUrl || selectedPlayer.avatarUrl || DEFAULT_PROFILE_PICTURE_URL} alt={`${selectedPlayer.username} avatar`} className="size-full rounded-full object-cover" />
                   </div>
 
                   <span

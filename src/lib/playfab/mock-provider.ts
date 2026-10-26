@@ -109,6 +109,10 @@ function getStoredMockProfileMetadata(): StoredMockProfileMetadata {
   }
 }
 
+export function getMockPlayerAvatarUrl(): string {
+  return getStoredMockProfileMetadata().avatarUrl || DEFAULT_PROFILE_PICTURE_URL;
+}
+
 function persistMockProfileMetadata(metadata: StoredMockProfileMetadata) {
   if (typeof window === 'undefined') return;
   window.localStorage.setItem(MOCK_PROFILE_METADATA_KEY, JSON.stringify(metadata));
