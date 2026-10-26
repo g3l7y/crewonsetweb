@@ -12,7 +12,6 @@ import {
   Activity,
   CircleDollarSign,
   Download,
-  ServerCog,
   Sparkles,
   UserCheck,
   Users,
@@ -220,13 +219,6 @@ function AnalyticsPage() {
       icon: CircleDollarSign,
       color: "bg-[#243241]",
     },
-    {
-      label: "Server Status",
-      value: mockMode ? "Operational" : "Unknown",
-      context: mockMode ? "99.98% uptime" : "Server monitoring is not configured",
-      icon: ServerCog,
-      color: "bg-[#2d9d8f]",
-    },
   ];
 
   return (
@@ -249,7 +241,7 @@ function AnalyticsPage() {
           </h2>
         </div>
 
-        <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-5">
+        <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
           {overview.map((item) => (
             <article
               key={item.label}
@@ -325,13 +317,13 @@ function AnalyticsPage() {
             <div className="flex flex-wrap items-center gap-2">
               <span className="inline-flex items-center gap-1.5 rounded-full border border-coral/30 bg-coral/10 px-2.5 py-1 text-[10px] font-black uppercase tracking-wide !text-coral">
                 <Sparkles className="size-3" />
-                Live studio pulse
+                Live analysis
               </span>
               <span className="text-[10px] !text-white/35">
                 Refreshes whenever the player, sales, or partnership data changes.
               </span>
             </div>
-            <p className="mt-3 text-sm leading-relaxed !text-white/70">{overallAnalysis}</p>
+            <p className="mt-3 max-w-6xl text-sm leading-relaxed !text-white/70">{overallAnalysis}</p>
             <p className="mt-3 text-xs leading-relaxed !text-white/40">
               This analysis brings together player growth, sales recorded in the ledger, and recognized brand budgets. Figures reflect the dashboard data currently available.
             </p>
