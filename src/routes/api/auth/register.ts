@@ -19,6 +19,12 @@ import type { SessionData, AuthResponse } from "@/lib/playfab/types";
 import { PLAYFAB_DATA_KEYS } from "@/lib/playfab/constants";
 import { createPolicyAcceptanceRecord } from "@/lib/legal-consent";
 import { sendPlayerWelcomeEmail } from "@/lib/account-email";
+import { findPlayFabAccountByIdentifier } from "@/lib/playfab/credential-verification";
+import {
+  findEmailLoginAlias,
+  isEmailLoginIdentityStoreConfigured,
+  saveEmailLoginAlias,
+} from "@/lib/playfab/email-login-identities";
 
 export const Route = createFileRoute("/api/auth/register")({
   server: {
@@ -107,31 +113,78 @@ export const Route = createFileRoute("/api/auth/register")({
             }
             session = account;
           } else {
-            const playfabResponse = await fetch(
-              `https://${PLAYFAB_TITLE_ID}.playfabapi.com/Client/RegisterPlayFabUser`,
-              {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({
-                  TitleId: PLAYFAB_TITLE_ID,
-                  Email: normalizedEmail,
-                  Password: password,
-                  Username: normalizedUsername,
-                  DisplayName: normalizedUsername,
-                  RequireBothUsernameAndEmail: true,
-                }),
-              },
-            );
+            let playFabUsername = normalizedUsername;
+            let playFabEmail = normalizedEmail;
+            let usedInternalUsername = false;
+            let usedInternalEmail = false;
+            let playfabResponse: Response | null = null;
+            let pfResult: {
+              code?: number;
+              errorCode?: number;
+              data?: { PlayFabId?: string; SessionTicket?: string };
+            } = {};
 
-            const pfResult = await playfabResponse.json();
+            // PlayFab usernames and emails are unique across the PlayFab
+            // service, even when an account using them belongs to another
+            // title. Keep the player's chosen title username and, when the
+            // email alias store is available, their email as the credentials
+            // they use on this website while giving PlayFab unique sign-in IDs.
+            for (let attempt = 0; attempt < 3; attempt += 1) {
+              playfabResponse = await fetch(
+                `https://${PLAYFAB_TITLE_ID}.playfabapi.com/Client/RegisterPlayFabUser`,
+                {
+                  method: "POST",
+                  headers: { "Content-Type": "application/json" },
+                  body: JSON.stringify({
+                    TitleId: PLAYFAB_TITLE_ID,
+                    Email: playFabEmail,
+                    Password: password,
+                    Username: playFabUsername,
+                    DisplayName: normalizedUsername,
+                    RequireBothUsernameAndEmail: true,
+                  }),
+                },
+              );
+              pfResult = await playfabResponse.json().catch(() => ({}));
+              if (playfabResponse.ok && pfResult.code === 200) break;
 
-            if (!playfabResponse.ok || pfResult.code !== 200) {
+              const errorCode = Number(pfResult.errorCode);
+              if (errorCode === 1009 && !usedInternalUsername) {
+                playFabUsername = `COS_${crypto.randomUUID().replace(/-/g, "").slice(0, 16)}`;
+                usedInternalUsername = true;
+                continue;
+              }
+              if (errorCode === 1006 && !usedInternalEmail) {
+                try {
+                  const [accountInThisTitle, existingAlias] = await Promise.all([
+                    findPlayFabAccountByIdentifier(normalizedEmail),
+                    isEmailLoginIdentityStoreConfigured() ? findEmailLoginAlias(normalizedEmail) : null,
+                  ]);
+                  if (accountInThisTitle || existingAlias) {
+                    return Response.json({ success: false, error: "That email is already in use by a Crew On Set account. Please sign in instead." } satisfies AuthResponse, { status: 409 });
+                  }
+                } catch (lookupError) {
+                  return Response.json({ success: false, error: lookupError instanceof Error ? lookupError.message : "We couldn't verify this email. Please try again shortly." } satisfies AuthResponse, { status: 503 });
+                }
+                if (!isEmailLoginIdentityStoreConfigured()) {
+                  return Response.json({ success: false, error: "This email is already linked to a PlayFab account outside this game. Please contact support to use it here." } satisfies AuthResponse, { status: 409 });
+                }
+                playFabEmail = `cos-${crypto.randomUUID().replace(/-/g, "")}@login.crewonset.invalid`;
+                usedInternalEmail = true;
+                continue;
+              }
+              break;
+            }
+
+            if (!playfabResponse?.ok || pfResult.code !== 200) {
               const errorCode = Number(pfResult.errorCode);
               const error =
                 errorCode === 1006
-                  ? "That email is already in use. Please choose another."
+                  ? "This email is already linked to a PlayFab account and could not be linked to Crew On Set. Please use a different email or contact support."
                   : errorCode === 1009
-                    ? "That username is already in use. Please choose another."
+                    ? "That username is already linked to a PlayFab account. Please try another username."
+                    : errorCode === 1058
+                      ? "That username is already in use by a Crew On Set player. Please choose another."
                     : errorCode === 1322
                       ? "An account using these credentials is still being closed. Please try again shortly."
                       : "We couldn't create your account. Please check your details and try again.";
@@ -140,17 +193,22 @@ export const Route = createFileRoute("/api/auth/register")({
                   success: false,
                   error,
                 } satisfies AuthResponse,
-                { status: [1006, 1009].includes(errorCode) ? 409 : errorCode === 1322 ? 409 : 400 },
+                { status: [1006, 1009, 1058, 1322].includes(errorCode) ? 409 : 400 },
               );
             }
 
-            const pfData = pfResult.data;
+            const playFabId = pfResult.data?.PlayFabId;
+            const sessionTicket = pfResult.data?.SessionTicket;
+            if (!playFabId || !sessionTicket) {
+              return Response.json({ success: false, error: "PlayFab created the account but did not return a sign-in session. Please try logging in." } satisfies AuthResponse, { status: 502 });
+            }
             session = {
-              playFabId: pfData.PlayFabId,
-              sessionTicket: pfData.SessionTicket,
+              playFabId,
+              sessionTicket,
               role: "player",
+              username: normalizedUsername,
               displayName: normalizedUsername,
-              playFabUsername: normalizedUsername,
+              playFabUsername,
               email: normalizedEmail,
             };
 
@@ -161,10 +219,17 @@ export const Route = createFileRoute("/api/auth/register")({
                   method: "POST",
                   headers: {
                     "Content-Type": "application/json",
-                    "X-Authorization": session.sessionTicket,
+                    "X-Authorization": sessionTicket,
                   },
                   body: JSON.stringify({
-                    Data: { [PLAYFAB_DATA_KEYS.legal_consent]: createPolicyAcceptanceRecord() },
+                    Data: {
+                      [PLAYFAB_DATA_KEYS.legal_consent]: JSON.stringify(createPolicyAcceptanceRecord()),
+                      [PLAYFAB_DATA_KEYS.profile_metadata]: JSON.stringify({
+                        username: normalizedUsername,
+                        email: normalizedEmail,
+                        credentialsSetup: true,
+                      }),
+                    },
                   }),
                 },
               );
@@ -175,15 +240,25 @@ export const Route = createFileRoute("/api/auth/register")({
             }
 
             try {
-              await syncPlayFabContactEmail(session.sessionTicket, normalizedEmail, {
-                playFabId: session.playFabId,
-                secretKey: process.env["PLAYFAB_SECRET_KEY"]?.trim(),
+              await syncPlayFabContactEmail(sessionTicket, normalizedEmail, {
+                playFabId,
+                ...(process.env["PLAYFAB_SECRET_KEY"]?.trim()
+                  ? { secretKey: process.env["PLAYFAB_SECRET_KEY"].trim() }
+                  : {}),
               });
             } catch (contactEmailError) {
               console.error(
                 "[PlayFab] Could not sync registration contact email:",
                 contactEmailError,
               );
+            }
+
+            if (isEmailLoginIdentityStoreConfigured()) {
+              try {
+                await saveEmailLoginAlias(normalizedEmail, playFabId, "player");
+              } catch (aliasError) {
+                console.error("[Auth] Could not save the signup email alias:", aliasError);
+              }
             }
 
             try {
