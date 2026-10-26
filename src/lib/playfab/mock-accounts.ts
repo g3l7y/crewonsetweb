@@ -1,5 +1,3 @@
-import { players } from "@/lib/admin-demo-data";
-
 export type MockAccount = {
   playFabId: string;
   sessionTicket: string;
@@ -16,11 +14,9 @@ function accountKey(value: string) {
   return value.trim().toLowerCase();
 }
 
-const reservedDemoUsernames = new Set([
-  "ADMIN",
-  "CAMERA_PRO",
-  ...players.map((player) => player.username.toUpperCase()),
-]);
+// Only actual demo login accounts reserve credentials. Sample leaderboard and
+// admin-table rows are not sign-in accounts and must not block new mock users.
+const reservedDemoUsernames = new Set(["ADMIN", "CAMERA_PRO"]);
 
 const mockAccounts = new Map<string, MockAccount>();
 

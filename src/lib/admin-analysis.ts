@@ -66,22 +66,24 @@ function describeMovement(
   formatter: (value: number) => string,
 ) {
   if (current === null || previous === null) {
-    return "There is no prior-month baseline for " + label + ".";
+    return "A prior-month baseline is not available yet for " + label + ".";
   }
 
   const delta = current - previous;
   if (delta === 0) {
-    return label + " is unchanged from the previous month.";
+    return label + " held steady compared with the previous month.";
   }
 
-  const direction = delta > 0 ? "up" : "down";
-  return label + " is " + direction + " by " + formatter(Math.abs(delta)) + " versus the previous month.";
+  const movement = label === "sales"
+    ? delta > 0 ? "rose" : "fell"
+    : delta > 0 ? "grew" : "declined";
+  return label + " " + movement + " by " + formatter(Math.abs(delta)) + " compared with the previous month.";
 }
 
 export function buildOverallAnalysis(snapshot: AdminAnalysisSnapshot) {
   const playerStatus = snapshot.players.total === 0
-    ? "No player accounts are currently present."
-    : formatNumber(snapshot.players.total) + " player accounts are on record, including "
+    ? "The roster is ready for its first player account."
+    : formatNumber(snapshot.players.total) + " player accounts are on record, with "
       + formatNumber(snapshot.players.active) + " active and "
       + formatNumber(snapshot.players.banned) + " banned accounts.";
 
@@ -92,21 +94,23 @@ export function buildOverallAnalysis(snapshot: AdminAnalysisSnapshot) {
     formatNumber,
   );
 
-  const revenueStatus = "Tracked revenue is " + formatAnalysisPhp(snapshot.revenue.total)
-    + ", made up of " + formatAnalysisPhp(snapshot.revenue.paymongo)
+  const revenueStatus = "Tracked sales and partnerships total " + formatAnalysisPhp(snapshot.revenue.total)
+    + ", including " + formatAnalysisPhp(snapshot.revenue.paymongo)
     + " across " + formatNumber(snapshot.revenue.transactionCount)
-    + " PayMongo ledger entries and " + formatAnalysisPhp(snapshot.revenue.brandBudgets)
+    + " sales ledger entries, plus " + formatAnalysisPhp(snapshot.revenue.brandBudgets)
     + " in recognized brand budgets.";
 
   const salesMovement = describeMovement(
-    "monthly PayMongo sales",
+    "sales",
     snapshot.revenue.currentMonth,
     snapshot.revenue.previousMonth,
     formatAnalysisPhp,
   );
 
   return [
-    "As of " + formatDate(snapshot.asOf) + ", " + playerStatus + " " + playerMovement,
-    revenueStatus + " " + salesMovement,
+    "Here is the studio snapshot for " + formatDate(snapshot.asOf) + ". " + playerStatus,
+    "For the roster, " + playerMovement,
+    revenueStatus + " For sales, " + salesMovement,
+    "Together, these figures offer a live read on community growth and commercial activity. Follow the trend lines above to see what is picking up pace and where the next opportunity may be.",
   ].join(" ");
 }

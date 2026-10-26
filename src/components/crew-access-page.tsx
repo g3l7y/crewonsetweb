@@ -381,7 +381,7 @@ export function CrewAccessPage({ mode, scope = "player" }: CrewAccessPageProps) 
               ? "Enter your studio admin credentials to open the Crew On Set console."
               : isLogin
                 ? "Enter your account credentials to open your private Crew On Set portal."
-                : "Join the community list for production updates and playtest calls."}
+                : "Create your player account, then choose a starter look for your avatar."}
           </p>
           {isLogin && isMockMode() && (
             <div className="mt-4 space-y-1 rounded-md border border-navy/10 bg-navy/5 px-3 py-2 text-xs font-bold text-navy/55">
@@ -750,7 +750,8 @@ function GoogleProfileSetupModal({ onComplete }: { onComplete: () => void }) {
         </h2>
         <p className="mt-3 text-sm leading-relaxed text-navy/65">
           Set a username and password for your Crew On Set account. You can use these credentials to
-          sign in without Google while keeping the same account and game progress.
+          sign in without Google while keeping the same account and game progress. Next, you can choose
+          a starter look for your avatar.
         </p>
         <form onSubmit={submit} className="mt-6">
           <label className="form-label">

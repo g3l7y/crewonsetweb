@@ -308,7 +308,7 @@ function AnalyticsPage() {
             </div>
             <div>
               <p className="text-[10px] font-black uppercase tracking-wide !text-white/35">
-                PayMongo ledger revenue
+                Sales ledger
               </p>
               <p className="mt-2 text-2xl font-black !text-white">
                 {formatMoney(revenue.paymongoRevenue)}
@@ -325,7 +325,7 @@ function AnalyticsPage() {
             <div className="flex flex-wrap items-center gap-2">
               <span className="inline-flex items-center gap-1.5 rounded-full border border-coral/30 bg-coral/10 px-2.5 py-1 text-[10px] font-black uppercase tracking-wide !text-coral">
                 <Sparkles className="size-3" />
-                Live data analysis
+                Live studio pulse
               </span>
               <span className="text-[10px] !text-white/35">
                 Refreshes whenever the player, sales, or partnership data changes.
@@ -333,7 +333,7 @@ function AnalyticsPage() {
             </div>
             <p className="mt-3 text-sm leading-relaxed !text-white/70">{overallAnalysis}</p>
             <p className="mt-3 text-xs leading-relaxed !text-white/40">
-              This analysis includes the Players Over Time trend, PayMongo sales movement, and recognized brand budgets. All figures are calculated from the current dashboard data.
+              This analysis brings together player growth, sales recorded in the ledger, and recognized brand budgets. Figures reflect the dashboard data currently available.
             </p>
           </div>
         </article>
