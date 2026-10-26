@@ -109,8 +109,8 @@ export function buildOverallAnalysis(snapshot: AdminAnalysisSnapshot) {
 
   return [
     "Here is the studio snapshot for " + formatDate(snapshot.asOf) + ". " + playerStatus,
-    "For the roster, " + playerMovement,
-    revenueStatus + " For sales, " + salesMovement,
-    "Together, these figures offer a live read on community growth and commercial activity. Follow the trend lines above to see what is picking up pace and where the next opportunity may be.",
+    "For the roster, " + playerMovement + " Every new account adds another voice to the community, while the active and banned totals help keep the bigger picture in view.",
+    revenueStatus + " For sales, " + salesMovement + " The ledger provides a clear running record of completed sales, and recognized brand budgets show the value of current partnership activity.",
+    "Taken together, these numbers give the team a practical read on growth and commercial momentum. Check the trend lines for changes over time, celebrate what is moving in the right direction, and use quieter periods to spot where a fresh idea or campaign could help the studio pick up speed.",
   ].join(" ");
 }
