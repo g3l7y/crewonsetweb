@@ -2811,17 +2811,103 @@ html .badges-panel .badges-copy {
   color: #0a0e19 !important;
 }
 
+/* Keep the production log table headings visible while its three-row list scrolls. */
+.production-logs-list {
+  flex: 0 0 310px;
+  height: 310px !important;
+  min-height: 310px !important;
+  max-height: 310px !important;
+  overflow: auto !important;
+  border: 2px solid #0a0e19 !important;
+  background: #f0ede4 !important;
+}
+
 .portal-theme.portal-dark .production-logs-list {
+  border-color: rgba(254, 253, 248, .72) !important;
   border-top: 1px solid rgba(254, 253, 248, .9) !important;
+  background: #0f1626 !important;
+}
+
+.production-logs-list > table,
+.production-logs-list > table tbody {
+  background: transparent !important;
+}
+
+.production-logs-list thead {
+  position: sticky;
+  top: 0;
+  z-index: 2;
+}
+
+.production-logs-list thead th.production-log-column-heading {
+  position: sticky;
+  top: 0;
+  z-index: 3;
+  background: #f0ede4 !important;
+  color: #b98200 !important;
+  -webkit-text-fill-color: #b98200 !important;
+}
+
+.portal-theme.portal-dark .production-logs-list thead th.production-log-column-heading {
+  background: #0f1626 !important;
+  color: #ffca28 !important;
+  -webkit-text-fill-color: #ffca28 !important;
 }
 
 .portal-theme.portal-dark .production-logs-list thead {
   box-shadow: inset 0 -1px 0 rgba(254, 253, 248, .55);
 }
 
+.production-log-career {
+  color: #0a0e19 !important;
+  -webkit-text-fill-color: #0a0e19 !important;
+}
+
 .portal-theme.portal-dark .production-log-career {
   color: #fefdf8 !important;
   -webkit-text-fill-color: #fefdf8 !important;
+}
+
+.production-log-results-heading {
+  color: #b98200 !important;
+  -webkit-text-fill-color: #b98200 !important;
+}
+
+.portal-theme.portal-dark .production-log-results-heading {
+  color: #ffca28 !important;
+  -webkit-text-fill-color: #ffca28 !important;
+}
+
+.production-log-dialog {
+  max-height: 86vh;
+}
+
+.production-log-dialog > header {
+  background: #f0ede4;
+}
+
+.portal-theme.portal-dark .production-log-dialog > header {
+  background: #0f1626 !important;
+}
+
+.portal-theme.portal-light .production-log-dialog .production-log-close,
+.portal-theme.portal-dark .production-log-dialog .production-log-close {
+  color: #dc2626 !important;
+  -webkit-text-fill-color: #dc2626 !important;
+}
+
+.portal-theme.portal-light .almanac-page .achievement-source-copy {
+  color: #0a0e19 !important;
+  -webkit-text-fill-color: #0a0e19 !important;
+}
+
+@media (max-width: 639px) {
+  .production-logs-list {
+    flex-basis: 280px;
+    height: 280px !important;
+    min-height: 280px !important;
+    max-height: 280px !important;
+  }
 }
 
 .portal-theme.portal-light .leaderboard-list-table tbody td,
@@ -4195,6 +4281,10 @@ html[data-display-theme="dark"] .display-theme-switcher button[aria-pressed="tru
   :where(
     .section-title,
     .almanac-content-body > p,
+    .production-history-heading,
+    .production-history-heading *,
+    .production-career-progress,
+    .production-career-progress *,
     .achievements-filter-all,
     .achievements-filter-unlocked
   ) {

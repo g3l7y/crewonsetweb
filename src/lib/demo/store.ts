@@ -35,6 +35,7 @@ const sharedEndpoints: Record<string, string> = {
 };
 
 export const reportStatusColors = {
+  New: "#F3C747",
   Investigating: "#F39A5A",
   Resolved: "#4BC4B4",
 } as const;
@@ -1115,9 +1116,9 @@ export type SocialLink = {
 
 export const socialLinksStore = createStore<SocialLink>("cos.socialLinks", [
   { id: "soc-youtube", platform: "YouTube", url: "https://www.youtube.com/", active: true },
-  { id: "soc-instagram", platform: "Instagram", url: "https://www.instagram.com/", active: true },
+  { id: "soc-instagram", platform: "Instagram", url: "https://www.instagram.com/crewonset/", active: true },
   { id: "soc-twitter", platform: "Twitter", url: "https://twitter.com/", active: true },
-  { id: "soc-facebook", platform: "Facebook", url: "https://www.facebook.com/", active: true },
+  { id: "soc-facebook", platform: "Facebook", url: "https://www.facebook.com/profile.php?id=61594770855744", active: true },
 ]);
 
 /* ------------------------------------------- installation steps (admin → public) */
@@ -1357,9 +1358,9 @@ export const adminNotificationsStore = createStore<AdminNotification>("cos.admin
 
 /* --------------------------------------------------------- equipped loadout */
 
-export type LoadoutSlot = "Hair" | "Tops" | "Bottoms" | "Shoe Wear" | "Accessories";
+export type LoadoutSlot = "Face" | "Body" | "Hair" | "Tops" | "Bottoms" | "Shoe Wear" | "Accessories";
 
-export const loadoutSlots: LoadoutSlot[] = ["Hair", "Tops", "Bottoms", "Shoe Wear", "Accessories"];
+export const loadoutSlots: LoadoutSlot[] = ["Face", "Body", "Hair", "Tops", "Bottoms", "Shoe Wear", "Accessories"];
 
 export type LoadoutPiece = {
   slot: LoadoutSlot;

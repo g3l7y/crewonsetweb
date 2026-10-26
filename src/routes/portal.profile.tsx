@@ -24,7 +24,7 @@ import {
   Twitter,
   Youtube,
 } from "lucide-react";
-import { useEffect, useMemo, useState } from "react";
+import { lazy, Suspense, useEffect, useMemo, useState } from "react";
 import { EMAIL_ERROR, USERNAME_ERROR, isValidEmail, isValidUsername } from "@/lib/validation";
 import { useQueryClient } from "@tanstack/react-query";
 import {
@@ -34,13 +34,13 @@ import {
   transactionsStore,
 } from "@/lib/demo/store";
 import { CosmeticArt } from "@/components/portal/cosmetic-art";
-import { cosmeticCatalog, equippedItemsStore, ownedItemsStore } from "@/lib/demo/portal-shop";
+import { cosmeticCatalog, equippedItemsStore, freeBodyItems, freeCatalogItems, freeCosmeticIds, ownedItemsStore, type CosmeticItem } from "@/lib/demo/portal-shop";
 import { getProfileArtwork } from "@/lib/demo/profile-art";
 import { DEFAULT_PROFILE_PICTURE_URL } from "@/lib/profile-avatar";
 import { isMockMode } from "@/lib/playfab/config";
 import { achievementEmoji } from "@/lib/achievement-emoji";
 import { formatSocialUsername, getSocialProfileUrl, normalizeSocialProfile } from "@/lib/profile-socials";
-import { QUERY_KEYS, useAchievements, useCatalog, usePlayerInventory, usePlayerLoadout, usePlayerProfile, usePlayerProgression, useTransactions, useUpdateProfile } from "@/lib/playfab/hooks";
+import { QUERY_KEYS, useAchievements, useCatalog, usePlayerInventory, usePlayerLoadout, usePlayerProfile, usePlayerProgression, useTransactions, useUpdateLoadout, useUpdateProfile } from "@/lib/playfab/hooks";
 import { Coins, Lock } from "lucide-react";
 import { hasRecordedGameProgress } from "@/lib/playfab/progression";
 
@@ -65,6 +65,13 @@ const defaultProfileAccount: ProfileAccount = {
   email: "player@gmail.com",
 };
 
+const Avatar3DPreview = lazy(() =>
+  import("@/components/portal/avatar-3d-preview").then((module) => ({
+    default: module.Avatar3DPreview,
+  })),
+);
+const AVATAR_SETUP_PENDING_KEY = "cos.avatarSetupPending";
+
 function readProfileAccount(): ProfileAccount {
   if (typeof window === "undefined") return defaultProfileAccount;
   try {
@@ -88,13 +95,14 @@ function CrewProfilePage() {
   const loadoutQuery = usePlayerLoadout();
   const transactionsQuery = useTransactions();
   const updateProfileMutation = useUpdateProfile();
+  const updateLoadoutMutation = useUpdateLoadout();
   const queryClient = useQueryClient();
 
-  const demoOwnedItems = cosmeticCatalog.filter((item) => ownedIds.includes(item.id));
+  const demoOwnedItems = [...cosmeticCatalog, ...freeBodyItems].filter((item) => ownedIds.includes(item.id) || freeCosmeticIds.includes(item.id));
   const realCatalogItems = useMemo(() => (catalogQuery.data ?? [])
     .map((remote) => {
       const category = remote.category as (typeof cosmeticCatalog)[number]["category"];
-      if (!["Hair", "Tops", "Bottoms", "Shoe Wear", "Accessories"].includes(category)) return null;
+      if (!["Face", "Hair", "Tops", "Bottoms", "Shoe Wear", "Accessories"].includes(category)) return null;
       const rarityValue = String(remote.rarity ?? "").toLowerCase();
       const rarity = rarityValue === "rare"
         ? "Rare"
@@ -107,29 +115,42 @@ function CrewProfilePage() {
         id: remote.itemId,
         name: remote.displayName ?? "",
         category,
-        price: remote.price ?? 0,
+        price: freeCosmeticIds.includes(remote.itemId) ? 0 : remote.price ?? 0,
         rarity,
         description: remote.description ?? "",
         assetKey: remote.customData?.assetKey ?? "",
-        imageUrl: remote.customData?.imageUrl ?? "",
         imagePath: cosmeticCatalog.find((candidate) =>
           candidate.id === remote.itemId || candidate.assetKey === (remote.customData?.assetKey ?? "")
         )?.imagePath,
+        imageUrl: cosmeticCatalog.some((candidate) =>
+          candidate.id === remote.itemId || candidate.assetKey === (remote.customData?.assetKey ?? "")
+        ) ? "" : remote.customData?.imageUrl ?? "",
       };
     })
     .filter((item): item is (typeof cosmeticCatalog)[number] => item !== null), [catalogQuery.data]);
-  const realOwnedItems = realCatalogItems.filter((item) =>
-    inventoryQuery.data?.some((inventoryItem) => inventoryItem.itemId === item.id)
+  const bundledFaceItems = cosmeticCatalog.filter((item) => item.category === "Face");
+  const profileCosmeticItems = mockMode
+    ? [...cosmeticCatalog, ...freeBodyItems]
+    : [
+        ...realCatalogItems,
+        ...bundledFaceItems.filter((item) => !realCatalogItems.some((remote) => remote.id === item.id)),
+        ...freeCatalogItems.filter((item) => !realCatalogItems.some((remote) => remote.id === item.id)),
+        ...freeBodyItems,
+      ];
+  const realOwnedItems = profileCosmeticItems.filter((item) =>
+    freeCosmeticIds.includes(item.id) || inventoryQuery.data?.some((inventoryItem) => inventoryItem.itemId === item.id)
   );
   const ownedItems = mockMode ? demoOwnedItems : realOwnedItems;
 
   const demoEquippedBySlot = Object.fromEntries(
-    cosmeticCatalog.map((item) => [item.category, item.id]).filter(([slot, id]) =>
-      demoEquippedItems[slot as string] === id && ownedIds.includes(id as string)
-    ).map(([slot, id]) => [slot, demoOwnedItems.find((item) => item.id === id)]),
+    [...cosmeticCatalog, ...freeBodyItems].map((item) => [item.category, item.id]).filter(([slot, id]) =>
+      demoEquippedItems[slot as string] === id && (ownedIds.includes(id as string) || freeCosmeticIds.includes(id as string))
+    ).map(([slot, id]) => [slot, profileCosmeticItems.find((item) => item.id === id)]),
   );
   const realLoadout = loadoutQuery.data ?? {};
   const realEquippedBySlot = {
+    Face: realOwnedItems.find((item) => item.id === (realLoadout.Face ?? realLoadout.face)),
+    Body: realOwnedItems.find((item) => item.id === (realLoadout.Body ?? realLoadout.body)),
     Hair: realOwnedItems.find((item) => item.id === (realLoadout.Hair ?? realLoadout.hair)),
     Tops: realOwnedItems.find((item) => item.id === (realLoadout.Tops ?? realLoadout.tops ?? realLoadout.Shirt ?? realLoadout.shirt ?? realLoadout.costume)),
     Bottoms: realOwnedItems.find((item) => item.id === (realLoadout.Bottoms ?? realLoadout.bottoms)),
@@ -137,6 +158,9 @@ function CrewProfilePage() {
     Accessories: realOwnedItems.find((item) => item.id === (realLoadout.Accessories ?? realLoadout.Accessory ?? realLoadout.accessory ?? realLoadout.Eyeglasses ?? realLoadout.eyeglasses ?? realLoadout.decorator)),
   };
   const equippedBySlot = mockMode ? demoEquippedBySlot : realEquippedBySlot;
+  const currentAvatarLoadout = Object.fromEntries(
+    Object.entries(equippedBySlot).filter(([, item]) => item).map(([slot, item]) => [slot, item!.id]),
+  );
 
   const recentTransactions = useMemo<ProfileTransaction[]>(() => {
     const entries = mockMode
@@ -170,6 +194,11 @@ function CrewProfilePage() {
   const [profileImage, setProfileImage] = useState(
     DEFAULT_PROFILE_PICTURE_URL
   );
+  const [avatarOpen, setAvatarOpen] = useState(false);
+  const [avatarCategory, setAvatarCategory] = useState<"All" | CosmeticItem["category"]>("All");
+  const [avatarDraftLoadout, setAvatarDraftLoadout] = useState<Record<string, string>>({});
+  const [avatarStatus, setAvatarStatus] = useState("");
+  const [avatarSetupPending, setAvatarSetupPending] = useState(false);
 
   const [account, setAccount] = useState<ProfileAccount>(defaultProfileAccount);
 
@@ -180,6 +209,17 @@ function CrewProfilePage() {
   const [twitter, setTwitter] = useState("");
   const [instagram, setInstagram] = useState("");
   const [youtube, setYoutube] = useState("");
+
+  useEffect(() => {
+    if (!profileQuery.isSuccess || !loadoutQuery.isSuccess || typeof window === "undefined") return;
+    if (window.localStorage.getItem(AVATAR_SETUP_PENDING_KEY) !== "1") return;
+    setAvatarSetupPending(true);
+    const saved = loadoutQuery.data ?? {};
+    const savedFreeItems = Object.fromEntries(Object.entries(saved).filter(([, itemId]) => freeCosmeticIds.includes(itemId)));
+    setAvatarDraftLoadout(savedFreeItems);
+    setAvatarCategory(savedFreeItems.Body ? "All" : "Body");
+    setAvatarOpen(true);
+  }, [profileQuery.isSuccess, loadoutQuery.isSuccess, loadoutQuery.data]);
 
   const [editMode, setEditMode] = useState(false);
   const [saved, setSaved] = useState(false);
@@ -440,6 +480,60 @@ function CrewProfilePage() {
   };
 
   const hasSocials = twitter || instagram || youtube;
+  const avatarCategories: Array<"All" | CosmeticItem["category"]> = ["All", "Body", "Face", "Hair", "Tops", "Bottoms", "Shoe Wear", "Accessories"];
+  const avatarOwnedIds = new Set([
+    ...ownedItems.map((item) => item.id),
+    ...profileCosmeticItems.filter((item) => freeCosmeticIds.includes(item.id)).map((item) => item.id),
+  ]);
+  const visibleAvatarItems = profileCosmeticItems.filter((item) =>
+    avatarOwnedIds.has(item.id) && (!avatarSetupPending || freeCosmeticIds.includes(item.id)) && (avatarCategory === "All" || item.category === avatarCategory),
+  );
+  const getAvatarItem = (slot: string) => profileCosmeticItems.find((item) => item.id === avatarDraftLoadout[slot]);
+
+  const openAvatarCustomizer = () => {
+    const equipped = Object.fromEntries(Object.entries(equippedBySlot)
+      .filter(([, item]) => item)
+      .map(([slot, item]) => [slot, item!.id]));
+    setAvatarDraftLoadout(equipped);
+    setAvatarCategory(equipped.Body ? "All" : "Body");
+    setAvatarStatus("");
+    setAvatarOpen(true);
+  };
+
+  const finishAvatarSetup = async () => {
+    if (!avatarDraftLoadout.Body) { setAvatarStatus("Choose Boy or Girl in BODY first."); return; }
+    try {
+      await updateLoadoutMutation.mutateAsync(avatarDraftLoadout);
+      window.localStorage.removeItem(AVATAR_SETUP_PENDING_KEY);
+      setAvatarSetupPending(false);
+      setAvatarOpen(false);
+      setAvatarStatus("Your starter outfit is saved and synced to your game account.");
+    } catch (error) {
+      setAvatarStatus(error instanceof Error ? error.message : "Could not save your avatar. Please try again.");
+    }
+  };
+
+  const tryOnAvatarItem = (item: CosmeticItem) => {
+    if (item.category !== "Body" && !avatarDraftLoadout.Body) { setAvatarCategory("Body"); setAvatarStatus("Equip Boy or Girl in BODY first."); return; }
+    setAvatarDraftLoadout((current) => ({ ...current, [item.category]: item.id }));
+    setAvatarStatus(`Trying on ${item.name}. This preview is not saved yet.`);
+  };
+
+  const equipAvatarItem = async (item: CosmeticItem) => {
+    if (item.category !== "Body" && !avatarDraftLoadout.Body) { setAvatarCategory("Body"); setAvatarStatus("Equip Boy or Girl in BODY first."); return; }
+    if (!avatarOwnedIds.has(item.id)) {
+      setAvatarStatus("You need to own this cosmetic before equipping it.");
+      return;
+    }
+    const next = { ...avatarDraftLoadout, [item.category]: item.id };
+    try {
+      await updateLoadoutMutation.mutateAsync(next);
+      setAvatarDraftLoadout(next);
+      setAvatarStatus(`${item.name} equipped. The game will sync this outfit from your account.`);
+    } catch (error) {
+      setAvatarStatus(error instanceof Error ? error.message : "Could not sync this outfit. Please try again.");
+    }
+  };
 
   return (
     <div className="portal-title-page min-h-screen bg-[#0d121c] px-4 pb-12 text-white sm:px-6 lg:px-8">
@@ -497,16 +591,13 @@ function CrewProfilePage() {
 
               <div className="flex shrink-0 flex-col items-center gap-3">
                 <div className="relative size-36 overflow-hidden rounded-full border-[6px] border-yellow bg-[#0d121c] shadow-2xl shadow-black/30">
-                  <Image
-                    src={profileImage}
-                    alt={profileDisplayName + " avatar"}
-                    fill
-                    unoptimized={profileImage.startsWith("blob:") || profileImage.startsWith("data:")}
-                    className="object-cover object-[62%_45%]"
-                  />
+                  <Suspense fallback={<Image src={profileImage} alt={profileDisplayName + " avatar"} fill className="object-cover object-[62%_45%]" />}>
+                    <Avatar3DPreview loadout={currentAvatarLoadout} displayName={profileDisplayName} portrait className="relative size-full overflow-hidden bg-[radial-gradient(ellipse_at_50%_32%,#fff8e6_0%,#ddd1b8_100%)]" />
+                  </Suspense>
                 </div>
                 <button
                   type="button"
+                  onClick={openAvatarCustomizer}
                   className="rounded-md border border-yellow/30 bg-[#0d121c] px-4 py-2 text-xs font-black uppercase tracking-[0.08em] text-yellow transition hover:border-yellow hover:bg-yellow/10"
                 >
                   View Avatar
@@ -791,6 +882,79 @@ function CrewProfilePage() {
           </div>
         </section>
       </div>
+
+      {avatarOpen && (
+        <div className="fixed inset-0 z-[70] flex items-center justify-center bg-[#05080d]/85 p-3 backdrop-blur-md sm:p-6" onMouseDown={(event) => { if (event.target === event.currentTarget) setAvatarOpen(false); }}>
+          <section role="dialog" aria-modal="true" aria-labelledby="avatar-customizer-title" className="flex max-h-[94vh] w-full max-w-6xl flex-col overflow-hidden rounded-2xl border-2 border-yellow/70 bg-[#f1eadb] text-[#121826] shadow-2xl">
+            <header className="flex items-start justify-between gap-4 border-b-2 border-[#121826]/15 bg-[#e6dcc7] px-5 py-4 sm:px-7">
+              <div>
+                <p className="text-[10px] font-black uppercase tracking-[0.2em] text-[#aa7100]">Crew wardrobe</p>
+                <h2 id="avatar-customizer-title" className="mt-1 text-2xl font-black uppercase tracking-wide sm:text-3xl">View Avatar</h2>
+                <p className="mt-1 text-sm text-[#303b4c]/75">Try on cosmetics, then equip owned items to sync your outfit to the game.</p>
+              </div>
+              <button type="button" aria-label="Close avatar customizer" onClick={() => setAvatarOpen(false)} className="grid size-10 shrink-0 place-items-center rounded-lg border border-[#121826]/20 bg-[#f8f2e6] text-[#121826] transition hover:bg-yellow">
+                <X className="size-5" />
+              </button>
+            </header>
+            <div className="grid min-h-0 flex-1 overflow-y-auto lg:grid-cols-[280px_minmax(0,1fr)]">
+              <aside className="border-b border-[#121826]/15 bg-[#e9dfcc] p-5 lg:border-b-0 lg:border-r">
+                <Suspense fallback={<div className="grid h-64 w-full place-items-center rounded-xl border border-[#121826]/15 bg-[#e4d8c1] text-[10px] font-bold uppercase tracking-wider text-[#303b4c]/65 sm:h-72">Preparing 3D avatar…</div>}>
+                  <Avatar3DPreview loadout={avatarDraftLoadout} displayName={profileDisplayName} />
+                </Suspense>
+                <p className="mt-3 text-center text-sm font-black uppercase tracking-wide">{profileDisplayName}</p>
+                <p className="text-center text-[10px] font-bold uppercase tracking-[0.14em] text-[#303b4c]/55">Live 3D avatar · drag to rotate</p>
+                <div className="mt-5 rounded-xl border border-[#121826]/10 bg-[#f8f2e6] p-3">
+                  <p className="text-[10px] font-black uppercase tracking-[0.16em] text-[#aa7100]">Outfit preview</p>
+                  <div className="mt-2 grid grid-cols-2 gap-2">
+                    {loadoutSlots.map((slot) => {
+                      const item = getAvatarItem(slot);
+                      return <div key={slot} className="min-w-0 rounded-lg border border-[#121826]/10 bg-white/60 p-2">
+                        <span className="block text-[9px] font-black uppercase tracking-wide text-[#303b4c]/55">{slot}</span>
+                        {item ? <div className="mt-1 flex items-center gap-2">
+                          <div className="size-9 shrink-0 overflow-hidden rounded-md bg-[#eee7d9]">{item.imageUrl ? <img src={item.imageUrl} alt="" className="size-full object-contain" /> : <CosmeticArt item={item} className="size-full" />}</div>
+                          <span className="truncate text-[10px] font-bold">{item.name}</span>
+                        </div> : <p className="mt-1 text-[10px] text-[#303b4c]/45">Default</p>}
+                      </div>;
+                    })}
+                  </div>
+                </div>
+              </aside>
+              <div className="min-w-0 p-4 sm:p-6">
+                {avatarSetupPending && <p className="mb-4 rounded-lg border border-yellow/70 bg-yellow/20 px-3 py-2 text-xs font-bold text-[#51401c]">Choose from your free owned items, try them on, then save your starter look. You can add more items from the shop anytime.</p>}
+                <div className="flex flex-wrap gap-2">
+                  {avatarCategories.map((category) => <button key={category} type="button" onClick={() => setAvatarCategory(category)} className={`rounded-md border px-3 py-2 text-[10px] font-black uppercase tracking-wide transition ${avatarCategory === category ? "border-[#121826] bg-yellow text-[#121826]" : "border-[#121826]/20 bg-white/60 text-[#303b4c] hover:bg-yellow/35"}`}>{category === "Shoe Wear" ? "Shoe Wear" : category}</button>)}
+                  {!avatarSetupPending && <Link href="/portal/shop" onClick={() => setAvatarOpen(false)} className="ml-auto rounded-md border border-[#121826]/20 bg-[#121826] px-3 py-2 text-[10px] font-black uppercase tracking-wide text-yellow hover:bg-[#263246]">Visit Shop</Link>}
+                </div>
+                {avatarStatus && <p role="status" className="mt-4 rounded-lg border border-[#aa7100]/25 bg-yellow/20 px-3 py-2 text-xs font-bold text-[#51401c]">{avatarStatus}</p>}
+                {updateLoadoutMutation.isPending && <p className="mt-3 text-xs font-bold text-[#303b4c]/65">Syncing your outfit to your game account…</p>}
+                <div className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-3 xl:grid-cols-4">
+                  {visibleAvatarItems.map((item) => {
+                    const owned = avatarOwnedIds.has(item.id);
+                    const equipped = equippedBySlot[item.category]?.id === item.id;
+                    const previewed = avatarDraftLoadout[item.category] === item.id;
+                    return <article key={item.id} className={`flex min-w-0 flex-col overflow-hidden rounded-xl border-2 bg-[#f8f2e6] shadow-[3px_3px_0_#12182622] ${previewed ? "border-yellow" : "border-[#121826]/15"}`}>
+                      <div className="relative aspect-square bg-[#eee7d9] p-3">{item.imageUrl ? <img src={item.imageUrl} alt={item.name} className="size-full object-contain" /> : <CosmeticArt item={item} className="size-full" />}
+                        <span className="absolute left-2 top-2 rounded-full border border-[#121826]/15 bg-[#fffaf0] px-2 py-1 text-[8px] font-black uppercase tracking-wide text-[#aa7100]">{item.category}</span>
+                      </div>
+                      <div className="flex flex-1 flex-col p-3">
+                        <h3 className="line-clamp-2 min-h-9 text-xs font-black uppercase leading-4">{item.name}</h3>
+                        <p className="mt-1 text-[10px] font-bold text-[#aa7100]">{item.price === 0 ? "FREE" : `${item.price.toLocaleString()} C-COINS`}</p>
+                        <p className="mt-1 text-[10px] font-bold text-[#303b4c]/55">{equipped ? "Equipped" : owned ? "Owned" : "Available"}</p>
+                        <div className="mt-3 grid grid-cols-2 gap-2">
+                          <button type="button" onClick={() => tryOnAvatarItem(item)} className="rounded-md border border-[#121826]/20 bg-yellow px-2 py-2 text-[9px] font-black uppercase tracking-wide hover:bg-yellow/75">Try On</button>
+                          {owned ? <button type="button" disabled={equipped || updateLoadoutMutation.isPending} onClick={() => void equipAvatarItem(item)} className="rounded-md border border-[#121826] bg-[#121826] px-2 py-2 text-[9px] font-black uppercase tracking-wide text-white disabled:opacity-50">{equipped ? "Equipped" : "Equip"}</button> : <Link href="/portal/shop" onClick={() => setAvatarOpen(false)} className="rounded-md border border-coral bg-coral px-2 py-2 text-center text-[9px] font-black uppercase tracking-wide text-white hover:bg-coral/85">Buy</Link>}
+                        </div>
+                      </div>
+                    </article>;
+                  })}
+                </div>
+                {visibleAvatarItems.length === 0 && <p className="rounded-xl border border-dashed border-[#121826]/20 p-8 text-center text-sm text-[#303b4c]/60">You don’t own any {avatarCategory === "All" ? "cosmetics" : avatarCategory} yet.</p>}
+                {avatarSetupPending && <div className="mt-5 flex justify-end"><button type="button" disabled={updateLoadoutMutation.isPending} onClick={() => void finishAvatarSetup()} className="rounded-md border border-[#121826] bg-[#121826] px-5 py-3 text-xs font-black uppercase tracking-wide text-yellow disabled:opacity-50">{updateLoadoutMutation.isPending ? "Saving…" : "Save starter avatar"}</button></div>}
+              </div>
+            </div>
+          </section>
+        </div>
+      )}
 
       {/* =========================================================
           EDIT PROFILE MODAL

@@ -72,7 +72,9 @@ export function useSession() {
   return useQuery({
     queryKey: QUERY_KEYS.session,
     queryFn: () => getPlayFabService().auth.getSession(),
-    staleTime: 5 * 60 * 1000,
+    // Auth can change between account sign-outs/sign-ins in the same SPA session.
+    // Recheck immediately on portal mount so player-specific queries use the new ID.
+    staleTime: 0,
     retry: false,
     refetchInterval: (query) => query.state.data?.role === "player" ? 15_000 : false,
     refetchIntervalInBackground: false,
@@ -83,7 +85,7 @@ export function useSession() {
 export function usePlayerProfile() {
   const { data: session } = useSession();
   return useQuery({
-    queryKey: QUERY_KEYS.profile,
+    queryKey: [...QUERY_KEYS.profile, session?.playFabId],
     queryFn: () => getPlayFabService().player.getProfile(),
     enabled: !!session,
     staleTime: 2 * 60 * 1000,
@@ -97,7 +99,8 @@ export function usePlayerProgression() {
     queryFn: () => getPlayFabService().player.getProgression(),
     enabled: !!session,
     staleTime: 2 * 60 * 1000,
-    refetchInterval: 30 * 1000,
+    refetchInterval: 30_000,
+    refetchOnWindowFocus: true,
     refetchIntervalInBackground: false,
   });
 }
@@ -125,20 +128,22 @@ export function usePlayerInventory() {
 export function usePlayerLoadout() {
   const { data: session } = useSession();
   return useQuery({
-    queryKey: QUERY_KEYS.loadout,
+    queryKey: [...QUERY_KEYS.loadout, session?.playFabId],
     queryFn: () => getPlayFabService().player.getLoadout(),
     enabled: !!session,
-    staleTime: 2 * 60 * 1000,
+    staleTime: 0,
+    refetchInterval: session ? 15_000 : false,
   });
 }
 
 export function useAchievements() {
   const { data: session } = useSession();
   return useQuery({
-    queryKey: QUERY_KEYS.achievements,
+    queryKey: [...QUERY_KEYS.achievements, session?.playFabId],
     queryFn: () => getPlayFabService().player.getAchievements(),
     enabled: !!session,
-    staleTime: 2 * 60 * 1000,
+    staleTime: 30 * 1000,
+    refetchInterval: 30 * 1000,
   });
 }
 
@@ -155,10 +160,22 @@ export function useKnowledge() {
 export function useProductionLogs() {
   const { data: session } = useSession();
   return useQuery({
-    queryKey: QUERY_KEYS.productionLogs,
+    queryKey: [...QUERY_KEYS.productionLogs, session?.playFabId],
     queryFn: () => getPlayFabService().player.getProductionLogs(),
     enabled: !!session,
-    staleTime: 2 * 60 * 1000,
+    staleTime: 30 * 1000,
+    refetchInterval: 30 * 1000,
+  });
+}
+
+export function useProductionHistory() {
+  const { data: session } = useSession();
+  return useQuery({
+    queryKey: [...QUERY_KEYS.productionLogs, 'history', session?.playFabId],
+    queryFn: () => getPlayFabService().player.getProductionHistory(),
+    enabled: !!session,
+    staleTime: 30 * 1000,
+    refetchInterval: 30 * 1000,
   });
 }
 
@@ -457,7 +474,7 @@ export function useUpdateLoadout() {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: (loadout: Loadout) => getPlayFabService().player.updateLoadout(loadout),
-    onSuccess: () => {
+    onSettled: () => {
       queryClient.invalidateQueries({ queryKey: QUERY_KEYS.loadout });
       queryClient.invalidateQueries({ queryKey: QUERY_KEYS.inventory });
     },

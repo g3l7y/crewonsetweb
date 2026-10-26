@@ -1,531 +1,196 @@
 import { useMemo, useState } from "react";
-import { Clock, Star, Trophy, X } from "lucide-react";
-import { isMockMode } from "@/lib/playfab/config";
-import { useProductionLogs } from "@/lib/playfab/hooks";
-import type { ProductionLog as PlayFabProductionLog } from "@/lib/playfab/types";
+import { X } from "lucide-react";
+import { useProductionHistory } from "@/lib/playfab/hooks";
+import type { ProductionLog as GameProductionLog } from "@/lib/playfab/types";
 
 type ProductionLog = {
   id: string;
+  level: number;
   production: string;
   role: string;
   client: string;
   date: string;
-  score: number;
+  score: number | undefined;
   rank: string;
-  runtime: string;
   summary: string;
   setupNotes: string;
   result: string;
-  stats: [string, string][];
-  details?: Record<string, unknown>;
-  preProductionScore?: number;
-  productionScore?: number;
-  postProductionScore?: number;
-  budgetUsed?: number;
-  budgetRemaining?: number;
+  preProductionScore: number | undefined;
+  productionScore: number | undefined;
+  postProductionScore: number | undefined;
+  bCoinsEarned: number | undefined;
+  preProductionFeedback: string;
+  productionFeedback: string;
+  postProductionFeedback: string;
+  details: Record<string, unknown>;
+  nextStep: string | undefined;
 };
-
-const productionLogs: ProductionLog[] = [
-  {
-    id: "PRD-2291",
-    production: "Kalye Cold Brew — Morning Ritual",
-    role: "Cameraman",
-    client: "Cafe Kalye",
-    date: "2026-08-26",
-    score: 98,
-    rank: "S",
-    runtime: "42m 10s",
-    summary:
-      "Single-location commercial shot handheld at first light. Client asked for warm practicals and steady push-ins on the pour.",
-    setupNotes: "NL-70 prime, 2x soft box bounce, no ND. Reflector on the barista's left.",
-    result: "Client approved the first cut. Bonus paid for zero retakes.",
-    stats: [
-      ["Shots", "24"],
-      ["Retakes", "0"],
-      ["Focus Accuracy", "99%"],
-      ["Client Rating", "5.0"],
-    ],
-  },
-  {
-    id: "PRD-2287",
-    production: "Vantage Crew Jacket — Backlot Walk",
-    role: "Cameraman",
-    client: "Vantage Apparel",
-    date: "2026-08-22",
-    score: 94,
-    rank: "A",
-    runtime: "1h 04m",
-    summary:
-      "Tracking shots along the backlot with two talent changes. Wind pushed the audio department into a re-record.",
-    setupNotes: "Gimbal rig, 35mm, polariser on for the jacket sheen.",
-    result: "Delivered on schedule. One retake requested by the Editor for soft focus.",
-    stats: [
-      ["Shots", "31"],
-      ["Retakes", "1"],
-      ["Focus Accuracy", "94%"],
-      ["Client Rating", "4.6"],
-    ],
-  },
-  {
-    id: "PRD-2280",
-    production: "Bolt Zero — Night Court",
-    role: "AV Technician",
-    client: "Bolt Energy",
-    date: "2026-08-17",
-    score: 88,
-    rank: "B",
-    runtime: "58m 32s",
-    summary:
-      "Night exterior on the studio court. Practicals blew out the highlights until the lighting rig was re-balanced.",
-    setupNotes: "Two 1.2k HMI, haze, lav mics on both talent.",
-    result: "Passed review after a colour pass. Clipping flagged in two takes.",
-    stats: [
-      ["Shots", "19"],
-      ["Retakes", "2"],
-      ["Audio Clipping", "2 takes"],
-      ["Client Rating", "4.2"],
-    ],
-  },
-  {
-    id: "PRD-2274",
-    production: "Skyfare Domestic Promo",
-    role: "Director",
-    client: "Skyfare Airlines",
-    date: "2026-08-11",
-    score: 91,
-    rank: "A",
-    runtime: "1h 27m",
-    summary:
-      "Multi-set promo covering check-in, cabin and arrival. Directed a four-person crew across three set dressings.",
-    setupNotes: "Studio A cabin build, soft top light, dolly on the aisle.",
-    result: "Client requested one extra insert shot; delivered same day.",
-    stats: [
-      ["Shots", "44"],
-      ["Retakes", "3"],
-      ["Crew Size", "4"],
-      ["Client Rating", "4.8"],
-    ],
-  },
-  {
-    id: "PRD-2268",
-    production: "Northline NL-70 — Lens Feature",
-    role: "Editor",
-    client: "Northline Optics",
-    date: "2026-08-04",
-    score: 96,
-    rank: "S",
-    runtime: "36m 55s",
-    summary:
-      "Product feature cut from two camera angles. Auto-sync handled the audio, error highlighting caught one soft frame.",
-    setupNotes: "Reference monitor calibrated, macro coverage on the lens barrel.",
-    result: "Approved without notes. Used as the studio reference cut.",
-    stats: [
-      ["Shots", "17"],
-      ["Retakes", "0"],
-      ["Sync Errors", "0"],
-      ["Client Rating", "4.9"],
-    ],
-  },
-  {
-    id: "PRD-2259",
-    production: "Studio B — Craft Services Spot",
-    role: "Cameraman",
-    client: "Cafe Kalye",
-    date: "2026-07-29",
-    score: 84,
-    rank: "B",
-    runtime: "51m 08s",
-    summary:
-      "Fast turnaround spot with limited coverage. Two shots lost to a boom entering frame.",
-    setupNotes: "24mm wide, overhead bounce, handheld.",
-    result: "Delivered late by 20 minutes. Client accepted the cut.",
-    stats: [
-      ["Shots", "22"],
-      ["Retakes", "2"],
-      ["Focus Accuracy", "88%"],
-      ["Client Rating", "4.0"],
-    ],
-  },
-  {
-    id: "PRD-2251",
-    production: "Vantage Apparel — Lookbook Stills",
-    role: "AV Technician",
-    client: "Vantage Apparel",
-    date: "2026-07-21",
-    score: 90,
-    rank: "A",
-    runtime: "1h 12m",
-    summary:
-      "Lighting-led session with rapid wardrobe changes. Ran a two-key setup to keep the turnaround tight.",
-    setupNotes: "Key + rim, white cyc, 5600K balanced.",
-    result: "All looks captured within the booked window.",
-    stats: [
-      ["Looks", "12"],
-      ["Retakes", "1"],
-      ["Setup Time", "18m"],
-      ["Client Rating", "4.7"],
-    ],
-  },
-  {
-    id: "PRD-2244",
-    production: "Bolt Energy — Vending Reveal",
-    role: "Director",
-    client: "Bolt Energy",
-    date: "2026-07-14",
-    score: 79,
-    rank: "C",
-    runtime: "1h 33m",
-    summary:
-      "Backlot reveal that ran long. Talent availability forced a compressed shot list late in the day.",
-    setupNotes: "Practical vending light, 50mm, bounce card.",
-    result: "Client requested a re-shoot of the hero reveal.",
-    stats: [
-      ["Shots", "28"],
-      ["Retakes", "5"],
-      ["Overtime", "22m"],
-      ["Client Rating", "3.6"],
-    ],
-  },
-  {
-    id: "PRD-2236",
-    production: "Skyfare — Cabin Safety Insert",
-    role: "Editor",
-    client: "Skyfare Airlines",
-    date: "2026-07-06",
-    score: 93,
-    rank: "A",
-    runtime: "44m 21s",
-    summary:
-      "Assembly cut of cabin inserts with on-screen callouts. Error highlighting caught a clipped announcement track.",
-    setupNotes: "Reference monitor, dual-audio timeline, colour matched to plate.",
-    result: "Approved after one round of notes.",
-    stats: [
-      ["Shots", "20"],
-      ["Retakes", "1"],
-      ["Sync Errors", "1"],
-      ["Client Rating", "4.6"],
-    ],
-  },
-  {
-    id: "PRD-2228",
-    production: "Cafe Kalye — Barista Portrait Series",
-    role: "Cameraman",
-    client: "Cafe Kalye",
-    date: "2026-06-28",
-    score: 97,
-    rank: "S",
-    runtime: "39m 44s",
-    summary:
-      "Portrait series shot on long glass with shallow depth. Focus pulls landed on every take.",
-    setupNotes: "85mm, single soft key, negative fill on camera-left.",
-    result: "Featured in the client's storefront campaign.",
-    stats: [
-      ["Shots", "18"],
-      ["Retakes", "0"],
-      ["Focus Accuracy", "100%"],
-      ["Client Rating", "5.0"],
-    ],
-  },
-  {
-    id: "PRD-2219",
-    production: "Studio A — Crew Training Reel",
-    role: "AV Technician",
-    client: "Crew On Set! Studios",
-    date: "2026-06-19",
-    score: 86,
-    rank: "B",
-    runtime: "1h 02m",
-    summary:
-      "Internal training reel demonstrating rig safety. Audio needed a second pass in the noisy stage.",
-    setupNotes: "Lav + boom, 3-point lighting, static frame.",
-    result: "Published to the crew library.",
-    stats: [
-      ["Shots", "26"],
-      ["Retakes", "2"],
-      ["Audio Passes", "2"],
-      ["Client Rating", "4.3"],
-    ],
-  },
-];
 
 const rankTone: Record<string, string> = {
   S: "bg-yellow/20 text-navy border-yellow/50",
   A: "bg-coral/15 text-coral border-coral/40",
   B: "bg-navy/[.06] text-navy/70 border-navy/15",
   C: "bg-navy/[.04] text-navy/50 border-navy/10",
+  F: "bg-red-100 text-red-800 border-red-300",
 };
 
 function formatDate(value: string) {
-  return new Date(`${value}T00:00:00Z`).toLocaleDateString("en-US", {
-    year: "numeric",
-    month: "short",
-    day: "numeric",
-    timeZone: "UTC",
-  });
+  const date = new Date(value);
+  if (!value || !Number.isFinite(date.getTime())) return "—";
+  return date.toLocaleDateString("en-US", { year: "numeric", month: "short", day: "numeric", timeZone: "UTC" });
 }
 
-function mapRealProductionLog(log: PlayFabProductionLog): ProductionLog {
-  const stats = Array.isArray(log.stats)
-    ? log.stats.map((stat) =>
-        Array.isArray(stat)
-          ? [String(stat[0]), String(stat[1])] as [string, string]
-          : [String(stat.label), String(stat.value)] as [string, string],
-      )
-    : [];
-
-  return {
-    id: log.productionId || log.id || ("production-" + log.date),
-    production: log.title || log.clientName || "Production",
-    role: log.rolePlayed || log.role || "Crew",
-    client: log.clientName || log.client || "Commercial Client",
-    date: (log.date || "").slice(0, 10),
-    score: Number(log.overallScore ?? log.score ?? 0),
-    rank: log.rank || log.letterGrade || "—",
-    runtime: log.runtime || "—",
-    summary: log.feedback || "Production completed.",
-    setupNotes: "Synced from PlayFab production history.",
-    result: log.status === "accepted"
-      ? "Contract accepted in the game; production has not been completed yet."
-      : log.success ? "Production completed successfully." : "Production requires review.",
-    stats,
-    details: log.details,
-    preProductionScore: log.preProductionScore,
-    productionScore: log.productionScore,
-    postProductionScore: log.postProductionScore,
-    budgetUsed: log.budgetUsed,
-    budgetRemaining: log.budgetRemaining,
-  };
+function cleanGameFeedback(value: string) {
+  return value.replace(/<\/?color(?:=[^>]+)?>/gi, "").replace(/<\/?b>/gi, "").trim();
 }
 
-function asRecord(value: unknown): Record<string, unknown> {
-  return value && typeof value === "object" ? value as Record<string, unknown> : {};
-}
-
-function feedbackText(value: unknown): string | undefined {
-  if (typeof value === "string" && value.trim()) return value.trim();
-  if (Array.isArray(value)) return value.map(feedbackText).filter(Boolean).join("\n") || undefined;
-  if (value && typeof value === "object") {
-    const record = asRecord(value);
-    return feedbackText(record.feedback ?? record.clientFeedback ?? record.notes ?? record.review ?? record.text);
-  }
-  return undefined;
+function getPhaseFeedback(details: Record<string, unknown>, camel: string, snake: string): string {
+  const phases = details["phases"] && typeof details["phases"] === "object" ? details["phases"] as Record<string, unknown> : {};
+  const phase = phases[camel] ?? phases[snake];
+  const phaseData = phase && typeof phase === "object" ? phase as Record<string, unknown> : {};
+  const candidates = [
+    phaseData["feedback"], phaseData["clientFeedback"], phaseData["notes"], phaseData["review"],
+    phase, details[camel + "Feedback"], details[snake + "_feedback"], details[camel + "Review"], details[snake + "_review"],
+  ];
+  const value = candidates.find((candidate) => (typeof candidate === "string" && candidate.trim()) || (Array.isArray(candidate) && candidate.length > 0));
+  return typeof value === "string" ? value.trim() : Array.isArray(value) ? value.map(String).join("\n") : "";
 }
 
 function getDecisionNotes(value: string): string {
   let section = "decision";
-  return value.replace(/<\/?color(?:=[^>]+)?>/gi, "").replace(/<\/?b>/gi, "").split(/\r?\n/).map((line) => line.trim()).filter((line) => {
+  return cleanGameFeedback(value).split(/\r?\n/).map((line) => line.trim()).filter((line) => {
     const heading = line.replace(/[^a-z ]/gi, "").trim().toLowerCase();
-    if (heading === "your next step" || heading === "budget review") { section = "other"; return false; }
+    if (heading === "your next step") { section = "next"; return false; }
+    if (heading === "budget review") { section = "budget"; return false; }
     if (section !== "decision" || /^recorded takes\s*:/i.test(line)) return false;
     return Boolean(line);
   }).join("\n");
 }
 
+function mapGameProduction(log: GameProductionLog): ProductionLog {
+  const sourceDetails = (log.details && typeof log.details === "object" ? log.details : {}) as Record<string, unknown>;
+  const budgetDetails = (sourceDetails["budgetReview"] ?? sourceDetails["budget"]) as Record<string, unknown> | undefined;
+  const hasRootBudget = log.hasBudgetReview || [log.budgetOpeningBalance, log.budgetIncome, log.budgetUsed, log.budgetRemaining].some((value) => value != null) || Boolean(log.budgetFeedback);
+  const details = {
+    ...sourceDetails,
+    ...(budgetDetails || hasRootBudget ? { budgetReview: {
+      ...(budgetDetails ?? {}),
+      ...(log.budgetOpeningBalance != null ? { openingBalance: log.budgetOpeningBalance } : {}),
+      ...(log.budgetIncome != null ? { income: log.budgetIncome } : {}),
+      ...(log.budgetUsed != null ? { spent: log.budgetUsed } : {}),
+      ...(log.budgetRemaining != null ? { remaining: log.budgetRemaining } : {}),
+      ...(log.hasBudgetReview != null ? { available: log.hasBudgetReview } : {}),
+      ...(log.budgetFeedback ? { feedback: log.budgetFeedback } : {}),
+    } } : {}),
+  };
+  const nextStep = log.nextStep || (typeof details["nextStep"] === "string" ? details["nextStep"] as string : undefined);
+  return {
+    id: log.id || log.productionId || log.submissionId || "",
+    level: log.level,
+    production: log.title || log.stage || log.production || "",
+    role: log.role || log.roles?.join(", ") || "",
+    client: log.clientName || log.clientBrandName || log.client || "",
+    date: log.date,
+    score: log.overallScore,
+    rank: log.rank || log.letterGrade || "",
+    summary: log.feedback || "",
+    setupNotes: typeof details["setupNotes"] === "string" ? details["setupNotes"] : "",
+    result: log.clientDecision || "",
+    preProductionScore: log.preProductionScore,
+    productionScore: log.productionScore,
+    postProductionScore: log.postProductionScore,
+    bCoinsEarned: log.bCoinsEarned,
+    preProductionFeedback: log.preProductionFeedback || getPhaseFeedback(details, "preProduction", "pre_production"),
+    productionFeedback: log.productionFeedback || getPhaseFeedback(details, "production", "production"),
+    postProductionFeedback: log.postProductionFeedback || getPhaseFeedback(details, "postProduction", "post_production"),
+    details,
+    nextStep,
+  };
+}
+
 export function ProductionLogs() {
-  const mockMode = isMockMode();
-  const realLogsQuery = useProductionLogs();
+  const logsQuery = useProductionHistory();
   const [openLog, setOpenLog] = useState<ProductionLog | null>(null);
-  const logs = useMemo(
-    () => (mockMode ? productionLogs : (realLogsQuery.data ?? []).map(mapRealProductionLog)),
-    [mockMode, realLogsQuery.data],
-  );
+  const logs = useMemo(() => (logsQuery.data?.logs ?? []).map(mapGameProduction), [logsQuery.data]);
+  const careers = logsQuery.data?.careers ?? [];
 
   return (
-    <section className="mt-7 almanac-content-panel p-4 sm:p-6">
-      {/* Production logs */}
+    <section className="production-history-panel mt-7 almanac-content-panel p-4 sm:p-6">
       <div className="almanac-content-body">
-        <h2 className="section-title text-3xl text-navy sm:text-4xl">
-          Production Logs
-        </h2>
-        <p className="mt-1 text-sm text-navy/55">
-          Every production you wrapped, scored and ranked.
-        </p>
-
+        <h2 className="section-title text-3xl text-navy sm:text-4xl">Production Logs</h2>
+        <div className="production-history-heading mt-1 flex items-center justify-between gap-3 text-sm text-navy"><p>Saved career progress and completed attempts from Crew On Set!</p><button type="button" className="rounded border px-3 py-2 font-bold" disabled={logsQuery.isFetching} onClick={() => void logsQuery.refetch()}>{logsQuery.isFetching ? "Refreshing…" : "Refresh"}</button></div>
+        {careers.length > 0 && <div className="production-career-progress mt-5 space-y-3">
+          <h3 className="text-sm font-black uppercase">Current saved progress</h3>
+          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">{careers.map((career) => <article key={career.id} className="rounded-lg border border-navy/20 p-4">
+            <h4 className="font-bold">{career.name || "Saved career"}</h4>
+            <p className="mt-1 text-sm">Level {career.level} · {career.balance == null ? "Budget not recorded" : `${career.balance.toLocaleString()} B-Coins`}</p>
+            <p className="mt-2 text-sm">{career.activeLevel != null ? `Level ${career.activeLevel} attempt in progress` : "Saved checkpoint"}</p>
+            <p className="text-xs">{career.completedAttempts} completed attempts recorded{career.takes != null ? ` · ${career.takes} takes in current attempt` : ""}</p>
+            <p className="mt-2 text-xs">Checkpoint saved: {formatDate(career.updatedUtc)}</p>
+            {career.transactions.length > 0 && <details className="mt-3 text-sm"><summary className="cursor-pointer font-bold">Current attempt transactions</summary><ul className="mt-2 space-y-1">{career.transactions.map((transaction, index) => <li key={index}>{transaction.item || transaction.category}: {transaction.amount > 0 ? "+" : ""}{transaction.amount.toLocaleString()} B-Coins</li>)}</ul></details>}
+          </article>)}</div>
+          <p className="text-xs">A saved level is current progress. Scores, ranks and feedback appear only when the game records a completed attempt.</p>
+        </div>}
+        <h3 className="production-history-heading mt-5 text-sm font-black uppercase">Completed production history</h3>
         <div className="player-account-scroll-list almanac-content-scroll production-logs-list admin-table-wrap mt-5 border-navy/10">
           <table className="admin-table">
-            <thead>
-              <tr>
-                <th>Production</th>
-                <th>Role</th>
-                <th>Client</th>
-                <th>Date</th>
-                <th>Score</th>
-                <th>Rank</th>
-                <th className="text-right">Info</th>
-              </tr>
-            </thead>
+            <thead><tr><th className="production-log-column-heading">Level</th><th className="production-log-column-heading">Product / Contract</th><th className="production-log-column-heading">Role</th><th className="production-log-column-heading">Client</th><th className="production-log-column-heading">Date</th><th className="production-log-column-heading">Score</th><th className="production-log-column-heading">Rank</th><th className="production-log-column-heading text-right">Info</th></tr></thead>
             <tbody>
               {logs.map((log) => (
                 <tr key={log.id}>
-                  <td className="font-bold">{log.production}</td>
-                  <td>{log.role}</td>
-                  <td>{log.client}</td>
+                  <td>{log.level || "—"}</td>
+                  <td className="font-bold">{log.production || (log.level ? `Level ${log.level} production` : "Production")}{typeof log.details["careerName"] === "string" && <span className="production-log-career block text-xs font-normal">Career: {log.details["careerName"]}{log.details["archivedCareer"] === true ? " · Archived" : ""}</span>}</td>
+                  <td>{log.role || "—"}</td>
+                  <td>{log.client || "—"}</td>
                   <td className="whitespace-nowrap">{formatDate(log.date)}</td>
-                  <td className="font-black">{log.score}%</td>
-                  <td>
-                    <span
-                      className={`production-log-rank inline-grid size-7 place-items-center rounded-md border text-xs font-black ${
-                        rankTone[log.rank] ?? rankTone["B"]
-                      }`}
-                    >
-                      {log.rank}
-                    </span>
-                  </td>
-                  <td className="text-right">
-                    <button
-                      type="button"
-                      onClick={() => setOpenLog(log)}
-                      className="production-log-info rounded-md border border-navy/15 px-3 py-1.5 text-[11px] font-black uppercase tracking-wider text-navy transition hover:bg-navy/5"
-                    >
-                      See Info
-                    </button>
-                  </td>
+                  <td className="font-black">{log.score == null ? "—" : `${log.score}%`}</td>
+                  <td><span className={`production-log-rank inline-grid size-7 place-items-center rounded-md border text-xs font-black ${rankTone[log.rank] ?? "bg-navy/[.04] text-navy/50 border-navy/10"}`}>{log.rank || "—"}</span></td>
+                  <td className="text-right"><button type="button" onClick={() => setOpenLog(log)} className="production-log-info rounded-md border border-navy/15 px-3 py-1.5 text-[11px] font-black uppercase tracking-wider text-navy transition hover:bg-navy/5">See Info</button></td>
                 </tr>
               ))}
+              {logsQuery.isLoading && <tr><td colSpan={8} className="py-8 text-center">Loading production history…</td></tr>}
+              {logsQuery.isError && <tr><td colSpan={8} className="py-8 text-center text-red-700">Couldn't load production history. Please try again.</td></tr>}
+              {!logsQuery.isLoading && !logsQuery.isError && logs.length === 0 && <tr><td colSpan={8} className="py-10 text-center text-navy/55">{careers.length ? "Your career progress is saved, but there are no completed productions yet. Finish a production in the game to see your results here." : "No completed productions yet. Sign into the same account in the game, then refresh to check again."}</td></tr>}
             </tbody>
           </table>
         </div>
       </div>
 
-      {/* Detail modal */}
       {openLog && (
-        <div
-          className="fixed inset-0 z-[120] flex items-start justify-center overflow-y-auto bg-navy/70 p-4 backdrop-blur-sm sm:items-center sm:p-6"
-          onClick={() => setOpenLog(null)}
-        >
-          <div
-            role="dialog"
-            aria-modal="true"
-            aria-label={openLog.production}
-            onClick={(event) => event.stopPropagation()}
-            className="production-log-dialog my-auto w-full max-w-3xl rounded-xl bg-white shadow-2xl"
-          >
-            <header className="flex items-start gap-4 border-b border-navy/10 p-5 sm:p-6">
+        <div className="fixed inset-0 z-[120] flex items-start justify-center overflow-y-auto bg-navy/70 p-4 backdrop-blur-sm sm:items-center sm:p-6" onClick={() => setOpenLog(null)}>
+          <div role="dialog" aria-modal="true" aria-label={openLog.production} onClick={(event) => event.stopPropagation()} className="production-log-dialog my-auto flex max-h-[86vh] w-full max-w-3xl flex-col overflow-hidden rounded-xl bg-white shadow-2xl">
+            <header className="flex shrink-0 items-start gap-4 border-b border-navy/10 p-5 sm:p-6">
               <div className="min-w-0 flex-1">
-                <p className="text-[10px] font-black uppercase tracking-[.18em] text-coral">
-                  {openLog.id} · {openLog.role}
-                </p>
-                <h3 className="production-log-title section-title mt-1 text-2xl text-navy sm:text-3xl">
-                  {openLog.production}
-                </h3>
-                <p className="mt-1 text-xs font-semibold text-navy/50">
-                  {openLog.client} · {formatDate(openLog.date)}
-                </p>
+                <p className="text-[10px] font-black uppercase tracking-[.18em] text-coral">Level {openLog.level} · {openLog.role}</p>
+                <h3 className="production-log-title section-title mt-1 text-2xl text-navy sm:text-3xl">{openLog.production || `Level ${openLog.level} production`}</h3>
+                <p className="mt-1 text-xs font-semibold text-navy/50">Client: {openLog.client} · {formatDate(openLog.date)}</p>
               </div>
-
-              <button
-                type="button"
-                onClick={() => setOpenLog(null)}
-                aria-label="Close production details"
-                className="rounded-md p-1.5 text-navy/40 transition hover:bg-navy/5 hover:text-navy"
-              >
-                <X className="size-5" />
-              </button>
+              <button type="button" onClick={() => setOpenLog(null)} aria-label="Close production details" className="production-log-close rounded-md p-1.5 transition hover:bg-red-500/10"><X className="size-5" /></button>
             </header>
 
-            <div className="max-h-[70vh] space-y-6 overflow-y-auto p-5 sm:p-6">
-              {!mockMode && (() => {
-                const details = asRecord(openLog.details);
-                const phases = asRecord(details.phases);
-                const budget = asRecord(details.budgetReview);
-                const reviews = [
-                  ["Pre-Production Review", phases.preProduction, openLog.preProductionScore],
-                  ["Production Review", phases.production, openLog.productionScore],
-                  ["Post-Production Review", phases.postProduction, openLog.postProductionScore],
-                ] as const;
-                const hasReviews = reviews.some(([, phase]) => feedbackText(phase) || asRecord(phase).score != null);
-                const budgetFeedback = feedbackText(budget.feedback);
-                const decisionNotes = getDecisionNotes(openLog.summary);
-                const nextStep = feedbackText(details.nextStep ?? details.yourNextStep ?? details.next_step);
-                const decision = details.clientDecision;
-                if (!hasReviews && !budgetFeedback && !decisionNotes && !nextStep && decision == null) return null;
-                return <section className="space-y-4 rounded-lg border border-navy/10 bg-navy/[.025] p-4">
-                  <h4 className="text-[10px] font-black uppercase tracking-[.16em] text-yellow-700">Game Results</h4>
-                  {hasReviews && <div className="grid gap-3 sm:grid-cols-3">{reviews.map(([label, phase, score]) => {
-                    const record = asRecord(phase);
-                    const note = feedbackText(phase);
-                    const phaseScore = record.score ?? score;
-                    if (!note && phaseScore == null) return null;
-                    return <article key={label} className="rounded-lg border border-navy/10 p-3"><p className="text-[9px] font-black uppercase tracking-wider text-navy/55">{label}</p>{phaseScore != null && <p className="mt-1 text-sm font-bold text-navy">{String(phaseScore)}/100</p>}{note && <p className="mt-2 whitespace-pre-line text-sm leading-relaxed text-navy/75">{note}</p>}</article>;
-                  })}</div>}
-                  <div className="grid gap-3 sm:grid-cols-2">
-                    {(budgetFeedback || Object.keys(budget).length > 0) && <article className="rounded-lg border border-navy/10 p-3"><p className="text-[9px] font-black uppercase tracking-wider text-navy/55">Budget Review</p>{budgetFeedback && <p className="mt-1 whitespace-pre-line text-sm leading-relaxed text-navy/75">{budgetFeedback}</p>}{!budgetFeedback && <p className="mt-1 text-sm text-navy/70">Spent: {String(budget.spent ?? openLog.budgetUsed ?? "—")} · Remaining: {String(budget.remaining ?? openLog.budgetRemaining ?? "—")}</p>}</article>}
-                    {(decision != null || decisionNotes) && <article className="rounded-lg border border-navy/10 p-3"><p className="text-[9px] font-black uppercase tracking-wider text-navy/55">Client Decision</p>{decision != null && <p className="mt-1 text-sm font-bold text-navy">{String(decision)}</p>}{decisionNotes && <p className="mt-2 whitespace-pre-line text-sm leading-relaxed text-navy/75">{decisionNotes}</p>}</article>}
-                  </div>
-                  {nextStep && <article className="rounded-lg border border-coral/25 bg-coral/[.06] p-3"><p className="text-[9px] font-black uppercase tracking-wider text-coral">Your Next Step</p><p className="mt-1 whitespace-pre-line text-sm text-navy/75">{nextStep}</p></article>}
-                </section>;
-              })()}
-              <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-                {openLog.stats.map(([label, value]) => (
-                  <div
-                    key={label}
-                    className="rounded-lg border border-navy/10 bg-navy/[.03] p-3"
-                  >
-                    <p className="text-[9px] font-black uppercase tracking-[.16em] text-navy/40">
-                      {label}
-                    </p>
-                    <p className="mt-1 text-sm font-black text-navy">{value}</p>
-                  </div>
-                ))}
-              </div>
-
-              {mockMode && <div className="grid gap-5 sm:grid-cols-2">
-                <div>
-                  <p className="text-[10px] font-black uppercase tracking-[.16em] text-navy/45">
-                    Shoot Summary
-                  </p>
-                  <p className="mt-2 text-sm leading-relaxed text-navy/70">
-                    {openLog.summary}
-                  </p>
+            <div className="min-h-0 space-y-6 overflow-y-auto p-5 sm:p-6">
+              <section className="space-y-3">
+                <h4 className="production-log-results-heading text-xs font-black uppercase tracking-[.16em]">Game Results</h4>
+                <div className="flex flex-wrap gap-4 text-sm">{([["Camera", "cameraScore", "/70"], ["Lighting", "lightingScore", "/30"], ["Recorded takes", "takes", ""]] as const).map(([label, key, unit]) => typeof openLog.details[key] === "number" ? <p key={key}>{label}: {String(openLog.details[key])}{unit}</p> : null)}</div>
+                <div className="grid gap-3 sm:grid-cols-3">
+                  {([["Pre-production", openLog.preProductionScore, openLog.preProductionFeedback], ["Production", openLog.productionScore, openLog.productionFeedback], ["Post-production", openLog.postProductionScore, openLog.postProductionFeedback]] as const).filter(([, score, review]) => score != null || Boolean(review)).map(([label, score, review]) => <div key={label} className="rounded-lg border border-navy/10 bg-navy/[.03] p-3"><p className="text-[9px] font-black uppercase tracking-[.14em] text-navy/55">{label} Review</p>{score != null && <p className="mt-1 text-sm font-bold text-navy">{score}/100</p>}{review && <p className="mt-2 whitespace-pre-line text-sm text-navy/75">{cleanGameFeedback(review)}</p>}</div>)}
                 </div>
-
-                <div>
-                  <p className="text-[10px] font-black uppercase tracking-[.16em] text-navy/45">
-                    Setup Notes
-                  </p>
-                  <p className="mt-2 text-sm leading-relaxed text-navy/70">
-                    {openLog.setupNotes}
-                  </p>
-                </div>
-              </div>}
-
-              <div className="grid gap-3 sm:grid-cols-3">
-                <div className="flex items-center gap-2 rounded-lg border border-navy/10 p-3">
-                  <Clock className="size-4 text-coral" />
-                  <div>
-                    <p className="text-[9px] font-black uppercase tracking-[.16em] text-navy/40">
-                      Runtime
-                    </p>
-                    <p className="text-sm font-bold text-navy">{openLog.runtime}</p>
-                  </div>
-                </div>
-
-                <div className="flex items-center gap-2 rounded-lg border border-navy/10 p-3">
-                  <Star className="size-4 text-yellow" />
-                  <div>
-                    <p className="text-[9px] font-black uppercase tracking-[.16em] text-navy/40">
-                      Score
-                    </p>
-                    <p className="text-sm font-bold text-navy">
-                      {openLog.score}% · Rank {openLog.rank}
-                    </p>
-                  </div>
-                </div>
-
-                <div className="flex items-center gap-2 rounded-lg border border-navy/10 p-3 sm:col-span-1">
-                  <Trophy className="size-4 text-coral" />
-                  <div className="min-w-0">
-                    <p className="text-[9px] font-black uppercase tracking-[.16em] text-navy/40">
-                      Result
-                    </p>
-                    <p className="text-sm font-bold text-navy">{openLog.rank === "S" ? "Exceptional" : "Wrapped"}</p>
-                  </div>
-                </div>
-              </div>
-
-              <p className="rounded-lg border border-coral/25 bg-coral/[.06] p-4 text-sm leading-relaxed text-navy/75">
-                {openLog.result}
-              </p>
+                {(() => {
+                  const budget = (openLog.details["budgetReview"] && typeof openLog.details["budgetReview"] === "object" ? openLog.details["budgetReview"] : openLog.details["budget"]) as Record<string, unknown> | undefined;
+                  const spent = budget?.["spent"] ?? budget?.["amount_spent"];
+                  const remaining = budget?.["remaining"] ?? budget?.["remaining_cash"];
+                  const opening = budget?.["openingBalance"] ?? budget?.["opening_cash"];
+                  const income = budget?.["income"];
+                  const trackingComplete = budget?.["tracking_complete"] ?? budget?.["complete"];
+                  const trackingAvailable = budget?.["available"];
+                  const hasBudgetInfo = budget && ([opening, income, spent, remaining, trackingComplete, trackingAvailable].some((item) => item != null) || Boolean(budget["feedback"]));
+                  return <div className="grid gap-3 sm:grid-cols-2">
+                    {hasBudgetInfo && <div className="rounded-lg border border-navy/10 p-3"><p className="text-[10px] font-black uppercase text-navy/50">Budget Review</p>{openLog.bCoinsEarned != null && <p className="mt-1 text-sm font-bold text-navy">This submission: +{openLog.bCoinsEarned.toLocaleString()} B-Coins</p>}{typeof budget?.["feedback"] === "string" && budget["feedback"].trim() ? <p className="mt-1 whitespace-pre-line text-sm text-navy/75">{cleanGameFeedback(budget["feedback"])}</p> : <p className="mt-1 text-sm text-navy/75">{[opening, income, spent, remaining].some((item) => item != null) ? `Opening balance: ${opening ?? "—"} · Income: ${income ?? "—"} · Spent: ${spent ?? "—"} · Remaining: ${remaining ?? "—"}` : "Budget information recorded."}</p>}{trackingAvailable === false && <p className="mt-1 text-sm text-navy/65">Budget tracking unavailable.</p>}{typeof trackingComplete === "boolean" && <p className="mt-1 text-sm text-navy/65">Tracking {trackingComplete ? "complete" : "incomplete"}.</p>}</div>}
+                    {openLog.result && <div className="rounded-lg border border-navy/10 p-3"><p className="text-[10px] font-black uppercase text-navy/50">Client Decision</p><p className="mt-1 text-sm font-bold text-navy">{openLog.result}</p>{getDecisionNotes(openLog.summary) && <p className="mt-2 whitespace-pre-line text-sm font-normal text-navy/75">{getDecisionNotes(openLog.summary)}</p>}</div>}
+                  </div>;
+                })()}
+                {openLog.nextStep && <div className="rounded-lg border border-coral/25 bg-coral/[.06] p-3"><p className="text-[10px] font-black uppercase text-coral">Your Next Step</p><p className="mt-1 text-sm text-navy/75">{openLog.nextStep}</p></div>}
+              </section>
             </div>
           </div>
         </div>

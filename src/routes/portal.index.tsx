@@ -20,8 +20,7 @@ export const Route = createFileRoute("/portal/")({
 
 import Image from "@/components/next-compat/image";
 import Link from "@/components/next-compat/link";
-import { getProfileArtwork } from "@/lib/demo/profile-art";
-import { useEffect, useMemo } from "react";
+import { lazy, Suspense, useEffect, useMemo } from "react";
 import {
   Clock3,
   Film,
@@ -60,6 +59,7 @@ import {
   useNotifications,
   usePlayerInventory,
   usePlayerProfile,
+  usePlayerLoadout,
   usePlayerProgression,
   useProductionLogs,
 } from "@/lib/playfab/hooks";
@@ -67,6 +67,8 @@ import { isMockMode } from "@/lib/playfab/config";
 import { sortNewestFirst } from "@/lib/validation";
 import { achievementEmoji } from "@/lib/achievement-emoji";
 import { hasRecordedGameProgress } from "@/lib/playfab/progression";
+
+const Avatar3DPreview = lazy(() => import("@/components/portal/avatar-3d-preview").then((module) => ({ default: module.Avatar3DPreview })));
 
 const bundledFaceItems = cosmeticCatalog.filter((item) => item.category === "Face");
 const bundledFaceIds = bundledFaceItems.map((item) => item.id);
@@ -179,6 +181,7 @@ function PlayerDashboardPage() {
   const catalogQuery = useCatalog();
   const inventoryQuery = usePlayerInventory();
   const profileQuery = usePlayerProfile();
+  const loadoutQuery = usePlayerLoadout();
   const progressionQuery = usePlayerProgression();
   const achievementsQuery = useAchievements();
   const productionLogsQuery = useProductionLogs();
@@ -201,11 +204,9 @@ function PlayerDashboardPage() {
   }, [featuredBrandUpdate?.id, mockMode]);
 
   const displayName = profileQuery.data?.username || profileQuery.data?.displayName || "CAMERA_PRO";
-  const displayAvatar = mockMode
-    ? getProfileArtwork(displayName)
-    : profileQuery.data?.avatarUrl || getProfileArtwork(displayName);
+  const avatarLoadout = loadoutQuery.data ?? {};
   const hasGameProgress = hasRecordedGameProgress(progressionQuery.data);
-  const level = progressionQuery.data?.level;
+  const level = hasGameProgress ? progressionQuery.data?.level : undefined;
   const currentXp = progressionQuery.data?.currentXp ?? 0;
   const xpToNextLevel = progressionQuery.data?.xpToNextLevel ?? 0;
   const progressPercent =
@@ -399,12 +400,9 @@ function PlayerDashboardPage() {
         <section className="portal-card mt-7 border border-white/10 bg-white p-5 text-navy shadow-xl sm:p-7">
           <div className="flex flex-col gap-5 sm:flex-row sm:items-center">
             <div className="relative size-24 shrink-0 overflow-hidden rounded-full border-4 border-yellow shadow-lg">
-              <Image
-                src={displayAvatar}
-                alt={displayName + " avatar"}
-                fill
-                className="object-cover object-[62%_45%]"
-              />
+              <Suspense fallback={<div className="size-full bg-[#e5dac3]" aria-label={displayName + " avatar loading"} />}>
+                <Avatar3DPreview loadout={avatarLoadout} displayName={displayName} portrait className="relative size-full overflow-hidden bg-[#e5dac3]" />
+              </Suspense>
             </div>
 
             <div className="flex-1">
