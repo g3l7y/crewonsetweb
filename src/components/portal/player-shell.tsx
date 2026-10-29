@@ -75,8 +75,8 @@ export function PlayerShell({ children }: { children: React.ReactNode }) {
   const accountRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    if (sessionQuery.isFetched && !sessionQuery.data) router.replace("/login");
-  }, [router, sessionQuery.data, sessionQuery.isFetched]);
+    if (sessionQuery.isSuccess && !sessionQuery.data) router.replace("/login");
+  }, [router, sessionQuery.data, sessionQuery.isSuccess]);
 
   useEffect(() => {
     const loadPlayerPreferences = () => {
