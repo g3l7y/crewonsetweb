@@ -74,10 +74,11 @@ export function useSession() {
     queryFn: () => getPlayFabService().auth.getSession(),
     // Auth can change between account sign-outs/sign-ins in the same SPA session.
     // Recheck immediately on portal mount so player-specific queries use the new ID.
-    staleTime: 0,
+    staleTime: 30_000,
     retry: false,
     refetchInterval: false,
     refetchIntervalInBackground: false,
+    refetchOnWindowFocus: false,
   });
 }
 

@@ -168,11 +168,14 @@ function createRealService(): PlayFabService {
             credentials: 'same-origin',
             cache: 'no-store',
           });
-          if (!res.ok) return null;
+          if (res.status === 401 || res.status === 403) return null;
+          if (!res.ok) throw new Error(`Session check failed (${res.status}).`);
           const data = await res.json();
           return data.session ?? null;
-        } catch {
-          return null;
+        } catch (error) {
+          // Treat network/server errors as a failed refresh, not as a sign-out.
+          // React Query keeps the last successful session data in this case.
+          throw error;
         }
       },
       isAdmin: async () => {
