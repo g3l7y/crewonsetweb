@@ -4439,3 +4439,10 @@ html body [data-slot="dialog-overlay"] {
 }
 .promotion-message::backdrop { background: rgba(10,14,25,.32); backdrop-filter: blur(4px); }
 .promotion-message { max-width: 28rem; padding: 2rem; border-radius: 1rem; background: #f0ede4; color: #0a0e19; }
+
+/* Named scrims are excluded from the portal's dark-color-to-paper remapping. */
+.modal-backdrop {
+  background-color: rgba(10, 14, 25, .42) !important;
+  backdrop-filter: blur(3px);
+  -webkit-backdrop-filter: blur(3px);
+}

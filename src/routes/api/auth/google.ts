@@ -40,7 +40,7 @@ export const Route = createFileRoute("/api/auth/google")({
                 { status: 503 },
               );
             }
-            if (intent === "signup" && account.googleProfileSetup !== true) {
+            if (account.googleProfileSetup !== true) {
               account.googleProfileSetupPending = true;
             }
             const session: SessionData = {
@@ -89,7 +89,7 @@ export const Route = createFileRoute("/api/auth/google")({
               body: JSON.stringify({
                 TitleId: PLAYFAB_TITLE_ID,
                 AccessToken: accessToken,
-                CreateAccount: intent === "signup",
+                CreateAccount: true,
                 InfoRequestParameters: {
                   GetPlayerProfile: true,
                   GetUserAccountInfo: true,
@@ -189,7 +189,7 @@ export const Route = createFileRoute("/api/auth/google")({
           const credentialsAlreadyLinked =
             metadata.credentialsSetup === true || Boolean(playFabUsername);
 
-          if (intent === "signup" && !email) {
+          if (pfData.NewlyCreated === true && !email) {
             return Response.json(
               {
                 success: false,
@@ -200,7 +200,7 @@ export const Route = createFileRoute("/api/auth/google")({
             );
           }
 
-          if (intent === "signup" && pfData.NewlyCreated === true && !credentialsAlreadyLinked) {
+          if (!credentialsAlreadyLinked && metadata.googleProfileSetup !== true) {
             const pendingMetadata = {
               ...metadata,
               googleProfileSetupPending: true,
@@ -238,7 +238,7 @@ export const Route = createFileRoute("/api/auth/google")({
             metadata.googleProfileSetupPending = true;
           }
 
-          if (intent === "signup") {
+          if (acceptedPolicies === true) {
             try {
               const consentResponse = await fetch(
                 `https://${PLAYFAB_TITLE_ID}.playfabapi.com/Client/UpdateUserData`,
@@ -299,7 +299,7 @@ export const Route = createFileRoute("/api/auth/google")({
             email: sessionEmail,
           };
 
-          if (intent === "signup" && pfData.NewlyCreated === true && sessionEmail) {
+          if (pfData.NewlyCreated === true && sessionEmail) {
             try {
               await sendPlayerWelcomeEmail(sessionEmail, resolvedDisplayName);
             } catch (emailError) {

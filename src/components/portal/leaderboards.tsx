@@ -373,7 +373,7 @@ export function Leaderboards() {
 
       {selectedLeader && (
         <div
-          className="fixed inset-0 z-50 grid place-items-center bg-[#05080d]/80 p-4 backdrop-blur-md"
+          className="fixed inset-0 z-50 grid place-items-center modal-backdrop p-4 backdrop-blur-[3px]"
           onMouseDown={() => setSelectedLeader(null)}
         >
 

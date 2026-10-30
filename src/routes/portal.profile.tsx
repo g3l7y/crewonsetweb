@@ -884,7 +884,7 @@ function CrewProfilePage() {
       </div>
 
       {avatarOpen && (
-        <div className="fixed inset-0 z-[70] flex items-center justify-center bg-[#05080d]/85 p-3 backdrop-blur-md sm:p-6" onMouseDown={(event) => { if (event.target === event.currentTarget) setAvatarOpen(false); }}>
+        <div className="fixed inset-0 z-[70] flex items-center justify-center modal-backdrop p-3 backdrop-blur-[3px] sm:p-6" onMouseDown={(event) => { if (event.target === event.currentTarget) setAvatarOpen(false); }}>
           <section role="dialog" aria-modal="true" aria-labelledby="avatar-customizer-title" className="flex max-h-[94vh] w-full max-w-6xl flex-col overflow-hidden rounded-2xl border-2 border-yellow/70 bg-[#f1eadb] text-[#121826] shadow-2xl">
             <header className="flex items-start justify-between gap-4 border-b-2 border-[#121826]/15 bg-[#e6dcc7] px-5 py-4 sm:px-7">
               <div>
@@ -961,7 +961,7 @@ function CrewProfilePage() {
       ========================================================= */}
 
       {confirmOpen && (
-        <div className="fixed inset-0 z-[60] flex items-center justify-center bg-[#05080d]/85 p-4 backdrop-blur-md">
+        <div className="fixed inset-0 z-[60] flex items-center justify-center modal-backdrop p-4 backdrop-blur-[3px]">
           <div className="w-full max-w-sm rounded-2xl border border-white/10 bg-[#151c29] p-6 text-white shadow-2xl">
             <h3 className="text-lg font-black uppercase">Confirm Password</h3>
             <p className="mt-2 text-sm text-white/50">
@@ -1002,7 +1002,7 @@ function CrewProfilePage() {
       )}
 
       {editMode && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-[#05080d]/80 p-4 backdrop-blur-md">
+        <div className="fixed inset-0 z-50 flex items-center justify-center modal-backdrop p-4 backdrop-blur-[3px]">
 
           <div className="flex max-h-[90dvh] w-full max-w-2xl flex-col overflow-hidden rounded-2xl border border-white/10 bg-[#151c29] text-white shadow-2xl shadow-black/50">
 
