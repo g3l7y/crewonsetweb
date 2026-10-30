@@ -166,3 +166,8 @@ export function markMockGoogleProfileSetup(sessionTicket: string) {
   account.googleProfileSetupPending = false;
   return true;
 }
+
+export function removeMockAccount(ticket: string) {
+ const account = getMockAccountBySessionTicket(ticket);
+ if (account) mockAccounts.delete(accountKey(account.username));
+}

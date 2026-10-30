@@ -274,3 +274,5 @@ export async function validateSessionFromRequest(
 export async function isAdminRequest(request: Request): Promise<boolean> {
   return (await validateSessionFromRequest(request, { requireAdmin: true }))?.role === 'admin';
 }
+
+export function forgetVerifiedSession(ticket: string) { verifiedSessionCache.delete(ticket); }

@@ -89,7 +89,8 @@ export function usePlayerProfile() {
     queryKey: [...QUERY_KEYS.profile, session?.playFabId],
     queryFn: () => getPlayFabService().player.getProfile(),
     enabled: !!session,
-    staleTime: 2 * 60 * 1000,
+    staleTime: 15_000,
+    refetchInterval: 30_000,
   });
 }
 
