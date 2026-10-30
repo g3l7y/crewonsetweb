@@ -69,7 +69,9 @@ export function clearSessionCookies(): string[] {
 
 export function unauthorizedSessionResponse(status = 403): Response {
   const headers = new Headers({ 'Cache-Control': 'no-store, private' });
-  for (const cookie of clearSessionCookies()) headers.append('Set-Cookie', cookie);
+  // A denied resource request must not erase an otherwise valid login.
+  // Only explicit logout owns cookie deletion; concurrent requests may also
+  // have started before a new login cookie was issued.
   return Response.json({ error: 'Unauthorized' }, { status, headers });
 }
 

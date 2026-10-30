@@ -1,5 +1,5 @@
 import { createFileRoute } from '@tanstack/react-router';
-import { clearSessionCookies, validateSessionFromRequest } from '@/lib/playfab/session';
+import { hasActivePlayFabBan, parseSessionFromRequest, validateSessionFromRequest } from '@/lib/playfab/session';
 import { isMockMode } from '@/lib/playfab/config';
 import { getPlayFabContactEmail } from '@/lib/playfab/contact-email';
 
@@ -9,12 +9,17 @@ export const Route = createFileRoute('/api/auth/session')({
       GET: async ({ request }) => {
         const session = await validateSessionFromRequest(request);
         if (!session) {
+          let banned = false;
+          const identity = parseSessionFromRequest(request);
+          const secret = process.env['PLAYFAB_SECRET_KEY']?.trim();
+          if (!isMockMode() && identity?.playFabId && secret) {
+            try { banned = await hasActivePlayFabBan(identity.playFabId, secret); } catch { /* Do not label an unavailable check as a ban. */ }
+          }
           const headers = new Headers({
             'Content-Type': 'application/json',
             'Cache-Control': 'no-store, private',
           });
-          for (const cookie of clearSessionCookies()) headers.append('Set-Cookie', cookie);
-          return new Response(JSON.stringify({ session: null }), {
+          return new Response(JSON.stringify({ session: null, banned }), {
             status: 401,
             headers,
           });

@@ -135,7 +135,7 @@ export const Route = createFileRoute("/api/auth/login")({
               return Response.json(
                 {
                   success: false,
-                  error: "Invalid email or password.",
+                  error: pfResult.error === "AccountBanned" ? "This player account is banned. You can submit an appeal for review." : "Invalid email or password.",
                 } satisfies AuthResponse,
                 { status: 401 },
               );
