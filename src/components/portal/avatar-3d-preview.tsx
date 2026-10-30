@@ -64,8 +64,8 @@ export function Avatar3DPreview({ loadout, displayName, portrait = false, classN
     renderer.toneMapping = THREE.ACESFilmicToneMapping;
     renderer.toneMappingExposure = 1.15;
     renderer.setClearColor(0x000000, 0);
-    renderer.domElement.setAttribute("aria-label", `${displayName}'s 3D avatar; drag to rotate`);
-    renderer.domElement.className = "h-full w-full touch-none cursor-grab active:cursor-grabbing";
+    renderer.domElement.setAttribute("aria-label", portrait ? `${displayName}'s avatar` : `${displayName}'s 3D avatar; drag to rotate`);
+    renderer.domElement.className = portrait ? "block h-full w-full pointer-events-none" : "block h-full w-full touch-none cursor-grab active:cursor-grabbing";
     host.replaceChildren(renderer.domElement);
 
     scene.add(new THREE.HemisphereLight(0xfff5df, 0x5a493d, 2.1));
@@ -178,9 +178,9 @@ export function Avatar3DPreview({ loadout, displayName, portrait = false, classN
   }, [selection, displayName, portrait]);
 
   return (
-    <div className={className ?? (portrait
-      ? "relative size-full overflow-hidden bg-transparent"
-      : "relative h-64 w-full overflow-hidden rounded-xl border border-[#121826]/15 bg-[radial-gradient(ellipse_at_50%_32%,#fff8e6_0%,#ddd1b8_100%)] sm:h-72")}>
+    <div style={{ position: "relative", overflow: "hidden", isolation: "isolate", ...(portrait ? { pointerEvents: "none" as const } : {}) }} className={className ?? (portrait
+      ? "size-full bg-transparent"
+      : "h-64 w-full rounded-xl border border-[#121826]/15 bg-[radial-gradient(ellipse_at_50%_32%,#fff8e6_0%,#ddd1b8_100%)] sm:h-72")}>
       <div ref={hostRef} className="absolute inset-0" />
       {!portrait && <span className="pointer-events-none absolute bottom-2 left-1/2 -translate-x-1/2 rounded-full bg-[#121826]/75 px-3 py-1 text-[9px] font-bold uppercase tracking-widest text-white">{message}</span>}
     </div>
