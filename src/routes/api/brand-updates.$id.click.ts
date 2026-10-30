@@ -16,6 +16,7 @@ export const Route = createFileRoute("/api/brand-updates/$id/click")({
           );
           const update = updates.find((entry) => entry.id === params.id);
           if (!update) return new Response("Brand update not found.", { status: 404 });
+          if (update.expiresAt && Date.now() > new Date(update.expiresAt).getTime()) return new Response("Promotion expired", { status: 410 });
           const destination = new URL(update.url);
           if (!["http:", "https:"].includes(destination.protocol))
             return new Response("Brand link is invalid.", { status: 422 });
@@ -44,6 +45,7 @@ export const Route = createFileRoute("/api/brand-updates/$id/click")({
                 "Set-Cookie",
                 `cos_brand_update_visitor=${encodeURIComponent(visitor)}; Path=/; Max-Age=31536000; HttpOnly; Secure; SameSite=Lax`,
               );
+            if (request.headers.get("accept")?.includes("application/json")) { headers.delete("Location"); return Response.json({ destination: destination.toString() }, { headers }); }
             return new Response(null, { status: 302, headers });
           }
           return Response.redirect(destination.toString(), 302);

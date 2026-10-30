@@ -1,3 +1,5 @@
+import { relatedBrandRecord } from "@/lib/brand-cleanup";
+import { deleteBrandUpdateEvents } from "@/lib/brand-update-tracking";
 import { createFileRoute } from '@tanstack/react-router';
 import { isMockMode, PLAYFAB_API_BASE } from '@/lib/playfab/config';
 import { validateSessionFromRequest, unauthorizedSessionResponse } from '@/lib/playfab/session';
@@ -120,18 +122,26 @@ async function deletePartnershipApplication(applicationId: string, secretKey: st
     getWebsiteRecords<Record<string, unknown> & { id: string; applicationId?: string }>(WEBSITE_DATA_KEYS.partnershipPayments, secretKey),
     getWebsiteRecords<Record<string, unknown> & { id: string }>(WEBSITE_DATA_KEYS.notifications, secretKey),
   ]);
+  const application = applications.find((item) => item.id === applicationId) || { id: applicationId };
+  const updates = await getWebsiteRecords<Record<string, unknown> & { id: string }>('website_admin_brand_updates', secretKey);
+  const linkedUpdates = updates.filter((item) => relatedBrandRecord(item, application));
+  const updateIds = linkedUpdates.map((item) => item.id);
+  for (const updateId of updateIds) await deleteBrandUpdateEvents(updateId);
+  for (const collection of ['website_admin_brand_updates', WEBSITE_DATA_KEYS.playerNotifications, WEBSITE_DATA_KEYS.playerMail, 'website_admin_ads', 'website_admin_revenue']) {
+    await removeRecords<Record<string, unknown> & { id: string }>(collection, (item) => !relatedBrandRecord(item, application, updateIds), secretKey);
+  }
+  await deleteBrandPromotionData(applicationId);
   const paymentIds = new Set(payments.filter((payment) => payment.applicationId === applicationId).map((payment) => payment.id));
   const nextApplications = applications.filter((application) => application.id !== applicationId);
   const nextPayments = payments.filter((payment) => payment.applicationId !== applicationId);
-  const nextNotifications = notifications.filter((notification) => notification['entityId'] !== applicationId && !paymentIds.has(notification.id));
-  const savedApplications = await setWebsiteRecords(WEBSITE_DATA_KEYS.partnerships, nextApplications, secretKey);
-  if (!savedApplications) throw new Error('The application record could not be removed.');
+  const nextNotifications = notifications.filter((notification) => !relatedBrandRecord(notification, application, updateIds) && !paymentIds.has(notification.id));
   const savedPayments = await setWebsiteRecords(WEBSITE_DATA_KEYS.partnershipPayments, nextPayments, secretKey);
   if (!savedPayments) throw new Error('The application was removed, but its payment ledger could not be cleared.');
   const savedNotifications = await setWebsiteRecords(WEBSITE_DATA_KEYS.notifications, nextNotifications, secretKey);
   if (!savedNotifications) throw new Error('The application was removed, but its notifications could not be cleared.');
   await deleteBrandPromotionData(applicationId);
   await deleteSubmissionAttachments(applicationId, secretKey);
+  if (!(await setWebsiteRecords(WEBSITE_DATA_KEYS.partnerships, nextApplications, secretKey))) throw new Error("The application record could not be removed.");
 }
 
 export const Route = createFileRoute('/api/dev/maintenance')({

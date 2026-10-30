@@ -1,3 +1,4 @@
+import { relatedBrandRecord } from "@/lib/brand-cleanup";
 import { createFileRoute } from '@tanstack/react-router';
 import { useMemo, useState } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
@@ -7,6 +8,7 @@ import { isMockMode } from '@/lib/playfab/config';
 import { getPlayFabService } from '@/lib/playfab/service';
 import { purgeMockPlayerAccountData, deleteMockPlayerAccount } from '@/lib/playfab/mock-provider';
 import {
+  brandUpdatesStore,
   adminNotificationsStore,
   applicationsStore,
   bugReportsStore,
@@ -79,6 +81,12 @@ function DeveloperMaintenancePage() {
 
       if (mockMode && action === 'application-delete') {
         const selectedApplications = applications.filter((item) => targetIds.includes(item.id));
+        for (const application of selectedApplications) {
+          const updateIds = brandUpdatesStore.get().filter((item) => relatedBrandRecord(item, application)).map((item) => item.id);
+          brandUpdatesStore.set((current) => current.filter((item) => !updateIds.includes(item.id)));
+          notificationsStore.set((current) => current.filter((item) => !relatedBrandRecord(item, application, updateIds)));
+          adminNotificationsStore.set((current) => current.filter((item) => !relatedBrandRecord(item, application, updateIds)));
+        }
         for (const applicationId of targetIds) await getPlayFabService().admin.deletePartnership(applicationId);
         setApplications((current) => current.filter((item) => !targetIds.includes(item.id)));
         const relatedPaymentIds = new Set(topUpsStore.get()

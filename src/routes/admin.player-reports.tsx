@@ -208,10 +208,9 @@ function PlayerReportsRouteComponent() {
           className="admin-input h-11 rounded-md border border-white/10 bg-[#101923] px-3 text-sm font-bold !text-white outline-none focus:border-coral"
         >
           <option>All Categories</option>
-          {playerReportTypes.map((item) => (
+          {[...playerReportTypes.filter((item) => item !== "Other"), "Ban Appeal", "Other"].map((item) => (
             <option key={item}>{item}</option>
           ))}
-          <option>Ban Appeal</option>
         </select>
 
         <select
