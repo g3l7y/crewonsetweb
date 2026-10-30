@@ -1,4 +1,4 @@
-import { relatedBrandRecord } from "@/lib/brand-cleanup";
+import { relatedBrandRecord, isBrandNotice } from "@/lib/brand-cleanup";
 import { createFileRoute } from '@tanstack/react-router';
 import { useMemo, useState } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
@@ -9,6 +9,7 @@ import { getPlayFabService } from '@/lib/playfab/service';
 import { purgeMockPlayerAccountData, deleteMockPlayerAccount } from '@/lib/playfab/mock-provider';
 import {
   brandUpdatesStore,
+  adminActivityStore,
   adminNotificationsStore,
   applicationsStore,
   bugReportsStore,
@@ -28,7 +29,7 @@ export const Route = createFileRoute('/admin/dev-tools')({
   component: DeveloperMaintenancePage,
 });
 
-type MaintenanceAction = 'player-reset' | 'player-delete' | 'application-delete' | 'financial-reset';
+type MaintenanceAction = 'player-reset' | 'player-delete' | 'application-delete' | 'financial-reset' | 'orphan-brand-cleanup';
 
 function DeveloperMaintenancePage() {
   const mockMode = isMockMode();
@@ -45,14 +46,16 @@ function DeveloperMaintenancePage() {
 
   const players = useMemo(() => (playersQuery.data || []).filter((player) =>
     !mockMode || player.playFabId === 'MOCK-PLAYER-001'), [mockMode, playersQuery.data]);
-  const options = action === 'financial-reset'
+  const options = action === 'orphan-brand-cleanup'
+    ? [{ id: 'LEFTOVER BRANDS', label: 'Leftover brand updates, announcements, notifications, and ad metrics' }]
+    : action === 'financial-reset'
     ? [{ id: 'FINANCIAL HISTORY', label: 'All payment ledgers, sales records, and revenue totals' }]
     : action === 'application-delete'
     ? applications.map((application) => ({ id: application.id, label: application.brand + ' — ' + application.exactModel }))
     : players.map((player) => ({ id: player.playFabId, label: (player.username || player.displayName || player.playFabId) + ' — ' + player.playFabId }));
   const targetIds = action === 'financial-reset' ? ['FINANCIAL HISTORY'] : selectedTargetIds.filter((id) => options.some((option) => option.id === id));
   const selectAll = options.length > 0 && targetIds.length === options.length;
-  const expectedConfirmation = action === 'financial-reset' ? 'CLEAR FINANCIAL HISTORY' : selectAll ? 'ALL TARGETS' : targetIds.length > 1 ? `${targetIds.length} TARGETS` : targetIds[0] || '';
+  const expectedConfirmation = action === 'orphan-brand-cleanup' ? 'CLEAR LEFTOVER BRANDS' : action === 'financial-reset' ? 'CLEAR FINANCIAL HISTORY' : selectAll ? 'ALL TARGETS' : targetIds.length > 1 ? `${targetIds.length} TARGETS` : targetIds[0] || '';
   const allowed = Boolean(key.trim() && targetIds.length && confirmation.trim().toLocaleLowerCase() === expectedConfirmation.toLocaleLowerCase() && !busy);
 
   function toggleTarget(id: string) {
@@ -100,6 +103,15 @@ function DeveloperMaintenancePage() {
         revenueStore.set((current) => current.filter(adMatches));
       }
 
+      if (mockMode && (action === 'orphan-brand-cleanup' || (action === 'application-delete' && applicationsStore.get().length === 0))) {
+        brandUpdatesStore.set([]);
+        notificationsStore.set((current) => current.filter((item) => !isBrandNotice(item)));
+        adminNotificationsStore.set((current) => current.filter((item) => !isBrandNotice(item)));
+        adminActivityStore.set((current) => current.filter((item) => !isBrandNotice(item)));
+        adsStore.set([]);
+        revenueStore.set([]);
+      }
+
       if (action === 'financial-reset') {
         if (mockMode) topUpsStore.set([]);
         transactionsStore.set([]);
@@ -133,7 +145,7 @@ function DeveloperMaintenancePage() {
         queryClient.invalidateQueries({ queryKey: ['playfab', 'admin', 'partnerships'] }),
         queryClient.invalidateQueries({ queryKey: ['admin', 'paymongo-orders'] }),
       ]);
-      setMessage(action === 'player-reset'
+      setMessage(action === 'orphan-brand-cleanup' ? 'Leftover brand updates, announcements, notifications, and ad metrics were deleted.' : action === 'player-reset'
         ? 'Player activity, progress, owned items, balances, and transaction ledgers were purged.'
         : action === 'player-delete'
           ? 'The player account and its linked activity and transaction ledgers were permanently deleted.'
@@ -176,6 +188,7 @@ function DeveloperMaintenancePage() {
           <select value={action} onChange={(event) => { setAction(event.target.value as MaintenanceAction); setSelectedTargetIds([]); setConfirmation(''); }} className="w-full rounded-lg border border-white/15 bg-[#101923] px-4 py-3 text-sm text-white outline-none focus:border-[#f3c747]">
             <option value="player-reset">Purge player records and reset account</option>
             <option value="player-delete">Delete player account and all linked records</option>
+            {applications.length === 0 && <option value="orphan-brand-cleanup">Clear leftover brand records (no applications remain)</option>}
             <option value="application-delete">Delete brand application and linked promotion/payment records</option>
             <option value="financial-reset">Clear payment ledger, sales, and revenue totals</option>
           </select>
@@ -208,7 +221,7 @@ function DeveloperMaintenancePage() {
 
         <button type="button" disabled={!allowed} onClick={() => void runAction()} className="inline-flex items-center gap-2 rounded-lg bg-coral px-5 py-3 text-xs font-black uppercase tracking-wide text-white transition hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-40">
           {busy ? <LoaderCircle className="size-4 animate-spin" /> : action === 'application-delete' ? <Trash2 className="size-4" /> : <UserRoundX className="size-4" />}
-          {busy ? 'Processing…' : action === 'player-reset' ? 'Purge and reset player' : action === 'player-delete' ? 'Delete player completely' : action === 'application-delete' ? 'Delete application completely' : 'Clear financial history'}
+          {busy ? 'Processing…' : action === 'player-reset' ? 'Purge and reset player' : action === 'player-delete' ? 'Delete player completely' : action === 'application-delete' ? 'Delete application completely' : action === 'orphan-brand-cleanup' ? 'Clear leftover brand records' : 'Clear financial history'}
         </button>
       </section>
     </div>
