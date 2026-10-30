@@ -558,40 +558,16 @@ function SettingsPage() {
      DELETE ACCOUNT
   ========================================================= */
 
-  const handleDeleteAccount = () => {
-    if (!mockMode) {
-      setDeleteError("Account deletion isn't available here yet. Contact support for help with your account.");
-      return;
-    }
+  const handleDeleteAccount = async () => {
     setDeleteError("");
-
-    if (deleteText !== "DELETE") {
-      setDeleteError("Type DELETE to confirm.");
-      return;
-    }
-
-    if (deletePassword !== DEMO_PASSWORD) {
-      setDeleteError('Incorrect password. This is a demo — try "player".');
-      return;
-    }
-
-    localStorage.removeItem("player-account");
-
-    localStorage.removeItem("player-preferences");
-    window.dispatchEvent(new Event("cos:player-preferences"));
-
-    localStorage.removeItem("player-password");
-
-    setAccount(defaultAccount);
-    setSavedAccount(defaultAccount);
-
-    setPreferences(defaultPreferences);
-
-    setDeleteOpen(false);
-    setDeleteText("");
-    setDeletePassword("");
-
-    showMessage("Your player account data has been cleared.");
+    try {
+      const response = await fetch('/api/auth/delete-account', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ password: deletePassword, confirmation: deleteText }) });
+      const result = await response.json();
+      if (!response.ok || !result.success) throw new Error(result.error || 'Unable to delete account.');
+      for (const key of ['player-account', 'player-preferences', 'player-password', 'cos.profile.account', 'cos.profile.metadata', 'cos.avatarSetupPending']) localStorage.removeItem(key);
+      if (!result.emailSent) window.alert('Your account was deleted, but the confirmation email could not be sent.');
+      window.location.assign('/login');
+    } catch (error) { setDeleteError(error instanceof Error ? error.message : 'Unable to delete account.'); }
   };
 
   /* =========================================================
@@ -1787,7 +1763,7 @@ function SettingsPage() {
             </h2>
 
             <p className="mt-2 text-sm leading-relaxed text-white/45">
-              This action permanently clears your local player account data. This cannot be undone.
+              This action permanently deletes your player account. This cannot be undone.
             </p>
 
             {deleteError && (

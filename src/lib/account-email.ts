@@ -153,3 +153,8 @@ export function accountEmailActionUrl(request: Request, path: string, token: str
   url.searchParams.set("emailChangeToken", token);
   return url.toString();
 }
+
+export async function sendAccountDeletionEmail(to: string, username: string) {
+  const mailer = getMailer();
+  await mailer.transporter.sendMail({ from: mailer.from, to, subject: "Your Crew On Set account has been deleted", text: `Hello ${username}, your Crew On Set account deletion request has been accepted and your account is closed. Thank you for being part of the crew.` });
+}

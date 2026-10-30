@@ -64,6 +64,7 @@ import { Route as ApiAdminPlayersRouteImport } from './routes/api/admin/players'
 import { Route as ApiAdminSubmissionAttachmentsRouteImport } from './routes/api/admin/submission-attachments'
 import { Route as ApiAuthAvatarRouteImport } from './routes/api/auth/avatar'
 import { Route as ApiAuthCheckUsernameRouteImport } from './routes/api/auth/check-username'
+import { Route as ApiAuthDeleteAccountRouteImport } from './routes/api/auth/delete-account'
 import { Route as ApiAuthGoogleRouteImport } from './routes/api/auth/google'
 import { Route as ApiAuthLoginRouteImport } from './routes/api/auth/login'
 import { Route as ApiAuthLogoutRouteImport } from './routes/api/auth/logout'
@@ -376,6 +377,11 @@ const ApiAuthCheckUsernameRoute = ApiAuthCheckUsernameRouteImport.update({
   path: '/api/auth/check-username',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiAuthDeleteAccountRoute = ApiAuthDeleteAccountRouteImport.update({
+  id: '/api/auth/delete-account',
+  path: '/api/auth/delete-account',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiAuthGoogleRoute = ApiAuthGoogleRouteImport.update({
   id: '/api/auth/google',
   path: '/api/auth/google',
@@ -619,6 +625,7 @@ export interface FileRoutesByFullPath {
   '/api/admin/submission-attachments': typeof ApiAdminSubmissionAttachmentsRoute
   '/api/auth/avatar': typeof ApiAuthAvatarRoute
   '/api/auth/check-username': typeof ApiAuthCheckUsernameRoute
+  '/api/auth/delete-account': typeof ApiAuthDeleteAccountRoute
   '/api/auth/google': typeof ApiAuthGoogleRoute
   '/api/auth/login': typeof ApiAuthLoginRoute
   '/api/auth/logout': typeof ApiAuthLogoutRoute
@@ -709,6 +716,7 @@ export interface FileRoutesByTo {
   '/api/admin/submission-attachments': typeof ApiAdminSubmissionAttachmentsRoute
   '/api/auth/avatar': typeof ApiAuthAvatarRoute
   '/api/auth/check-username': typeof ApiAuthCheckUsernameRoute
+  '/api/auth/delete-account': typeof ApiAuthDeleteAccountRoute
   '/api/auth/google': typeof ApiAuthGoogleRoute
   '/api/auth/login': typeof ApiAuthLoginRoute
   '/api/auth/logout': typeof ApiAuthLogoutRoute
@@ -802,6 +810,7 @@ export interface FileRoutesById {
   '/api/admin/submission-attachments': typeof ApiAdminSubmissionAttachmentsRoute
   '/api/auth/avatar': typeof ApiAuthAvatarRoute
   '/api/auth/check-username': typeof ApiAuthCheckUsernameRoute
+  '/api/auth/delete-account': typeof ApiAuthDeleteAccountRoute
   '/api/auth/google': typeof ApiAuthGoogleRoute
   '/api/auth/login': typeof ApiAuthLoginRoute
   '/api/auth/logout': typeof ApiAuthLogoutRoute
@@ -896,6 +905,7 @@ export interface FileRouteTypes {
     | '/api/admin/submission-attachments'
     | '/api/auth/avatar'
     | '/api/auth/check-username'
+    | '/api/auth/delete-account'
     | '/api/auth/google'
     | '/api/auth/login'
     | '/api/auth/logout'
@@ -986,6 +996,7 @@ export interface FileRouteTypes {
     | '/api/admin/submission-attachments'
     | '/api/auth/avatar'
     | '/api/auth/check-username'
+    | '/api/auth/delete-account'
     | '/api/auth/google'
     | '/api/auth/login'
     | '/api/auth/logout'
@@ -1078,6 +1089,7 @@ export interface FileRouteTypes {
     | '/api/admin/submission-attachments'
     | '/api/auth/avatar'
     | '/api/auth/check-username'
+    | '/api/auth/delete-account'
     | '/api/auth/google'
     | '/api/auth/login'
     | '/api/auth/logout'
@@ -1150,6 +1162,7 @@ export interface RootRouteChildren {
   ApiAdminSubmissionAttachmentsRoute: typeof ApiAdminSubmissionAttachmentsRoute
   ApiAuthAvatarRoute: typeof ApiAuthAvatarRoute
   ApiAuthCheckUsernameRoute: typeof ApiAuthCheckUsernameRoute
+  ApiAuthDeleteAccountRoute: typeof ApiAuthDeleteAccountRoute
   ApiAuthGoogleRoute: typeof ApiAuthGoogleRoute
   ApiAuthLoginRoute: typeof ApiAuthLoginRoute
   ApiAuthLogoutRoute: typeof ApiAuthLogoutRoute
@@ -1571,6 +1584,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiAuthCheckUsernameRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/auth/delete-account': {
+      id: '/api/auth/delete-account'
+      path: '/api/auth/delete-account'
+      fullPath: '/api/auth/delete-account'
+      preLoaderRoute: typeof ApiAuthDeleteAccountRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/auth/google': {
       id: '/api/auth/google'
       path: '/api/auth/google'
@@ -1938,6 +1958,7 @@ const rootRouteChildren: RootRouteChildren = {
   ApiAdminSubmissionAttachmentsRoute: ApiAdminSubmissionAttachmentsRoute,
   ApiAuthAvatarRoute: ApiAuthAvatarRoute,
   ApiAuthCheckUsernameRoute: ApiAuthCheckUsernameRoute,
+  ApiAuthDeleteAccountRoute: ApiAuthDeleteAccountRoute,
   ApiAuthGoogleRoute: ApiAuthGoogleRoute,
   ApiAuthLoginRoute: ApiAuthLoginRoute,
   ApiAuthLogoutRoute: ApiAuthLogoutRoute,
