@@ -1,4 +1,4 @@
-import { relatedBrandRecord } from "@/lib/brand-cleanup";
+import { relatedBrandRecord, isBrandNotice } from "@/lib/brand-cleanup";
 import { deleteBrandUpdateEvents } from "@/lib/brand-update-tracking";
 import { createFileRoute } from '@tanstack/react-router';
 import { isMockMode, PLAYFAB_API_BASE } from '@/lib/playfab/config';
@@ -127,7 +127,7 @@ async function deletePartnershipApplication(applicationId: string, secretKey: st
   const linkedUpdates = updates.filter((item) => relatedBrandRecord(item, application));
   const updateIds = linkedUpdates.map((item) => item.id);
   for (const updateId of updateIds) await deleteBrandUpdateEvents(updateId);
-  for (const collection of ['website_admin_brand_updates', WEBSITE_DATA_KEYS.playerNotifications, WEBSITE_DATA_KEYS.playerMail, 'website_admin_ads', 'website_admin_revenue']) {
+  for (const collection of ['website_admin_brand_updates', WEBSITE_DATA_KEYS.playerNotifications, WEBSITE_DATA_KEYS.playerMail, 'website_admin_ads', 'website_admin_revenue', 'website_admin_activity']) {
     await removeRecords<Record<string, unknown> & { id: string }>(collection, (item) => !relatedBrandRecord(item, application, updateIds), secretKey);
   }
   await deleteBrandPromotionData(applicationId);
@@ -144,6 +144,21 @@ async function deletePartnershipApplication(applicationId: string, secretKey: st
   if (!(await setWebsiteRecords(WEBSITE_DATA_KEYS.partnerships, nextApplications, secretKey))) throw new Error("The application record could not be removed.");
 }
 
+async function clearOrphanedBrandRecords(secretKey: string) {
+  const result = await playFabServerRequest<{ Data?: Record<string, string> }>('/Server/GetTitleInternalData', { Keys: [WEBSITE_DATA_KEYS.partnerships] }, secretKey);
+  const stored = JSON.parse(result.Data?.[WEBSITE_DATA_KEYS.partnerships] || '[]');
+  const empty = Array.isArray(stored) ? stored.length === 0 : stored?.total === 0;
+  if (!empty) throw new Error('Brand applications still exist. Delete their linked records individually first.');
+  const updates = await getWebsiteRecords<{ id: string }>('website_admin_brand_updates', secretKey);
+  for (const update of updates) await deleteBrandUpdateEvents(update.id);
+  for (const collection of ['website_admin_brand_updates', 'website_admin_ads', 'website_admin_revenue']) {
+    if (!(await setWebsiteRecords(collection, [], secretKey))) throw new Error('Could not clear ' + collection);
+  }
+  for (const collection of [WEBSITE_DATA_KEYS.notifications, WEBSITE_DATA_KEYS.playerNotifications, 'website_admin_activity']) {
+    await removeRecords<Record<string, unknown> & { id: string }>(collection, (record) => !isBrandNotice(record), secretKey);
+  }
+}
+
 export const Route = createFileRoute('/api/dev/maintenance')({
   server: {
     handlers: {
@@ -156,6 +171,15 @@ export const Route = createFileRoute('/api/dev/maintenance')({
         if (!isAuthorizedDevKey(request)) return Response.json({ error: 'Developer key rejected.' }, { status: 403 });
         try {
           const body = await request.json() as { action?: string; targetId?: string; targetIds?: unknown[]; confirmation?: string };
+          if (body.action === 'orphan-brand-cleanup') {
+            if (body.confirmation !== 'CLEAR LEFTOVER BRANDS') return Response.json({ error: 'Type CLEAR LEFTOVER BRANDS to confirm.' }, { status: 400 });
+            if (!isMockMode()) {
+              const secretKey = getPlayFabSecret();
+              if (!secretKey) return Response.json({ error: 'PlayFab access is not configured.' }, { status: 503 });
+              await clearOrphanedBrandRecords(secretKey);
+            }
+            return Response.json({ success: true, mode: isMockMode() ? 'mock' : 'real' });
+          }
           if (body.action === 'financial-reset') {
             if (body.confirmation !== 'CLEAR FINANCIAL HISTORY') return Response.json({ error: 'Type CLEAR FINANCIAL HISTORY to confirm.' }, { status: 400 });
             if (isMockMode()) { clearMockRevenue(); return Response.json({ success: true, mode: 'mock' }); }
@@ -198,6 +222,7 @@ export const Route = createFileRoute('/api/dev/maintenance')({
           }
           if (body.action === 'application-delete') {
             for (const targetId of targetIds) await deletePartnershipApplication(targetId, secretKey);
+            if (!(await getWebsiteRecords(WEBSITE_DATA_KEYS.partnerships, secretKey)).length) await clearOrphanedBrandRecords(secretKey);
             return Response.json({ success: true, mode: 'real', count: targetIds.length });
           }
           return Response.json({ error: 'Unsupported developer maintenance action.' }, { status: 400 });
