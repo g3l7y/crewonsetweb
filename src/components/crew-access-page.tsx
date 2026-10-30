@@ -223,6 +223,17 @@ export function CrewAccessPage({ mode, scope = "player" }: CrewAccessPageProps) 
   const [policyOpen, setPolicyOpen] = useState<PolicyKind | null>(null);
 
   useEffect(() => {
+    if (!isLogin || isAdmin) return;
+    let cancelled = false;
+    void fetch('/api/auth/session', { cache: 'no-store' })
+      .then((response) => response.json())
+      .then((result) => {
+        if (!cancelled && result.banned === true) setError('This player account is banned. You can submit an appeal for review.');
+      }).catch(() => {});
+    return () => { cancelled = true; };
+  }, [isLogin, isAdmin]);
+
+  useEffect(() => {
     return () => {
       // Ignore a late OAuth callback if the user leaves the login/signup page.
       googleAttemptId.current += 1;
@@ -665,7 +676,7 @@ export function CrewAccessPage({ mode, scope = "player" }: CrewAccessPageProps) 
               )}
             </p>
           )}
-          {!isAdmin && isLogin && (
+          {!isAdmin && isLogin && /\bbanned\b/i.test(error) && (
             <p className="mt-3 text-center text-xs text-navy/45">
               Account banned?{" "}
               <Link href="/ban-appeal" className="font-black text-coral underline-offset-4 hover:underline">
