@@ -215,13 +215,13 @@ function createRealService(): PlayFabService {
           return fallbackProfile;
         }
         const profile = await getPlayerProfile(ticket);
-        if (profile) {
+        if (ticket) {
           const metadataRaw = (await getUserData(ticket, [PLAYFAB_DATA_KEYS.profile_metadata]))[PLAYFAB_DATA_KEYS.profile_metadata];
           if (metadataRaw) {
             try {
               const metadata = JSON.parse(metadataRaw) as Pick<PlayerProfile, 'username' | 'bio' | 'avatarUrl' | 'socialLinks' | 'showStatus' | 'profileVisibility' | 'showCrewActivity'>;
               return {
-                ...profile,
+                ...(profile ?? fallbackProfile),
                 ...metadata,
                 avatarUrl: isManagedProfileAvatarUrl(metadata.avatarUrl) ? metadata.avatarUrl : DEFAULT_PROFILE_PICTURE_URL,
               };
@@ -229,7 +229,7 @@ function createRealService(): PlayFabService {
               // Ignore malformed optional profile metadata and keep the PlayFab profile.
             }
           }
-          if ((profile.username === 'player' || profile.displayName === 'Player') && sessionIdentity?.username) {
+          if (profile && (profile.username === 'player' || profile.displayName === 'Player') && sessionIdentity?.username) {
             return {
               ...profile,
               username: sessionIdentity.username,

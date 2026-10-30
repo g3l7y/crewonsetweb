@@ -1,3 +1,4 @@
+import { SyncedPlayerAvatar } from "@/components/portal/player-avatar";
 import { createFileRoute } from "@tanstack/react-router";
 
 import { FormEvent, useEffect, useMemo, useRef, useState } from "react";
@@ -1558,7 +1559,7 @@ function PlayersPage() {
                       <td className="px-4 py-3">
                         <div className="flex items-center gap-3">
                           <div className="size-8 shrink-0 overflow-hidden rounded-full border border-white/10 bg-[#222b31]">
-                            <img src={player.avatarUrl || DEFAULT_PROFILE_PICTURE_URL} alt={`${player.username} avatar`} className="size-full rounded-full object-cover" />
+                            <SyncedPlayerAvatar playFabId={player.id} displayName={player.username} fallbackUrl={player.avatarUrl} className="size-full rounded-full overflow-hidden" />
                           </div>
 
                           <div className="min-w-0">
@@ -1835,7 +1836,7 @@ function PlayersPage() {
               <div className="flex items-center gap-5">
                 <div className="relative">
                   <div className="size-[105px] overflow-hidden rounded-2xl border-2 border-[#f5c431] bg-[#202a3a]">
-                    <img src={displayProfile?.avatarUrl || selectedPlayer.avatarUrl || DEFAULT_PROFILE_PICTURE_URL} alt={`${selectedPlayer.username} avatar`} className="size-full rounded-full object-cover" />
+                    <SyncedPlayerAvatar playFabId={selectedPlayer.id} displayName={selectedPlayer.username} fallbackUrl={displayProfile?.avatarUrl || selectedPlayer.avatarUrl} className="size-full rounded-full overflow-hidden" />
                   </div>
 
                   <span
@@ -1887,6 +1888,7 @@ function PlayersPage() {
 
                     <p className="mt-4 whitespace-pre-wrap text-sm leading-7 text-white/40">
                       {displayProfile?.bio?.trim() || "This player has not added a biography yet."}
+                      {Object.entries(displayProfile?.socialLinks ?? {}).map(([platform, value]) => <span key={platform} className="mt-2 block">{platform}: {String(value)}</span>)}
                     </p>
                   </section>
 
