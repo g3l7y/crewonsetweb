@@ -13,3 +13,11 @@ export function relatedBrandRecord(record: Record<string, unknown>, application:
   })) return true;
   return updateIds.some((updateId) => record.id === `brand-notice-${updateId}` || record.id === updateId);
 }
+
+/** Used only for explicit cleanup when the application collection is empty. */
+export function isBrandNotice(record: Record<string, unknown>): boolean {
+  if (["brand", "advertisement", "partnership", "ads"].includes(String(record.kind || record.type || "").toLowerCase())) return true;
+  if (/^(brand-notice-|brand-update-)/.test(String(record.id || ""))) return true;
+  if ([record.href, record.url, record.link].some((value) => typeof value === "string" && /\/api\/brand-(updates|promotions)\//.test(value))) return true;
+  return /\b(brand|advertisement|advertising|partnership)\b/i.test(String(record.title || record.label || ""));
+}
