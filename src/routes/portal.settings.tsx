@@ -1255,7 +1255,7 @@ function SettingsPage() {
 
       {bugReportOpen && (
         <div
-          className="fixed inset-0 z-[70] grid place-items-center bg-[#05080d]/85 p-5 backdrop-blur-md"
+          className="fixed inset-0 z-[70] grid place-items-center modal-backdrop p-5 backdrop-blur-[3px]"
           onClick={closeBugReport}
         >
           <section
@@ -1417,7 +1417,7 @@ function SettingsPage() {
 
       {playerReportOpen && (
         <div
-          className="fixed inset-0 z-[70] grid place-items-center bg-[#05080d]/85 p-5 backdrop-blur-md"
+          className="fixed inset-0 z-[70] grid place-items-center modal-backdrop p-5 backdrop-blur-[3px]"
           onClick={closePlayerReport}
         >
           <section
@@ -1570,7 +1570,7 @@ function SettingsPage() {
       )}
 
       {credentialConfirmOpen && pendingAccount && (
-        <div className="fixed inset-0 z-[85] grid place-items-center bg-[#05080d]/85 p-5 backdrop-blur-md" role="dialog" aria-modal="true">
+        <div className="fixed inset-0 z-[85] grid place-items-center modal-backdrop p-5 backdrop-blur-[3px]" role="dialog" aria-modal="true">
           <section className="w-full max-w-md rounded-xl border border-white/[0.09] bg-[#151c29] p-6 text-white shadow-2xl shadow-black/50">
             <div className="flex items-start justify-between gap-4">
               <div>
@@ -1600,7 +1600,7 @@ function SettingsPage() {
       )}
 
       {emailChangeOpen && (
-        <div className="fixed inset-0 z-[90] grid place-items-center bg-[#05080d]/85 p-5 backdrop-blur-md" role="dialog" aria-modal="true">
+        <div className="fixed inset-0 z-[90] grid place-items-center modal-backdrop p-5 backdrop-blur-[3px]" role="dialog" aria-modal="true">
           <section className="w-full max-w-md rounded-xl border border-white/[0.09] bg-[#151c29] p-6 text-white shadow-2xl shadow-black/50">
             <div className="flex items-start justify-between gap-4">
               <div>
@@ -1628,7 +1628,7 @@ function SettingsPage() {
 
       {passwordOpen && (
         <div
-          className="fixed inset-0 z-[70] grid place-items-center bg-[#05080d]/85 p-5 backdrop-blur-md"
+          className="fixed inset-0 z-[70] grid place-items-center modal-backdrop p-5 backdrop-blur-[3px]"
           onClick={() => setPasswordOpen(false)}
         >
           <section
@@ -1741,7 +1741,7 @@ function SettingsPage() {
 
       {deleteOpen && (
         <div
-          className="fixed inset-0 z-[70] grid place-items-center bg-[#05080d]/85 p-5 backdrop-blur-md"
+          className="fixed inset-0 z-[70] grid place-items-center modal-backdrop p-5 backdrop-blur-[3px]"
           onClick={() => {
             setDeleteOpen(false);
             setDeleteText("");
