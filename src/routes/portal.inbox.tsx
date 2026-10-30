@@ -1,3 +1,4 @@
+import { openPromotion } from "@/lib/promotion-navigation";
 import { createFileRoute } from "@tanstack/react-router";
 
 export const Route = createFileRoute("/portal/inbox")({
@@ -36,7 +37,6 @@ import { friendRosterStore } from "@/lib/demo/friends";
 import {
   notificationsStore,
   playerMailStore,
-  recordMockBrandUpdateEvent,
   type PlayerMail,
   type PlayerNotification,
 } from "@/lib/demo/store";
@@ -537,19 +537,10 @@ function InboxPage() {
     }
   }
 
-  function openNotification(notification: InboxNotification) {
+  async function openNotification(notification: InboxNotification) {
     markNotificationRead(notification.id);
     const href = notificationHref(notification);
-    const trackerMatch = href.match(/^\/api\/brand-updates\/([^/]+)\/click$/);
-    if (trackerMatch) {
-      if (mockMode) {
-        const destination = recordMockBrandUpdateEvent(decodeURIComponent(trackerMatch[1]!), "click");
-        if (destination) window.location.assign(destination);
-      } else {
-        window.location.assign(href);
-      }
-      return;
-    }
+    if (await openPromotion(href)) return;
     router.push(href);
   }
 

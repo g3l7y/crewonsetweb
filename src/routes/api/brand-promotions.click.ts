@@ -77,6 +77,7 @@ export const Route = createFileRoute('/api/brand-promotions/click')({
           if (!hasValidVisitor) {
             headers.append('Set-Cookie', cookieName + '=' + encodeURIComponent(visitorId) + '; Path=/; Max-Age=31536000; HttpOnly; Secure; SameSite=Lax');
           }
+          if (request.headers.get('accept')?.includes('application/json')) return Response.json({ destination: destinationUrl.toString() }, { headers });
           headers.set('Location', destinationUrl.toString());
           return new Response(null, { status: 302, headers });
         } catch (error) {

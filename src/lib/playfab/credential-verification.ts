@@ -1,4 +1,4 @@
-import { PLAYFAB_API_BASE } from "@/lib/playfab/config";
+import { PLAYFAB_API_BASE, PLAYFAB_TITLE_ID } from "@/lib/playfab/config";
 import type { SessionData } from "@/lib/playfab/types";
 import { isValidEmail } from "@/lib/validation";
 import { findEmailLoginAlias, isEmailLoginIdentityStoreConfigured } from "@/lib/playfab/email-login-identities";
@@ -168,7 +168,7 @@ export async function verifyPlayFabCurrentPassword(session: SessionData, passwor
       ? { Email: identifier.value, Password: password }
       : { Username: identifier.value, Password: password };
     try {
-      const { response, result } = await request(path, body, {});
+      const { response, result } = await request(path, { ...body, TitleId: PLAYFAB_TITLE_ID }, {});
       if (response.ok && result.code === 200 && result.data?.PlayFabId === session.playFabId) return true;
     } catch {
       // Try the next canonical identifier. A bad password is intentionally

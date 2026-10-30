@@ -1,7 +1,8 @@
+import { openPromotion } from "@/lib/promotion-navigation";
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "@/components/next-compat/navigation";
 import { Bell, Megaphone, Trophy, Users, ShoppingBag, Settings2, CheckCheck } from "lucide-react";
-import { notificationsStore, recordMockBrandUpdateEvent } from "@/lib/demo/store";
+import { notificationsStore } from "@/lib/demo/store";
 import {
   NOTIFICATION_BELL_LIMIT,
   dedupeNotifications,
@@ -222,20 +223,11 @@ export function NotificationBell({
                 <button
                   type="button"
                   key={notification.id}
-                  onClick={() => {
+                  onClick={async () => {
                     markRead(notification.id);
                     setOpen(false);
                     const href = inboxNotificationHref(notification);
-                    const trackerMatch = href.match(/^\/api\/brand-updates\/([^/]+)\/click$/);
-                    if (trackerMatch) {
-                      if (mockMode) {
-                        const destination = recordMockBrandUpdateEvent(decodeURIComponent(trackerMatch[1]!), "click");
-                        if (destination) window.location.assign(destination);
-                      } else {
-                        window.location.assign(href);
-                      }
-                      return;
-                    }
+                    if (await openPromotion(href)) return;
                     router.push(href);
                   }}
                   className={`flex w-full gap-3 border-b border-navy/5 px-4 py-3 text-left transition hover:bg-navy/[.03] ${

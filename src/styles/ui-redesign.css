@@ -4429,3 +4429,13 @@ html[data-display-theme="dark"] .display-theme-switcher button[aria-pressed="tru
 .admin-theme .admin-attachment-link:is(:hover, :focus-visible, :active) svg {
   color: #0a0e19 !important;
 }
+
+/* Modal scrims must remain translucent, even under theme surface overrides. */
+html body .fixed.inset-0:is([class*="backdrop-blur"], [role="dialog"]),
+html body [data-slot="dialog-overlay"] {
+  background: rgba(10, 14, 25, .32) !important;
+  backdrop-filter: blur(4px) !important;
+  -webkit-backdrop-filter: blur(4px) !important;
+}
+.promotion-message::backdrop { background: rgba(10,14,25,.32); backdrop-filter: blur(4px); }
+.promotion-message { max-width: 28rem; padding: 2rem; border-radius: 1rem; background: #f0ede4; color: #0a0e19; }

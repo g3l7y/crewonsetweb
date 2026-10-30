@@ -40,3 +40,9 @@ export async function getBrandUpdateMetrics(updateId: string) {
     visits: Number(rows[0]?.visits ?? 0),
   };
 }
+
+export async function deleteBrandUpdateEvents(updateId: string) {
+  if (!process.env["DATABASE_URL"]?.trim()) return;
+  await ensureSchema();
+  await sqlClient()`DELETE FROM brand_update_events WHERE update_id = ${updateId}`;
+}

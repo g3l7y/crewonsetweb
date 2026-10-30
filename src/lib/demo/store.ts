@@ -1219,7 +1219,7 @@ export function recordMockBrandUpdateEvent(updateId: string, event: "impression"
       }
     : update;
   brandUpdatesStore.set(updates.map((item) => item.id === updateId ? nextUpdate : item));
-  return update.url;
+  return isInCampaignWindow ? update.url : undefined;
 }
 
 /** Archive of previously uploaded builds, newest first. */
