@@ -748,7 +748,7 @@ function GoogleProfileSetupModal({ onComplete }: { onComplete: () => void }) {
   }
 
   return (
-    <div className="fixed inset-0 z-[80] grid place-items-center bg-[#05080d]/85 p-4 backdrop-blur-md">
+    <div className="fixed inset-0 z-[80] grid place-items-center modal-backdrop p-4 backdrop-blur-[3px]">
       <section
         className="w-full max-w-md rounded-2xl border border-navy/15 bg-cream p-6 text-navy shadow-2xl sm:p-8"
         role="dialog"

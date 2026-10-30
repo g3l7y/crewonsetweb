@@ -1456,7 +1456,7 @@ function FriendsPage() {
 
       {removeTarget && (
         <div
-          className="fixed inset-0 z-[60] grid place-items-center bg-[#05080d]/80 p-4 backdrop-blur-md"
+          className="fixed inset-0 z-[60] grid place-items-center modal-backdrop p-4 backdrop-blur-[3px]"
           onClick={cancelRemoveFriend}
         >
           <div
@@ -1590,7 +1590,7 @@ function PlayerProfile({
 
   return (
     <div
-      className="fixed inset-0 z-50 overflow-y-auto bg-[#05080d]/85 p-3 backdrop-blur-md sm:p-6 lg:p-10"
+      className="fixed inset-0 z-50 overflow-y-auto modal-backdrop p-3 backdrop-blur-[3px] sm:p-6 lg:p-10"
       onClick={onClose}
     >
       <div
