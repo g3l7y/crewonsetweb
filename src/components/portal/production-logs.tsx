@@ -26,6 +26,8 @@ type ProductionLog = {
   nextStep: string | undefined;
 };
 
+const scoreFormat = new Intl.NumberFormat("en-US", { maximumFractionDigits: 1 });
+
 const rankTone: Record<string, string> = {
   S: "bg-yellow/20 text-navy border-yellow/50",
   A: "bg-coral/15 text-coral border-coral/40",
@@ -129,7 +131,7 @@ export function ProductionLogs() {
                   <td className="font-bold">{log.production || (log.level ? `Level ${log.level} production` : "Production")}{typeof log.details["careerName"] === "string" && <span className="production-log-career block text-xs font-normal">Career: {log.details["careerName"]}{log.details["archivedCareer"] === true ? " · Archived" : ""}</span>}</td>
                   <td>{log.role || "—"}</td>
                   <td className="whitespace-nowrap">{formatDate(log.date)}</td>
-                  <td className="font-black">{log.score == null ? "—" : `${log.score}%`}</td>
+                  <td className="font-black">{log.score == null ? "—" : `${scoreFormat.format(log.score)}%`}</td>
                   <td><span className={`production-log-rank inline-grid size-7 place-items-center rounded-md border text-xs font-black ${rankTone[log.rank] ?? "bg-navy/[.04] text-navy/50 border-navy/10"}`}>{log.rank || "—"}</span></td>
                   <td className="text-right"><button type="button" onClick={() => setOpenLog(log)} className="production-log-info rounded-md border border-navy/15 px-3 py-1.5 text-[11px] font-black uppercase tracking-wider text-navy transition hover:bg-navy/5">See Info</button></td>
                 </tr>
@@ -144,22 +146,32 @@ export function ProductionLogs() {
 
       {openLog && (
         <div className="fixed inset-0 z-[120] flex items-start justify-center overflow-y-auto bg-navy/70 p-4 backdrop-blur-sm sm:items-center sm:p-6" onClick={() => setOpenLog(null)}>
-          <div role="dialog" aria-modal="true" aria-label={openLog.production} onClick={(event) => event.stopPropagation()} className="production-log-dialog my-auto flex max-h-[86vh] w-full max-w-3xl flex-col overflow-hidden rounded-xl bg-white shadow-2xl">
+          <div role="dialog" aria-modal="true" aria-label={openLog.production} onClick={(event) => event.stopPropagation()} className="production-log-dialog my-auto flex max-h-[90dvh] w-full max-w-5xl flex-col overflow-hidden rounded-xl bg-white shadow-2xl">
             <header className="flex shrink-0 items-start gap-4 border-b border-navy/10 p-5 sm:p-6">
               <div className="min-w-0 flex-1">
                 <p className="text-[10px] font-black uppercase tracking-[.18em] text-coral">Level {openLog.level} · {openLog.role}</p>
-                <h3 className="production-log-title section-title mt-1 text-2xl text-navy sm:text-3xl">{openLog.production || `Level ${openLog.level} production`}</h3>
-                <p className="mt-1 text-xs font-semibold text-navy/50">Client: {openLog.client} · {formatDate(openLog.date)}</p>
+                <h3 className="production-log-title mt-1 text-2xl text-navy sm:text-3xl">{openLog.production || `Level ${openLog.level} production`}</h3>
+                <p className="mt-1 text-xs font-semibold text-navy/50">{formatDate(openLog.date)} · Rank {openLog.rank}{openLog.score != null && ` · ${scoreFormat.format(openLog.score)}% overall`}</p>
               </div>
               <button type="button" onClick={() => setOpenLog(null)} aria-label="Close production details" className="production-log-close rounded-md p-1.5 transition hover:bg-red-500/10"><X className="size-5" /></button>
             </header>
 
-            <div className="min-h-0 space-y-6 overflow-y-auto p-5 sm:p-6">
-              <section className="space-y-3">
+            <div className="min-h-0 overflow-y-auto overscroll-contain p-5 sm:px-10 sm:py-7">
+              <section className="space-y-5">
                 <h4 className="production-log-results-heading text-xs font-black uppercase tracking-[.16em]">Game Results</h4>
-                <div className="flex flex-wrap gap-4 text-sm">{([["Camera", "cameraScore", "/70"], ["Lighting", "lightingScore", "/30"], ["Recorded takes", "takes", ""]] as const).map(([label, key, unit]) => typeof openLog.details[key] === "number" ? <p key={key}>{label}: {String(openLog.details[key])}{unit}</p> : null)}</div>
-                <div className="grid gap-3 sm:grid-cols-3">
-                  {([["Pre-production", openLog.preProductionScore, openLog.preProductionFeedback], ["Production", openLog.productionScore, openLog.productionFeedback], ["Post-production", openLog.postProductionScore, openLog.postProductionFeedback]] as const).filter(([, score, review]) => score != null || Boolean(review)).map(([label, score, review]) => <div key={label} className="rounded-lg border border-navy/10 bg-navy/[.03] p-3"><p className="text-[9px] font-black uppercase tracking-[.14em] text-navy/55">{label} Review</p>{score != null && <p className="mt-1 text-sm font-bold text-navy">{score}/100</p>}{review && <p className="mt-2 whitespace-pre-line text-sm text-navy/75">{cleanGameFeedback(review)}</p>}</div>)}
+                <div className="flex flex-wrap gap-4 text-sm">{([["Camera", "cameraScore", "/70"], ["Lighting", "lightingScore", "/30"], ["Recorded takes", "takes", ""]] as const).map(([label, key, unit]) => typeof openLog.details[key] === "number" ? <p key={key}>{label}: {scoreFormat.format(Number(openLog.details[key]))}{unit}</p> : null)}</div>
+                <div className="grid gap-3">
+                  {([["Pre-production", openLog.preProductionScore, openLog.preProductionFeedback], ["Production", openLog.productionScore, openLog.productionFeedback], ["Post-production", openLog.postProductionScore, openLog.postProductionFeedback]] as const).filter(([, score, review]) => score != null || Boolean(review)).map(([label, score, review]) => (
+                    <details key={label} className="rounded-lg border border-current/20">
+                      <summary className="cursor-pointer px-5 py-4 text-base font-bold">
+                        {label} review
+                        {score != null && <span className="float-right ml-2 text-sm tabular-nums">{scoreFormat.format(score)}/100</span>}
+                      </summary>
+                      <p className="max-w-prose whitespace-pre-line px-5 pb-5 text-base leading-7">
+                        {review ? cleanGameFeedback(review) : "No written feedback was recorded."}
+                      </p>
+                    </details>
+                  ))}
                 </div>
                 {(() => {
                   const budget = (openLog.details["budgetReview"] && typeof openLog.details["budgetReview"] === "object" ? openLog.details["budgetReview"] : openLog.details["budget"]) as Record<string, unknown> | undefined;
@@ -170,9 +182,9 @@ export function ProductionLogs() {
                   const trackingComplete = budget?.["tracking_complete"] ?? budget?.["complete"];
                   const trackingAvailable = budget?.["available"];
                   const hasBudgetInfo = budget && ([opening, income, spent, remaining, trackingComplete, trackingAvailable].some((item) => item != null) || Boolean(budget["feedback"]));
-                  return <div className="grid gap-3 sm:grid-cols-2">
-                    {hasBudgetInfo && <div className="rounded-lg border border-navy/10 p-3"><p className="text-[10px] font-black uppercase text-navy/50">Budget Review</p>{openLog.bCoinsEarned != null && <p className="mt-1 text-sm font-bold text-navy">This submission: +{openLog.bCoinsEarned.toLocaleString()} B-Coins</p>}{typeof budget?.["feedback"] === "string" && budget["feedback"].trim() ? <p className="mt-1 whitespace-pre-line text-sm text-navy/75">{cleanGameFeedback(budget["feedback"])}</p> : <p className="mt-1 text-sm text-navy/75">{[opening, income, spent, remaining].some((item) => item != null) ? `Opening balance: ${opening ?? "—"} · Income: ${income ?? "—"} · Spent: ${spent ?? "—"} · Remaining: ${remaining ?? "—"}` : "Budget information recorded."}</p>}{trackingAvailable === false && <p className="mt-1 text-sm text-navy/65">Budget tracking unavailable.</p>}{typeof trackingComplete === "boolean" && <p className="mt-1 text-sm text-navy/65">Tracking {trackingComplete ? "complete" : "incomplete"}.</p>}</div>}
-                    {openLog.result && <div className="rounded-lg border border-navy/10 p-3"><p className="text-[10px] font-black uppercase text-navy/50">Client Decision</p><p className="mt-1 text-sm font-bold text-navy">{openLog.result}</p>{getDecisionNotes(openLog.summary) && <p className="mt-2 whitespace-pre-line text-sm font-normal text-navy/75">{getDecisionNotes(openLog.summary)}</p>}</div>}
+                  return <div className="grid items-start gap-4">
+                    {hasBudgetInfo && <div className="rounded-lg border border-navy/10 p-5"><p className="text-[10px] font-black uppercase text-navy/50">Budget Review</p>{openLog.bCoinsEarned != null && <p className="mt-1 text-sm font-bold text-navy">This submission: +{openLog.bCoinsEarned.toLocaleString()} B-Coins</p>}{typeof budget?.["feedback"] === "string" && budget["feedback"].trim() ? <p className="mt-1 max-w-prose whitespace-pre-line text-sm leading-7 text-navy/75">{cleanGameFeedback(budget["feedback"])}</p> : <p className="mt-1 text-sm text-navy/75">{[opening, income, spent, remaining].some((item) => item != null) ? `Opening balance: ${opening ?? "—"} · Income: ${income ?? "—"} · Spent: ${spent ?? "—"} · Remaining: ${remaining ?? "—"}` : "Budget information recorded."}</p>}{trackingAvailable === false && <p className="mt-1 text-sm text-navy/65">Budget tracking unavailable.</p>}{typeof trackingComplete === "boolean" && <p className="mt-1 text-sm text-navy/65">Tracking {trackingComplete ? "complete" : "incomplete"}.</p>}</div>}
+                    {openLog.result && <div className="rounded-lg border border-navy/10 p-5"><p className="text-[10px] font-black uppercase text-navy/50">Client Decision</p><p className="mt-1 text-sm font-bold text-navy">{openLog.result}</p>{getDecisionNotes(openLog.summary) && <p className="mt-2 max-w-prose whitespace-pre-line text-sm leading-7 font-normal text-navy/75">{getDecisionNotes(openLog.summary)}</p>}</div>}
                   </div>;
                 })()}
                 {openLog.nextStep && <div className="rounded-lg border border-coral/25 bg-coral/[.06] p-3"><p className="text-[10px] font-black uppercase text-coral">Your Next Step</p><p className="mt-1 text-sm text-navy/75">{openLog.nextStep}</p></div>}

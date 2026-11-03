@@ -515,6 +515,13 @@ function AlmanacPage() {
           scrollbar-gutter: stable;
         }
 
+        .almanac-content-panel.production-history-panel { height: auto; }
+        .production-history-panel .production-logs-list.almanac-content-scroll {
+          flex: none;
+          overflow: auto !important;
+          scrollbar-gutter: auto;
+        }
+
         .achievements-toolbar {
           display: flex;
           flex-direction: column;
