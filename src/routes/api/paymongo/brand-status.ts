@@ -42,7 +42,6 @@ export const Route = createFileRoute('/api/paymongo/brand-status')({
           const selectedPackage = getBrandPromotionPackage(application?.packageId);
           const packageReceipt = application ? {
             packageName: application.packageName || selectedPackage?.name,
-            expectedClicks: application.expectedClicks || selectedPackage?.expectedClicks,
             expectedVisits: application.expectedVisits || selectedPackage?.expectedVisits,
           } : {};
 

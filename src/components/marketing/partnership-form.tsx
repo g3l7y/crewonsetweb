@@ -155,7 +155,6 @@ export function PartnershipForm() {
       packageName: selectedPackage.name,
       packagePlacement: selectedPackage.placement,
       packageReporting: selectedPackage.reporting,
-      expectedClicks: selectedPackage.expectedClicks,
       expectedVisits: selectedPackage.expectedVisits,
       email,
       description,
@@ -299,8 +298,7 @@ export function PartnershipForm() {
                   <span className="mt-2 block text-2xl font-black text-coral">₱{promotionPackage.pricePhp.toLocaleString("en-PH")}</span>
                   <span className="mt-1 block text-xs font-bold text-navy/65">{promotionPackage.durationDays} days</span>
                   <span className="mt-3 block rounded-md bg-navy/[.06] px-2.5 py-2 text-xs font-bold leading-relaxed text-navy/80" style={{ textTransform: "none", letterSpacing: "normal" }}>
-                    Estimated {promotionPackage.expectedClicks.min}–{promotionPackage.expectedClicks.max} link clicks<br />
-                    {promotionPackage.expectedVisits.min}–{promotionPackage.expectedVisits.max} unique visits
+                    Expected visits: {promotionPackage.expectedVisits.min}–{promotionPackage.expectedVisits.max}
                   </span>
                   <span className="mt-3 block text-xs font-normal leading-relaxed text-navy/60" style={{ textTransform: "none", letterSpacing: "normal" }}>{promotionPackage.placement}</span>
                   {(() => {
@@ -316,7 +314,7 @@ export function PartnershipForm() {
             ))}
           </div>
           <p className="mt-3 text-[11px] font-normal leading-relaxed text-navy/60" style={{ textTransform: "none", letterSpacing: "normal" }}>
-            Click estimates are planning ranges, not guaranteed minimums. Visits are estimated unique browsers that followed the tracked link; actual results depend on audience activity and placement. We will report actual tracked clicks and visits, and your results may differ.
+            Expected visits are planning ranges, not guaranteed minimums. Visits are estimated unique browsers that followed the tracked link; actual results depend on audience activity and placement. We will report actual visits, and your results may differ.
           </p>
           <details className="mt-3 rounded-md border border-navy/20 bg-[#f4f0e8] p-3 text-xs font-normal leading-relaxed text-[#252525]" style={{ textTransform: "none", letterSpacing: "normal" }}>
             <summary className="cursor-pointer font-bold text-[#101216]" style={{ textTransform: "none", letterSpacing: "normal" }}>Delivery and under-delivery policy</summary>

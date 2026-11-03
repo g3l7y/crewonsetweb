@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react';
 import { useSearchParams } from '@/components/next-compat/navigation';
 
 type ConfirmationState = 'checking' | 'paid' | 'pending' | 'failed' | 'cancelled' | 'error';
-type ReceiptPackage = { packageName?: string; expectedClicks?: { min: number; max: number }; expectedVisits?: { min: number; max: number } };
+type ReceiptPackage = { packageName?: string; expectedVisits?: { min: number; max: number } };
 
 export const Route = createFileRoute('/brand-payment-result')({
   head: () => ({
@@ -43,7 +43,7 @@ function BrandPaymentResultPage() {
         });
         const body = await response.json().catch(() => ({})) as { status?: string } & ReceiptPackage;
         if (!active) return;
-        if (body.packageName || body.expectedClicks || body.expectedVisits) setReceiptPackage(body);
+        if (body.packageName || body.expectedVisits) setReceiptPackage(body);
 
         if (response.ok && body.status === 'Paid') {
           setState('paid');
@@ -136,8 +136,8 @@ function BrandPaymentResultPage() {
             <div className="mt-5 rounded-lg border border-white/10 bg-white/[.04] p-4 text-left">
               <p className="text-xs font-bold uppercase tracking-wide text-[#4bc4b4]">Payment receipt · Reference: {reference}</p>
               {receiptPackage?.packageName && <p className="mt-2 text-sm font-bold">{receiptPackage.packageName}</p>}
-              {(receiptPackage?.expectedClicks || receiptPackage?.expectedVisits) && <p className="mt-1 text-sm text-white/65">Expected planning range: {receiptPackage.expectedClicks ? `${receiptPackage.expectedClicks.min}–${receiptPackage.expectedClicks.max} link clicks` : ''}{receiptPackage.expectedClicks && receiptPackage.expectedVisits ? ' · ' : ''}{receiptPackage.expectedVisits ? `${receiptPackage.expectedVisits.min}–${receiptPackage.expectedVisits.max} unique visits` : ''}</p>}
-              {(receiptPackage?.expectedClicks || receiptPackage?.expectedVisits) && <p className="mt-1 text-xs text-white/45">Estimates only; actual results may differ and are not guaranteed minimums.</p>}
+              {receiptPackage?.expectedVisits && <p className="mt-1 text-sm text-white/65">Expected visits: {receiptPackage.expectedVisits.min}–{receiptPackage.expectedVisits.max} unique visits</p>}
+              {receiptPackage?.expectedVisits && <p className="mt-1 text-xs text-white/45">Planning estimate only; actual results may differ and are not guaranteed minimums.</p>}
             </div>
           )}
           <a

@@ -55,7 +55,6 @@ export const Route = createFileRoute('/api/brand-promotions')({
               packageDurationDays: application.duration,
               packagePlacement: application.packagePlacement,
               packageReporting: application.packageReporting,
-              expectedClicks: application.expectedClicks || selectedPackage?.expectedClicks,
               expectedVisits: application.expectedVisits || selectedPackage?.expectedVisits,
               deliveryAdjustments: application.deliveryAdjustments || [],
               deliveryMakeGoodDays: application.deliveryMakeGoodDays || 0,

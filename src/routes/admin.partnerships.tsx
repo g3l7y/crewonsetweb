@@ -105,7 +105,6 @@ function buildMockAd(application: PartnershipApplication, status: ActiveAd['stat
     packageName: application.packageName,
     packagePlacement: application.packagePlacement,
     packageReporting: application.packageReporting,
-    expectedClicks: application.expectedClicks,
     expectedVisits: application.expectedVisits,
     packageDurationDays: application.duration,
     brandPromotionUrl: application.brandPromotionToken ? '/brand-promotions/' + encodeURIComponent(application.brandPromotionToken) : undefined,
@@ -816,7 +815,7 @@ function PartnershipsPage() {
                   <dd className="mt-1.5 text-sm font-bold !text-white/80">{selected.packageName || "Legacy custom proposal"}</dd>
                   {selected.packagePlacement && <p className="mt-1 text-xs leading-relaxed !text-white/50">{selected.packagePlacement}</p>}
                   {selected.packageReporting && <p className="mt-1 text-xs leading-relaxed !text-white/50">{selected.packageReporting}</p>}
-                  {(selected.expectedClicks || selected.expectedVisits) && <p className="mt-2 text-xs font-bold leading-relaxed !text-[#f3c747]">Estimated reach: {selected.expectedClicks ? `${selected.expectedClicks.min}–${selected.expectedClicks.max} clicks` : ''}{selected.expectedClicks && selected.expectedVisits ? ' · ' : ''}{selected.expectedVisits ? `${selected.expectedVisits.min}–${selected.expectedVisits.max} unique visits` : ''}</p>}
+                  {selected.expectedVisits && <p className="mt-2 text-xs font-bold leading-relaxed !text-[#f3c747]">Expected visits: {selected.expectedVisits.min}–{selected.expectedVisits.max} unique visits</p>}
                 </div>
                 <div>
                   <dt className="flex items-center gap-2 text-[9px] font-black uppercase tracking-wide !text-white/30">
