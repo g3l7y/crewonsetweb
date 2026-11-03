@@ -71,8 +71,8 @@ export function mapUserDataToAchievements(data: Record<string, string>): Achieve
         : typeof fieldValue === 'boolean' ? Number(fieldValue) : typeof fieldValue === 'number' ? fieldValue : 0;
       const progress = Math.max(0, Math.min(definition.goal, profile ? derived : savedProgress ?? derived));
       const unlocked = savedDone === 1 || progress === definition.goal;
-      return [{ id: `${career.id}:${gameId}`, title: definition.title, name: definition.title,
-        description: definition.description, careerName: career.name,
+      return [{ id: `all-careers:${gameId}`, title: definition.title, name: definition.title,
+        description: definition.description,
         maxProgress: definition.goal, progress: unlocked ? definition.goal : progress,
         unlocked, isCompleted: unlocked, unlockedAt: null }];
     });
@@ -90,5 +90,28 @@ export function mapUserDataToAchievements(data: Record<string, string>): Achieve
     isCompleted: false,
     unlockedAt: null,
   }));
-  return [...direct, ...catalogue];
+  return dedupeAchievements([...direct, ...catalogue]);
+}
+
+/** Merge duplicate records so any earned copy keeps the account-level award unlocked. */
+export function dedupeAchievements(achievements: Achievement[]): Achievement[] {
+  const byId = new Map<string, Achievement>();
+  for (const achievement of achievements) {
+    const key = achievement.title.trim().toLocaleLowerCase() || achievement.id;
+    const previous = byId.get(key);
+    if (!previous) {
+      byId.set(key, achievement);
+      continue;
+    }
+    const unlocked = previous.unlocked || achievement.unlocked;
+    byId.set(key, {
+      ...previous,
+      progress: unlocked ? Math.max(previous.maxProgress, achievement.maxProgress) : Math.max(previous.progress, achievement.progress),
+      maxProgress: Math.max(previous.maxProgress, achievement.maxProgress),
+      unlocked,
+      isCompleted: unlocked,
+      unlockedAt: previous.unlockedAt || achievement.unlockedAt || null,
+    });
+  }
+  return [...byId.values()];
 }
