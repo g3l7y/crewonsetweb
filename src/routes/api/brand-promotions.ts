@@ -4,6 +4,7 @@ import type { PartnershipApplication } from '@/lib/playfab/types';
 import { getPromotionEndDate, processExpiredPromotions } from '@/lib/brand-promotion-lifecycle';
 import { getBrandPromotionMetrics, isBrandPromotionTrackingConfigured } from '@/lib/brand-promotion-tracking';
 import { BRAND_PROMOTION_DELIVERY_TERMS } from '@/lib/brand-promotion-packages';
+import { getBrandPromotionPackage } from '@/lib/brand-promotion-packages';
 
 function getSecretKey(): string {
   const key = process.env['PLAYFAB_SECRET_KEY'];
@@ -33,6 +34,7 @@ export const Route = createFileRoute('/api/brand-promotions')({
           const scheduledEndDate = isApproved ? undefined : getPromotionEndDate(application);
           const endDate = isApproved ? undefined : application.promotionEndedAt || scheduledEndDate;
           const source = application as PartnershipApplication & Record<string, unknown>;
+          const selectedPackage = getBrandPromotionPackage(application.packageId);
           const baseUrl = (process.env['PUBLIC_APP_URL']?.trim() || new URL(request.url).origin).replace(/\/$/, '');
           const trackedLink = application.brandPromotionToken
             ? baseUrl + '/api/brand-promotions/click?token=' + encodeURIComponent(application.brandPromotionToken)
@@ -54,6 +56,8 @@ export const Route = createFileRoute('/api/brand-promotions')({
               packageDurationDays: application.duration,
               packagePlacement: application.packagePlacement,
               packageReporting: application.packageReporting,
+              expectedClicks: application.expectedClicks || selectedPackage?.expectedClicks,
+              expectedVisits: application.expectedVisits || selectedPackage?.expectedVisits,
               deliveryAdjustments: application.deliveryAdjustments || [],
               deliveryMakeGoodDays: application.deliveryMakeGoodDays || 0,
               deliveryTerms: BRAND_PROMOTION_DELIVERY_TERMS,

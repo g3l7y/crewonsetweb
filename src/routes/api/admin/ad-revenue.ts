@@ -39,6 +39,8 @@ function toAdEntry(application: PartnershipApplication, request: Request, metric
     packageName: application.packageName,
     packagePlacement: application.packagePlacement,
     packageReporting: application.packageReporting,
+    expectedClicks: application.expectedClicks,
+    expectedVisits: application.expectedVisits,
     packageDurationDays: application.duration,
     brandPromotionUrl: application.brandPromotionToken
       ? baseUrl + '/brand-promotions/' + encodeURIComponent(application.brandPromotionToken)
