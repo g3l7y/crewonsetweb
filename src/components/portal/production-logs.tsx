@@ -88,7 +88,7 @@ function mapGameProduction(log: GameProductionLog): ProductionLog {
     id: log.id || log.productionId || log.submissionId || "",
     level: log.level,
     production: log.title || log.stage || log.production || "",
-    role: log.role || log.roles?.join(", ") || "",
+    role: "All Roles",
     client: log.clientName || log.clientBrandName || log.client || "",
     date: log.date,
     score: log.overallScore,
@@ -117,27 +117,26 @@ export function ProductionLogs() {
     <section className="production-history-panel mt-7 almanac-content-panel p-4 sm:p-6">
       <div className="almanac-content-body">
         <h2 className="section-title text-3xl text-navy sm:text-4xl">Production Logs</h2>
-        <div className="production-history-heading mt-1 flex items-center justify-between gap-3 text-sm text-navy"><p>Completed production attempts from Crew On Set!</p><button type="button" className="rounded border px-3 py-2 font-bold" disabled={logsQuery.isFetching} onClick={() => void logsQuery.refetch()}>{logsQuery.isFetching ? "Refreshing…" : "Refresh"}</button></div>
-        <h3 className="production-history-heading mt-5 text-sm font-black uppercase">Completed production history</h3>
+        <div className="production-history-heading mt-1 flex items-center justify-between gap-3 text-sm text-navy"><p>Latest complete single-player result for each level.</p><button type="button" className="rounded border px-3 py-2 font-bold" disabled={logsQuery.isFetching} onClick={() => void logsQuery.refetch()}>{logsQuery.isFetching ? "Refreshing…" : "Refresh"}</button></div>
+        <h3 className="production-history-heading mt-5 text-sm font-black uppercase">Completed level history</h3>
         <div className="player-account-scroll-list almanac-content-scroll production-logs-list admin-table-wrap mt-5 border-navy/10">
           <table className="admin-table">
-            <thead><tr><th className="production-log-column-heading">Level</th><th className="production-log-column-heading">Product / Contract</th><th className="production-log-column-heading">Role</th><th className="production-log-column-heading">Client</th><th className="production-log-column-heading">Date</th><th className="production-log-column-heading">Score</th><th className="production-log-column-heading">Rank</th><th className="production-log-column-heading text-right">Info</th></tr></thead>
+            <thead><tr><th className="production-log-column-heading">Level</th><th className="production-log-column-heading">Contract</th><th className="production-log-column-heading">Roles</th><th className="production-log-column-heading">Date</th><th className="production-log-column-heading">Score</th><th className="production-log-column-heading">Rank</th><th className="production-log-column-heading text-right">Info</th></tr></thead>
             <tbody>
               {logs.map((log) => (
                 <tr key={log.id}>
                   <td>{log.level || "—"}</td>
                   <td className="font-bold">{log.production || (log.level ? `Level ${log.level} production` : "Production")}{typeof log.details["careerName"] === "string" && <span className="production-log-career block text-xs font-normal">Career: {log.details["careerName"]}{log.details["archivedCareer"] === true ? " · Archived" : ""}</span>}</td>
                   <td>{log.role || "—"}</td>
-                  <td>{log.client || "—"}</td>
                   <td className="whitespace-nowrap">{formatDate(log.date)}</td>
                   <td className="font-black">{log.score == null ? "—" : `${log.score}%`}</td>
                   <td><span className={`production-log-rank inline-grid size-7 place-items-center rounded-md border text-xs font-black ${rankTone[log.rank] ?? "bg-navy/[.04] text-navy/50 border-navy/10"}`}>{log.rank || "—"}</span></td>
                   <td className="text-right"><button type="button" onClick={() => setOpenLog(log)} className="production-log-info rounded-md border border-navy/15 px-3 py-1.5 text-[11px] font-black uppercase tracking-wider text-navy transition hover:bg-navy/5">See Info</button></td>
                 </tr>
               ))}
-              {logsQuery.isLoading && <tr><td colSpan={8} className="py-8 text-center">Loading production history…</td></tr>}
-              {logsQuery.isError && <tr><td colSpan={8} className="py-8 text-center text-red-700">Couldn't load production history. Please try again.</td></tr>}
-              {!logsQuery.isLoading && !logsQuery.isError && logs.length === 0 && <tr><td colSpan={8} className="py-10 text-center text-navy/55">No completed productions yet. Finish a production in the game, then refresh to see your results here.</td></tr>}
+              {logsQuery.isLoading && <tr><td colSpan={7} className="py-8 text-center">Loading completed single-player levels…</td></tr>}
+              {logsQuery.isError && <tr><td colSpan={7} className="py-8 text-center text-red-700">Couldn't load production history. Please try again.</td></tr>}
+              {!logsQuery.isLoading && !logsQuery.isError && logs.length === 0 && <tr><td colSpan={7} className="py-10 text-center text-navy/55">No complete single-player levels recorded yet. Finish a level in the game, then refresh to see your results here.</td></tr>}
             </tbody>
           </table>
         </div>

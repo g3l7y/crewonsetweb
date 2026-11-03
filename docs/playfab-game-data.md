@@ -18,13 +18,18 @@ Game source reviewed: `mcccelvin/crew-on-set`, commit
 | `achievements` | Stored titles, descriptions, progress, unlock state and dates, without renaming |
 | `Profile.Career.v1`, `AchivProg_*`, `AchivDone_*` | Career achievement progress using the exact definitions from `CareerProfileProgress.cs` |
 
-Career achievements remain separate for each career. Their save format has no
+Career achievement progress remains saved separately for each career, while the
+Almanac combines matching achievements across careers. If any career unlocked an
+achievement, its single Almanac card remains unlocked. Their save format has no
 unlock timestamps, so the website does not supply dates. Access to Level 1 does
 not imply completion of Level 1 or unlock any website-created knowledge content.
 
 Dedicated records and career snapshots are combined by submission ID. Dedicated
-records take priority, while extra career details are retained. Only closed
-attempts are production logs. Missing scores, contract names and dates remain
+records take priority, while extra career details are retained. The Almanac only
+shows complete single-player results with a valid level, contract, date, final
+score, rank, all three phase scores and a completed decision. It shows the newest
+valid result once per level; unfinished or incomplete replays cannot replace it.
+Multiplayer records and partial results are excluded. Missing fields remain
 absent; the website does not manufacture results from a current-level counter.
 
 Malformed history and failed requests produce an error state. A successful empty
