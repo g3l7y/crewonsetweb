@@ -716,6 +716,8 @@ export interface PartnershipApplication {
   packageName?: string | undefined;
   packagePlacement?: string | undefined;
   packageReporting?: string | undefined;
+  expectedClicks?: { min: number; max: number } | undefined;
+  expectedVisits?: { min: number; max: number } | undefined;
   /** Verified placement downtime credited to the end date. */
   deliveryAdjustments?: Array<{ days: number; reason: string; recordedAt: string; revisedEndAt: string }> | undefined;
   deliveryMakeGoodDays?: number | undefined;
@@ -856,6 +858,8 @@ export interface AdEntry {
   packageName?: string | undefined;
   packagePlacement?: string | undefined;
   packageReporting?: string | undefined;
+  expectedClicks?: { min: number; max: number } | undefined;
+  expectedVisits?: { min: number; max: number } | undefined;
   packageDurationDays?: number | undefined;
     brandPromotionUrl?: string | undefined;
   deliveryAdjustments?: Array<{ days: number; reason: string; recordedAt: string; revisedEndAt: string }> | undefined;

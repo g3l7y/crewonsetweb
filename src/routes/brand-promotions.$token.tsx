@@ -3,7 +3,7 @@ import { useEffect, useState } from 'react';
 import { CalendarClock, ExternalLink, Megaphone, MousePointerClick, Users, MonitorPlay, Wallet2 } from 'lucide-react';
 import { isMockMode } from '@/lib/playfab/config';
 import { applicationsStore, adsStore } from '@/lib/demo/store';
-import { BRAND_PROMOTION_DELIVERY_TERMS } from '@/lib/brand-promotion-packages';
+import { BRAND_PROMOTION_DELIVERY_TERMS, getBrandPromotionPackage } from '@/lib/brand-promotion-packages';
 
 export const Route = createFileRoute('/brand-promotions/$token')({
   head: () => ({
@@ -26,6 +26,8 @@ type Promotion = {
   packageDurationDays?: number;
   packagePlacement?: string;
   packageReporting?: string;
+  expectedClicks?: { min: number; max: number };
+  expectedVisits?: { min: number; max: number };
   deliveryTerms?: string;
   deliveryAdjustments?: Array<{ days: number; reason: string; recordedAt: string; revisedEndAt: string }>;
   deliveryMakeGoodDays?: number;
@@ -85,6 +87,7 @@ function BrandPromotionPage() {
         return;
       }
       const ad = mockAds.find((item) => item.applicationId === application.id);
+      const selectedPackage = getBrandPromotionPackage(application.packageId);
       const startDate = application.promotionStartedAt || application.paymentPaidAt || application.submittedAt;
       const endDate = application.promotionEndedAt || application.promotionEndsAt || ad?.expiresAt || startDate;
       setPromotion({
@@ -98,6 +101,8 @@ function BrandPromotionPage() {
         packageDurationDays: application.duration,
         packagePlacement: application.packagePlacement,
         packageReporting: application.packageReporting,
+        expectedClicks: application.expectedClicks || selectedPackage?.expectedClicks,
+        expectedVisits: application.expectedVisits || selectedPackage?.expectedVisits,
         deliveryTerms: BRAND_PROMOTION_DELIVERY_TERMS,
         deliveryAdjustments: application.deliveryAdjustments || [],
         deliveryMakeGoodDays: application.deliveryMakeGoodDays || 0,
@@ -195,6 +200,7 @@ function BrandPromotionPage() {
               </div>
               <p className="mt-3 text-sm leading-relaxed text-white/65">{promotion.packagePlacement}</p>
               <p className="mt-1 text-sm leading-relaxed text-white/55">{promotion.packageReporting}</p>
+              {(promotion.expectedClicks || promotion.expectedVisits) && <p className="mt-3 rounded-md bg-white/[.04] p-3 text-sm font-bold text-white/75">Expected planning range: {promotion.expectedClicks ? `${promotion.expectedClicks.min}–${promotion.expectedClicks.max} link clicks` : ''}{promotion.expectedClicks && promotion.expectedVisits ? ' · ' : ''}{promotion.expectedVisits ? `${promotion.expectedVisits.min}–${promotion.expectedVisits.max} unique visits` : ''}</p>}
               <p className="mt-3 text-xs leading-relaxed text-white/45">No minimum views, clicks, website visits, leads, or sales are promised. Reported click-throughs count the outbound redirect only.</p>
               {(promotion.deliveryMakeGoodDays || 0) > 0 && (
                 <div className="mt-4 border-t border-white/10 pt-3">

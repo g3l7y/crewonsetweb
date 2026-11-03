@@ -1,4 +1,5 @@
 import type { PartnershipApplication, PartnershipStatus } from '@/lib/playfab/types';
+import { getBrandPromotionPackage } from '@/lib/brand-promotion-packages';
 import nodemailer from 'nodemailer';
 
 function formatPaymentAmount(amountInCentavos: number): string {
@@ -36,12 +37,22 @@ function emailCopy({ application, status, paymentUrl, promotionUrl, completionTy
 } {
   const brand = application.brand || 'your brand';
   const budget = formatPaymentAmount(Math.round((application.budget || 0) * 100));
+  const selectedPackage = getBrandPromotionPackage(application.packageId);
+  const expectedClicks = application.expectedClicks || selectedPackage?.expectedClicks;
+  const expectedVisits = application.expectedVisits || selectedPackage?.expectedVisits;
+  const reach = expectedClicks || expectedVisits
+    ? ' Selected package: ' + (application.packageName || selectedPackage?.name || 'Brand promotion') + '. Expected planning range: '
+      + (expectedClicks ? expectedClicks.min + '–' + expectedClicks.max + ' tracked link clicks' : '')
+      + (expectedClicks && expectedVisits ? ' and ' : '')
+      + (expectedVisits ? expectedVisits.min + '–' + expectedVisits.max + ' estimated unique visits' : '')
+      + '. These are estimates, not guaranteed minimums; actual performance is reported on your campaign page.'
+    : '';
 
   if (status === 'Pending') {
     return {
       subject: 'Action required: payment for your Crew On Set partnership',
       heading: 'Payment required for your brand partnership',
-      body: 'Thank you for submitting your brand partnership proposal to Crew On Set. Your application for ' + brand + ' is now pending payment. Please complete the ' + budget + ' payment through the secure PayMongo Checkout link below. Once payment is confirmed, our partnership team will continue its review and contact you regarding the next steps.',
+      body: 'Thank you for submitting your brand partnership proposal to Crew On Set. Your application for ' + brand + ' is now pending payment. Please complete the ' + budget + ' payment through the secure PayMongo Checkout link below. Once payment is confirmed, our partnership team will continue its review and contact you regarding the next steps.' + reach,
       action: 'Complete PayMongo Checkout',
       actionUrl: paymentUrl,
     };
@@ -50,14 +61,14 @@ function emailCopy({ application, status, paymentUrl, promotionUrl, completionTy
     return {
       subject: 'Your Crew On Set partnership has been approved',
       heading: 'Payment received — partnership approved',
-      body: 'We are pleased to confirm receipt of your ' + budget + ' payment for ' + brand + '. Your Crew On Set partnership application has been approved. Our production team will coordinate the campaign details and implementation with you shortly.',
+      body: 'We are pleased to confirm receipt of your ' + budget + ' payment for ' + brand + '. Your Crew On Set partnership application has been approved. Our production team will coordinate the campaign details and implementation with you shortly.' + reach,
     };
   }
   if (status === 'On-going') {
     return {
       subject: 'Your Crew On Set brand partnership is now live',
       heading: 'Your brand partnership is live',
-      body: 'Your ' + brand + ' partnership with Crew On Set is now live. Use the link below to review the campaign details, agreed dates, submitted brand link, and current performance information.',
+      body: 'Your ' + brand + ' partnership with Crew On Set is now live. Use the link below to review the campaign details, agreed dates, submitted brand link, and current performance information.' + reach,
       action: 'View Brand Promotion',
       actionUrl: promotionUrl,
     };
@@ -76,7 +87,7 @@ function emailCopy({ application, status, paymentUrl, promotionUrl, completionTy
     return {
       subject: 'Your Crew On Set brand promotion has concluded',
       heading: 'Brand promotion completed',
-      body: 'The agreed promotion period for ' + brand + ' has ended. The campaign has now been marked complete in our records. Thank you for partnering with Crew On Set; we appreciate the opportunity to feature your brand.',
+        body: 'The agreed promotion period for ' + brand + ' has ended. The campaign has now been marked complete in our records. Thank you for partnering with Crew On Set; we appreciate the opportunity to feature your brand.' + reach,
     };
   }
   return {
