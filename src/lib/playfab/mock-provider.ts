@@ -36,7 +36,20 @@ import type {
 } from './types';
 import { cosmeticCatalog, freeBodyItems } from '@/lib/demo/portal-shop';
 import { DEFAULT_PROFILE_PICTURE_URL } from '@/lib/profile-avatar';
+import { mapDataToProductionLogs } from './productions';
 import { dedupeAchievements, mapUserDataToAchievements } from './achievements';
+
+// Completed demo contract for the sample player's Almanac.
+const MOCK_PRODUCTION_LOGS = mapDataToProductionLogs([{
+  id: 'mock-crystal-blooms', playerId: 'MOCK-PLAYER-001', mode: 'solo', level: 1,
+  production: 'Crystal Blooms - Artisan Flower Vase', date: '2026-08-22',
+  score: 91, rank: 'A', decision: 'passed',
+  preProductionScore: 94, productionScore: 89, postProductionScore: 90,
+  preProductionFeedback: 'The set and props matched the flower brief.',
+  productionFeedback: 'The key light revealed the petals. Leave more space above the vase in the close-up.',
+  postProductionFeedback: 'The final cut kept the product in focus and met the requested duration.',
+  nextStep: 'Compare the framing in your opening and closing shots.',
+}]);
 
 function randomDelay(): Promise<void> {
   return Promise.resolve();
@@ -396,6 +409,7 @@ export function resetMockPlayerAccountData(persist = true) {
   MOCK_WALLET.cCoins = 0;
   MOCK_INVENTORY.splice(0);
   MOCK_ACHIEVEMENTS.splice(0);
+  MOCK_PRODUCTION_LOGS.splice(0);
   MOCK_KNOWLEDGE.splice(0);
   MOCK_TRANSACTIONS.splice(0);
   MOCK_NOTIFICATIONS.splice(0);
@@ -649,7 +663,11 @@ export function createMockService(): PlayFabService {
         await randomDelay();
         return [];
       },
-      async getProductionHistory() { return { logs: [], careers: [] }; },
+      async getProductionHistory() {
+        readMockPlayerAdminState();
+        const logs = MOCK_PRODUCTION_LOGS.filter((log) => log.playerId === mockSession?.playFabId);
+        return { logs, careers: [] };
+      },
       async getTransactions(): Promise<Transaction[]> {
         await randomDelay();
         return [...MOCK_TRANSACTIONS];
