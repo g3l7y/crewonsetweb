@@ -4446,3 +4446,8 @@ html body [data-slot="dialog-overlay"] {
   backdrop-filter: blur(3px);
   -webkit-backdrop-filter: blur(3px);
 }
+
+.production-log-dialog .review-gain { color: #14633c !important; }
+.production-log-dialog .review-loss { color: #a52d31 !important; }
+.portal-dark .production-log-dialog .review-gain { color: #82e5ad !important; }
+.portal-dark .production-log-dialog .review-loss { color: #ffa5a6 !important; }
