@@ -305,6 +305,23 @@ function createRealService(): PlayFabService {
         if (!ticket) throw new Error('Please sign in again to load game production history.');
         return getProductionLogs(ticket);
       },
+      getPlaytimeMinutes: async () => {
+        const ticket = await resolveSessionTicket();
+        if (!ticket) return null;
+        try {
+          const response = await playfabClientApi<{
+            Statistics?: Array<{ StatisticName?: string; Value?: number }>;
+          }>('/Client/GetPlayerStatistics', {}, ticket);
+          const statistic = response.Statistics?.find(
+            (item) => String(item.StatisticName || '').toLowerCase() === 'playtime_minutes',
+          );
+          return typeof statistic?.Value === 'number' && Number.isFinite(statistic.Value)
+            ? statistic.Value
+            : null;
+        } catch {
+          return null;
+        }
+      },
       getProductionHistory: async () => {
         const ticket = await resolveSessionTicket();
         if (!ticket) throw new Error('Please sign in again to load saved game progress.');

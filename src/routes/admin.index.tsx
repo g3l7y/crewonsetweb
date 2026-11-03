@@ -29,7 +29,7 @@ import { topUpsStore } from "@/lib/admin-demo-data";
 import { useAdminPayMongoOrders } from "@/lib/admin-paymongo-orders";
 import { formatMoney, gameBuildStore, messagesStore, revenueStore } from "@/lib/demo/store";
 import { isMockMode } from "@/lib/playfab/config";
-import { useAdminBugReports, useAdminNotifications, useAdminPlayerReports, useAdminPlayers, useProgressLeaderboard } from "@/lib/playfab/hooks";
+import { useAdminBugReports, useAdminGameDownloadCount, useAdminNotifications, useAdminPlayerReports, useAdminPlayers, useProgressLeaderboard } from "@/lib/playfab/hooks";
 import { adminNotificationsStore, bugReportsStore, playerReportsStore } from "@/lib/demo/store";
 import { buildAlerts } from "@/components/admin/admin-alerts";
 
@@ -95,6 +95,7 @@ function formatDate(iso: string) {
 function AdminDashboardPage() {
   const mockMode = isMockMode();
   const adminPlayersQuery = useAdminPlayers();
+  const gameDownloadCountQuery = useAdminGameDownloadCount();
   const progressLeaderboardQuery = useProgressLeaderboard();
   const liveBugReportsQuery = useAdminBugReports();
   const livePlayerReportsQuery = useAdminPlayerReports();
@@ -140,7 +141,14 @@ function AdminDashboardPage() {
           return { ...stat, value: playerCount, change: "—" };
         }
         if (stat.label === "Total Downloads") {
-          return { ...stat, value: "—", change: "—" };
+          const downloads = gameDownloadCountQuery.data;
+          return {
+            ...stat,
+            value: downloads?.configured
+              ? (downloads.totalDownloads ?? 0).toLocaleString()
+              : gameDownloadCountQuery.isLoading ? "…" : "—",
+            change: "—",
+          };
         }
         return {
           ...stat,
@@ -150,12 +158,20 @@ function AdminDashboardPage() {
       });
     }
 
-    return stats.map((stat) =>
-      stat.label === "Total Revenue"
+    return stats.map((stat) => {
+      if (stat.label === "Total Downloads") {
+        const downloads = gameDownloadCountQuery.data;
+        return {
+          ...stat,
+          value: downloads?.configured ? (downloads.totalDownloads ?? 0).toLocaleString() : "—",
+          change: "—",
+        };
+      }
+      return stat.label === "Total Revenue"
         ? { ...stat, value: formatMoney(paymongoRevenue + demoRevenue.reduce((total, record) => total + record.revenue, 0)) }
-        : stat,
-    );
-  }, [adminPlayersQuery.data, adminPlayersQuery.isLoading, demoRevenue, mockMode, topUps]);
+        : stat;
+    });
+  }, [adminPlayersQuery.data, adminPlayersQuery.isLoading, demoRevenue, gameDownloadCountQuery.data, gameDownloadCountQuery.isLoading, mockMode, topUps]);
 
   return (
     <div className="admin-page h-full overflow-y-auto bg-[#101923] text-white">

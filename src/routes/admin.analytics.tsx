@@ -7,7 +7,7 @@ import { buildOverallAnalysis, type AnalysisTrendPoint, type AdminAnalysisSnapsh
 import { applicationsStore, formatMoney, revenueStore } from "@/lib/demo/store";
 import { useAdminPayMongoOrders } from "@/lib/admin-paymongo-orders";
 import { isMockMode } from "@/lib/playfab/config";
-import { useAdminPlayers } from "@/lib/playfab/hooks";
+import { useAdminGameDownloadCount, useAdminPlayers } from "@/lib/playfab/hooks";
 import {
   Activity,
   CircleDollarSign,
@@ -123,6 +123,7 @@ function getSalesTrend(mockMode: boolean, topUps: Array<{ date: string; amount: 
 function AnalyticsPage() {
   const mockMode = isMockMode();
   const adminPlayersQuery = useAdminPlayers();
+  const gameDownloadCountQuery = useAdminGameDownloadCount();
   const [applications] = applicationsStore.useStore();
   const [demoRevenue] = revenueStore.useStore();
   const [demoTopUps] = topUpsStore.useStore();
@@ -207,8 +208,16 @@ function AnalyticsPage() {
     },
     {
       label: "Total Downloads",
-      value: mockMode ? "68,320" : "—",
-      context: mockMode ? "Across all game releases" : "No real download counter is configured",
+      value: gameDownloadCountQuery.data?.configured
+        ? (gameDownloadCountQuery.data.totalDownloads ?? 0).toLocaleString()
+        : gameDownloadCountQuery.isLoading ? "…" : "—",
+      context: mockMode
+        ? "Mock download starts tracked in this browser"
+        : gameDownloadCountQuery.data?.configured
+          ? "Download requests from the public site and player account"
+          : gameDownloadCountQuery.isError
+            ? "Download metrics could not be loaded"
+            : "Configure DATABASE_URL to enable durable counting",
       icon: Download,
       color: "bg-[#d9a514]",
     },

@@ -1,6 +1,10 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useEffect } from "react";
 import { getPlayFabService } from "./service";
 import { isMockMode } from "./config";
+import { getMockGameDownloadCount, MOCK_DOWNLOAD_COUNT_EVENT } from "@/lib/mock-game-download-tracking";
+
+const MOCK_GAME_DOWNLOAD_QUERY_KEY = ["admin", "game-download-count", "mock"] as const;
 import type {
   PlayerProfile,
   PlayerProgression,
@@ -79,6 +83,34 @@ export function useSession() {
     refetchInterval: false,
     refetchIntervalInBackground: false,
     refetchOnWindowFocus: false,
+  });
+}
+
+export function useAdminGameDownloadCount() {
+  const { data: session } = useSession();
+  const queryClient = useQueryClient();
+  const mockMode = isMockMode();
+  const queryKey = mockMode
+    ? MOCK_GAME_DOWNLOAD_QUERY_KEY
+    : (["admin", "game-download-count", "real"] as const);
+  useEffect(() => {
+    if (!mockMode) return;
+    const refresh = () => void queryClient.invalidateQueries({ queryKey: MOCK_GAME_DOWNLOAD_QUERY_KEY });
+    window.addEventListener(MOCK_DOWNLOAD_COUNT_EVENT, refresh);
+    return () => window.removeEventListener(MOCK_DOWNLOAD_COUNT_EVENT, refresh);
+  }, [mockMode, queryClient]);
+
+  return useQuery({
+    queryKey,
+    queryFn: async (): Promise<{ totalDownloads: number | null; configured: boolean }> => {
+      if (mockMode) return { totalDownloads: getMockGameDownloadCount(), configured: true };
+      const response = await fetch("/api/admin/downloads", { credentials: "same-origin", cache: "no-store" });
+      if (!response.ok) throw new Error("Download metrics could not be loaded.");
+      return response.json();
+    },
+    enabled: mockMode || session?.role === "admin",
+    staleTime: 15_000,
+    refetchInterval: 30_000,
   });
 }
 
@@ -167,6 +199,16 @@ export function useProductionLogs() {
     enabled: !!session,
     staleTime: 30 * 1000,
     refetchInterval: 30 * 1000,
+  });
+}
+
+export function usePlayerPlaytimeMinutes() {
+  const { data: session } = useSession();
+  return useQuery<number | null>({
+    queryKey: ['player-playtime-minutes', session?.playFabId],
+    queryFn: () => getPlayFabService().player.getPlaytimeMinutes(),
+    enabled: !!session,
+    staleTime: 60 * 1000,
   });
 }
 
