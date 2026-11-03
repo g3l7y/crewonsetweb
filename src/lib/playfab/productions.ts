@@ -45,7 +45,8 @@ export async function getProductionLogs(sessionTicket: string): Promise<Producti
 export function mapUserDataToProductionLogs(data: Record<string, string>): ProductionLog[] {
   const raw = data[PLAYFAB_DATA_KEYS.production_logs];
   const logs = mapDataToProductionLogs(mapCareerAttemptsToProductionLogs(data));
-  const dedicated = raw ? mapDataToProductionLogs(JSON.parse(raw)) : [];
+  const dedicatedPayload: unknown = raw ? JSON.parse(raw) : [];
+  const dedicated = mapDataToProductionLogs(explicitSoloProductionRecords(dedicatedPayload));
   const merged = new Map<string, ProductionLog>();
   for (const log of [...logs, ...dedicated]) {
     const key = log.submissionId || log.id || log.productionId || `record-${merged.size}`;
@@ -53,7 +54,42 @@ export function mapUserDataToProductionLogs(data: Record<string, string>): Produ
     const supplied = Object.fromEntries(Object.entries(log).filter(([, value]) => value !== undefined && value !== ''));
     merged.set(key, previous ? { ...previous, ...supplied, details: { ...previous.details, ...log.details } } : log);
   }
-  return [...merged.values()];
+  // Almanac keeps one complete solo result per campaign level. A newer valid
+  // completion replaces the previous row; incomplete replays never enter here.
+  const latestByLevel = new Map<number, ProductionLog>();
+  for (const log of merged.values()) {
+    if (!isCompleteSoloProduction(log)) continue;
+    const previous = latestByLevel.get(log.level);
+    if (!previous || Date.parse(log.date) >= Date.parse(previous.date)) latestByLevel.set(log.level, log);
+  }
+  return [...latestByLevel.values()];
+}
+
+function explicitSoloProductionRecords(payload: unknown): unknown[] {
+  let records: unknown;
+  if (Array.isArray(payload)) records = payload;
+  else if (isRecord(payload)) records = payload['logs'] ?? payload['records'] ?? payload['production_logs'] ?? (payload['id'] || payload['productionId'] ? [payload] : []);
+  else records = [];
+  if (!Array.isArray(records)) {
+    mapDataToProductionLogs(payload); // Raise the existing unreadable-history error.
+    return [];
+  }
+  return records.filter((item) => isRecord(item) && ['solo', 'singleplayer'].includes(String(item['mode'] ?? '').toLowerCase()));
+}
+
+function isCompleteSoloProduction(log: ProductionLog): boolean {
+  const scoreIsValid = (score: number | undefined) => typeof score === 'number' && Number.isFinite(score) && score >= 0 && score <= 100;
+  const hasFinishedDecision = log.clientDecision === 'passed' || log.clientDecision === 'failed' || typeof log.success === 'boolean';
+  return log.mode === 'solo'
+    && Number.isInteger(log.level) && log.level >= 1 && log.level <= 5
+    && Boolean(log.title?.trim())
+    && Boolean(log.date && Number.isFinite(Date.parse(log.date)))
+    && scoreIsValid(log.score)
+    && ['S', 'A', 'B', 'C', 'F'].includes(log.rank)
+    && scoreIsValid(log.preProductionScore)
+    && scoreIsValid(log.productionScore)
+    && scoreIsValid(log.postProductionScore)
+    && hasFinishedDecision;
 }
 
 /**
