@@ -38,14 +38,11 @@ function emailCopy({ application, status, paymentUrl, promotionUrl, completionTy
   const brand = application.brand || 'your brand';
   const budget = formatPaymentAmount(Math.round((application.budget || 0) * 100));
   const selectedPackage = getBrandPromotionPackage(application.packageId);
-  const expectedClicks = application.expectedClicks || selectedPackage?.expectedClicks;
   const expectedVisits = application.expectedVisits || selectedPackage?.expectedVisits;
-  const reach = expectedClicks || expectedVisits
-    ? ' Selected package: ' + (application.packageName || selectedPackage?.name || 'Brand promotion') + '. Expected planning range: '
-      + (expectedClicks ? expectedClicks.min + '–' + expectedClicks.max + ' tracked link clicks' : '')
-      + (expectedClicks && expectedVisits ? ' and ' : '')
-      + (expectedVisits ? expectedVisits.min + '–' + expectedVisits.max + ' estimated unique visits' : '')
-      + '. These are estimates, not guaranteed minimums; actual performance is reported on your campaign page.'
+  const reach = expectedVisits
+    ? ' Selected package: ' + (application.packageName || selectedPackage?.name || 'Brand promotion') + '. Expected visits: '
+      + expectedVisits.min + '–' + expectedVisits.max + ' estimated unique visits.'
+      + ' This is a planning estimate, not a guaranteed minimum; actual performance is reported on your campaign page.'
     : '';
 
   if (status === 'Pending') {

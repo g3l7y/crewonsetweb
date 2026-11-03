@@ -264,7 +264,6 @@ export const Route = createFileRoute('/api/admin/partnerships')({
             packageName: selectedPackage.name,
             packagePlacement: selectedPackage.placement,
             packageReporting: selectedPackage.reporting,
-            expectedClicks: selectedPackage.expectedClicks,
             expectedVisits: selectedPackage.expectedVisits,
             email: String(email).trim().toLowerCase(),
             description: description ? String(description) : undefined,
