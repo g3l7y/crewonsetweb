@@ -38,6 +38,7 @@ import { Route as AdminTransactionsRouteImport } from './routes/admin.transactio
 import { Route as AdminLoginRouteImport } from './routes/admin_.login'
 import { Route as ApiBanAppealsRouteImport } from './routes/api/ban-appeals'
 import { Route as ApiBrandPromotionsRouteImport } from './routes/api/brand-promotions'
+import { Route as ApiGameDownloadRouteImport } from './routes/api/game-download'
 import { Route as ApiGameInstallerRouteImport } from './routes/api/game-installer'
 import { Route as ApiMailRouteImport } from './routes/api/mail'
 import { Route as ApiNotificationsRouteImport } from './routes/api/notifications'
@@ -55,6 +56,7 @@ import { Route as ApiAdminAccountRouteImport } from './routes/api/admin/account'
 import { Route as ApiAdminAdRevenueRouteImport } from './routes/api/admin/ad-revenue'
 import { Route as ApiAdminBugReportsRouteImport } from './routes/api/admin/bug-reports'
 import { Route as ApiAdminDataRouteImport } from './routes/api/admin/data'
+import { Route as ApiAdminDownloadsRouteImport } from './routes/api/admin/downloads'
 import { Route as ApiAdminGameInstallerRouteImport } from './routes/api/admin/game-installer'
 import { Route as ApiAdminPartnershipsRouteImport } from './routes/api/admin/partnerships'
 import { Route as ApiAdminPaymongoOrdersRouteImport } from './routes/api/admin/paymongo-orders'
@@ -246,6 +248,11 @@ const ApiBrandPromotionsRoute = ApiBrandPromotionsRouteImport.update({
   path: '/api/brand-promotions',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiGameDownloadRoute = ApiGameDownloadRouteImport.update({
+  id: '/api/game-download',
+  path: '/api/game-download',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiGameInstallerRoute = ApiGameInstallerRouteImport.update({
   id: '/api/game-installer',
   path: '/api/game-installer',
@@ -329,6 +336,11 @@ const ApiAdminBugReportsRoute = ApiAdminBugReportsRouteImport.update({
 const ApiAdminDataRoute = ApiAdminDataRouteImport.update({
   id: '/api/admin/data',
   path: '/api/admin/data',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiAdminDownloadsRoute = ApiAdminDownloadsRouteImport.update({
+  id: '/api/admin/downloads',
+  path: '/api/admin/downloads',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ApiAdminGameInstallerRoute = ApiAdminGameInstallerRouteImport.update({
@@ -598,6 +610,7 @@ export interface FileRoutesByFullPath {
   '/admin/login': typeof AdminLoginRoute
   '/api/ban-appeals': typeof ApiBanAppealsRoute
   '/api/brand-promotions': typeof ApiBrandPromotionsRouteWithChildren
+  '/api/game-download': typeof ApiGameDownloadRoute
   '/api/game-installer': typeof ApiGameInstallerRoute
   '/api/mail': typeof ApiMailRoute
   '/api/notifications': typeof ApiNotificationsRoute
@@ -616,6 +629,7 @@ export interface FileRoutesByFullPath {
   '/api/admin/ad-revenue': typeof ApiAdminAdRevenueRoute
   '/api/admin/bug-reports': typeof ApiAdminBugReportsRoute
   '/api/admin/data': typeof ApiAdminDataRoute
+  '/api/admin/downloads': typeof ApiAdminDownloadsRoute
   '/api/admin/game-installer': typeof ApiAdminGameInstallerRoute
   '/api/admin/partnerships': typeof ApiAdminPartnershipsRoute
   '/api/admin/paymongo-orders': typeof ApiAdminPaymongoOrdersRoute
@@ -689,6 +703,7 @@ export interface FileRoutesByTo {
   '/admin/login': typeof AdminLoginRoute
   '/api/ban-appeals': typeof ApiBanAppealsRoute
   '/api/brand-promotions': typeof ApiBrandPromotionsRouteWithChildren
+  '/api/game-download': typeof ApiGameDownloadRoute
   '/api/game-installer': typeof ApiGameInstallerRoute
   '/api/mail': typeof ApiMailRoute
   '/api/notifications': typeof ApiNotificationsRoute
@@ -707,6 +722,7 @@ export interface FileRoutesByTo {
   '/api/admin/ad-revenue': typeof ApiAdminAdRevenueRoute
   '/api/admin/bug-reports': typeof ApiAdminBugReportsRoute
   '/api/admin/data': typeof ApiAdminDataRoute
+  '/api/admin/downloads': typeof ApiAdminDownloadsRoute
   '/api/admin/game-installer': typeof ApiAdminGameInstallerRoute
   '/api/admin/partnerships': typeof ApiAdminPartnershipsRoute
   '/api/admin/paymongo-orders': typeof ApiAdminPaymongoOrdersRoute
@@ -783,6 +799,7 @@ export interface FileRoutesById {
   '/admin_/login': typeof AdminLoginRoute
   '/api/ban-appeals': typeof ApiBanAppealsRoute
   '/api/brand-promotions': typeof ApiBrandPromotionsRouteWithChildren
+  '/api/game-download': typeof ApiGameDownloadRoute
   '/api/game-installer': typeof ApiGameInstallerRoute
   '/api/mail': typeof ApiMailRoute
   '/api/notifications': typeof ApiNotificationsRoute
@@ -801,6 +818,7 @@ export interface FileRoutesById {
   '/api/admin/ad-revenue': typeof ApiAdminAdRevenueRoute
   '/api/admin/bug-reports': typeof ApiAdminBugReportsRoute
   '/api/admin/data': typeof ApiAdminDataRoute
+  '/api/admin/downloads': typeof ApiAdminDownloadsRoute
   '/api/admin/game-installer': typeof ApiAdminGameInstallerRoute
   '/api/admin/partnerships': typeof ApiAdminPartnershipsRoute
   '/api/admin/paymongo-orders': typeof ApiAdminPaymongoOrdersRoute
@@ -878,6 +896,7 @@ export interface FileRouteTypes {
     | '/admin/login'
     | '/api/ban-appeals'
     | '/api/brand-promotions'
+    | '/api/game-download'
     | '/api/game-installer'
     | '/api/mail'
     | '/api/notifications'
@@ -896,6 +915,7 @@ export interface FileRouteTypes {
     | '/api/admin/ad-revenue'
     | '/api/admin/bug-reports'
     | '/api/admin/data'
+    | '/api/admin/downloads'
     | '/api/admin/game-installer'
     | '/api/admin/partnerships'
     | '/api/admin/paymongo-orders'
@@ -969,6 +989,7 @@ export interface FileRouteTypes {
     | '/admin/login'
     | '/api/ban-appeals'
     | '/api/brand-promotions'
+    | '/api/game-download'
     | '/api/game-installer'
     | '/api/mail'
     | '/api/notifications'
@@ -987,6 +1008,7 @@ export interface FileRouteTypes {
     | '/api/admin/ad-revenue'
     | '/api/admin/bug-reports'
     | '/api/admin/data'
+    | '/api/admin/downloads'
     | '/api/admin/game-installer'
     | '/api/admin/partnerships'
     | '/api/admin/paymongo-orders'
@@ -1062,6 +1084,7 @@ export interface FileRouteTypes {
     | '/admin_/login'
     | '/api/ban-appeals'
     | '/api/brand-promotions'
+    | '/api/game-download'
     | '/api/game-installer'
     | '/api/mail'
     | '/api/notifications'
@@ -1080,6 +1103,7 @@ export interface FileRouteTypes {
     | '/api/admin/ad-revenue'
     | '/api/admin/bug-reports'
     | '/api/admin/data'
+    | '/api/admin/downloads'
     | '/api/admin/game-installer'
     | '/api/admin/partnerships'
     | '/api/admin/paymongo-orders'
@@ -1145,6 +1169,7 @@ export interface RootRouteChildren {
   AdminLoginRoute: typeof AdminLoginRoute
   ApiBanAppealsRoute: typeof ApiBanAppealsRoute
   ApiBrandPromotionsRoute: typeof ApiBrandPromotionsRouteWithChildren
+  ApiGameDownloadRoute: typeof ApiGameDownloadRoute
   ApiGameInstallerRoute: typeof ApiGameInstallerRoute
   ApiMailRoute: typeof ApiMailRoute
   ApiNotificationsRoute: typeof ApiNotificationsRoute
@@ -1153,6 +1178,7 @@ export interface RootRouteChildren {
   ApiAdminAdRevenueRoute: typeof ApiAdminAdRevenueRoute
   ApiAdminBugReportsRoute: typeof ApiAdminBugReportsRoute
   ApiAdminDataRoute: typeof ApiAdminDataRoute
+  ApiAdminDownloadsRoute: typeof ApiAdminDownloadsRoute
   ApiAdminGameInstallerRoute: typeof ApiAdminGameInstallerRoute
   ApiAdminPartnershipsRoute: typeof ApiAdminPartnershipsRoute
   ApiAdminPaymongoOrdersRoute: typeof ApiAdminPaymongoOrdersRoute
@@ -1402,6 +1428,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiBrandPromotionsRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/game-download': {
+      id: '/api/game-download'
+      path: '/api/game-download'
+      fullPath: '/api/game-download'
+      preLoaderRoute: typeof ApiGameDownloadRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/game-installer': {
       id: '/api/game-installer'
       path: '/api/game-installer'
@@ -1519,6 +1552,13 @@ declare module '@tanstack/react-router' {
       path: '/api/admin/data'
       fullPath: '/api/admin/data'
       preLoaderRoute: typeof ApiAdminDataRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/admin/downloads': {
+      id: '/api/admin/downloads'
+      path: '/api/admin/downloads'
+      fullPath: '/api/admin/downloads'
+      preLoaderRoute: typeof ApiAdminDownloadsRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/api/admin/game-installer': {
@@ -1941,6 +1981,7 @@ const rootRouteChildren: RootRouteChildren = {
   AdminLoginRoute: AdminLoginRoute,
   ApiBanAppealsRoute: ApiBanAppealsRoute,
   ApiBrandPromotionsRoute: ApiBrandPromotionsRouteWithChildren,
+  ApiGameDownloadRoute: ApiGameDownloadRoute,
   ApiGameInstallerRoute: ApiGameInstallerRoute,
   ApiMailRoute: ApiMailRoute,
   ApiNotificationsRoute: ApiNotificationsRoute,
@@ -1949,6 +1990,7 @@ const rootRouteChildren: RootRouteChildren = {
   ApiAdminAdRevenueRoute: ApiAdminAdRevenueRoute,
   ApiAdminBugReportsRoute: ApiAdminBugReportsRoute,
   ApiAdminDataRoute: ApiAdminDataRoute,
+  ApiAdminDownloadsRoute: ApiAdminDownloadsRoute,
   ApiAdminGameInstallerRoute: ApiAdminGameInstallerRoute,
   ApiAdminPartnershipsRoute: ApiAdminPartnershipsRoute,
   ApiAdminPaymongoOrdersRoute: ApiAdminPaymongoOrdersRoute,

@@ -661,7 +661,17 @@ export function createMockService(): PlayFabService {
       },
       async getProductionLogs(): Promise<ProductionLog[]> {
         await randomDelay();
-        return [];
+        return MOCK_PRODUCTION_LOGS.filter((log) => log.playerId === mockSession?.playFabId);
+      },
+      async getPlaytimeMinutes(): Promise<number | null> {
+        await randomDelay();
+        const logs = MOCK_PRODUCTION_LOGS.filter((log) => log.playerId === mockSession?.playFabId);
+        const total = logs.reduce((minutes, log) => {
+          const text = String(log.runtime || '').toLowerCase();
+          return minutes + Number(text.match(/(\d+)\s*h/)?.[1] || 0) * 60
+            + Number(text.match(/(\d+)\s*m/)?.[1] || 0);
+        }, 0);
+        return total > 0 ? total : null;
       },
       async getProductionHistory() {
         readMockPlayerAdminState();

@@ -1818,7 +1818,7 @@ function PlayersPage() {
           onClick={() => setSelectedPlayer(null)}
         >
           <div
-            className="relative flex max-h-[94vh] w-full max-w-[1150px] flex-col overflow-hidden rounded-xl border border-white/[.08] bg-[#151c28] shadow-2xl"
+            className="admin-player-profile-modal relative flex max-h-[94vh] w-full max-w-[1150px] flex-col overflow-hidden rounded-xl border border-white/[.08] bg-[#151c28] shadow-2xl"
             onClick={(event) => event.stopPropagation()}
           >
             {/* CLOSE */}

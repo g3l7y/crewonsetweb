@@ -527,6 +527,12 @@ body {
   color: var(--crew-ink) !important;
 }
 
+/* The player profile's information column is content, not admin navigation. */
+.admin-theme .admin-player-profile-modal aside {
+  background: transparent !important;
+  color: inherit !important;
+}
+
 @media (max-width: 900px) {
   .marketing-theme .story-journey .story-chapters {
     grid-template-columns: 1fr;
