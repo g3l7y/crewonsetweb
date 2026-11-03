@@ -45,93 +45,6 @@ type Achievement = {
   careerName?: string;
 };
 
-const demoAchievements: Achievement[] = [
-  {
-    name: "Perfect Take",
-    description: "Earn a 100% production rating.",
-    date: "Aug 02, 2026",
-    unlocked: true,
-    icon: "⭐",
-    requirement: "Earn a perfect 100% production rating.",
-    levelUnlocked: 12,
-    unlocks: "Precision Framing techniques and the S-Rank scoring breakdown.",
-  },
-  {
-    name: "Box Office Hit",
-    description: "Score over 100,000 in one production.",
-    date: "Jul 19, 2026",
-    unlocked: true,
-    icon: "🎟️",
-    requirement: "Score more than 100,000 points in a single production.",
-    levelUnlocked: 18,
-    unlocks: "Advanced client-rating tactics and the Box Office bonus multiplier guide.",
-  },
-  {
-    name: "First Day on Set",
-    description: "Complete your first production.",
-    date: "Mar 14, 2025",
-    unlocked: true,
-    icon: "🎬",
-    requirement: "Complete your first production.",
-    levelUnlocked: 1,
-    unlocks: "On-set basics: call sheets, slate reading, and the production log system.",
-  },
-  {
-    name: "One More Take",
-    description: "Replay a production five times.",
-    date: "Jun 04, 2026",
-    unlocked: true,
-    icon: "🎥",
-    requirement: "Replay any production five times.",
-    levelUnlocked: 8,
-    unlocks: "Retake analysis knowledge and the shot-consistency training drills.",
-  },
-  {
-    name: "Production Veteran",
-    description: "Complete 100 productions.",
-    progress: "87/100 Productions",
-    percent: 87,
-    unlocked: false,
-    icon: "🎞️",
-    requirement: "Complete 100 productions.",
-    levelUnlocked: 40,
-    unlocks: "The Veteran department dossier and legacy production archive access.",
-  },
-  {
-    name: "Department Head",
-    description: "Reach Crew Level 50.",
-    progress: "27/50 Crew Level",
-    percent: 54,
-    unlocked: false,
-    icon: "👑",
-    requirement: "Reach Crew Level 50.",
-    levelUnlocked: 50,
-    unlocks: "Crew leadership knowledge and multi-department coordination playbook.",
-  },
-  {
-    name: "Legendary Crew",
-    description: "Work with ten legendary players.",
-    progress: "2/10 Legendary Crew",
-    percent: 20,
-    unlocked: false,
-    icon: "🤝",
-    requirement: "Work with ten legendary crew members.",
-    levelUnlocked: 35,
-    unlocks: "Legendary collaboration perks and the co-op scoring knowledge set.",
-  },
-  {
-    name: "Flawless Reel",
-    description: "Earn ten perfect scores.",
-    progress: "3/10 Perfect Scores",
-    percent: 30,
-    unlocked: false,
-    icon: "✨",
-    requirement: "Earn ten perfect production scores.",
-    levelUnlocked: 45,
-    unlocks: "The Flawless Reel masterclass and the perfect-run replay library.",
-  },
-];
-
 function formatShort(value?: string) {
   return value ?? "";
 }
@@ -170,7 +83,7 @@ function AlmanacPage() {
     levelUnlocked: 0,
     unlocks: "",
   })), [achievementsQuery.data]);
-  const achievements = mockMode ? demoAchievements : realAchievements;
+  const achievements = realAchievements;
 
   const shownAchievements = useMemo(() => {
     const filtered = achievements.filter((item) => {
