@@ -36,6 +36,7 @@ import type {
 } from './types';
 import { cosmeticCatalog, freeBodyItems } from '@/lib/demo/portal-shop';
 import { DEFAULT_PROFILE_PICTURE_URL } from '@/lib/profile-avatar';
+import { mapUserDataToAchievements } from './achievements';
 
 function randomDelay(): Promise<void> {
   return Promise.resolve();
@@ -638,7 +639,7 @@ export function createMockService(): PlayFabService {
       },
       async getAchievements(): Promise<Achievement[]> {
         await randomDelay();
-        return [...MOCK_ACHIEVEMENTS];
+        return [...MOCK_ACHIEVEMENTS, ...mapUserDataToAchievements({})];
       },
       async getKnowledge(): Promise<KnowledgeEntry[]> {
         await randomDelay();

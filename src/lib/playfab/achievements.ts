@@ -77,5 +77,18 @@ export function mapUserDataToAchievements(data: Record<string, string>): Achieve
         unlocked, isCompleted: unlocked, unlockedAt: null }];
     });
   });
-  return [...direct, ...careers];
+  // Keep the game's catalogue visible before a career save exists. Once careers
+  // exist, show their individual progress instead of generic locked duplicates.
+  const catalogue = careers.length ? careers : GAME_CAREER_ACHIEVEMENTS.map((definition) => ({
+    id: `career_${definition.id}`,
+    title: definition.title,
+    name: definition.title,
+    description: definition.description,
+    maxProgress: definition.goal,
+    progress: 0,
+    unlocked: false,
+    isCompleted: false,
+    unlockedAt: null,
+  }));
+  return [...direct, ...catalogue];
 }
