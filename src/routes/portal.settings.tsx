@@ -38,7 +38,7 @@ import { EMAIL_ERROR, USERNAME_ERROR, PASSWORD_ERROR, PASSWORD_INPUT_PATTERN, is
 import { DisplayThemeSwitcher } from "@/components/theme/display-theme-switcher";
 import { PasswordRecoveryModal } from "@/components/password-recovery-modal";
 import { isMockMode } from "@/lib/playfab/config";
-import { QUERY_KEYS, usePlayerProfile, useUpdateProfile } from "@/lib/playfab/hooks";
+import { QUERY_KEYS, usePlayerProfile, usePlayerProgression, useUpdateProfile } from "@/lib/playfab/hooks";
 import {
   bugCategories,
   adminNotificationsStore,
@@ -116,6 +116,14 @@ function SettingsPage() {
   const [section, setSection] = useState("Account");
   const mockMode = isMockMode();
   const profileQuery = usePlayerProfile();
+  const progressionQuery = usePlayerProgression();
+  const supportAvailable = Boolean(
+    progressionQuery.data && (
+      progressionQuery.data.level > 1 ||
+      progressionQuery.data.completedLevels.length > 0 ||
+      progressionQuery.data.campaignCompleted
+    ),
+  );
   const updateProfileMutation = useUpdateProfile();
   const queryClient = useQueryClient();
   const reportPlayerName = profileQuery.data?.username || profileQuery.data?.displayName || (mockMode ? BUG_REPORT_PLAYER_NAME : "Player");
@@ -124,10 +132,10 @@ function SettingsPage() {
   useEffect(() => {
     const requestedSection = new URLSearchParams(window.location.search).get("section");
 
-    if (requestedSection && sections.some((item) => item.name === requestedSection && !item.disabled)) {
+    if (requestedSection && sections.some((item) => item.name === requestedSection && (!item.disabled || (item.name === "Support" && supportAvailable)))) {
       setSection(requestedSection);
     }
-  }, []);
+  }, [supportAvailable]);
 
   const [account, setAccount] = useState<AccountData>(defaultAccount);
 
@@ -878,27 +886,30 @@ function SettingsPage() {
           =================================================== */}
 
           <aside className="settings-nav-card h-fit rounded-xl border border-white/[0.07] bg-[#151c29] p-2">
-            {sections.map((item) => (
-              <button
-                type="button"
-                key={item.name}
-                disabled={item.disabled}
-                onClick={() => setSection(item.name)}
-                aria-disabled={item.disabled || undefined}
-                title={item.disabled ? "Support reports are currently unavailable." : undefined}
-                className={`settings-nav-item flex w-full items-center gap-3 rounded-md px-4 py-3 text-left text-sm font-bold transition ${item.disabled ? "cursor-not-allowed opacity-40" : ""} ${
-                  section === item.name
-                    ? "settings-nav-item-active bg-[#0d121c] text-white shadow-sm"
-                    : "text-white/40 hover:bg-white/[0.04] hover:text-white/75"
-                }`}
-              >
-                <item.icon
-                  className={`size-4 ${section === item.name ? "text-yellow" : "text-white/30"}`}
-                />
+            {sections.map((item) => {
+              const disabled = item.disabled && !(item.name === "Support" && supportAvailable);
+              return (
+                <button
+                  type="button"
+                  key={item.name}
+                  disabled={disabled}
+                  onClick={() => setSection(item.name)}
+                  aria-disabled={disabled || undefined}
+                  title={disabled ? "Complete at least one game level to unlock Support." : undefined}
+                  className={`settings-nav-item flex w-full items-center gap-3 rounded-md px-4 py-3 text-left text-sm font-bold transition ${disabled ? "cursor-not-allowed opacity-40" : ""} ${
+                    section === item.name
+                      ? "settings-nav-item-active bg-[#0d121c] text-white shadow-sm"
+                      : "text-white/40 hover:bg-white/[0.04] hover:text-white/75"
+                  }`}
+                >
+                  <item.icon
+                    className={`size-4 ${section === item.name ? "text-yellow" : "text-white/30"}`}
+                  />
 
-                {item.name}
-              </button>
-            ))}
+                  {item.name}
+                </button>
+              );
+            })}
           </aside>
 
           {/* ===================================================
