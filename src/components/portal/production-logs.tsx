@@ -46,6 +46,24 @@ function cleanGameFeedback(value: string) {
   return value.replace(/<\/?color(?:=[^>]+)?>/gi, "").replace(/<\/?b>/gi, "").trim();
 }
 
+function FeedbackText({ value }: { value: string }) {
+  return cleanGameFeedback(value).split(/\r?\n/).map((line, index) => {
+    const text = line.trim();
+    const heading = /[A-Z]/.test(text) && text === text.toUpperCase();
+    const positive = /^\+(?:\s|\d)/.test(text);
+    const negative = /^[-−](?:\s|\d)/.test(text);
+    const tone = positive ? "review-gain" : negative ? "review-loss" : "";
+    return <span key={index} className={tone}>
+      {index > 0 && <br />}
+      {heading ? <strong>{line}</strong> : line.split(/(\b(?:Income|Spent|Reward):\s*[\d,.]+|(?<![\w\d])[+−-]\d[\d,.]*|^[A-Z][A-Z -]+:)/g).map((part, n) => {
+        if (/^(Income:|Reward:|\+\d)/i.test(part)) return <strong key={n} className="review-gain">{part}</strong>;
+        if (/^(Spent:|[-−]\d)/i.test(part)) return <strong key={n} className="review-loss">{part}</strong>;
+        return /^[A-Z][A-Z -]+:$/.test(part) ? <strong key={n}>{part}</strong> : part;
+      })}
+    </span>;
+  });
+}
+
 function getPhaseFeedback(details: Record<string, unknown>, camel: string, snake: string): string {
   const phases = details["phases"] && typeof details["phases"] === "object" ? details["phases"] as Record<string, unknown> : {};
   const phase = phases[camel] ?? phases[snake];
@@ -65,7 +83,7 @@ function getDecisionNotes(value: string): string {
     if (heading === "your next step") { section = "next"; return false; }
     if (heading === "budget review") { section = "budget"; return false; }
     if (section !== "decision" || /^recorded takes\s*:/i.test(line)) return false;
-    return Boolean(line);
+    return Boolean(line) && !/^(?:contract\s+)?(?:passed|failed)[.!:]?$/i.test(line);
   }).join("\n");
 }
 
@@ -168,7 +186,7 @@ export function ProductionLogs() {
                         {score != null && <span className="float-right ml-2 text-sm tabular-nums">{scoreFormat.format(score)}/100</span>}
                       </summary>
                       <p className="max-w-prose whitespace-pre-line px-5 pb-5 text-base leading-7">
-                        {review ? cleanGameFeedback(review) : "No written feedback was recorded."}
+                        {review ? <FeedbackText value={review} /> : "No written feedback was recorded."}
                       </p>
                     </details>
                   ))}
@@ -183,11 +201,11 @@ export function ProductionLogs() {
                   const trackingAvailable = budget?.["available"];
                   const hasBudgetInfo = budget && ([opening, income, spent, remaining, trackingComplete, trackingAvailable].some((item) => item != null) || Boolean(budget["feedback"]));
                   return <div className="grid items-start gap-4">
-                    {hasBudgetInfo && <div className="rounded-lg border border-navy/10 p-5"><p className="text-[10px] font-black uppercase text-navy/50">Budget Review</p>{openLog.bCoinsEarned != null && <p className="mt-1 text-sm font-bold text-navy">This submission: +{openLog.bCoinsEarned.toLocaleString()} B-Coins</p>}{typeof budget?.["feedback"] === "string" && budget["feedback"].trim() ? <p className="mt-1 max-w-prose whitespace-pre-line text-sm leading-7 text-navy/75">{cleanGameFeedback(budget["feedback"])}</p> : <p className="mt-1 text-sm text-navy/75">{[opening, income, spent, remaining].some((item) => item != null) ? `Opening balance: ${opening ?? "—"} · Income: ${income ?? "—"} · Spent: ${spent ?? "—"} · Remaining: ${remaining ?? "—"}` : "Budget information recorded."}</p>}{trackingAvailable === false && <p className="mt-1 text-sm text-navy/65">Budget tracking unavailable.</p>}{typeof trackingComplete === "boolean" && <p className="mt-1 text-sm text-navy/65">Tracking {trackingComplete ? "complete" : "incomplete"}.</p>}</div>}
-                    {openLog.result && <div className="rounded-lg border border-navy/10 p-5"><p className="text-[10px] font-black uppercase text-navy/50">Client Decision</p><p className="mt-1 text-sm font-bold text-navy">{openLog.result}</p>{getDecisionNotes(openLog.summary) && <p className="mt-2 max-w-prose whitespace-pre-line text-sm leading-7 font-normal text-navy/75">{getDecisionNotes(openLog.summary)}</p>}</div>}
+                    {hasBudgetInfo && <div className="rounded-lg border border-navy/10 p-5"><p className="text-[10px] font-black uppercase text-navy/50">Budget Review</p>{openLog.bCoinsEarned != null && <p className="mt-1 text-sm font-bold text-navy">This submission: <strong className={openLog.bCoinsEarned < 0 ? "review-loss" : "review-gain"}>{openLog.bCoinsEarned >= 0 ? "+" : ""}{openLog.bCoinsEarned.toLocaleString()} B-Coins</strong></p>}{typeof budget?.["feedback"] === "string" && budget["feedback"].trim() ? <p className="mt-1 max-w-prose whitespace-pre-line text-sm leading-7 text-navy/75">{<FeedbackText value={budget["feedback"].replace(/^BUDGET REVIEW\s*\n/i, "")} />}</p> : <p className="mt-1 text-sm text-navy/75">{[opening, income, spent, remaining].some((item) => item != null) ? `Opening balance: ${opening ?? "—"} · Income: ${income ?? "—"} · Spent: ${spent ?? "—"} · Remaining: ${remaining ?? "—"}` : "Budget information recorded."}</p>}{trackingAvailable === false && <p className="mt-1 text-sm text-navy/65">Budget tracking unavailable.</p>}{typeof trackingComplete === "boolean" && <p className="mt-1 text-sm text-navy/65">Tracking {trackingComplete ? "complete" : "incomplete"}.</p>}</div>}
+                    {openLog.result && <div className="rounded-lg border border-navy/10 p-5"><p className="text-[10px] font-black uppercase text-navy/50">Client Decision</p><p className="mt-1 text-sm font-bold text-navy">{<strong className={openLog.result === "passed" ? "review-gain" : openLog.result === "failed" ? "review-loss" : ""}>{["passed", "failed"].includes(openLog.result) ? "CONTRACT " + openLog.result.toUpperCase() : openLog.result}</strong>}</p>{getDecisionNotes(openLog.summary) && <p className="mt-2 max-w-prose whitespace-pre-line text-sm leading-7 font-normal text-navy/75"><FeedbackText value={getDecisionNotes(openLog.summary)} /></p>}</div>}
                   </div>;
                 })()}
-                {openLog.nextStep && <div className="rounded-lg border border-coral/25 bg-coral/[.06] p-3"><p className="text-[10px] font-black uppercase text-coral">Your Next Step</p><p className="mt-1 text-sm text-navy/75">{openLog.nextStep}</p></div>}
+                {openLog.nextStep && <div className="rounded-lg border border-coral/25 bg-coral/[.06] p-3"><p className="text-[10px] font-black uppercase text-coral">Your Next Step</p><p className="mt-1 text-sm text-navy/75"><FeedbackText value={openLog.nextStep} /></p></div>}
               </section>
             </div>
           </div>
