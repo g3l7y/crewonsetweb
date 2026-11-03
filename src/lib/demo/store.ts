@@ -712,6 +712,8 @@ export type PartnershipApplication = {
   packageName?: string;
   packagePlacement?: string;
   packageReporting?: string;
+  expectedClicks?: { min: number; max: number };
+  expectedVisits?: { min: number; max: number };
   deliveryAdjustments?: Array<{ days: number; reason: string; recordedAt: string; revisedEndAt: string }>;
   deliveryMakeGoodDays?: number;
   email: string;
@@ -839,6 +841,8 @@ export type ActiveAd = {
   packageName?: string;
   packagePlacement?: string;
   packageReporting?: string;
+  expectedClicks?: { min: number; max: number };
+  expectedVisits?: { min: number; max: number };
   packageDurationDays?: number;
   brandPromotionUrl?: string;
   deliveryAdjustments?: Array<{ days: number; reason: string; recordedAt: string; revisedEndAt: string }>;

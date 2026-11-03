@@ -4,6 +4,9 @@ import {
   isPartnershipCheckoutPaid,
   markPartnershipPaymentPaid,
 } from '@/lib/partnership-payments';
+import { WEBSITE_DATA_KEYS, getWebsiteRecords } from '@/lib/playfab/websiteData';
+import type { PartnershipApplication } from '@/lib/playfab/types';
+import { getBrandPromotionPackage } from '@/lib/brand-promotion-packages';
 
 
 
@@ -34,6 +37,14 @@ export const Route = createFileRoute('/api/paymongo/brand-status')({
           if (!payment) {
             return Response.json({ error: 'Payment reference not found.' }, { status: 404 });
           }
+          const applications = await getWebsiteRecords<PartnershipApplication>(WEBSITE_DATA_KEYS.partnerships, playfabSecret);
+          const application = applications.find((item) => item.id === payment.applicationId);
+          const selectedPackage = getBrandPromotionPackage(application?.packageId);
+          const packageReceipt = application ? {
+            packageName: application.packageName || selectedPackage?.name,
+            expectedClicks: application.expectedClicks || selectedPackage?.expectedClicks,
+            expectedVisits: application.expectedVisits || selectedPackage?.expectedVisits,
+          } : {};
 
           if (payment.status === 'failed') {
             return Response.json({ success: true, status: 'Failed' });
@@ -44,7 +55,7 @@ export const Route = createFileRoute('/api/paymongo/brand-status')({
             if (!result.updated && !result.alreadyPaid) {
               return Response.json({ error: 'Payment was received but the application could not be updated.' }, { status: 500 });
             }
-            return Response.json({ success: true, status: 'Paid', amount: payment.amountInCentavos / 100 });
+            return Response.json({ success: true, status: 'Paid', amount: payment.amountInCentavos / 100, ...packageReceipt });
           }
 
           const paymongoSecret = getSecret('PAYMONGO_SECRET_KEY');
@@ -70,6 +81,7 @@ export const Route = createFileRoute('/api/paymongo/brand-status')({
             success: true,
             status: 'Paid',
             amount: payment.amountInCentavos / 100,
+            ...packageReceipt,
           });
         } catch (error) {
           console.error('[PayMongo] Brand payment confirmation error:', error);
