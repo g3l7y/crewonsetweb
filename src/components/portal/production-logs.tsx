@@ -112,25 +112,12 @@ export function ProductionLogs() {
   const logsQuery = useProductionHistory();
   const [openLog, setOpenLog] = useState<ProductionLog | null>(null);
   const logs = useMemo(() => (logsQuery.data?.logs ?? []).map(mapGameProduction), [logsQuery.data]);
-  const careers = logsQuery.data?.careers ?? [];
 
   return (
     <section className="production-history-panel mt-7 almanac-content-panel p-4 sm:p-6">
       <div className="almanac-content-body">
         <h2 className="section-title text-3xl text-navy sm:text-4xl">Production Logs</h2>
-        <div className="production-history-heading mt-1 flex items-center justify-between gap-3 text-sm text-navy"><p>Saved career progress and completed attempts from Crew On Set!</p><button type="button" className="rounded border px-3 py-2 font-bold" disabled={logsQuery.isFetching} onClick={() => void logsQuery.refetch()}>{logsQuery.isFetching ? "Refreshing…" : "Refresh"}</button></div>
-        {careers.length > 0 && <div className="production-career-progress mt-5 space-y-3">
-          <h3 className="text-sm font-black uppercase">Current saved progress</h3>
-          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">{careers.map((career) => <article key={career.id} className="rounded-lg border border-navy/20 p-4">
-            <h4 className="font-bold">{career.name || "Saved career"}</h4>
-            <p className="mt-1 text-sm">Level {career.level} · {career.balance == null ? "Budget not recorded" : `${career.balance.toLocaleString()} B-Coins`}</p>
-            <p className="mt-2 text-sm">{career.activeLevel != null ? `Level ${career.activeLevel} attempt in progress` : "Saved checkpoint"}</p>
-            <p className="text-xs">{career.completedAttempts} completed attempts recorded{career.takes != null ? ` · ${career.takes} takes in current attempt` : ""}</p>
-            <p className="mt-2 text-xs">Checkpoint saved: {formatDate(career.updatedUtc)}</p>
-            {career.transactions.length > 0 && <details className="mt-3 text-sm"><summary className="cursor-pointer font-bold">Current attempt transactions</summary><ul className="mt-2 space-y-1">{career.transactions.map((transaction, index) => <li key={index}>{transaction.item || transaction.category}: {transaction.amount > 0 ? "+" : ""}{transaction.amount.toLocaleString()} B-Coins</li>)}</ul></details>}
-          </article>)}</div>
-          <p className="text-xs">A saved level is current progress. Scores, ranks and feedback appear only when the game records a completed attempt.</p>
-        </div>}
+        <div className="production-history-heading mt-1 flex items-center justify-between gap-3 text-sm text-navy"><p>Completed production attempts from Crew On Set!</p><button type="button" className="rounded border px-3 py-2 font-bold" disabled={logsQuery.isFetching} onClick={() => void logsQuery.refetch()}>{logsQuery.isFetching ? "Refreshing…" : "Refresh"}</button></div>
         <h3 className="production-history-heading mt-5 text-sm font-black uppercase">Completed production history</h3>
         <div className="player-account-scroll-list almanac-content-scroll production-logs-list admin-table-wrap mt-5 border-navy/10">
           <table className="admin-table">
@@ -150,7 +137,7 @@ export function ProductionLogs() {
               ))}
               {logsQuery.isLoading && <tr><td colSpan={8} className="py-8 text-center">Loading production history…</td></tr>}
               {logsQuery.isError && <tr><td colSpan={8} className="py-8 text-center text-red-700">Couldn't load production history. Please try again.</td></tr>}
-              {!logsQuery.isLoading && !logsQuery.isError && logs.length === 0 && <tr><td colSpan={8} className="py-10 text-center text-navy/55">{careers.length ? "Your career progress is saved, but there are no completed productions yet. Finish a production in the game to see your results here." : "No completed productions yet. Sign into the same account in the game, then refresh to check again."}</td></tr>}
+              {!logsQuery.isLoading && !logsQuery.isError && logs.length === 0 && <tr><td colSpan={8} className="py-10 text-center text-navy/55">No completed productions yet. Finish a production in the game, then refresh to see your results here.</td></tr>}
             </tbody>
           </table>
         </div>
