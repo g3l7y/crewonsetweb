@@ -31,6 +31,7 @@ import {
   type GameBuild,
 } from "@/lib/demo/store";
 import { downloadMockInstaller, getInstallerDownloadUrl } from "@/lib/game-download";
+import { recordMockGameDownload } from "@/lib/mock-game-download-tracking";
 import { isMockMode } from "@/lib/playfab/config";
 
 function DownloadPage() {
@@ -58,7 +59,9 @@ function DownloadPage() {
   });
   const currentBuild = mockMode ? gameBuilds[0] : publishedBuildQuery.data;
   const [steps] = installStepsStore.useStore();
-  const downloadHref = getInstallerDownloadUrl(currentBuild?.downloadUrl);
+  const downloadHref = mockMode
+    ? getInstallerDownloadUrl(currentBuild?.downloadUrl)
+    : "/api/game-download?source=public";
   const publishedVersion =
     currentBuild?.version?.trim() ||
     buildInfo?.version?.trim().replace(/^version\s+/i, "");
@@ -98,15 +101,17 @@ function DownloadPage() {
               href={downloadHref}
               download={currentBuild?.installerFileName || true}
               onClick={(event) => {
-                if (!downloadHref.startsWith("mock-installer://")) return;
+                if (!mockMode) return;
+                if (!downloadHref.startsWith("mock-installer://")) {
+                  recordMockGameDownload();
+                  return;
+                }
                 event.preventDefault();
-                void downloadMockInstaller(
-                  currentBuild?.installerFileName || "CrewOnSetInstaller.exe",
-                ).catch((error: unknown) =>
-                  window.alert(
+                void downloadMockInstaller(currentBuild?.installerFileName || "CrewOnSetInstaller.exe")
+                  .then(recordMockGameDownload)
+                  .catch((error: unknown) => window.alert(
                     error instanceof Error ? error.message : "Installer download failed.",
-                  ),
-                );
+                  ));
               }}
               className="cta-primary mt-8 inline-flex sm:mt-10"
             >

@@ -62,11 +62,14 @@ import {
   usePlayerLoadout,
   usePlayerProgression,
   useProductionLogs,
+  usePlayerPlaytimeMinutes,
+  useProgressLeaderboard,
 } from "@/lib/playfab/hooks";
 import { isMockMode } from "@/lib/playfab/config";
 import { sortNewestFirst } from "@/lib/validation";
 import { achievementEmoji } from "@/lib/achievement-emoji";
 import { hasRecordedGameProgress } from "@/lib/playfab/progression";
+import { recordMockGameDownload } from "@/lib/mock-game-download-tracking";
 
 const Avatar3DPreview = lazy(() => import("@/components/portal/avatar-3d-preview").then((module) => ({ default: module.Avatar3DPreview })));
 
@@ -105,6 +108,17 @@ const badges = [
     unlocked: false,
   },
 ];
+
+function parseRuntimeMinutes(value: unknown): number {
+  const runtime = String(value || "").toLowerCase();
+  const hours = Number(runtime.match(/(\d+)\s*h/)?.[1] || 0);
+  const minutes = Number(runtime.match(/(\d+)\s*m/)?.[1] || 0);
+  return hours * 60 + minutes;
+}
+
+function formatPlaytime(minutes: number): string {
+  return `${Math.floor(minutes / 60)}h ${minutes % 60}m`;
+}
 
 const career = [
   { label: "Productions Completed", value: "87", icon: Film },
@@ -185,12 +199,16 @@ function PlayerDashboardPage() {
   const progressionQuery = usePlayerProgression();
   const achievementsQuery = useAchievements();
   const productionLogsQuery = useProductionLogs();
+  const playtimeStatisticQuery = usePlayerPlaytimeMinutes();
+  const progressLeaderboardQuery = useProgressLeaderboard();
   const realNotificationsQuery = useNotifications();
   const [gameBuilds] = gameBuildStore.useStore();
   const [brandUpdates] = brandUpdatesStore.useStore();
   const [demoNotifications] = notificationsStore.useStore();
   const currentBuild = gameBuilds[0];
-  const playNowHref = getInstallerDownloadUrl(currentBuild?.downloadUrl);
+  const playNowHref = mockMode
+    ? getInstallerDownloadUrl(currentBuild?.downloadUrl)
+    : "/api/game-download?source=player";
   const featuredBrandUpdate = brandUpdates.find(
     (update) => !update.expiresAt || new Date(update.expiresAt).getTime() > Date.now(),
   );
@@ -211,8 +229,18 @@ function PlayerDashboardPage() {
   const xpToNextLevel = progressionQuery.data?.xpToNextLevel ?? 0;
   const progressPercent =
     xpToNextLevel > 0 ? Math.min(100, Math.round((currentXp / xpToNextLevel) * 100)) : 0;
+  const productionLogs = productionLogsQuery.data ?? [];
+  const recordedPlaytime = productionLogs.reduce((total, log) => total + parseRuntimeMinutes(log.runtime), 0);
+  const playtimeMinutes = recordedPlaytime > 0 ? recordedPlaytime : playtimeStatisticQuery.data;
+  const leaderboardEntry = progressLeaderboardQuery.data?.find(
+    (entry) => entry.playFabId === profileQuery.data?.playFabId || entry.playFabId === profileQuery.data?.id,
+  );
   const dashboardCareer = mockMode
-    ? career
+    ? career.map((item) => item.label === "Total Play Time"
+      ? { ...item, value: playtimeMinutes == null ? "—" : formatPlaytime(playtimeMinutes) }
+      : item.label === "Global Rank"
+        ? { ...item, value: leaderboardEntry ? `#${leaderboardEntry.position.toLocaleString()}` : "—" }
+        : item)
     : [
         {
           label: "Productions Completed",
@@ -224,7 +252,11 @@ function PlayerDashboardPage() {
           value: String(productionLogsQuery.data?.length ?? 0),
           icon: Play,
         },
-        { label: "Total Play Time", value: "—", icon: Clock3 },
+        {
+          label: "Total Play Time",
+          value: playtimeMinutes == null ? "—" : formatPlaytime(playtimeMinutes),
+          icon: Clock3,
+        },
         {
           label: "Best Rating",
           value: productionLogsQuery.data?.length
@@ -236,7 +268,11 @@ function PlayerDashboardPage() {
             : "—",
           icon: Star,
         },
-        { label: "Global Rank", value: "—", icon: Hash },
+        {
+          label: "Global Rank",
+          value: leaderboardEntry ? `#${leaderboardEntry.position.toLocaleString()}` : "—",
+          icon: Hash,
+        },
       ];
   const dashboardBadges = mockMode
     ? badges
@@ -460,15 +496,17 @@ function PlayerDashboardPage() {
               href={playNowHref}
               download={currentBuild?.installerFileName || true}
               onClick={(event) => {
-                if (!playNowHref.startsWith("mock-installer://")) return;
+                if (!mockMode) return;
+                if (!playNowHref.startsWith("mock-installer://")) {
+                  recordMockGameDownload();
+                  return;
+                }
                 event.preventDefault();
-                void downloadMockInstaller(
-                  currentBuild?.installerFileName || "CrewOnSetInstaller.exe",
-                ).catch((error: unknown) =>
-                  window.alert(
+                void downloadMockInstaller(currentBuild?.installerFileName || "CrewOnSetInstaller.exe")
+                  .then(recordMockGameDownload)
+                  .catch((error: unknown) => window.alert(
                     error instanceof Error ? error.message : "Installer download failed.",
-                  ),
-                );
+                  ));
               }}
               className="latest-update-play-button mt-7 inline-flex items-center gap-2 rounded-md bg-coral px-5 py-3 text-sm font-black text-white transition hover:bg-coral-dark"
             >

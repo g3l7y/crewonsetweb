@@ -1,5 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { getGameInstallerMetadata } from "@/lib/playfab/game-installer-files";
+import { recordGameDownload, type GameDownloadSource } from "@/lib/game-download-tracking";
 
 export const Route = createFileRoute("/api/game-installer")({
   server: {
@@ -31,6 +32,12 @@ export const Route = createFileRoute("/api/game-installer")({
           });
           const contentLength = fileResponse.headers.get("content-length");
           if (contentLength) headers.set("Content-Length", contentLength);
+          const source: GameDownloadSource = url.searchParams.get("source") === "player" ? "player" : "public";
+          try {
+            await recordGameDownload(source);
+          } catch (error) {
+            console.error("[API] game download could not be recorded:", error);
+          }
           return new Response(fileResponse.body, { status: 200, headers });
         } catch (error) {
           console.error("[API] installer download error:", error);

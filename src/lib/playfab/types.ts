@@ -1078,6 +1078,8 @@ export interface PlayerService {
   getAchievements(): Promise<Achievement[]>;
   getKnowledge(): Promise<KnowledgeEntry[]>;
   getProductionLogs(): Promise<ProductionLog[]>;
+  /** Recorded PlayFab play-time statistic, in minutes, when available. */
+  getPlaytimeMinutes(): Promise<number | null>;
   getTransactions(): Promise<Transaction[]>;
   getFriends(): Promise<FriendInfo[]>;
   getNotifications(): Promise<PlayerNotification[]>;
