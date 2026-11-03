@@ -4,6 +4,7 @@ import {
   Link,
   createRootRouteWithContext,
   useRouter,
+  useRouterState,
   HeadContent,
   Scripts,
 } from "@tanstack/react-router";
@@ -11,6 +12,7 @@ import { useEffect, type ReactNode } from "react";
 
 import appCss from "../styles.css?url";
 import { reportLovableError } from "../lib/lovable-error-reporting";
+import { applyDisplayTheme, getDisplayTheme } from "@/components/theme/display-theme-switcher";
 
 function NotFoundComponent() {
   return (
@@ -107,17 +109,6 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
 });
 
 function RootShell({ children }: { children: ReactNode }) {
-  useEffect(() => {
-    const path = window.location.pathname;
-    const isAdmin = path === "/admin" || path.startsWith("/admin/");
-    const isPlayer = path === "/portal" || path.startsWith("/portal/");
-    const scope = isAdmin ? "admin" : "player";
-    const key = isAdmin ? "cos.display.admin" : "cos.display.player";
-    const stored = window.localStorage.getItem(key);
-    document.documentElement.dataset["displayThemeScope"] = scope;
-    document.documentElement.dataset["displayTheme"] = isPlayer || !isAdmin ? (stored === "dark" && isPlayer ? "dark" : "light") : stored === "light" ? "light" : "dark";
-  }, []);
-
   return (
     <html lang="en">
       <head>
@@ -131,11 +122,33 @@ function RootShell({ children }: { children: ReactNode }) {
   );
 }
 
+function DisplayThemeInitializer() {
+  const pathname = useRouterState({ select: (state) => state.location.pathname });
+
+  useEffect(() => {
+    const isAdmin = pathname === "/admin" || pathname.startsWith("/admin/");
+    const isPlayer = pathname === "/portal" || pathname.startsWith("/portal/");
+    if (isAdmin) {
+      applyDisplayTheme(getDisplayTheme("admin"), "admin");
+    } else if (isPlayer) {
+      applyDisplayTheme(getDisplayTheme("player"), "player");
+    } else {
+      // Public and login pages use the light site theme without changing the
+      // player's saved preference. That preference is restored after login.
+      document.documentElement.dataset["displayThemeScope"] = "player";
+      document.documentElement.dataset["displayTheme"] = "light";
+    }
+  }, [pathname]);
+
+  return null;
+}
+
 function RootComponent() {
   const { queryClient } = Route.useRouteContext();
 
   return (
     <QueryClientProvider client={queryClient}>
+      <DisplayThemeInitializer />
       {/* Required: nested routes render here. Removing <Outlet /> breaks all child routes. */}
       <Outlet />
     </QueryClientProvider>
