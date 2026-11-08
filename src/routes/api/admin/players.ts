@@ -508,7 +508,6 @@ async function loadProgressLeaderboard(secretKey: string): Promise<ProgressLeade
             GetPlayerProfile: true,
             GetPlayerStatistics: true,
             GetUserData: true,
-            ProfileConstraints: { ShowAvatarUrl: true },
           },
         }, secretKey);
 
@@ -750,12 +749,14 @@ export const Route = createFileRoute('/api/admin/players')({
       GET: async ({ request }) => {
         const url = new URL(request.url);
         const leaderboardView = url.searchParams.get('view') === 'leaderboard';
-        const session = await validateSessionFromRequest(request, { requireAdmin: !leaderboardView });
+        const careerView = url.searchParams.get('view') === 'career';
+        const session = await validateSessionFromRequest(request, { requireAdmin: !leaderboardView && !careerView });
         if (!session) return unauthorizedSessionResponse();
         const playerId = url.searchParams.get('id');
         const secretKey = getSecretKey();
         if (!secretKey) return Response.json({ success: false, error: 'PLAYFAB_SECRET_KEY is not configured on the server.' }, { status: 503 });
         try {
+          if (careerView) return Response.json({ success: true, data: await loadPlayerListMetrics(session.playFabId, secretKey) });
           if (leaderboardView) return Response.json({ success: true, data: await loadProgressLeaderboard(secretKey) });
           if (playerId) return Response.json({ success: true, data: await loadRealPlayerDetails(playerId, secretKey) });
           return Response.json({ success: true, data: await loadAllPlayers(secretKey, session.playFabId) });

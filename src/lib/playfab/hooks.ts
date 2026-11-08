@@ -323,13 +323,37 @@ export function useLeaderboard(statistic: string, maxResults = 100) {
 
 export function useProgressLeaderboard() {
   const { data: session } = useSession();
-  return useQuery<ProgressLeaderboardEntry[]>({
-    queryKey: QUERY_KEYS.leaderboard("production-progress"),
+  const profile = usePlayerProfile();
+  const progression = usePlayerProgression();
+  const logs = useProductionLogs();
+  const query = useQuery<ProgressLeaderboardEntry[]>({
+    queryKey: [...QUERY_KEYS.leaderboard("production-progress"), session?.playFabId],
     queryFn: () => getPlayFabService().leaderboard.getProgress(),
     enabled: !!session,
     staleTime: 60 * 1000,
     refetchInterval: 2 * 60 * 1000,
   });
+  const ownerId = profile.data?.playFabId || session?.playFabId;
+  const recorded = (logs.data ?? []).filter(log => typeof (log.overallScore ?? log.score) === 'number' && Number.isFinite(log.overallScore ?? log.score));
+  const entries = [...(query.data ?? [])];
+  if (session?.role === 'player' && ownerId && recorded.length) {
+    const owner: ProgressLeaderboardEntry = {
+      playFabId: ownerId,
+      displayName: profile.data?.username || profile.data?.displayName || session?.displayName || 'You',
+      avatarUrl: profile.data?.avatarUrl ?? undefined,
+      position: 0,
+      level: progression.data?.level ?? 1,
+      totalXp: progression.data?.totalXp ?? 0,
+      productions: recorded.length,
+      averageScore: recorded.reduce((sum, log) => sum + (log.overallScore ?? log.score ?? 0), 0) / recorded.length,
+      passRate: recorded.filter(log => log.success).length / recorded.length * 100,
+    };
+    const index = entries.findIndex(entry => entry.playFabId === ownerId);
+    if (index >= 0) entries[index] = owner;
+    else entries.push(owner);
+  }
+  entries.sort((a, b) => b.averageScore - a.averageScore || b.productions - a.productions || b.passRate - a.passRate || a.playFabId.localeCompare(b.playFabId));
+  return { ...query, data: entries.map((entry, index) => ({ ...entry, position: index + 1 })) };
 }
 
 export function useLeaderboardAroundPlayer(statistic: string) {

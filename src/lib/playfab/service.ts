@@ -306,21 +306,10 @@ function createRealService(): PlayFabService {
         return getProductionLogs(ticket);
       },
       getPlaytimeMinutes: async () => {
-        const ticket = await resolveSessionTicket();
-        if (!ticket) return null;
-        try {
-          const response = await playfabClientApi<{
-            Statistics?: Array<{ StatisticName?: string; Value?: number }>;
-          }>('/Client/GetPlayerStatistics', {}, ticket);
-          const statistic = response.Statistics?.find(
-            (item) => String(item.StatisticName || '').toLowerCase() === 'playtime_minutes',
-          );
-          return typeof statistic?.Value === 'number' && Number.isFinite(statistic.Value)
-            ? statistic.Value
-            : null;
-        } catch {
-          return null;
-        }
+        const response = await fetch('/api/admin/players?view=career', { credentials: 'include', cache: 'no-store' });
+        if (!response.ok) throw new Error('Could not load recorded play time.');
+        const result = await response.json() as { data?: { playtimeMinutes?: number | null } };
+        return result.data?.playtimeMinutes ?? null;
       },
       getProductionHistory: async () => {
         const ticket = await resolveSessionTicket();
