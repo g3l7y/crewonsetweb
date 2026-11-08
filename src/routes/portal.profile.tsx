@@ -165,10 +165,6 @@ function CrewProfilePage() {
   const recentTransactions = useMemo<ProfileTransaction[]>(() => {
     const entries = mockMode
       ? transactions
-          .filter((transaction) =>
-            transaction.kind !== "purchase" ||
-            demoOwnedItems.some((item) => item.name === transaction.label)
-          )
           .map((transaction) => ({
             id: transaction.id,
             label: transaction.label,
@@ -188,8 +184,8 @@ function CrewProfilePage() {
 
     return entries
       .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
-      .slice(0, 6);
-  }, [demoOwnedItems, mockMode, transactions, transactionsQuery.data]);
+      .slice(0, 5);
+  }, [mockMode, transactions, transactionsQuery.data]);
 
   const [profileImage, setProfileImage] = useState(
     DEFAULT_PROFILE_PICTURE_URL
@@ -764,7 +760,7 @@ function CrewProfilePage() {
               </div>
 
               <Link
-                href="/portal/shop"
+                href="/portal/shop?view=transactions"
                 className="text-xs font-black text-coral transition hover:text-white"
               >
                 GO TO SHOP →
