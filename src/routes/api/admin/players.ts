@@ -6,7 +6,7 @@ import { PLAYFAB_DATA_KEYS } from '@/lib/playfab/constants';
 import { deletePlayerEmailIdentity } from '@/lib/playfab/email-login-identities';
 import { sendPlayerBanNoticeEmail } from '@/lib/account-email';
 import { getCcoinCurrencyCode } from '@/lib/playfab/economy';
-import { mapDataToAchievements } from '@/lib/playfab/achievements';
+import { mapUserDataToAchievements } from '@/lib/playfab/achievements';
 import { mapDataToProductionLogs, mapUserDataToProductionLogs } from '@/lib/playfab/productions';
 import { getHighestGameCareerLevel } from '@/lib/playfab/game-careers';
 import {
@@ -314,7 +314,7 @@ function mapTransactions(orders: PayMongoOrder[]): AdminPlayerTransaction[] {
 
 function buildActivity(
   productionLogs: ReturnType<typeof mapDataToProductionLogs>,
-  achievements: ReturnType<typeof mapDataToAchievements>,
+  achievements: ReturnType<typeof mapUserDataToAchievements>,
   transactions: AdminPlayerTransaction[],
 ): AdminPlayerActivity[] {
   const activities: Array<AdminPlayerActivity & { sortAt: number }> = [];
@@ -525,11 +525,11 @@ async function loadProgressLeaderboard(secretKey: string): Promise<ProgressLeade
         const avatarUrl = String(rawMetadata.avatarUrl || profile['AvatarUrl'] || '');
 
         entries.push({
-          playFabId: player.playFabId,
+          playFabId: String(profile['PlayerId'] || player.playFabId).trim().toUpperCase(),
           displayName: String(rawMetadata.username || profile['DisplayName'] || player.displayName || 'Player'),
           avatarUrl: isManagedProfileAvatarUrl(avatarUrl) ? avatarUrl : DEFAULT_PROFILE_PICTURE_URL,
           position: 0,
-          level: progression.level,
+          level: Math.max(progression.level, getRecordedCareerLevel(userData) ?? 1),
           productions: logs.length,
           averageScore: Math.round(score * 10) / 10,
           passRate: Math.round((passCount / logs.length) * 100),
@@ -610,7 +610,7 @@ async function loadRealPlayerDetails(playerId: string, secretKey: string): Promi
   const careerLevel = getRecordedCareerLevel(userData);
   const hasRecordedLevel = productionLogs.some((log) => Number(log.level) >= 1) || completedLevels.length > 0 ||
     progression.totalXp > 0 || progression.level > 1 || progression.highestLevelUnlocked > 1 || (careerLevel ?? 1) > 1;
-  const achievements = mapDataToAchievements(parseJson<unknown>(getDataValue(userData, PLAYFAB_DATA_KEYS.achievements), []));
+  const achievements = mapUserDataToAchievements(Object.fromEntries(Object.keys(userData).map(key => [key, getDataValue(userData, key)])));
   const orders = await getWebsiteRecords<PayMongoOrder>(WEBSITE_DATA_KEYS.paymongoOrders, secretKey);
   const transactions = [
     ...mapTransactions(orders.filter((order) => order.playFabId === playerId)),

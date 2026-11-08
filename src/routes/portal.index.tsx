@@ -233,7 +233,7 @@ function PlayerDashboardPage() {
   const recordedPlaytime = productionLogs.reduce((total, log) => total + parseRuntimeMinutes(log.runtime), 0);
   const playtimeMinutes = recordedPlaytime > 0 ? recordedPlaytime : playtimeStatisticQuery.data;
   const leaderboardEntry = progressLeaderboardQuery.data?.find(
-    (entry) => entry.playFabId === profileQuery.data?.playFabId || entry.playFabId === profileQuery.data?.id,
+    (entry) => entry.playFabId.trim().toUpperCase() === (profileQuery.data?.playFabId || profileQuery.data?.id)?.trim().toUpperCase(),
   );
   const dashboardCareer = mockMode
     ? career.map((item) => item.label === "Total Play Time"

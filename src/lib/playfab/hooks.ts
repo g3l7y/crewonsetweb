@@ -333,9 +333,12 @@ export function useProgressLeaderboard() {
     staleTime: 60 * 1000,
     refetchInterval: 2 * 60 * 1000,
   });
-  const ownerId = profile.data?.playFabId || session?.playFabId;
+  const ownerId = (session?.playFabId || profile.data?.playFabId)?.trim().toUpperCase();
   const recorded = (logs.data ?? []).filter(log => typeof (log.overallScore ?? log.score) === 'number' && Number.isFinite(log.overallScore ?? log.score));
-  const entries = [...(query.data ?? [])];
+  const entries = Array.from(new Map((query.data ?? []).map(entry => {
+    const playFabId = entry.playFabId.trim().toUpperCase();
+    return [playFabId, { ...entry, playFabId }] as const;
+  })).values());
   if (session?.role === 'player' && ownerId && recorded.length) {
     const owner: ProgressLeaderboardEntry = {
       playFabId: ownerId,

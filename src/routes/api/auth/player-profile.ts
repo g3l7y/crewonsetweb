@@ -1,7 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { PLAYFAB_API_BASE, isMockMode } from "@/lib/playfab/config";
 import { PLAYFAB_DATA_KEYS } from "@/lib/playfab/constants";
-import { mapDataToAchievements } from "@/lib/playfab/achievements";
+import { mapUserDataToAchievements } from "@/lib/playfab/achievements";
 import { validateSessionFromRequest } from "@/lib/playfab/session";
 import { DEFAULT_PROFILE_PICTURE_URL, isManagedProfileAvatarUrl } from "@/lib/profile-avatar";
 
@@ -33,8 +33,8 @@ export const Route = createFileRoute("/api/auth/player-profile")({
     handlers: {
       GET: async ({ request }) => {
         const session = await validateSessionFromRequest(request);
-        if (!session?.sessionTicket || session.role !== "player") {
-          return Response.json({ success: false, error: "You must be signed in as a player." }, { status: 401 });
+        if (!session?.sessionTicket) {
+          return Response.json({ success: false, error: "You must be signed in." }, { status: 401 });
         }
         if (isMockMode()) {
           return Response.json({ success: false, error: "Live player profiles are unavailable in mock mode." }, { status: 404 });
@@ -63,7 +63,6 @@ export const Route = createFileRoute("/api/auth/player-profile")({
             }, secretKey),
             serverRequest("/Server/GetUserData", {
               PlayFabId: playFabId,
-              Keys: [PLAYFAB_DATA_KEYS.profile_metadata, PLAYFAB_DATA_KEYS.achievements],
             }, secretKey),
           ]);
 
@@ -82,7 +81,7 @@ export const Route = createFileRoute("/api/auth/player-profile")({
             try { metadata = JSON.parse(rawMetadata) as ProfileMetadata; } catch { metadata = {}; }
           }
 
-          const isOwner = playFabId === session.playFabId;
+          const isOwner = playFabId.toUpperCase() === session.playFabId.toUpperCase();
           const profileVisible = isOwner || metadata.profileVisibility !== false;
           const showCrewActivity = profileVisible && metadata.showCrewActivity !== false;
           const rawSocialLinks = metadata.socialLinks && typeof metadata.socialLinks === "object" ? metadata.socialLinks : {};
@@ -91,21 +90,13 @@ export const Route = createFileRoute("/api/auth/player-profile")({
             ...(typeof rawSocialLinks.instagram === "string" ? { instagram: rawSocialLinks.instagram } : {}),
             ...(typeof rawSocialLinks.youtube === "string" ? { youtube: rawSocialLinks.youtube } : {}),
           };
-          const rawAchievements = userData[PLAYFAB_DATA_KEYS.achievements]?.Value;
-          let unlockedAchievements: ReturnType<typeof mapDataToAchievements> = [];
-          if (showCrewActivity && typeof rawAchievements === "string" && rawAchievements) {
-            try {
-              const parsed: unknown = JSON.parse(rawAchievements);
-              const records = Array.isArray(parsed)
-                ? parsed
-                : parsed && typeof parsed === "object" && "achievements" in parsed && Array.isArray(parsed.achievements)
-                  ? parsed.achievements
-                  : [];
-              unlockedAchievements = mapDataToAchievements(records).filter((achievement) => achievement.unlocked);
-            } catch {
-              unlockedAchievements = [];
-            }
-          }
+          const achievementData = Object.fromEntries(Object.entries(userData).flatMap(([key, value]) => {
+            const text = (value as { Value?: string })?.Value;
+            return typeof text === "string" ? [[key, text]] : [];
+          }));
+          const unlockedAchievements = showCrewActivity
+            ? mapUserDataToAchievements(achievementData).filter(achievement => achievement.unlocked)
+            : [];
 
           return Response.json({
             success: true,
