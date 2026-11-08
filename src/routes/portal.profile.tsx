@@ -1,3 +1,4 @@
+import { buildShopHistory, type PayMongoOrder } from "@/lib/shop-history";
 import { createFileRoute } from "@tanstack/react-router";
 
 export const Route = createFileRoute("/portal/profile")({
@@ -43,14 +44,6 @@ import { formatSocialUsername, getSocialProfileUrl, normalizeSocialProfile } fro
 import { QUERY_KEYS, useAchievements, useCatalog, usePlayerInventory, usePlayerLoadout, usePlayerProfile, usePlayerProgression, useTransactions, useUpdateLoadout, useUpdateProfile } from "@/lib/playfab/hooks";
 import { Coins, Lock } from "lucide-react";
 import { hasRecordedGameProgress } from "@/lib/playfab/progression";
-
-type ProfileTransaction = {
-  id: string;
-  label: string;
-  detail: string;
-  amount: number;
-  createdAt: string;
-};
 
 const DEMO_PASSWORD = "player";
 const PROFILE_ACCOUNT_KEY = "cos.profile.account";
@@ -162,30 +155,16 @@ function CrewProfilePage() {
     Object.entries(equippedBySlot).filter(([, item]) => item).map(([slot, item]) => [slot, item!.id]),
   );
 
-  const recentTransactions = useMemo<ProfileTransaction[]>(() => {
-    const entries = mockMode
-      ? transactions
-          .map((transaction) => ({
-            id: transaction.id,
-            label: transaction.label,
-            detail: transaction.detail,
-            amount: transaction.amount,
-            createdAt: transaction.createdAt,
-          }))
-      : (transactionsQuery.data ?? []).map((transaction) => ({
-          id: transaction.id,
-          label: transaction.description || "Account transaction",
-          detail: transaction.type + " — " + transaction.currency,
-          amount: transaction.type === "purchase" || transaction.type === "spend"
-            ? -Math.abs(transaction.amount)
-            : Math.abs(transaction.amount),
-          createdAt: transaction.timestamp ?? transaction.date ?? new Date(0).toISOString(),
-        }));
-
-    return entries
-      .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
-      .slice(0, 5);
-  }, [mockMode, transactions, transactionsQuery.data]);
+  const [paymentOrders, setPaymentOrders] = useState<PayMongoOrder[]>([]);
+  useEffect(() => {
+    let active = true;
+    fetch("/api/paymongo/orders", { credentials: "include", cache: "no-store" })
+      .then(async response => { if (!response.ok) throw new Error("Could not load payment history"); return response.json(); })
+      .then(result => { if (active) setPaymentOrders(Array.isArray(result.data) ? result.data : []); })
+      .catch(() => { /* Wallet history remains available if payment history is temporarily unavailable. */ });
+    return () => { active = false; };
+  }, []);
+  const recentTransactions = useMemo(() => buildShopHistory(mockMode, transactions, transactionsQuery.data ?? [], paymentOrders).slice(0, 5), [mockMode, transactions, transactionsQuery.data, paymentOrders]);
 
   const [profileImage, setProfileImage] = useState(
     DEFAULT_PROFILE_PICTURE_URL
@@ -760,7 +739,7 @@ function CrewProfilePage() {
               </div>
 
               <Link
-                href="/portal/shop?view=transactions"
+                href="/portal/shop"
                 className="text-xs font-black text-coral transition hover:text-white"
               >
                 GO TO SHOP →
@@ -829,7 +808,7 @@ function CrewProfilePage() {
               </div>
 
               <Link
-                href="/portal/shop"
+                href="/portal/shop?view=transactions"
                 className="text-xs font-black text-coral transition hover:text-white"
               >
                 GO TO SHOP →
@@ -854,10 +833,10 @@ function CrewProfilePage() {
 
                   <div className="min-w-0 flex-1">
                     <p className="truncate text-sm font-black text-white">
-                      {transaction.label}
+                      {transaction.itemName || transaction.title}
                     </p>
                     <p className="truncate text-xs text-white/40">
-                      {transaction.detail}
+                      {transaction.status}
                     </p>
                     <p className="mt-0.5 text-[10px] font-bold uppercase tracking-wide text-white/25">
                       {formatTransactionDate(transaction.createdAt)}
@@ -866,11 +845,10 @@ function CrewProfilePage() {
 
                   <p
                     className={`shrink-0 text-sm font-black ${
-                      transaction.amount < 0 ? "text-coral" : "text-emerald-400"
+                      transaction.isSpend ? "text-coral" : "text-emerald-400"
                     }`}
                   >
-                    {transaction.amount < 0 ? "-" : "+"}
-                    {formatCoins(Math.abs(transaction.amount))}
+                    {transaction.currency === "PHP" ? `₱${transaction.amount.toFixed(2)}` : `${transaction.isSpend ? "-" : "+"}${formatCoins(transaction.amount)} ${transaction.currency}`}
                   </p>
                 </div>
               ))}
