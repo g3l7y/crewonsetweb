@@ -135,9 +135,9 @@ export function Leaderboards() {
           .map((friend) => friend.playFabId),
       ].filter((id): id is string => Boolean(id)),
     );
-    const leaders = globalLeaders.filter((leader) => leader.playFabId && friendIds.has(leader.playFabId));
+    const leaders = globalLeaders.filter((leader) => leader.playFabId && Array.from(friendIds).some(id => id.trim().toUpperCase() === leader.playFabId?.trim().toUpperCase()));
     const owner = currentProfileQuery.data;
-    if (owner?.playFabId && !leaders.some(leader => leader.playFabId === owner.playFabId)) {
+    if (owner?.playFabId && !leaders.some(leader => leader.playFabId?.trim().toUpperCase() === owner.playFabId.trim().toUpperCase())) {
       leaders.push({ playFabId: owner.playFabId, name: owner.username || owner.displayName, level: null, score: 0, xp: null, productions: 0, rating: 0, ...(owner.avatarUrl ? { profileImage: owner.avatarUrl } : {}) });
     }
     return leaders;
@@ -271,7 +271,7 @@ export function Leaderboards() {
 
             {currentLeaders.map((leader, index) => {
 
-              const isCurrentPlayer = Boolean(currentPlayerName) && leader.name === currentPlayerName;
+              const isCurrentPlayer = Boolean(currentProfileQuery.data?.playFabId) && leader.playFabId?.trim().toUpperCase() === currentProfileQuery.data?.playFabId.trim().toUpperCase();
 
               return (
                 <tr
