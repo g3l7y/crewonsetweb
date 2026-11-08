@@ -129,15 +129,20 @@ export function Leaderboards() {
   const friendLeaders = useMemo<Leader[]>(() => {
     const friendIds = new Set(
       [
-        currentProfileQuery.data?.playFabId,
+        currentProfileQuery.data,
         ...(realFriendsQuery.data ?? [])
           .filter((friend) => friend.status === "confirmed")
           .map((friend) => friend.playFabId),
       ].filter((id): id is string => Boolean(id)),
     );
-    return globalLeaders.filter((leader) => leader.playFabId && friendIds.has(leader.playFabId));
+    const leaders = globalLeaders.filter((leader) => leader.playFabId && friendIds.has(leader.playFabId));
+    const owner = currentProfileQuery.data;
+    if (owner?.playFabId && !leaders.some(leader => leader.playFabId === owner.playFabId)) {
+      leaders.push({ playFabId: owner.playFabId, name: owner.username || owner.displayName, level: null, score: 0, xp: null, productions: 0, rating: 0, ...(owner.avatarUrl ? { profileImage: owner.avatarUrl } : {}) });
+    }
+    return leaders;
   }, [
-    currentProfileQuery.data?.playFabId,
+    currentProfileQuery.data,
     realFriendsQuery.data,
     globalLeaders,
   ]);
