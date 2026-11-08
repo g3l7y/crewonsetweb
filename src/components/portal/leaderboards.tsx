@@ -383,7 +383,7 @@ export function Leaderboards() {
         >
 
           <div
-            className="w-full max-w-lg rounded-2xl border border-white/10 bg-[#151c29] p-6 text-white shadow-2xl shadow-black/50"
+            className="max-h-[calc(100dvh-2rem)] w-full max-w-lg overflow-y-auto rounded-2xl border border-white/10 bg-[#151c29] p-6 text-white shadow-2xl shadow-black/50"
             onMouseDown={(e) => e.stopPropagation()}
           >
 
@@ -465,7 +465,7 @@ export function Leaderboards() {
 
                 <Film className="size-4 text-coral" />
 
-                <p className="mt-3 min-h-[1.5rem] break-words text-[8px] font-black uppercase leading-tight tracking-wider text-white/30 sm:text-[9px]">
+                <p className="mt-3 min-h-[1.5rem] whitespace-nowrap text-[8px] font-black uppercase leading-tight tracking-normal text-white/30">
                   Productions
                 </p>
 
@@ -493,7 +493,13 @@ export function Leaderboards() {
 
             {/* CURRENT PUBLIC PROFILE */}
 
-            <section className="mt-5 rounded-xl border border-white/[0.06] bg-white/[0.035] p-4">
+            <section className="mt-5 h-[388px] max-h-[45dvh] overflow-hidden rounded-xl border border-white/[0.06] bg-white/[0.035]">
+              <div
+                className="player-account-scroll-list h-full overflow-x-hidden overscroll-contain break-words p-4"
+                tabIndex={0}
+                role="region"
+                aria-label="About, socials, and unlocked achievements"
+              >
               {publicProfileLoading ? (
                 <p className="text-sm text-white/40">Loading profile details…</p>
               ) : publicProfile?.profileVisible === false ? (
@@ -532,6 +538,7 @@ export function Leaderboards() {
               ) : (
                 <p className="text-sm text-white/40">Public profile details are unavailable.</p>
               )}
+              </div>
             </section>
 
             {/* CLOSE */}
