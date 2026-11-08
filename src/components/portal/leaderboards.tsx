@@ -129,11 +129,11 @@ export function Leaderboards() {
   const friendLeaders = useMemo<Leader[]>(() => {
     const friendIds = new Set(
       [
-        currentProfileQuery.data,
+        currentProfileQuery.data?.playFabId,
         ...(realFriendsQuery.data ?? [])
           .filter((friend) => friend.status === "confirmed")
           .map((friend) => friend.playFabId),
-      ].filter((id): id is string => Boolean(id)),
+      ].filter((id): id is string => typeof id === "string" && id.trim().length > 0),
     );
     const leaders = globalLeaders.filter((leader) => leader.playFabId && Array.from(friendIds).some(id => id.trim().toUpperCase() === leader.playFabId?.trim().toUpperCase()));
     const owner = currentProfileQuery.data;
