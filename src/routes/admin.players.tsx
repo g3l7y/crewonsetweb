@@ -1892,6 +1892,16 @@ function PlayersPage() {
                     </p>
                   </section>
 
+                  <section className="mt-8">
+                    <h3 className="text-lg font-black uppercase text-white">Unlocked Achievements</h3>
+                    <div className="mt-4 flex flex-wrap gap-2">
+                      {(livePlayerDetail?.achievements ?? []).filter(achievement => achievement.unlocked).map(achievement => (
+                        <span key={achievement.id} title={achievement.description} className="rounded-lg border border-yellow/30 bg-yellow/10 px-3 py-2 text-xs font-bold text-yellow">{achievement.title}</span>
+                      ))}
+                      {livePlayerDetail && !(livePlayerDetail.achievements ?? []).some(achievement => achievement.unlocked) && <p className="text-sm text-white/40">No achievements unlocked yet.</p>}
+                    </div>
+                  </section>
+
                   {/* CAREER */}
 
                   <section className="mt-10">
