@@ -80,9 +80,10 @@ export function useSession() {
     // Recheck immediately on portal mount so player-specific queries use the new ID.
     staleTime: 30_000,
     retry: false,
-    refetchInterval: false,
+    // Revalidate sessions so a new ban takes effect while the player is using the site.
+    refetchInterval: 20_000,
     refetchIntervalInBackground: false,
-    refetchOnWindowFocus: false,
+    refetchOnWindowFocus: true,
   });
 }
 

@@ -91,7 +91,7 @@ function DownloadPage() {
               Download <span className="text-yellow">Crew </span>
               <span className="text-coral">On</span>
               <span className="text-yellow"> Set</span>
-              <span className="text-coral">!</span>
+              <span className="text-green-800">!</span>
             </h1>
             <p className="mt-6 max-w-2xl text-lg leading-relaxed text-white/70 sm:text-xl">
               Your next production starts here. Download the desktop game, check the requirements, and get ready to turn a client brief into a commercial.

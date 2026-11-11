@@ -1,5 +1,5 @@
 import { createFileRoute } from '@tanstack/react-router';
-import { unauthorizedSessionResponse, validateSessionFromRequest } from '@/lib/playfab/session';
+import { parseSessionFromRequest, unauthorizedSessionResponse, validateSessionFromRequest } from '@/lib/playfab/session';
 import {
   WEBSITE_DATA_KEYS,
   getWebsiteRecords,
@@ -202,6 +202,12 @@ export const Route = createFileRoute('/api/admin/partnerships')({
       POST: async ({ request }) => {
         try {
           const session = await validateSessionFromRequest(request);
+          if (session?.role === 'admin') {
+            return Response.json({ error: 'Administrator accounts cannot submit partnership applications. Please use a public account or player account.' }, { status: 403 });
+          }
+          if (!session && parseSessionFromRequest(request)) {
+            return Response.json({ error: 'We could not verify this account. Please sign in again before submitting.' }, { status: 401 });
+          }
           const { fields, attachment } = await parseSubmissionRequest(request);
           const {
             brand,

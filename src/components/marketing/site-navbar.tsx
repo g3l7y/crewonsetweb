@@ -27,7 +27,7 @@ export function SiteNavbar() {
   });
   const portalHref = session?.role === "admin" ? "/admin" : "/portal";
   const isAuthenticated = session?.role === "admin" || session?.role === "player";
-  const visibleNavItems = session?.role === "admin" ? navItems.filter((item) => item.href !== "/contact") : navItems;
+  const visibleNavItems = navItems;
 
   useEffect(() => {
     const handleScroll = () => setScrolled(window.scrollY > 40);

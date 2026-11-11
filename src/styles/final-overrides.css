@@ -264,6 +264,10 @@ body {
   color: #c6c5c2 !important;
 }
 
+.marketing-theme > footer .footer-copyright {
+  color: #c6c5c2 !important;
+}
+
 .footer-contact-link:hover,
 .footer-social-link:hover,
 .footer-contact-link:focus-visible,

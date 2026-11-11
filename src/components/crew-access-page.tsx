@@ -14,6 +14,7 @@ import {
 } from "@/lib/validation";
 import { PasswordRecoveryModal } from "@/components/password-recovery-modal";
 import { GOOGLE_CLIENT_ID, isGoogleAuthConfigured, isMockMode } from "@/lib/playfab/config";
+import { getMockPlayerAdminStatus } from "@/lib/playfab/mock-provider";
 
 type CrewAccessPageProps = {
   mode: "login" | "signup";
@@ -332,6 +333,9 @@ export function CrewAccessPage({ mode, scope = "player" }: CrewAccessPageProps) 
     try {
       let googleResult: Awaited<ReturnType<typeof loginWithGoogleAccessToken>>;
       if (isMockMode()) {
+        if (isLogin && !isAdmin && getMockPlayerAdminStatus() === "Banned") {
+          throw new Error("This player account is banned. You can submit an appeal for review.");
+        }
         googleResult = await loginWithGoogleAccessToken(
           "mock-google-account",
           isLogin ? "login" : "signup",

@@ -387,7 +387,6 @@ export function setMockPlayerAdminStatus(status: 'Active' | 'Banned', options: {
     mockPlayerBanId = `mock-ban-${Date.now()}`;
     mockPlayerBanStartedAt = new Date().toISOString();
   }
-  if (status === 'Banned' && mockSession?.playFabId === 'MOCK-PLAYER-001') mockSession = null;
   saveMockPlayerAdminState();
 }
 
@@ -618,8 +617,7 @@ export function createMockService(): PlayFabService {
         await randomDelay();
         readMockPlayerAdminState();
         if (mockSession?.playFabId === 'MOCK-PLAYER-001' && (mockPlayerDeleted || mockPlayerAdminStatus === 'Banned')) {
-          mockSession = null;
-          return null;
+          return { ...mockSession, banned: true };
         }
         return mockSession;
       },
