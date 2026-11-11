@@ -139,6 +139,12 @@ function PartnershipsPage() {
   const [revenue, setRevenue] = revenueStore.useStore();
 
   useEffect(() => {
+    if (!selected) return;
+    const latest = applications.find((application) => application.id === selected.id);
+    if (latest && latest !== selected) setSelected(latest);
+  }, [applications, selected?.id]);
+
+  useEffect(() => {
     if (!isMockMode()) {
       let active = true;
       const refresh = async () => {
@@ -155,11 +161,21 @@ function PartnershipsPage() {
           const latestById = new Map(latest.map((application) => [application.id, application]));
           const refreshed = body.data.map((application) => {
             const local = latestById.get(application.id);
-            if (!local || !pendingIds.has(application.id)) return application;
-            // Keep the saved optimistic status until the server confirms it. This
-            // closes the window where a poll started before a PATCH can roll it back.
-            if (application.status !== local.status) return local;
-            pendingIds.delete(application.id);
+            if (!local) return application;
+
+            const serverConfirmsOrAdvances = canAdvancePartnershipStatus(local.status, application.status);
+            if (pendingIds.has(application.id)) {
+              // Keep the optimistic status while the server is behind, but allow a
+              // payment/expiry update that has already advanced farther to win.
+              if (!serverConfirmsOrAdvances) return local;
+              pendingIds.delete(application.id);
+            }
+
+            // Automatic writers can update the record while a poll is in flight.
+            // Ignore any late snapshot that would move a terminal/progressed status back.
+            if (application.status !== local.status && canAdvancePartnershipStatus(application.status, local.status)) {
+              return local;
+            }
             return application;
           });
           setApplications(refreshed);
