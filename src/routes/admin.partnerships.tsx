@@ -17,6 +17,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import Link from "@/components/next-compat/link";
 import { normalizeExternalHttpUrl } from "@/lib/external-url";
 import { PartnershipStatusDropdown } from "@/components/admin/partnership-status-dropdown";
+import { DateRangeFilter, matchesDateRange } from "@/components/admin/date-range-filter";
 import { BRAND_PROMOTION_DELIVERY_TERMS } from "@/lib/brand-promotion-packages";
 import { isMockMode } from "@/lib/playfab/config";
 import { topUpsStore } from "@/lib/admin-demo-data";
@@ -129,9 +130,12 @@ function PartnershipsPage() {
   const [applications, setApplications] = applicationsStore.useStore();
   const [selected, setSelected] = useState<PartnershipApplication | null>(null);
   const [statusFilter, setStatusFilter] = useState<"All" | PartnershipStatus>("All");
+  const [dateFrom, setDateFrom] = useState("");
+  const [dateTo, setDateTo] = useState("");
   const [applicationQuery, setApplicationQuery] = useState("");
   const [productTypeFilter, setProductTypeFilter] = useState<"All" | (typeof partnershipProductTypes)[number]>("All");
   const [emailConfirmation, setEmailConfirmation] = useState<string | null>(null);
+  const [earlyEndRequest, setEarlyEndRequest] = useState<{ applicationId: string; reason: string; error?: string } | null>(null);
   const updatingApplicationIds = useRef(new Set<string>());
   const refreshInFlight = useRef(false);
 
@@ -143,6 +147,15 @@ function PartnershipsPage() {
     const latest = applications.find((application) => application.id === selected.id);
     if (latest && latest !== selected) setSelected(latest);
   }, [applications, selected?.id]);
+
+  useEffect(() => {
+    if (!earlyEndRequest) return;
+    const closeOnEscape = (event: KeyboardEvent) => {
+      if (event.key === "Escape") setEarlyEndRequest(null);
+    };
+    window.addEventListener("keydown", closeOnEscape);
+    return () => window.removeEventListener("keydown", closeOnEscape);
+  }, [earlyEndRequest]);
 
   useEffect(() => {
     if (!isMockMode()) {
@@ -283,17 +296,18 @@ function PartnershipsPage() {
         !app.archived &&
         (!search || searchableText.includes(search)) &&
         (productTypeFilter === "All" || app.productType === productTypeFilter) &&
-        (statusFilter === "All" || app.status === statusFilter)
+        (statusFilter === "All" || app.status === statusFilter) &&
+        matchesDateRange(app.submittedAt, dateFrom, dateTo)
       );
     });
-  }, [applications, applicationQuery, productTypeFilter, statusFilter]);
+  }, [applications, applicationQuery, productTypeFilter, statusFilter, dateFrom, dateTo]);
 
   function showStatusMessage(message: string) {
     setEmailConfirmation(message);
     window.setTimeout(() => setEmailConfirmation(null), 5500);
   }
 
-  async function updateStatus(id: string, status: PartnershipStatus) {
+  async function updateStatus(id: string, status: PartnershipStatus, submittedCompletionReason?: string) {
     const app = applications.find((application) => application.id === id);
     if (!app || !canAdvancePartnershipStatus(app.status, status)) return;
     let completionReason: string | undefined;
@@ -308,14 +322,9 @@ function PartnershipsPage() {
       endedEarly = Date.now() < promotionEnd.getTime();
       completionAt = endedEarly ? new Date().toISOString() : promotionEnd.toISOString();
       if (endedEarly) {
-        const reason = window.prompt(
-          'This promotion is ending before its contract date. Enter the brand-side reason that will be included in the email.',
-          'The campaign materials and approvals required from your team were not provided by the agreed deadline.',
-        );
-        if (reason === null) return;
-        completionReason = reason.trim();
+        completionReason = submittedCompletionReason?.trim();
         if (!completionReason) {
-          showStatusMessage('Enter a reason before ending the promotion early.');
+          setEarlyEndRequest({ applicationId: id, reason: "" });
           return;
         }
       }
@@ -409,6 +418,33 @@ function PartnershipsPage() {
     }
   }
 
+  async function confirmEarlyEnd() {
+    if (!earlyEndRequest) return;
+    const reason = earlyEndRequest.reason.trim();
+    if (!reason) {
+      setEarlyEndRequest({ ...earlyEndRequest, error: "Enter a reason to include in the brand email." });
+      return;
+    }
+    if (reason.length > 600) {
+      setEarlyEndRequest({ ...earlyEndRequest, error: "Keep the reason to 600 characters or fewer." });
+      return;
+    }
+    const { applicationId } = earlyEndRequest;
+    setEarlyEndRequest(null);
+    await updateStatus(applicationId, "Done", reason);
+  }
+
+  const earlyEndApplication = earlyEndRequest
+    ? applications.find((application) => application.id === earlyEndRequest.applicationId)
+    : undefined;
+  const earlyEndAgreementDate = earlyEndApplication
+    ? earlyEndApplication.promotionEndsAt || buildMockPromotionEnd(
+        earlyEndApplication.promotionStartedAt || earlyEndApplication.submittedAt,
+        earlyEndApplication.duration,
+        earlyEndApplication.durationUnit,
+      )
+    : undefined;
+
   function completeMockPayment(id: string) {
     if (!isMockMode()) return;
     const app = applications.find((application) => application.id === id);
@@ -491,36 +527,46 @@ function PartnershipsPage() {
           </div>
         )}
 
-        <section className="admin-card mb-4 flex flex-col gap-3 rounded-lg border border-white/[0.06] bg-[#182330] p-4 shadow-xl sm:flex-row sm:items-center">
-          <label className="relative block flex-1">
-            <Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 !text-white/30" />
-            <input
-              value={applicationQuery}
-              onChange={(event) => setApplicationQuery(event.target.value)}
-              placeholder="Search brands, products, or applications"
-              className="admin-input h-11 w-full rounded-md border border-white/10 bg-[#101923] pl-10 pr-3 text-sm font-bold !text-white outline-none transition placeholder:!text-white/25 focus:border-coral"
-            />
+        <section className="admin-card mb-4 grid gap-3 rounded-lg border border-white/[0.06] bg-[#182330] p-4 shadow-xl sm:grid-cols-2 xl:grid-cols-6">
+          <label className="block min-w-0 sm:col-span-2 xl:col-span-2">
+            <span className="mb-1 block text-[10px] font-black uppercase tracking-wider !text-white/40">Search</span>
+            <span className="relative block">
+              <Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 !text-white/30" />
+              <input
+                value={applicationQuery}
+                onChange={(event) => setApplicationQuery(event.target.value)}
+                placeholder="Search brands, products, or applications"
+                className="admin-input h-11 w-full rounded-md border border-white/10 bg-[#101923] pl-10 pr-3 text-sm font-bold !text-white outline-none transition placeholder:!text-white/25 focus:border-coral"
+              />
+            </span>
           </label>
-          <select
-            value={productTypeFilter}
-            onChange={(event) => setProductTypeFilter(event.target.value as typeof productTypeFilter)}
-            className="admin-input h-11 rounded-md border border-white/10 bg-[#101923] px-3 text-sm font-bold !text-white outline-none focus:border-coral"
-          >
-            <option value="All">All Product Types</option>
-            {partnershipProductTypes.map((productType) => (
-              <option key={productType}>{productType}</option>
-            ))}
-          </select>
-          <select
-            value={statusFilter}
-            onChange={(event) => setStatusFilter(event.target.value as typeof statusFilter)}
-            className="admin-input h-11 rounded-md border border-white/10 bg-[#101923] px-3 text-sm font-bold !text-white outline-none focus:border-coral"
-          >
-            <option value="All">All Statuses</option>
-            {statuses.map((status) => (
-              <option key={status}>{status}</option>
-            ))}
-          </select>
+          <label className="block min-w-0">
+            <span className="mb-1 block text-[10px] font-black uppercase tracking-wider !text-white/40">Product type</span>
+            <select
+              value={productTypeFilter}
+              onChange={(event) => setProductTypeFilter(event.target.value as typeof productTypeFilter)}
+              className="admin-input h-11 w-full rounded-md border border-white/10 bg-[#101923] px-3 text-sm font-bold !text-white outline-none focus:border-coral"
+            >
+              <option value="All">All Product Types</option>
+              {partnershipProductTypes.map((productType) => (
+                <option key={productType}>{productType}</option>
+              ))}
+            </select>
+          </label>
+          <label className="block min-w-0">
+            <span className="mb-1 block text-[10px] font-black uppercase tracking-wider !text-white/40">Status</span>
+            <select
+              value={statusFilter}
+              onChange={(event) => setStatusFilter(event.target.value as typeof statusFilter)}
+              className="admin-input h-11 w-full rounded-md border border-white/10 bg-[#101923] px-3 text-sm font-bold !text-white outline-none focus:border-coral"
+            >
+              <option value="All">All Statuses</option>
+              {statuses.map((status) => (
+                <option key={status}>{status}</option>
+              ))}
+            </select>
+          </label>
+          <DateRangeFilter from={dateFrom} to={dateTo} onFromChange={setDateFrom} onToChange={setDateTo} />
         </section>
 
         <div className="mb-3 flex items-center justify-between rounded-lg border border-white/[0.06] bg-[#182330] px-4 py-3">
@@ -931,6 +977,98 @@ function PartnershipsPage() {
               </div>
             </div>
           </div>
+        </div>
+      )}
+
+      {earlyEndRequest && (
+        <div
+          className="fixed inset-0 z-[120] flex items-center justify-center bg-black/75 p-4 backdrop-blur-sm"
+          onClick={() => setEarlyEndRequest(null)}
+        >
+          <section
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="early-end-title"
+            aria-describedby="early-end-description"
+            className="w-full max-w-xl overflow-hidden rounded-xl border border-white/[.12] bg-[#151c28] text-white shadow-2xl shadow-black/50"
+            style={{ width: "100%", maxWidth: "34rem" }}
+            onClick={(event) => event.stopPropagation()}
+          >
+            <header className="flex items-start gap-3 border-b border-white/[.07] bg-[#0d121b] px-4 py-4 sm:px-5">
+              <div className="grid size-11 shrink-0 place-items-center rounded-lg border border-[#ff6248]/25 bg-[#ff6248]/10 text-[#ff7663]">
+                <CalendarClock className="size-5" />
+              </div>
+              <div className="min-w-0 flex-1">
+                <p className="text-[9px] font-black uppercase tracking-[.2em] text-[#ff7663]">Promotion change</p>
+                <h2 id="early-end-title" className="mt-1 text-xl font-black uppercase tracking-wide">End promotion early?</h2>
+                <p id="early-end-description" className="mt-1 text-sm leading-relaxed text-white/55">
+                  {earlyEndApplication
+                    ? `End ${earlyEndApplication.brand}'s promotion before the agreed date?`
+                    : "End this promotion before the agreed date?"}
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setEarlyEndRequest(null)}
+                aria-label="Close early end dialog"
+                className="grid size-8 shrink-0 place-items-center rounded-md border border-white/10 text-white/45 transition hover:border-white/20 hover:bg-white/[.06] hover:text-white"
+              >
+                <X className="size-4" />
+              </button>
+            </header>
+
+            <div className="space-y-3 px-4 py-4 sm:px-5">
+              <div className="rounded-lg border border-[#f3c747]/15 bg-[#f3c747]/[.06] px-3.5 py-2.5 text-xs leading-relaxed text-white/65">
+                {earlyEndAgreementDate
+                  ? `The agreement ends ${formatDate(earlyEndAgreementDate)}. The reason you provide will be included in the email to the brand.`
+                  : "The reason you provide will be included in the email to the brand."}
+              </div>
+
+              <div>
+                <label htmlFor="early-end-reason" className="mb-2 block text-[10px] font-black uppercase tracking-wider text-white/55">
+                  Reason for ending early <span className="text-[#ff7663]">*</span>
+                </label>
+                <textarea
+                  id="early-end-reason"
+                  autoFocus
+                  rows={4}
+                  maxLength={600}
+                  value={earlyEndRequest.reason}
+                  onChange={(event) => setEarlyEndRequest((current) => current
+                    ? { applicationId: current.applicationId, reason: event.target.value }
+                    : current)}
+                  placeholder="Explain why the campaign is ending before the agreed date…"
+                  aria-invalid={Boolean(earlyEndRequest.error)}
+                  aria-describedby={earlyEndRequest.error ? "early-end-error" : "early-end-count"}
+                  className="w-full resize-y rounded-lg border border-white/[.12] bg-[#0d121b] px-3 py-2.5 text-sm leading-relaxed text-white outline-none transition placeholder:text-white/25 focus:border-[#f3c747]/60 focus:ring-2 focus:ring-[#f3c747]/10"
+                />
+                <div className="mt-1.5 flex items-center justify-between gap-3 text-[10px]">
+                  {earlyEndRequest.error
+                    ? <p id="early-end-error" className="text-[#ff7663]">{earlyEndRequest.error}</p>
+                    : <p id="early-end-count" className="text-white/30">Required for the brand’s email.</p>}
+                  <span className="shrink-0 text-white/30">{earlyEndRequest.reason.length}/600</span>
+                </div>
+              </div>
+            </div>
+
+            <footer className="flex flex-col-reverse gap-2 border-t border-white/[.07] bg-[#0d121b]/70 px-4 py-3 sm:flex-row sm:justify-end sm:px-5">
+              <button
+                type="button"
+                onClick={() => setEarlyEndRequest(null)}
+                className="rounded-md border border-white/[.12] px-4 py-2.5 text-[10px] font-black uppercase tracking-wide text-white/65 transition hover:bg-white/[.06] hover:text-white"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={() => void confirmEarlyEnd()}
+                disabled={!earlyEndRequest.reason.trim() || earlyEndRequest.reason.length > 600}
+                className="rounded-md bg-[#ff6248] px-4 py-2.5 text-[10px] font-black uppercase tracking-wide text-[#101923] transition hover:bg-[#ff7663] disabled:cursor-not-allowed disabled:opacity-40"
+              >
+                End promotion
+              </button>
+            </footer>
+          </section>
         </div>
       )}
     </div>

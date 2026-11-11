@@ -15,6 +15,7 @@ export const Route = createFileRoute("/admin/bugs")({
 import { useMemo, useState } from "react";
 import { Bug, Eye, Search, Trash2, X } from "lucide-react";
 import { ReportStatusDropdown } from "@/components/admin/report-status-dropdown";
+import { DateRangeFilter, matchesDateRange } from "@/components/admin/date-range-filter";
 import { isMockMode } from "@/lib/playfab/config";
 import { buildReportStatusMessage } from "@/lib/report-investigation-message";
 import {
@@ -50,6 +51,8 @@ function BugReportsPage() {
   const [query, setQuery] = useState("");
   const [category, setCategory] = useState("All Categories");
   const [status, setStatus] = useState("All Statuses");
+  const [dateFrom, setDateFrom] = useState("");
+  const [dateTo, setDateTo] = useState("");
   const [viewBug, setViewBug] = useState<BugReport | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<BugReport | null>(null);
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
@@ -67,9 +70,10 @@ function BugReportsPage() {
           .includes(search);
       const matchesCategory = category === "All Categories" || bug.category === category;
       const matchesStatus = status === "All Statuses" || bug.status === status;
-      return matchesSearch && matchesCategory && matchesStatus;
+      const matchesDate = matchesDateRange(bug.submittedAt, dateFrom, dateTo);
+      return matchesSearch && matchesCategory && matchesStatus && matchesDate;
     });
-  }, [bugs, query, category, status]);
+  }, [bugs, query, category, status, dateFrom, dateTo]);
 
   async function updateStatus(bug: BugReport, next: BugStatus) {
     if (!canAdvanceReportStatus(bug.status, next)) return;
@@ -153,38 +157,48 @@ function BugReportsPage() {
       )}
 
       {/* FILTERS */}
-      <section className="admin-card mb-4 flex flex-col gap-3 rounded-lg border border-white/[0.06] bg-[#182330] p-4 shadow-xl sm:flex-row sm:items-center">
-        <label className="relative block flex-1">
-          <Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 !text-white/30" />
-          <input
-            value={query}
-            onChange={(event) => setQuery(event.target.value)}
-            placeholder="Search by username or description"
-            className="admin-input h-11 w-full rounded-md border border-white/10 bg-[#101923] pl-10 pr-3 text-sm font-bold !text-white outline-none transition placeholder:!text-white/25 focus:border-coral"
-          />
+      <section className="admin-card mb-4 grid gap-3 rounded-lg border border-white/[0.06] bg-[#182330] p-4 shadow-xl sm:grid-cols-2 xl:grid-cols-6">
+        <label className="block min-w-0 sm:col-span-2 xl:col-span-2">
+          <span className="mb-1 block text-[10px] font-black uppercase tracking-wider !text-white/40">Search</span>
+          <span className="relative block">
+            <Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 !text-white/30" />
+            <input
+              value={query}
+              onChange={(event) => setQuery(event.target.value)}
+              placeholder="Search by username or description"
+              className="admin-input h-11 w-full rounded-md border border-white/10 bg-[#101923] pl-10 pr-3 text-sm font-bold !text-white outline-none transition placeholder:!text-white/25 focus:border-coral"
+            />
+          </span>
         </label>
 
-        <select
-          value={category}
-          onChange={(event) => setCategory(event.target.value)}
-          className="admin-input h-11 rounded-md border border-white/10 bg-[#101923] px-3 text-sm font-bold !text-white outline-none focus:border-coral"
-        >
-          <option>All Categories</option>
-          {bugCategories.map((c) => (
-            <option key={c}>{c}</option>
-          ))}
-        </select>
+        <label className="block min-w-0">
+          <span className="mb-1 block text-[10px] font-black uppercase tracking-wider !text-white/40">Category</span>
+          <select
+            value={category}
+            onChange={(event) => setCategory(event.target.value)}
+            className="admin-input h-11 w-full rounded-md border border-white/10 bg-[#101923] px-3 text-sm font-bold !text-white outline-none focus:border-coral"
+          >
+            <option>All Categories</option>
+            {bugCategories.map((c) => (
+              <option key={c}>{c}</option>
+            ))}
+          </select>
+        </label>
 
-        <select
-          value={status}
-          onChange={(event) => setStatus(event.target.value)}
-          className="admin-input h-11 rounded-md border border-white/10 bg-[#101923] px-3 text-sm font-bold !text-white outline-none focus:border-coral"
-        >
-          <option>All Statuses</option>
-          {statusOptions.map((s) => (
-            <option key={s}>{s}</option>
-          ))}
-        </select>
+        <label className="block min-w-0">
+          <span className="mb-1 block text-[10px] font-black uppercase tracking-wider !text-white/40">Status</span>
+          <select
+            value={status}
+            onChange={(event) => setStatus(event.target.value)}
+            className="admin-input h-11 w-full rounded-md border border-white/10 bg-[#101923] px-3 text-sm font-bold !text-white outline-none focus:border-coral"
+          >
+            <option>All Statuses</option>
+            {statusOptions.map((s) => (
+              <option key={s}>{s}</option>
+            ))}
+          </select>
+        </label>
+        <DateRangeFilter from={dateFrom} to={dateTo} onFromChange={setDateFrom} onToChange={setDateTo} />
       </section>
 
       <div className="mb-3 flex items-center justify-between rounded-lg border border-white/[0.06] bg-[#182330] px-4 py-3"><label className="flex items-center gap-3 text-xs font-bold uppercase text-white/60"><input type="checkbox" checked={filtered.length > 0 && selectedIds.length === filtered.length} onChange={(event) => setSelectedIds(event.target.checked ? filtered.map((bug) => bug.id) : [])} /> Select all <span className="text-coral">{selectedIds.length} selected</span></label><button type="button" disabled={!selectedIds.length} onClick={deleteSelected} className="inline-flex items-center gap-2 rounded-md bg-coral px-3 py-2 text-[10px] font-black uppercase text-white disabled:opacity-30"><Trash2 className="size-3.5" /> Delete selected</button></div>

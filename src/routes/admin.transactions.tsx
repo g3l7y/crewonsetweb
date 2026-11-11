@@ -122,17 +122,20 @@ function TransactionsPage() {
 
       <section className="mt-6 rounded-lg border border-white/[0.06] bg-[#182330] p-4 shadow-xl">
         <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-        <label className="relative block sm:col-span-2 xl:col-span-1">
-          <Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 !text-white/30" />
-          <input
-            value={query}
-            onChange={(event) => setQuery(event.target.value)}
-            placeholder="Search by player"
-            className="h-11 w-full rounded-md border border-white/10 bg-[#101923] pl-10 pr-3 text-sm font-bold !text-white outline-none transition placeholder:!text-white/25 focus:border-coral"
-          />
+        <label className="block sm:col-span-2 xl:col-span-1">
+          <span className="mb-1 block text-[10px] font-black uppercase tracking-wider !text-white/40">Search</span>
+          <span className="relative block">
+            <Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 !text-white/30" />
+            <input
+              value={query}
+              onChange={(event) => setQuery(event.target.value)}
+              placeholder="Search by payer"
+              className="h-11 w-full rounded-md border border-white/10 bg-[#101923] pl-10 pr-3 text-sm font-bold !text-white outline-none transition placeholder:!text-white/25 focus:border-coral"
+            />
+          </span>
         </label>
         <label className="block">
-          <span className="sr-only">Filter by status</span>
+          <span className="mb-1 block text-[10px] font-black uppercase tracking-wider !text-white/40">Status</span>
           <select value={statusFilter} onChange={(event) => setStatusFilter(event.target.value as typeof statusFilter)} className="h-11 w-full rounded-md border border-white/10 bg-[#101923] px-3 text-sm font-bold !text-white outline-none focus:border-coral">
             <option>All Statuses</option>
             <option>Completed</option>
@@ -170,7 +173,7 @@ function TransactionsPage() {
                   Time
                 </th>
                 <th className="px-5 py-4 text-xs font-black uppercase tracking-wider !text-white/40">
-                  Player
+                  Payer
                 </th>
                 <th className="px-5 py-4 text-xs font-black uppercase tracking-wider !text-white/40">
                   Payment Channel
