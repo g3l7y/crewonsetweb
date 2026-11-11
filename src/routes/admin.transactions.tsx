@@ -27,6 +27,9 @@ const statusStyles: Record<string, string> = {
 
 function TransactionsPage() {
   const [query, setQuery] = useState("");
+  const [statusFilter, setStatusFilter] = useState<"All Statuses" | "Completed" | "Pending" | "Failed">("All Statuses");
+  const [dateFrom, setDateFrom] = useState("");
+  const [dateTo, setDateTo] = useState("");
   const [selectedTransaction, setSelectedTransaction] = useState<TopUpRecord | null>(null);
   const mockMode = isMockMode();
   const [demoTopUps] = topUpsStore.useStore();
@@ -58,9 +61,14 @@ function TransactionsPage() {
     return first ?? (matches.length > 0 ? matches[0] : null);
   }, [query, matches, topUps]);
 
-  const rows = matchedPlayer
+  const searchedRows = matchedPlayer
     ? topUps.filter((row) => row.playerId === matchedPlayer.playerId)
     : matches;
+  const rows = searchedRows.filter((row) =>
+    (statusFilter === "All Statuses" || row.status === statusFilter) &&
+    (!dateFrom || row.date >= dateFrom) &&
+    (!dateTo || row.date <= dateTo),
+  );
 
   const total = topUps.reduce((sum, row) => sum + row.amount, 0);
   const completed = topUps.filter((r) => r.status === "Completed").length;
@@ -113,15 +121,34 @@ function TransactionsPage() {
       </section>
 
       <section className="mt-6 rounded-lg border border-white/[0.06] bg-[#182330] p-4 shadow-xl">
-        <label className="relative block max-w-md">
+        <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+        <label className="relative block sm:col-span-2 xl:col-span-1">
           <Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 !text-white/30" />
           <input
             value={query}
             onChange={(event) => setQuery(event.target.value)}
-            placeholder="Search by player or brand"
+            placeholder="Search by player"
             className="h-11 w-full rounded-md border border-white/10 bg-[#101923] pl-10 pr-3 text-sm font-bold !text-white outline-none transition placeholder:!text-white/25 focus:border-coral"
           />
         </label>
+        <label className="block">
+          <span className="sr-only">Filter by status</span>
+          <select value={statusFilter} onChange={(event) => setStatusFilter(event.target.value as typeof statusFilter)} className="h-11 w-full rounded-md border border-white/10 bg-[#101923] px-3 text-sm font-bold !text-white outline-none focus:border-coral">
+            <option>All Statuses</option>
+            <option>Completed</option>
+            <option>Pending</option>
+            <option>Failed</option>
+          </select>
+        </label>
+        <label className="block">
+          <span className="mb-1 block text-[10px] font-black uppercase tracking-wider !text-white/40">Date from</span>
+          <input type="date" value={dateFrom} max={dateTo || undefined} onChange={(event) => setDateFrom(event.target.value)} className="h-11 w-full rounded-md border border-white/10 bg-[#101923] px-3 text-sm font-bold !text-white outline-none [color-scheme:dark] focus:border-coral" />
+        </label>
+        <label className="block">
+          <span className="mb-1 block text-[10px] font-black uppercase tracking-wider !text-white/40">Date to</span>
+          <input type="date" value={dateTo} min={dateFrom || undefined} onChange={(event) => setDateTo(event.target.value)} className="h-11 w-full rounded-md border border-white/10 bg-[#101923] px-3 text-sm font-bold !text-white outline-none [color-scheme:dark] focus:border-coral" />
+        </label>
+        </div>
 
         {matchedPlayer && (
           <p className="mt-3 text-xs !text-white/45">

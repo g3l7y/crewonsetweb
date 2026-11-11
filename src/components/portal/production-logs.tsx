@@ -108,7 +108,7 @@ function mapGameProduction(log: GameProductionLog): ProductionLog {
     id: log.id || log.productionId || log.submissionId || "",
     level: log.level,
     production: log.title || log.stage || log.production || "",
-    role: "All Roles",
+    role: log.mode === "multiplayer" ? formatCrewRoles(log.role || log.roles?.join(", ") || "") : "All Roles",
     client: log.clientName || log.clientBrandName || log.client || "",
     date: log.date,
     score: log.overallScore,
@@ -128,6 +128,17 @@ function mapGameProduction(log: GameProductionLog): ProductionLog {
   };
 }
 
+function formatCrewRoles(value: string): string {
+  return value.split(",").map((role) => {
+    const normalized = role.trim().toLowerCase();
+    if (normalized === "camera" || normalized === "cameraman") return "Cameraman";
+    if (normalized === "av technician" || normalized === "av_technician") return "AV Technician";
+    if (normalized === "director") return "Director";
+    if (normalized === "editor") return "Editor";
+    return role.trim();
+  }).filter(Boolean).join(", ");
+}
+
 export function ProductionLogs() {
   const logsQuery = useProductionHistory();
   const [openLog, setOpenLog] = useState<ProductionLog | null>(null);
@@ -137,8 +148,8 @@ export function ProductionLogs() {
     <section className="production-history-panel mt-7 almanac-content-panel p-4 sm:p-6">
       <div className="almanac-content-body">
         <h2 className="section-title text-3xl text-navy sm:text-4xl">Production Logs</h2>
-        <div className="production-history-heading mt-1 flex items-center justify-between gap-3 text-sm text-navy"><p>Latest complete single-player result for each level.</p><button type="button" className="rounded border px-3 py-2 font-bold" disabled={logsQuery.isFetching} onClick={() => void logsQuery.refetch()}>{logsQuery.isFetching ? "Refreshing…" : "Refresh"}</button></div>
-        <h3 className="production-history-heading mt-5 text-sm font-black uppercase">Completed level history</h3>
+        <div className="production-history-heading mt-1 flex items-center justify-between gap-3 text-sm text-navy"><p>Latest complete single-player result for each level, plus completed multiplayer productions.</p><button type="button" className="rounded border px-3 py-2 font-bold" disabled={logsQuery.isFetching} onClick={() => void logsQuery.refetch()}>{logsQuery.isFetching ? "Refreshing…" : "Refresh"}</button></div>
+        <h3 className="production-history-heading mt-5 text-sm font-black uppercase">Completed production history</h3>
         <div className="player-account-scroll-list almanac-content-scroll production-logs-list admin-table-wrap mt-5 border-navy/10">
           <table className="admin-table">
             <thead><tr><th className="production-log-column-heading">Level</th><th className="production-log-column-heading">Contract</th><th className="production-log-column-heading">Roles</th><th className="production-log-column-heading">Date</th><th className="production-log-column-heading">Score</th><th className="production-log-column-heading">Rank</th><th className="production-log-column-heading text-right">Info</th></tr></thead>
@@ -154,9 +165,9 @@ export function ProductionLogs() {
                   <td className="text-right"><button type="button" onClick={() => setOpenLog(log)} className="production-log-info rounded-md border border-navy/15 px-3 py-1.5 text-[11px] font-black uppercase tracking-wider text-navy transition hover:bg-navy/5">See Info</button></td>
                 </tr>
               ))}
-              {logsQuery.isLoading && <tr><td colSpan={7} className="py-8 text-center">Loading completed single-player levels…</td></tr>}
+              {logsQuery.isLoading && <tr><td colSpan={7} className="py-8 text-center">Loading completed productions…</td></tr>}
               {logsQuery.isError && <tr><td colSpan={7} className="py-8 text-center text-red-700">Couldn't load production history. Please try again.</td></tr>}
-              {!logsQuery.isLoading && !logsQuery.isError && logs.length === 0 && <tr><td colSpan={7} className="py-10 text-center text-navy/55">No complete single-player levels recorded yet. Finish a level in the game, then refresh to see your results here.</td></tr>}
+              {!logsQuery.isLoading && !logsQuery.isError && logs.length === 0 && <tr><td colSpan={7} className="py-10 text-center text-navy/55">No completed productions recorded yet. Finish a level or multiplayer production in the game, then refresh to see your results here.</td></tr>}
             </tbody>
           </table>
         </div>

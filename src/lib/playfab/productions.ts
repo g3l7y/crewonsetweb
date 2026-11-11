@@ -46,7 +46,7 @@ export function mapUserDataToProductionLogs(data: Record<string, string>): Produ
   const raw = data[PLAYFAB_DATA_KEYS.production_logs];
   const logs = mapDataToProductionLogs(mapCareerAttemptsToProductionLogs(data));
   const dedicatedPayload: unknown = raw ? JSON.parse(raw) : [];
-  const dedicated = mapDataToProductionLogs(explicitSoloProductionRecords(dedicatedPayload));
+  const dedicated = mapDataToProductionLogs(explicitProductionRecords(dedicatedPayload));
   const merged = new Map<string, ProductionLog>();
   for (const log of [...logs, ...dedicated]) {
     const key = log.submissionId || log.id || log.productionId || `record-${merged.size}`;
@@ -54,18 +54,22 @@ export function mapUserDataToProductionLogs(data: Record<string, string>): Produ
     const supplied = Object.fromEntries(Object.entries(log).filter(([, value]) => value !== undefined && value !== ''));
     merged.set(key, previous ? { ...previous, ...supplied, details: { ...previous.details, ...log.details } } : log);
   }
-  // Almanac keeps one complete solo result per campaign level. A newer valid
-  // completion replaces the previous row; incomplete replays never enter here.
+  // Almanac keeps the newest complete solo result per level, plus each complete
+  // multiplayer submission (each player's copy carries their assigned role).
   const latestByLevel = new Map<number, ProductionLog>();
+  const multiplayer = new Map<string, ProductionLog>();
   for (const log of merged.values()) {
-    if (!isCompleteSoloProduction(log)) continue;
-    const previous = latestByLevel.get(log.level);
-    if (!previous || Date.parse(log.date) >= Date.parse(previous.date)) latestByLevel.set(log.level, log);
+    if (isCompleteMultiplayerProduction(log)) {
+      multiplayer.set(log.submissionId || log.id, log);
+    } else if (isCompleteSoloProduction(log)) {
+      const previous = latestByLevel.get(log.level);
+      if (!previous || Date.parse(log.date) >= Date.parse(previous.date)) latestByLevel.set(log.level, log);
+    }
   }
-  return [...latestByLevel.values()];
+  return [...latestByLevel.values(), ...multiplayer.values()];
 }
 
-function explicitSoloProductionRecords(payload: unknown): unknown[] {
+function explicitProductionRecords(payload: unknown): unknown[] {
   let records: unknown;
   if (Array.isArray(payload)) records = payload;
   else if (isRecord(payload)) records = payload['logs'] ?? payload['records'] ?? payload['production_logs'] ?? (payload['id'] || payload['productionId'] ? [payload] : []);
@@ -74,7 +78,7 @@ function explicitSoloProductionRecords(payload: unknown): unknown[] {
     mapDataToProductionLogs(payload); // Raise the existing unreadable-history error.
     return [];
   }
-  return records.filter((item) => isRecord(item) && ['solo', 'singleplayer'].includes(String(item['mode'] ?? '').toLowerCase()));
+  return records.filter((item) => isRecord(item) && ['solo', 'singleplayer', 'multiplayer'].includes(String(item['mode'] ?? '').toLowerCase()));
 }
 
 function isCompleteSoloProduction(log: ProductionLog): boolean {
@@ -90,6 +94,22 @@ function isCompleteSoloProduction(log: ProductionLog): boolean {
     && scoreIsValid(log.productionScore)
     && scoreIsValid(log.postProductionScore)
     && hasFinishedDecision;
+}
+
+function isCompleteMultiplayerProduction(log: ProductionLog): boolean {
+  const scoreIsValid = (score: number | undefined) => typeof score === 'number' && Number.isFinite(score) && score >= 0 && score <= 100;
+  const hasFinishedDecision = log.clientDecision === 'passed' || log.clientDecision === 'failed' || typeof log.success === 'boolean';
+  return log.mode === 'multiplayer'
+    && Number.isInteger(log.level) && log.level >= 1 && log.level <= 5
+    && Boolean(log.title?.trim())
+    && Boolean(log.date && Number.isFinite(Date.parse(log.date)))
+    && scoreIsValid(log.score)
+    && ['S', 'A', 'B', 'C', 'F'].includes(log.rank)
+    && scoreIsValid(log.preProductionScore)
+    && scoreIsValid(log.productionScore)
+    && scoreIsValid(log.postProductionScore)
+    && hasFinishedDecision
+    && Boolean(log.role?.trim());
 }
 
 /**

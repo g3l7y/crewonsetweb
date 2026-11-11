@@ -25,12 +25,13 @@ unlock timestamps, so the website does not supply dates. Access to Level 1 does
 not imply completion of Level 1 or unlock any website-created knowledge content.
 
 Dedicated records and career snapshots are combined by submission ID. Dedicated
-records take priority, while extra career details are retained. The Almanac only
-shows complete single-player results with a valid level, contract, date, final
-score, rank, all three phase scores and a completed decision. It shows the newest
-valid result once per level; unfinished or incomplete replays cannot replace it.
-Multiplayer records and partial results are excluded. Missing fields remain
-absent; the website does not manufacture results from a current-level counter.
+records take priority, while extra career details are retained. The Almanac shows
+complete single-player results with a valid level, contract, date, final score,
+rank, all three phase scores and a completed decision. It shows the newest valid
+result once per level. It also shows every complete multiplayer submission with
+those same result fields and the player's recorded crew role. Unfinished or
+incomplete results are excluded. Missing fields remain absent; the website does
+not manufacture results from a current-level counter.
 
 Malformed history and failed requests produce an error state. A successful empty
 response is shown separately, with a reminder to check the game account and cloud

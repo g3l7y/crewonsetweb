@@ -129,6 +129,7 @@ interface Identifiable {
 export async function getWebsiteRecords<T extends Identifiable>(
   collectionKey: string,
   secretKey: string,
+  throwOnError = false,
 ): Promise<T[]> {
   try {
     // Read the primary key first
@@ -141,6 +142,7 @@ export async function getWebsiteRecords<T extends Identifiable>(
       parsed = JSON.parse(rawPrimary);
     } catch {
       console.error(`[WebsiteData] Failed to parse ${collectionKey}`);
+      if (throwOnError) throw new Error(`Stored ${collectionKey} data is malformed.`);
       return [];
     }
 
@@ -156,15 +158,20 @@ export async function getWebsiteRecords<T extends Identifiable>(
       const pageData = await getTitleInternalData(pageKeys, secretKey);
       const allRecords: T[] = [];
       for (const pk of pageKeys) {
-        if (pageData[pk]) {
-          try {
-            const pageRecords = JSON.parse(pageData[pk]) as T[];
-            allRecords.push(...pageRecords);
-          } catch {
-            console.warn(`[WebsiteData] Failed to parse page ${pk}`);
-          }
+        if (!pageData[pk]) {
+          if (throwOnError) throw new Error(`Stored ${collectionKey} page ${pk} is missing.`);
+          continue;
+        }
+        try {
+          const pageRecords: unknown = JSON.parse(pageData[pk]);
+          if (!Array.isArray(pageRecords)) throw new Error("Page is not an array.");
+          allRecords.push(...pageRecords as T[]);
+        } catch {
+          console.warn(`[WebsiteData] Failed to parse page ${pk}`);
+          if (throwOnError) throw new Error(`Stored ${collectionKey} page ${pk} is malformed.`);
         }
       }
+      if (throwOnError && meta.total !== allRecords.length) throw new Error(`Stored ${collectionKey} data is incomplete.`);
       return allRecords;
     }
 
@@ -173,9 +180,11 @@ export async function getWebsiteRecords<T extends Identifiable>(
       return parsed as T[];
     }
 
+    if (throwOnError) throw new Error(`Stored ${collectionKey} data has an unreadable format.`);
     return [];
   } catch (error) {
     console.error(`[WebsiteData] Error reading ${collectionKey}:`, error);
+    if (throwOnError) throw error;
     return [];
   }
 }
