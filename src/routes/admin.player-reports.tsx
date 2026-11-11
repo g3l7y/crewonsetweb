@@ -14,6 +14,7 @@ export const Route = createFileRoute("/admin/player-reports")({
 import { useEffect, useMemo, useState } from "react";
 import { Eye, FileText, Search, Trash2, UserRound, X, Check, Ban } from "lucide-react";
 import { ReportStatusDropdown } from "@/components/admin/report-status-dropdown";
+import { DateRangeFilter, matchesDateRange } from "@/components/admin/date-range-filter";
 import { isMockMode } from "@/lib/playfab/config";
 import { buildReportStatusMessage } from "@/lib/report-investigation-message";
 import {
@@ -54,6 +55,8 @@ function PlayerReportsRouteComponent() {
   const [query, setQuery] = useState("");
   const [category, setCategory] = useState("All Categories");
   const [status, setStatus] = useState<"All Statuses" | PlayerReportStatus | AppealStatus>("All Statuses");
+  const [dateFrom, setDateFrom] = useState("");
+  const [dateTo, setDateTo] = useState("");
   const [selected, setSelected] = useState<PlayerReport | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<PlayerReport | null>(null);
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
@@ -72,9 +75,10 @@ function PlayerReportsRouteComponent() {
             .toLowerCase()
             .includes(search)) &&
         (category === "All Categories" || report.reportType === category) &&
-        (status === "All Statuses" || (report.banAppeal ? report.appealStatus === status : report.status === status)),
+        (status === "All Statuses" || (report.banAppeal ? report.appealStatus === status : report.status === status)) &&
+        matchesDateRange(report.submittedAt, dateFrom, dateTo),
     );
-  }, [reports, query, category, status]);
+  }, [reports, query, category, status, dateFrom, dateTo]);
 
   useEffect(() => {
     const handleLoad = (event: Event) => {
@@ -207,40 +211,51 @@ function PlayerReportsRouteComponent() {
           Player reports and ban appeals could not be loaded: {reportsLoadError} Please refresh the page or check the server connection.
         </div>
       )}
-      <section className="admin-card mb-4 flex flex-col gap-3 rounded-lg border border-white/[0.06] bg-[#182330] p-4 shadow-xl sm:flex-row">
-        <label className="relative block flex-1">
-          <Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 !text-white/30" />
-          <input
-            value={query}
-            onChange={(event) => setQuery(event.target.value)}
-            placeholder="Search reports, players, or descriptions"
-            className="admin-input h-11 w-full rounded-md border border-white/10 bg-[#101923] pl-10 pr-3 text-sm font-bold !text-white outline-none placeholder:!text-white/25 focus:border-coral"
-          />
+      <section className="admin-card mb-4 grid gap-3 rounded-lg border border-white/[0.06] bg-[#182330] p-4 shadow-xl sm:grid-cols-2 xl:grid-cols-6">
+        <label className="block min-w-0 sm:col-span-2 xl:col-span-2">
+          <span className="mb-1 block text-[10px] font-black uppercase tracking-wider !text-white/40">Search</span>
+          <span className="relative block">
+            <Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 !text-white/30" />
+            <input
+              value={query}
+              onChange={(event) => setQuery(event.target.value)}
+              placeholder="Search reports, players, or descriptions"
+              className="admin-input h-11 w-full rounded-md border border-white/10 bg-[#101923] pl-10 pr-3 text-sm font-bold !text-white outline-none placeholder:!text-white/25 focus:border-coral"
+            />
+          </span>
         </label>
-        <select
-          value={category}
-          onChange={(event) => setCategory(event.target.value)}
-          className="admin-input h-11 rounded-md border border-white/10 bg-[#101923] px-3 text-sm font-bold !text-white outline-none focus:border-coral"
-        >
-          <option>All Categories</option>
-          {[...playerReportTypes.filter((item) => item !== "Other"), "Ban Appeal", "Other"].map((item) => (
-            <option key={item}>{item}</option>
-          ))}
-        </select>
 
-        <select
-          value={status}
-          onChange={(event) => setStatus(event.target.value as typeof status)}
-          className="admin-input h-11 rounded-md border border-white/10 bg-[#101923] px-3 text-sm font-bold !text-white outline-none focus:border-coral"
-        >
-          <option>All Statuses</option>
-          {statuses.map((item) => (
-            <option key={item}>{item}</option>
-          ))}
-          <option>Pending</option>
-          <option>Approved</option>
-          <option>Denied</option>
-        </select>
+        <label className="block min-w-0">
+          <span className="mb-1 block text-[10px] font-black uppercase tracking-wider !text-white/40">Category</span>
+          <select
+            value={category}
+            onChange={(event) => setCategory(event.target.value)}
+            className="admin-input h-11 w-full rounded-md border border-white/10 bg-[#101923] px-3 text-sm font-bold !text-white outline-none focus:border-coral"
+          >
+            <option>All Categories</option>
+            {[...playerReportTypes.filter((item) => item !== "Other"), "Ban Appeal", "Other"].map((item) => (
+              <option key={item}>{item}</option>
+            ))}
+          </select>
+        </label>
+
+        <label className="block min-w-0">
+          <span className="mb-1 block text-[10px] font-black uppercase tracking-wider !text-white/40">Status</span>
+          <select
+            value={status}
+            onChange={(event) => setStatus(event.target.value as typeof status)}
+            className="admin-input h-11 w-full rounded-md border border-white/10 bg-[#101923] px-3 text-sm font-bold !text-white outline-none focus:border-coral"
+          >
+            <option>All Statuses</option>
+            {statuses.map((item) => (
+              <option key={item}>{item}</option>
+            ))}
+            <option>Pending</option>
+            <option>Approved</option>
+            <option>Denied</option>
+          </select>
+        </label>
+        <DateRangeFilter from={dateFrom} to={dateTo} onFromChange={setDateFrom} onToChange={setDateTo} />
       </section>
       <div className="mb-3 flex items-center justify-between rounded-lg border border-white/[0.06] bg-[#182330] px-4 py-3"><label className="flex items-center gap-3 text-xs font-bold uppercase text-white/60"><input type="checkbox" checked={filtered.length > 0 && selectedIds.length === filtered.length} onChange={(event) => setSelectedIds(event.target.checked ? filtered.map((report) => report.id) : [])} /> Select all <span className="text-coral">{selectedIds.length} selected</span></label><button type="button" disabled={!selectedIds.length} onClick={deleteSelected} className="inline-flex items-center gap-2 rounded-md bg-coral px-3 py-2 text-[10px] font-black uppercase text-white disabled:opacity-30"><Trash2 className="size-3.5" /> Delete selected</button></div>
       <section className="admin-filter-results-card admin-filter-results-card--reports admin-table-wrap overflow-hidden rounded-lg border border-white/[0.06] bg-[#182330] shadow-xl">

@@ -14,6 +14,7 @@ export const Route = createFileRoute("/admin/ad-revenue")({
 
 import { useEffect, useMemo, useState } from "react";
 import { isMockMode } from "@/lib/playfab/config";
+import { DateRangeFilter, matchesDateRange } from "@/components/admin/date-range-filter";
 import { useAdminAds, useAdminPartnerships } from "@/lib/playfab/hooks";
 import type { AdEntry } from "@/lib/playfab/types";
 import Link from "@/components/next-compat/link";
@@ -96,6 +97,8 @@ function AdRevenuePage() {
   const [query, setQuery] = useState("");
   const [productTypeFilter, setProductTypeFilter] = useState("All Product Types");
   const [statusFilter, setStatusFilter] = useState("All Statuses");
+  const [dateFrom, setDateFrom] = useState("");
+  const [dateTo, setDateTo] = useState("");
   const [brandUpdateMetrics, setBrandUpdateMetrics] = useState<Record<string, { impressions: number }>>({});
   const router = useRouter();
 
@@ -155,10 +158,11 @@ function AdRevenuePage() {
       return (
         (!search || searchableText.includes(search)) &&
         (productTypeFilter === "All Product Types" || productType === productTypeFilter) &&
-        (statusFilter === "All Statuses" || app.status === statusFilter)
+        (statusFilter === "All Statuses" || app.status === statusFilter) &&
+        matchesDateRange(app.submittedAt, dateFrom, dateTo)
       );
     });
-  }, [rows, query, productTypeFilter, statusFilter]);
+  }, [rows, query, productTypeFilter, statusFilter, dateFrom, dateTo]);
 
   const totals = useMemo(
     () =>
@@ -222,36 +226,46 @@ function AdRevenuePage() {
           </span>
         </div>
 
-        <section className="admin-card mb-4 flex flex-col gap-3 rounded-lg border border-white/[0.06] bg-[#182330] p-4 shadow-xl sm:flex-row sm:items-center">
-          <label className="relative block flex-1">
-            <Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 !text-white/30" />
-            <input
-              value={query}
-              onChange={(event) => setQuery(event.target.value)}
-              placeholder="Search brands, products, or applications"
-              className="admin-input h-11 w-full rounded-md border border-white/10 bg-[#101923] pl-10 pr-3 text-sm font-bold !text-white outline-none transition placeholder:!text-white/25 focus:border-coral"
-            />
+        <section className="admin-card mb-4 grid gap-3 rounded-lg border border-white/[0.06] bg-[#182330] p-4 shadow-xl sm:grid-cols-2 xl:grid-cols-6">
+          <label className="block min-w-0 sm:col-span-2 xl:col-span-2">
+            <span className="mb-1 block text-[10px] font-black uppercase tracking-wider !text-white/40">Search</span>
+            <span className="relative block">
+              <Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 !text-white/30" />
+              <input
+                value={query}
+                onChange={(event) => setQuery(event.target.value)}
+                placeholder="Search brands, products, or applications"
+                className="admin-input h-11 w-full rounded-md border border-white/10 bg-[#101923] pl-10 pr-3 text-sm font-bold !text-white outline-none transition placeholder:!text-white/25 focus:border-coral"
+              />
+            </span>
           </label>
-          <select
-            value={productTypeFilter}
-            onChange={(event) => setProductTypeFilter(event.target.value)}
-            className="admin-input h-11 rounded-md border border-white/10 bg-[#101923] px-3 text-sm font-bold !text-white outline-none focus:border-coral"
-          >
-            <option>All Product Types</option>
-            {partnershipProductTypes.map((productType) => (
-              <option key={productType}>{productType}</option>
-            ))}
-          </select>
-          <select
-            value={statusFilter}
-            onChange={(event) => setStatusFilter(event.target.value)}
-            className="admin-input h-11 rounded-md border border-white/10 bg-[#101923] px-3 text-sm font-bold !text-white outline-none focus:border-coral"
-          >
-            <option>All Statuses</option>
-            {revenueStatusOptions.map((status) => (
-              <option key={status}>{status}</option>
-            ))}
-          </select>
+          <label className="block min-w-0">
+            <span className="mb-1 block text-[10px] font-black uppercase tracking-wider !text-white/40">Product type</span>
+            <select
+              value={productTypeFilter}
+              onChange={(event) => setProductTypeFilter(event.target.value)}
+              className="admin-input h-11 w-full rounded-md border border-white/10 bg-[#101923] px-3 text-sm font-bold !text-white outline-none focus:border-coral"
+            >
+              <option>All Product Types</option>
+              {partnershipProductTypes.map((productType) => (
+                <option key={productType}>{productType}</option>
+              ))}
+            </select>
+          </label>
+          <label className="block min-w-0">
+            <span className="mb-1 block text-[10px] font-black uppercase tracking-wider !text-white/40">Status</span>
+            <select
+              value={statusFilter}
+              onChange={(event) => setStatusFilter(event.target.value)}
+              className="admin-input h-11 w-full rounded-md border border-white/10 bg-[#101923] px-3 text-sm font-bold !text-white outline-none focus:border-coral"
+            >
+              <option>All Statuses</option>
+              {revenueStatusOptions.map((status) => (
+                <option key={status}>{status}</option>
+              ))}
+            </select>
+          </label>
+          <DateRangeFilter from={dateFrom} to={dateTo} onFromChange={setDateFrom} onToChange={setDateTo} />
         </section>
 
         {filteredRows.length === 0 ? (

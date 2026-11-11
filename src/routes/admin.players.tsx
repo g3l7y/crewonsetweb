@@ -79,7 +79,7 @@ type Player = {
   avatarUrl: string;
 };
 
-type SortKey = "playtime" | "score" | "joined" | "gamesPlayed";
+type SortKey = "score" | "joined" | "gamesPlayed";
 
 type SortDirection = "asc" | "desc";
 
@@ -96,7 +96,7 @@ const roleOptions = [
   "All-Rounder",
 ];
 
-const filterOptions = ["Joined Date", "Level", "Production Score", "Playtime"];
+const filterOptions = ["Joined Date", "Level", "Production Score", "Games Played"];
 
 /* =========================================================
    STATUS STYLES
@@ -155,6 +155,7 @@ function mapPlayFabPlayer(player: PlayerProfile & { currentLevel?: number | null
     username,
     email: player.email || "—",
     status: player.adminStatus === "Banned" ? "Banned" : "Active",
+    bannedUntil: player.bannedUntil ?? null,
     joined: formatJoinedDate(player.joinedAt),
     score: player.productionScore ?? null,
     currentLevel: player.currentLevel,
@@ -234,7 +235,7 @@ function PlayersPage() {
 
   const [scoreFilter, setScoreFilter] = useState("");
 
-  const [playtimeFilter, setPlaytimeFilter] = useState("");
+  const [gamesPlayedFilter, setGamesPlayedFilter] = useState("");
 
   /* =======================================================
      APPLIED SEARCH / FILTERS
@@ -259,7 +260,7 @@ function PlayersPage() {
 
   const [appliedScoreFilter, setAppliedScoreFilter] = useState("");
 
-  const [appliedPlaytimeFilter, setAppliedPlaytimeFilter] = useState("");
+  const [appliedGamesPlayedFilter, setAppliedGamesPlayedFilter] = useState("");
 
   // When true, the table is forced to show the original
   // unfiltered player list immediately. Search turns this off again.
@@ -499,7 +500,7 @@ function PlayersPage() {
 
     setAppliedScoreFilter(scoreFilter);
 
-    setAppliedPlaytimeFilter(playtimeFilter);
+    setAppliedGamesPlayedFilter(gamesPlayedFilter);
 
     setShowFilterMenu(false);
   }
@@ -515,6 +516,14 @@ function PlayersPage() {
       }
 
       return [...current, filter];
+    });
+  }
+
+  function chooseStatusFilter(nextStatus: string) {
+    setStatus(nextStatus);
+    setActiveFilters((current) => {
+      const withoutStatus = current.filter((item) => item !== "Status");
+      return nextStatus === "All Statuses" ? withoutStatus : [...withoutStatus, "Status"];
     });
   }
 
@@ -544,8 +553,8 @@ function PlayersPage() {
       setScoreFilter("");
     }
 
-    if (filter === "Playtime") {
-      setPlaytimeFilter("");
+    if (filter === "Games Played") {
+      setGamesPlayedFilter("");
     }
 
     // Immediately revert the displayed table to its original state.
@@ -555,7 +564,7 @@ function PlayersPage() {
     setAppliedJoinedFilter("");
     setAppliedLevelFilter("");
     setAppliedScoreFilter("");
-    setAppliedPlaytimeFilter("");
+    setAppliedGamesPlayedFilter("");
     setAppliedFilters([]);
     setForceUnfiltered(true);
   }
@@ -571,7 +580,7 @@ function PlayersPage() {
     setJoinedFilter("");
     setLevelFilter("");
     setScoreFilter("");
-    setPlaytimeFilter("");
+    setGamesPlayedFilter("");
     setShowFilterMenu(false);
 
     setAppliedQuery("");
@@ -581,7 +590,7 @@ function PlayersPage() {
     setAppliedJoinedFilter("");
     setAppliedLevelFilter("");
     setAppliedScoreFilter("");
-    setAppliedPlaytimeFilter("");
+    setAppliedGamesPlayedFilter("");
 
     // This is what makes the visible table immediately unfiltered.
     setForceUnfiltered(true);
@@ -623,7 +632,11 @@ function PlayersPage() {
       const matchesStatus =
         !appliedFilters.includes("Status") ||
         appliedStatus === "All Statuses" ||
-        player.status === appliedStatus;
+        (appliedStatus === "Active"
+          ? player.status === "Active"
+          : appliedStatus === "Permanently Banned"
+            ? player.status === "Banned" && !player.bannedUntil
+            : player.status === "Banned" && Boolean(player.bannedUntil));
 
       /* ===============================================
              ROLE
@@ -670,17 +683,15 @@ function PlayersPage() {
         (Number.isFinite(scoreValue) && player.score != null && player.score >= scoreValue);
 
       /* ===============================================
-             PLAYTIME
+             GAMES PLAYED
              =============================================== */
 
-      const playtimeHours = player.playtimeMinutes == null ? null : player.playtimeMinutes / 60;
+      const gamesPlayedValue = Number(appliedGamesPlayedFilter);
 
-      const playtimeValue = Number(appliedPlaytimeFilter);
-
-      const matchesPlaytime =
-        !appliedFilters.includes("Playtime") ||
-        !appliedPlaytimeFilter ||
-        (Number.isFinite(playtimeValue) && playtimeHours != null && playtimeHours >= playtimeValue);
+      const matchesGamesPlayed =
+        !appliedFilters.includes("Games Played") ||
+        !appliedGamesPlayedFilter ||
+        (Number.isFinite(gamesPlayedValue) && player.gamesPlayed != null && player.gamesPlayed >= gamesPlayedValue);
 
       /* ===============================================
              FINAL RESULT
@@ -693,7 +704,7 @@ function PlayersPage() {
         matchesJoinedDate &&
         matchesLevel &&
         matchesScore &&
-        matchesPlaytime
+        matchesGamesPlayed
       );
     });
   }, [
@@ -706,7 +717,7 @@ function PlayersPage() {
     appliedJoinedFilter,
     appliedLevelFilter,
     appliedScoreFilter,
-    appliedPlaytimeFilter,
+    appliedGamesPlayedFilter,
   ]);
 
   /* =========================================================
@@ -727,13 +738,6 @@ function PlayersPage() {
       let bValue = 0;
 
       switch (sortKey) {
-        case "playtime":
-          aValue = a.playtimeMinutes ?? -1;
-
-          bValue = b.playtimeMinutes ?? -1;
-
-          break;
-
         case "score":
           aValue = a.score ?? -1;
 
@@ -1194,7 +1198,7 @@ function PlayersPage() {
                   ================================================= */}
 
               {showFilterMenu && (
-                <div className="admin-player-filter-menu absolute right-0 top-12 z-50 box-border h-[22rem] min-h-[22rem] w-[15rem] min-w-[15rem] max-w-none overflow-hidden rounded-lg border border-white/10 bg-[#151c21] p-3 shadow-2xl">
+                <div className="admin-player-filter-menu absolute right-0 top-12 z-50 box-border max-h-[min(80vh,34rem)] w-[15rem] min-w-[15rem] max-w-none overflow-y-auto rounded-lg border border-white/10 bg-[#151c21] p-3 shadow-2xl">
                   <div className="mb-3 border-b border-white/[.06] pb-3">
                     <p className="text-[9px] font-black uppercase tracking-[.16em] text-white/30">
                       Filters
@@ -1209,29 +1213,29 @@ function PlayersPage() {
                       STATUS
                       ================================================= */}
 
-                  <button
-                    type="button"
-                    onClick={() => toggleFilter("Status")}
-                    className={`flex w-full items-center gap-3 rounded-md px-3 py-2.5 text-left transition ${
-                      activeFilters.includes("Status") ? "bg-white/[.07]" : "hover:bg-white/[.04]"
-                    }`}
-                  >
-                    <span
-                      className={`grid size-4 shrink-0 place-items-center rounded border ${
-                        activeFilters.includes("Status")
-                          ? "border-[#39b7a5] bg-[#39b7a5] text-[#08100f]"
-                          : "border-white/15"
-                      }`}
-                    >
-                      {activeFilters.includes("Status") && (
-                        <Check className="size-2.5 stroke-[4]" />
-                      )}
-                    </span>
-
-                    <span className="whitespace-nowrap text-[11px] font-bold text-white/55">
-                      All Statuses
-                    </span>
-                  </button>
+                  <div className="mb-2 border-b border-white/[.06] pb-2" role="radiogroup" aria-label="Player status filter">
+                    <p className="mb-1 px-3 text-[8px] font-black uppercase tracking-[.14em] text-white/30">Status</p>
+                    {["All Statuses", "Active", "Banned", "Permanently Banned"].map((option) => {
+                      const selected = status === option;
+                      return (
+                        <button
+                          key={option}
+                          type="button"
+                          role="radio"
+                          aria-checked={selected}
+                          onClick={() => chooseStatusFilter(option)}
+                          className={`flex w-full items-center gap-3 rounded-md px-3 py-2 text-left transition ${selected ? "bg-white/[.07]" : "hover:bg-white/[.04]"}`}
+                        >
+                          <span className={`grid size-4 shrink-0 place-items-center rounded-full border ${selected ? "border-[#39b7a5]" : "border-white/15"}`}>
+                            {selected && <span className="size-2 rounded-full bg-[#39b7a5]" />}
+                          </span>
+                          <span className={`whitespace-nowrap text-[11px] font-bold ${selected ? "text-white/75" : "text-white/45"}`}>
+                            {option}
+                          </span>
+                        </button>
+                      );
+                    })}
+                  </div>
 
                   {/* =================================================
                       OTHER FILTERS
@@ -1300,34 +1304,6 @@ function PlayersPage() {
           {activeFilters.length > 0 && (
             <div className="mt-4 border-t border-white/[.06] pt-4">
               <div className="flex flex-wrap items-end gap-3">
-                {/* =================================================
-                    STATUS
-                    ================================================= */}
-
-                {activeFilters.includes("Status") && (
-                  <div className="min-w-[180px]">
-                    <label className="mb-1.5 block text-[8px] font-black uppercase tracking-[.12em] text-white/30">
-                      Status
-                    </label>
-
-                    <div className="relative">
-                      <select
-                        value={status}
-                        onChange={(event) => setStatus(event.target.value)}
-                        className="h-9 w-full appearance-none rounded-md border border-white/10 bg-[#11171b] px-3 pr-8 text-[10px] font-bold text-white/60 outline-none focus:border-[#39b7a5]"
-                      >
-                        <option>All Statuses</option>
-
-                        <option>Active</option>
-
-                        <option>Banned</option>
-                      </select>
-
-                      <ChevronDown className="pointer-events-none absolute right-3 top-1/2 size-3 -translate-y-1/2 text-white/25" />
-                    </div>
-                  </div>
-                )}
-
                 {/* =================================================
                     ROLE
                     ================================================= */}
@@ -1418,21 +1394,21 @@ function PlayersPage() {
                 )}
 
                 {/* =================================================
-                    PLAYTIME
+                    GAMES PLAYED
                     ================================================= */}
 
-                {activeFilters.includes("Playtime") && (
-                  <div className="min-w-[170px]">
+                {activeFilters.includes("Games Played") && (
+                  <div className="min-w-[190px]">
                     <label className="mb-1.5 block text-[8px] font-black uppercase tracking-[.12em] text-white/30">
-                      Minimum Hours
+                      Minimum Games Played
                     </label>
 
                     <input
                       type="number"
                       min="0"
-                      value={playtimeFilter}
-                      onChange={(event) => setPlaytimeFilter(event.target.value)}
-                      placeholder="e.g. 50"
+                      value={gamesPlayedFilter}
+                      onChange={(event) => setGamesPlayedFilter(event.target.value)}
+                      placeholder="e.g. 10"
                       className="h-9 w-full rounded-md border border-white/10 bg-[#090e12] px-3 text-[10px] text-white outline-none placeholder:text-white/20 focus:border-[#39b7a5]"
                     />
                   </div>
@@ -1451,7 +1427,7 @@ function PlayersPage() {
                   >
                     <X className="size-3" />
 
-                    {filter === "Status" ? "Status" : filter}
+                    {filter === "Status" ? `Status: ${status}` : filter}
                   </button>
                 ))}
               </div>
@@ -1467,7 +1443,7 @@ function PlayersPage() {
       <section className="min-h-0 flex-1 overflow-hidden pb-4">
         <div className="h-full overflow-hidden rounded-lg border border-white/[.07] bg-[#11171b]">
           <div className="admin-player-table-scroll h-full min-h-[20rem] overflow-auto">
-            <table className="min-w-[1450px] w-full border-collapse">
+            <table className="min-w-[1180px] w-full border-collapse">
               <thead className="sticky top-0 z-20">
                 <tr className="border-b border-white/[.06] bg-[#151c21]">
                   <th className="w-12 px-4 py-3">
@@ -1489,18 +1465,12 @@ function PlayersPage() {
                   </th>
 
                   <th className="px-4 py-3 text-left text-[9px] font-black uppercase tracking-[.08em] text-white/30">
-                    Email
-                  </th>
-
-                  <th className="px-4 py-3 text-left text-[9px] font-black uppercase tracking-[.08em] text-white/30">
                     Role
                   </th>
 
                   <th className="px-4 py-3 text-left text-[9px] font-black uppercase tracking-[.08em] text-white/30">
                     Status
                   </th>
-
-                  <SortableHeader label="Recorded Runtime" sort="playtime" />
 
                   <SortableHeader label="Score" sort="score" />
 
@@ -1574,12 +1544,6 @@ function PlayersPage() {
                         </div>
                       </td>
 
-                      {/* EMAIL */}
-
-                      <td className="px-4 py-3">
-                        <span className="text-[11px] text-white/40">{player.email}</span>
-                      </td>
-
                       {/* ROLE */}
 
                       <td className="px-4 py-3">
@@ -1606,14 +1570,6 @@ function PlayersPage() {
                             {player.status}
                           </span>
                         </div>
-                      </td>
-
-                      {/* PLAYTIME */}
-
-                      <td className="px-4 py-3">
-                        <span className="text-[10px] text-white/45">
-                          {player.playtime ?? "—"}
-                        </span>
                       </td>
 
                       {/* SCORE */}
@@ -1660,7 +1616,7 @@ function PlayersPage() {
 
                 {sortedPlayers.length === 0 && (
                   <tr>
-                    <td colSpan={11} className="px-6 py-20 text-center">
+                    <td colSpan={8} className="px-6 py-20 text-center">
                       <Users className="mx-auto size-8 text-white/10" />
 
                       <p className="mt-4 text-sm font-bold text-white/40">No players found</p>
