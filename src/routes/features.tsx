@@ -165,7 +165,7 @@ function FeaturesPage() {
                 <span className="text-yellow">CREW </span>
                 <span className="text-coral">ON</span>
                 <span className="text-yellow"> SET</span>
-                <span className="text-coral">!</span>
+                <span className="text-green-800">!</span>
               </h1>
               <p className="story-hero-description">
                 A desktop video commercial production game where you can

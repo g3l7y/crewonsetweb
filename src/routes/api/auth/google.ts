@@ -100,6 +100,12 @@ export const Route = createFileRoute("/api/auth/google")({
 
           const pfResult = await playfabResponse.json();
           if (!playfabResponse.ok || pfResult.code !== 200) {
+            if (pfResult.error === "AccountBanned" || /accountbanned/i.test(String(pfResult.error ?? ""))) {
+              return Response.json(
+                { success: false, error: "This player account is banned. You can submit an appeal for review." } satisfies AuthResponse,
+                { status: 403 },
+              );
+            }
             return Response.json(
               {
                 success: false,

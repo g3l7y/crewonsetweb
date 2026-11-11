@@ -1,6 +1,7 @@
 import { createServerFn } from "@tanstack/react-start";
 import { getRequest } from "@tanstack/react-start/server";
-import { validateSessionFromRequest } from "./playfab/session";
+import { hasActivePlayFabBan, parseSessionFromRequest, validateSessionFromRequest } from "./playfab/session";
+import { isMockMode } from "./playfab/config";
 
 export interface CrewSession {
   playFabId: string;
@@ -9,6 +10,7 @@ export interface CrewSession {
   displayName: string;
   email: string;
   role: "admin" | "player";
+  banned?: boolean;
 }
 
 /**
@@ -21,6 +23,25 @@ export const getCrewSession = createServerFn({ method: "GET" }).handler(
     try {
       const session = await validateSessionFromRequest(getRequest());
       if (!session) {
+        const request = getRequest();
+        const identity = parseSessionFromRequest(request);
+        const secret = process.env["PLAYFAB_SECRET_KEY"]?.trim();
+        if (!isMockMode() && identity?.playFabId && secret) {
+          try {
+            if (await hasActivePlayFabBan(identity.playFabId, secret)) {
+              return {
+                playFabId: identity.playFabId,
+                username: identity.username || identity.displayName || "Player",
+                displayName: identity.displayName || identity.username || "Player",
+                email: identity.email || "",
+                role: "player",
+                banned: true,
+              };
+            }
+          } catch {
+            // A provider outage remains an ordinary unauthenticated session.
+          }
+        }
         return null;
       }
 

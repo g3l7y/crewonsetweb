@@ -181,6 +181,7 @@ export async function validateSessionFromRequest(
     // its current ban state. This keeps a banned account from using protected
     // website endpoints during a provider outage.
     if (!accountResponse.ok || accountResult.code !== 200) {
+      if (accountResult.error === 'AccountBanned' || /accountbanned/i.test(String(accountResult.error ?? ''))) return null;
       const invalidTicket = accountResult.errorCode === 1001 || accountResult.errorCode === 1074 || accountResult.errorCode === 1100
         || /invalidsessionticket|notauthenticated|accountnotfound/i.test(accountResult.error ?? '');
       // Provider errors and request throttling should not expire a player's

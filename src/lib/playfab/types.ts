@@ -1023,6 +1023,8 @@ export interface SessionData {
   displayName?: string | undefined;
   /** User's email */
   email?: string | undefined;
+  /** Client-side marker returned when an existing player session has been banned. */
+  banned?: boolean | undefined;
 }
 
 /**

@@ -12,7 +12,7 @@ export const Route = createFileRoute("/admin/player-reports")({
 });
 
 import { useEffect, useMemo, useState } from "react";
-import { Eye, FileText, Search, Trash2, UserRound, X, Check, Ban } from "lucide-react";
+import { Eye, FileText, Search, Trash2, UserRound, X, Check, Ban, ShieldCheck } from "lucide-react";
 import { ReportStatusDropdown } from "@/components/admin/report-status-dropdown";
 import { DateRangeFilter, matchesDateRange } from "@/components/admin/date-range-filter";
 import { isMockMode } from "@/lib/playfab/config";
@@ -64,8 +64,19 @@ function PlayerReportsRouteComponent() {
   const [statusError, setStatusError] = useState("");
   const [reportsLoadError, setReportsLoadError] = useState("");
   const [appealBusy, setAppealBusy] = useState(false);
+  const [confirmAppealApproval, setConfirmAppealApproval] = useState(false);
   const [appealNotes, setAppealNotes] = useState("");
   const [appealEmailWarning, setAppealEmailWarning] = useState("");
+  const [appealEmailSent, setAppealEmailSent] = useState("");
+
+  useEffect(() => {
+    if (!confirmAppealApproval) return;
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape" && !appealBusy) setConfirmAppealApproval(false);
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [confirmAppealApproval, appealBusy]);
   const filtered = useMemo(() => {
     const search = query.trim().toLowerCase();
     return reports.filter(
@@ -119,6 +130,7 @@ function PlayerReportsRouteComponent() {
     if (!report.banAppeal || report.appealStatus !== "Pending") return;
     setStatusError("");
     setAppealEmailWarning("");
+    setAppealEmailSent("");
     setAppealBusy(true);
     const updated = {
       ...report,
@@ -145,9 +157,10 @@ function PlayerReportsRouteComponent() {
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ id: report.id, appealDecision: decision, adminNotes: appealNotes.trim() }),
         });
-        const result = await response.json().catch(() => ({})) as { error?: string; emailWarning?: string };
+        const result = await response.json().catch(() => ({})) as { error?: string; emailWarning?: string; emailSent?: boolean };
         if (!response.ok) throw new Error(result.error || "The appeal decision could not be saved.");
         if (result.emailWarning) setAppealEmailWarning(result.emailWarning);
+        else if (result.emailSent && report.verifiedEmail) setAppealEmailSent(`Decision email sent to ${report.verifiedEmail}.`);
         if (decision === "Approved") {
           const refreshResponse = await fetch("/api/admin/players", {
             method: "POST",
@@ -442,13 +455,84 @@ function PlayerReportsRouteComponent() {
                 {appealEmailWarning && <p className="mt-2 text-xs text-yellow-300">{appealEmailWarning}</p>}
                 <div className="mt-4 flex flex-wrap justify-end gap-2">
                   <button type="button" disabled={appealBusy} onClick={() => void reviewBanAppeal(selected, "Denied")} className="inline-flex items-center gap-2 rounded-md border border-red-400/40 px-3 py-2 text-xs font-black uppercase text-red-300 hover:bg-red-400/10 disabled:opacity-50"><Ban className="size-3.5" /> Deny appeal</button>
-                  <button type="button" disabled={appealBusy} onClick={() => { if (window.confirm("Approve this appeal and restore the player's account access?")) void reviewBanAppeal(selected, "Approved"); }} className="inline-flex items-center gap-2 rounded-md bg-emerald-500 px-3 py-2 text-xs font-black uppercase text-[#0b111a] hover:bg-emerald-400 disabled:opacity-50"><Check className="size-3.5" /> Approve and restore access</button>
+                  <button type="button" disabled={appealBusy} onClick={() => setConfirmAppealApproval(true)} className="inline-flex items-center gap-2 rounded-md bg-emerald-500 px-3 py-2 text-xs font-black uppercase text-[#0b111a] hover:bg-emerald-400 disabled:opacity-50"><Check className="size-3.5" /> Approve and restore access</button>
                 </div>
               </div>
+            )}
+            {selected.banAppeal && selected.appealStatus !== "Pending" && appealEmailWarning && (
+              <p role="alert" className="mt-5 rounded-lg border border-yellow-300/25 bg-yellow-300/[.06] p-3 text-xs leading-relaxed text-yellow-200">
+                {appealEmailWarning}
+              </p>
+            )}
+            {selected.banAppeal && selected.appealStatus !== "Pending" && appealEmailSent && (
+              <p role="status" className="mt-5 rounded-lg border border-emerald-400/20 bg-emerald-400/[.06] p-3 text-xs leading-relaxed text-emerald-200">
+                {appealEmailSent}
+              </p>
             )}
             {selected.banAppeal && selected.appealStatus !== "Pending" && selected.adminNotes && <p className="mt-5 rounded-lg bg-white/[.04] p-3 text-sm text-white/65"><strong className="text-white">Admin note:</strong> {selected.adminNotes}</p>}
             </div>
           </div>
+        </div>
+      )}
+      {confirmAppealApproval && selected?.banAppeal && selected.appealStatus === "Pending" && (
+        <div
+          className="fixed inset-0 z-[120] flex items-center justify-center bg-black/75 p-4 backdrop-blur-sm"
+          onClick={() => !appealBusy && setConfirmAppealApproval(false)}
+        >
+          <section
+            role="alertdialog"
+            aria-modal="true"
+            aria-labelledby="approve-appeal-title"
+            aria-describedby="approve-appeal-description"
+            className="flex min-h-[21rem] w-full max-w-[24rem] flex-col justify-between rounded-2xl border border-emerald-400/25 bg-[#151c28] p-6 shadow-[0_24px_80px_rgba(0,0,0,0.55)] sm:p-7"
+            onClick={(event) => event.stopPropagation()}
+          >
+            <div>
+              <div className="mb-5 flex items-start justify-between">
+                <div className="grid size-12 place-items-center rounded-xl border border-emerald-400/25 bg-emerald-400/10 text-emerald-300">
+                  <ShieldCheck className="size-6" />
+                </div>
+                <button
+                  type="button"
+                  aria-label="Close confirmation"
+                  disabled={appealBusy}
+                  onClick={() => setConfirmAppealApproval(false)}
+                  className="grid size-8 place-items-center rounded-lg border border-white/10 text-white/50 transition hover:bg-white/5 hover:text-white disabled:opacity-40"
+                >
+                  <X className="size-4" />
+                </button>
+              </div>
+              <p className="text-[10px] font-black uppercase tracking-[0.18em] text-emerald-300">Ban Appeal</p>
+              <h2 id="approve-appeal-title" className="mt-2 text-xl font-black uppercase leading-tight text-white">Restore account access?</h2>
+              <p id="approve-appeal-description" className="mt-3 text-sm leading-relaxed text-white/60">
+                Approving {selected.reportedUsername}&apos;s appeal will lift the ban and reactivate their account.
+              </p>
+              <p className="mt-4 rounded-lg border border-white/[0.07] bg-black/20 px-3 py-2.5 text-xs leading-relaxed text-white/45">
+                {appealNotes.trim() ? "Your optional admin note will be included with the appeal decision." : "The player will be notified that their appeal was approved."}
+              </p>
+            </div>
+            <div className="mt-6 flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
+              <button
+                type="button"
+                disabled={appealBusy}
+                onClick={() => setConfirmAppealApproval(false)}
+                className="rounded-lg border border-white/10 px-4 py-2.5 text-xs font-black uppercase text-white/65 transition hover:border-white/20 hover:text-white disabled:opacity-40"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                disabled={appealBusy}
+                onClick={() => {
+                  setConfirmAppealApproval(false);
+                  void reviewBanAppeal(selected, "Approved");
+                }}
+                className="inline-flex items-center justify-center gap-2 rounded-lg bg-emerald-500 px-4 py-2.5 text-xs font-black uppercase text-[#0b111a] transition hover:bg-emerald-400 disabled:cursor-wait disabled:opacity-60"
+              >
+                <Check className="size-3.5" /> {appealBusy ? "Approving…" : "Approve appeal"}
+              </button>
+            </div>
+          </section>
         </div>
       )}
       {bulkDeleteTarget && (
