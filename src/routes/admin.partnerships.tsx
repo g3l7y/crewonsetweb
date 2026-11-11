@@ -133,6 +133,7 @@ function PartnershipsPage() {
   const [productTypeFilter, setProductTypeFilter] = useState<"All" | (typeof partnershipProductTypes)[number]>("All");
   const [emailConfirmation, setEmailConfirmation] = useState<string | null>(null);
   const updatingApplicationIds = useRef(new Set<string>());
+  const refreshInFlight = useRef(false);
 
   const [ads, setAds] = adsStore.useStore();
   const [revenue, setRevenue] = revenueStore.useStore();
@@ -141,6 +142,9 @@ function PartnershipsPage() {
     if (!isMockMode()) {
       let active = true;
       const refresh = async () => {
+        // Never let overlapping polls finish out of order and replace newer data.
+        if (refreshInFlight.current) return;
+        refreshInFlight.current = true;
         try {
           const response = await fetch("/api/admin/partnerships", { cache: "no-store" });
           if (!response.ok) return;
@@ -148,14 +152,24 @@ function PartnershipsPage() {
           if (!active || !Array.isArray(body.data)) return;
           const pendingIds = updatingApplicationIds.current;
           const latest = applicationsStore.get();
-          const pendingById = new Map(latest.filter((application) => pendingIds.has(application.id)).map((application) => [application.id, application]));
-          const refreshed = body.data.map((application) => pendingById.get(application.id) ?? application);
+          const latestById = new Map(latest.map((application) => [application.id, application]));
+          const refreshed = body.data.map((application) => {
+            const local = latestById.get(application.id);
+            if (!local || !pendingIds.has(application.id)) return application;
+            // Keep the saved optimistic status until the server confirms it. This
+            // closes the window where a poll started before a PATCH can roll it back.
+            if (application.status !== local.status) return local;
+            pendingIds.delete(application.id);
+            return application;
+          });
           setApplications(refreshed);
           setSelected((current) => current
             ? refreshed.find((application) => application.id === current.id) ?? current
             : current);
         } catch {
           // Keep the current admin view usable when a background refresh fails.
+        } finally {
+          refreshInFlight.current = false;
         }
       };
       void refresh();
@@ -347,7 +361,6 @@ function PartnershipsPage() {
       }
       savedApplication = result.data;
       emailWarning = result.emailWarning;
-      updatingApplicationIds.current.delete(id);
     }
 
     setApplications((current) => current.map((item) => item.id === id ? savedApplication : item));
