@@ -13,14 +13,17 @@ import {
   UserCircle,
   Users,
   X,
+  ShieldAlert,
 } from "lucide-react";
 import { lazy, Suspense, useEffect, useRef, useState } from "react";
+import { useQueryClient } from "@tanstack/react-query";
 import { NotificationBell } from "@/components/portal/notification-bell";
 import { useDisplayTheme } from "@/components/theme/display-theme-switcher";
 import { getProfileArtwork } from "@/lib/demo/profile-art";
 import type { NotificationBellPreferences } from "@/lib/demo/inbox";
 import { isMockMode } from "@/lib/playfab/config";
-import { usePlayerLoadout, usePlayerProfile, usePlayerProgression, useSession } from "@/lib/playfab/hooks";
+import { QUERY_KEYS, usePlayerLoadout, usePlayerProfile, usePlayerProgression, useSession } from "@/lib/playfab/hooks";
+import { getPlayFabService } from "@/lib/playfab/service";
 
 const Avatar3DPortrait = lazy(() => import("@/components/portal/avatar-3d-preview").then((module) => ({ default: module.Avatar3DPreview })));
 import { hasRecordedGameProgress } from "@/lib/playfab/progression";
@@ -56,6 +59,7 @@ const defaultPlayerPreferences: PlayerPreferences = {
 export function PlayerShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const router = useRouter();
+  const queryClient = useQueryClient();
 
   const displayTheme = useDisplayTheme();
   const portalModeClass = displayTheme === "dark" ? "portal-dark" : "portal-light";
@@ -69,12 +73,17 @@ export function PlayerShell({ children }: { children: React.ReactNode }) {
   const accountAvatar = profile?.avatarUrl || getProfileArtwork(accountName);
   const [mobileOpen, setMobileOpen] = useState(false);
   const [confirmingSignOut, setConfirmingSignOut] = useState(false);
+  const [banDialogOpen, setBanDialogOpen] = useState(false);
   const [accountOpen, setAccountOpen] = useState(false);
   const [scrolled, setScrolled] = useState(false);
   const [playerPreferences, setPlayerPreferences] = useState(defaultPlayerPreferences);
   const accountRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
+    if (sessionQuery.data?.banned) {
+      setBanDialogOpen(true);
+      return;
+    }
     if (sessionQuery.isSuccess && !sessionQuery.data) router.replace("/login");
   }, [router, sessionQuery.data, sessionQuery.isSuccess]);
 
@@ -129,9 +138,12 @@ export function PlayerShell({ children }: { children: React.ReactNode }) {
     };
   }, []);
 
-  async function signOut() {
-    await fetch("/api/auth/logout", { method: "POST" });
-    router.push("/login");
+  async function signOut(destination = "/login") {
+    await getPlayFabService().auth.logout();
+    if (mockMode) await fetch("/api/auth/logout", { method: "POST" });
+    queryClient.setQueryData(QUERY_KEYS.session, null);
+    setBanDialogOpen(false);
+    router.replace(destination);
     router.refresh();
   }
 
@@ -373,6 +385,45 @@ export function PlayerShell({ children }: { children: React.ReactNode }) {
                 className="rounded-md bg-coral px-4 py-2 text-sm font-black text-white transition hover:opacity-90"
               >
                 Sign Out
+              </button>
+            </div>
+          </section>
+        </div>
+      )}
+
+      {banDialogOpen && (
+        <div className="fixed inset-0 z-[120] grid place-items-center bg-[#070b12]/85 p-4 backdrop-blur-sm">
+          <section
+            role="alertdialog"
+            aria-modal="true"
+            aria-labelledby="player-banned-title"
+            aria-describedby="player-banned-description"
+            className="flex min-h-[21rem] w-full max-w-[25rem] flex-col justify-between rounded-2xl border border-[#ff6248]/35 bg-[#151c28] p-6 text-white shadow-[0_24px_80px_rgba(0,0,0,0.6)] sm:p-7"
+          >
+            <div>
+              <div className="grid size-12 place-items-center rounded-xl border border-[#ff6248]/30 bg-[#ff6248]/10 text-[#ff806d]">
+                <ShieldAlert className="size-6" />
+              </div>
+              <p className="mt-5 text-[10px] font-black uppercase tracking-[.18em] text-[#ff806d]">Account notice</p>
+              <h2 id="player-banned-title" className="mt-2 text-2xl font-black uppercase leading-tight">Your account is banned</h2>
+              <p id="player-banned-description" className="mt-3 text-sm leading-relaxed text-white/65">
+                Your account access has been suspended. You’ll be signed out to protect your account. You can submit an appeal for review.
+              </p>
+            </div>
+            <div className="mt-7 flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
+              <button
+                type="button"
+                onClick={() => void signOut("/login")}
+                className="rounded-lg border border-white/15 px-4 py-2.5 text-xs font-black uppercase text-white/75 transition hover:bg-white/[.06] hover:text-white"
+              >
+                Okay
+              </button>
+              <button
+                type="button"
+                onClick={() => void signOut("/ban-appeal")}
+                className="rounded-lg bg-coral px-4 py-2.5 text-xs font-black uppercase text-white transition hover:bg-coral-dark"
+              >
+                Submit an appeal
               </button>
             </div>
           </section>

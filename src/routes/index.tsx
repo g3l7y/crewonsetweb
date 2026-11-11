@@ -154,7 +154,8 @@ function HomePage() {
               CREW
               <br />
               <span className="text-yellow">ON</span>
-              <span className="text-coral"> SET!</span>
+              <span className="text-coral"> SET</span>
+              <span className="text-green-800">!</span>
             </h1>
 
             <p className="mt-5 max-w-xl text-lg font-medium leading-relaxed text-white/50 sm:text-xl">

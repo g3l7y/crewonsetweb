@@ -525,7 +525,7 @@ function PlayerDashboardPage() {
                 className="mt-4 block max-w-xl rounded-lg border border-white/15 bg-black/25 p-4 text-sm text-white transition hover:border-yellow/60"
               >
                 <span className="block text-[10px] font-black uppercase tracking-widest text-yellow">
-                  Brand Update
+                  Check This Out!
                 </span>
                 <span className="mt-1 block font-bold">
                   {featuredBrandUpdate.notes || "Visit our featured brand"}

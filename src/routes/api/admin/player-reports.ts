@@ -275,15 +275,19 @@ export const Route = createFileRoute('/api/admin/player-reports')({
             );
             if (!updated) return Response.json({ error: 'The appeal could not be updated.' }, { status: 500 });
             let emailWarning: string | undefined;
+            let emailSent = false;
             if (appeal.verifiedEmail) {
               try {
                 await sendBanAppealDecisionEmail(appeal.verifiedEmail, appeal.reporterName || 'Crew Player', appealDecision, adminNotes, appeal.banEndsAt);
+                emailSent = true;
               } catch (error) {
                 console.error('[Ban Appeals] Decision email failed:', error);
                 emailWarning = 'The decision was saved, but the email could not be sent.';
               }
+            } else {
+              emailWarning = 'The decision was saved, but this appeal has no verified email address to notify.';
             }
-            return Response.json({ success: true, ...(emailWarning ? { emailWarning } : {}) });
+            return Response.json({ success: true, emailSent, ...(emailWarning ? { emailWarning } : {}) });
           }
 
           if (status !== undefined) {

@@ -1,5 +1,4 @@
-import { createFileRoute, redirect } from "@tanstack/react-router";
-import { getCrewSession } from "@/lib/session.functions";
+import { createFileRoute } from "@tanstack/react-router";
 
 export const Route = createFileRoute("/contact")({
   head: () => ({
@@ -10,10 +9,6 @@ export const Route = createFileRoute("/contact")({
       { property: "og:description", content: "Reach the Crew On Set! studio or submit a brand partnership proposal." },
     ],
   }),
-  beforeLoad: async () => {
-    const session = await getCrewSession();
-    if (session?.role === "admin") throw redirect({ to: "/admin" });
-  },
   component: ContactPage,
 });
 

@@ -168,7 +168,14 @@ function createRealService(): PlayFabService {
             credentials: 'same-origin',
             cache: 'no-store',
           });
-          if (res.status === 401 || res.status === 403) return null;
+          if (res.status === 401 || res.status === 403) {
+            const result = await res.json().catch(() => ({})) as { banned?: boolean };
+            if (result.banned === true) {
+              _cachedTicket = null;
+              return { playFabId: '', role: 'player', banned: true } satisfies SessionData;
+            }
+            return null;
+          }
           if (!res.ok) throw new Error(`Session check failed (${res.status}).`);
           const data = await res.json();
           return data.session ?? null;

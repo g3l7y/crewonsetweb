@@ -29,7 +29,7 @@ export function SiteFooter() {
 
       {/* COPYRIGHT BAR */}
       <div className="w-full border-t border-white/[.08] bg-[#0f1728] px-5 py-5">
-        <p className="mx-auto max-w-7xl text-center text-[11px] font-bold tracking-[.14em] text-[#c6c5c2]">
+        <p className="footer-copyright mx-auto max-w-7xl text-center text-[11px] font-bold tracking-[.14em] text-[#c6c5c2]">
           © 2026 CREW ON SET! — ALL RIGHTS RESERVED. NO PROPS WERE HARMED.
         </p>
       </div>

@@ -3,6 +3,7 @@ import { CheckCircle2, FileImage, Send, X } from "lucide-react";
 
 import { EMAIL_ERROR, isValidEmail } from "@/lib/validation";
 import { isMockMode } from "@/lib/playfab/config";
+import { useSession } from "@/lib/playfab/hooks";
 import { BRAND_PROMOTION_DELIVERY_TERMS, BRAND_PROMOTION_PACKAGES, getBrandPromotionPackage } from "@/lib/brand-promotion-packages";
 import {
   applicationsStore,
@@ -43,6 +44,7 @@ function mockPromotionForecast(updates: BrandUpdate[], durationDays: number): Pr
 
 export function PartnershipForm() {
   const mockMode = isMockMode();
+  const sessionQuery = useSession();
   const [file, setFile] = useState<File | null>(null);
   const fileInput = useRef<HTMLInputElement>(null);
   const formRef = useRef<HTMLFormElement>(null);
@@ -71,6 +73,14 @@ export function PartnershipForm() {
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
+    if (sessionQuery.data?.role === "admin") {
+      setError("Administrator accounts cannot submit partnership applications. Please use a public account or player account.");
+      return;
+    }
+    if (sessionQuery.isPending) {
+      setError("Please wait while we verify your account access, then try again.");
+      return;
+    }
     const data = new FormData(event.currentTarget);
 
     const brandName = String(data.get("brandName") ?? "").trim();

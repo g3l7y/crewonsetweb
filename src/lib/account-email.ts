@@ -129,20 +129,20 @@ export async function sendPlayerBanNoticeEmail(to: string, username: string, sta
 export async function sendBanAppealDecisionEmail(to: string, username: string, decision: "Approved" | "Denied", notes?: string, banEndsAt?: string | null) {
   const mailer = getMailer();
   const approved = decision === "Approved";
-  const subject = approved ? "Your Crew On Set ban appeal was approved" : "Update on your Crew On Set ban appeal";
+  const subject = approved ? "Your Crew On Set ban appeal was approved" : "Your Crew On Set ban appeal was denied";
   const banEndNotice = !approved && banEndsAt
     ? ` You can sign in after the ban ends on ${new Intl.DateTimeFormat("en-PH", { dateStyle: "medium", timeStyle: "short", timeZone: "Asia/Manila" }).format(new Date(banEndsAt))} Philippine time.`
     : !approved ? " This ban is permanent, so the account remains banned unless an administrator restores access later." : "";
   const body = approved
     ? `Hello ${username}, your appeal was approved and your account ban has been lifted. Your account is active again and you can sign in to the website and game.`
-    : `Hello ${username}, your ban appeal was reviewed and denied. Your account remains banned.${banEndNotice}${notes?.trim() ? ` Admin note: ${notes.trim()}` : ""}`;
+    : `Hello ${username}, your ban appeal was reviewed and denied. The ban remains in place and your account access is still suspended.${banEndNotice}${notes?.trim() ? ` Admin note from the review team: ${notes.trim()}` : ""}`;
   await mailer.transporter.sendMail({
     from: mailer.from,
     replyTo: mailer.replyTo,
     to,
     subject,
     text: `${body}\n\nCrew On Set!`,
-    html: `<!doctype html><html><body style="font-family:Arial,sans-serif;color:#0a0e19;line-height:1.6"><h1>${approved ? "Appeal approved" : "Appeal update"}</h1><p>${escapeHtml(body)}</p><p style="color:#667085;font-size:12px">Crew On Set!</p></body></html>`,
+    html: `<!doctype html><html><body style="font-family:Arial,sans-serif;color:#0a0e19;line-height:1.6"><h1>${approved ? "Appeal approved" : "Ban appeal denied"}</h1><p>${escapeHtml(body)}</p><p style="color:#667085;font-size:12px">Crew On Set!</p></body></html>`,
   });
 }
 

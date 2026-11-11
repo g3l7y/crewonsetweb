@@ -15,6 +15,9 @@ import {
   X,
   ArrowUp,
   ArrowDown,
+  Instagram,
+  Twitter,
+  Youtube,
 } from "lucide-react";
 
 import {
@@ -45,6 +48,7 @@ import {
   setMockPlayerAdminStatus,
 } from "@/lib/playfab/mock-provider";
 import type { AdminPlayerDetails, PlayerProfile } from "@/lib/playfab/types";
+import { formatSocialUsername, getSocialProfileUrl, type SocialPlatform } from "@/lib/profile-socials";
 
 export const Route = createFileRoute("/admin/players")({
   head: () => ({
@@ -1842,10 +1846,36 @@ function PlayersPage() {
 
                     <h3 className="mt-3 text-2xl font-black uppercase text-white">BIO</h3>
 
-                    <p className="mt-4 whitespace-pre-wrap text-sm leading-7 text-white/40">
+                    <p className="mt-4 whitespace-pre-wrap text-sm leading-7 text-white/65">
                       {displayProfile?.bio?.trim() || "This player has not added a biography yet."}
-                      {Object.entries(displayProfile?.socialLinks ?? {}).map(([platform, value]) => <span key={platform} className="mt-2 block">{platform}: {String(value)}</span>)}
                     </p>
+                    {Object.entries(displayProfile?.socialLinks ?? {}).some(([, value]) => Boolean(value?.trim())) && (
+                      <div className="mt-4 flex flex-wrap gap-2">
+                        {(Object.entries(displayProfile?.socialLinks ?? {}) as [SocialPlatform, string][])
+                          .filter(([, value]) => Boolean(value?.trim()))
+                          .map(([platform, value]) => {
+                            const Icon = platform === "twitter" ? Twitter : platform === "instagram" ? Instagram : Youtube;
+                            const label = platform === "twitter" ? "Twitter / X" : platform === "instagram" ? "Instagram" : "YouTube";
+                            const hoverClass = platform === "instagram"
+                              ? "hover:border-coral/40 hover:bg-coral/10 hover:text-coral"
+                              : platform === "youtube"
+                                ? "hover:border-red-400/40 hover:bg-red-400/10 hover:text-red-400"
+                                : "hover:border-white/20 hover:bg-white/[0.07] hover:text-white";
+                            return (
+                              <a
+                                key={platform}
+                                href={getSocialProfileUrl(platform, value)}
+                                target="_blank"
+                                rel="noreferrer"
+                                className={`inline-flex items-center gap-2 rounded-md border border-white/10 bg-white/[0.035] px-3.5 py-2.5 text-sm font-bold text-white/60 transition ${hoverClass}`}
+                              >
+                                <Icon className="size-4" />
+                                <span>{label} <span className="text-white/35">{formatSocialUsername(platform, value)}</span></span>
+                              </a>
+                            );
+                          })}
+                      </div>
+                    )}
                   </section>
 
                   <section className="mt-8">
