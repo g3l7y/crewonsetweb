@@ -15,7 +15,7 @@ export const Route = createFileRoute("/admin/ads/$id")({
 
 import { useEffect, useRef, useState, type FormEvent } from "react";
 import { isMockMode } from "@/lib/playfab/config";
-import { useAdminAds } from "@/lib/playfab/hooks";
+import { useAdminAds, useAdminPartnerships } from "@/lib/playfab/hooks";
 import type { AdEntry } from "@/lib/playfab/types";
 import Link from "@/components/next-compat/link";
 import {
@@ -33,7 +33,7 @@ import {
   MousePointerClick,
   Users,
 } from "lucide-react";
-import { adsStore, adminNotificationsStore, applicationsStore, formatMoney, notificationsStore, recordPartnershipMakeGood, uid, type ActiveAd } from "@/lib/demo/store";
+import { adsStore, adminNotificationsStore, applicationsStore, formatMoney, notificationsStore, recordPartnershipMakeGood, uid, type ActiveAd, type PartnershipApplication } from "@/lib/demo/store";
 
 const statusStyles: Record<ActiveAd["status"], string> = {
   Approved: "bg-[#d9a514]/15 text-[#f3c747]",
@@ -100,15 +100,43 @@ function fromServiceAd(ad: AdEntry): ActiveAd {
   };
 }
 
+function fromApplication(application: PartnershipApplication): ActiveAd {
+  const token = application.brandPromotionToken;
+  const origin = typeof window === "undefined" ? "" : window.location.origin;
+  return {
+    id: "AD-" + application.id,
+    applicationId: application.id,
+    brand: application.brand,
+    exactModel: application.exactModel,
+    productType: application.productType,
+    contract: application.description || "Crew On Set brand promotion placement.",
+    status: application.status === "Done" ? "Done" : application.status === "On-going" ? "On-going" : "Approved",
+    revenue: application.budget || 0,
+    clicks: 0,
+    visits: 0,
+    impressions: 0,
+    placement: "Crew On Set production placement",
+    submittedLink: application.link,
+    ...(application.promotionStartedAt ? { startDate: application.promotionStartedAt } : {}),
+    ...(application.promotionEndsAt ? { expiresAt: application.promotionEndsAt } : {}),
+    ...(token && !isMockMode() ? {
+      brandPromotionUrl: "/brand-promotions/" + encodeURIComponent(token),
+      trackedLink: origin + "/api/brand-promotions/click?token=" + encodeURIComponent(token),
+    } : {}),
+  };
+}
+
 function AdDetailPage() {
   const { id } = Route.useParams();
   const { source } = Route.useSearch();
   const backHref = source === "ad-revenue" ? "/admin/ad-revenue" : "/admin/partnerships";
   const backLabel = source === "ad-revenue" ? "Back to Ad Revenue" : "Back to Partnerships & Ads";
   const [localAds, setAds] = adsStore.useStore();
-  const [applications, setApplications] = applicationsStore.useStore();
+  const [localApplications, setApplications] = applicationsStore.useStore();
   const realAdsQuery = useAdminAds();
+  const realApplicationsQuery = useAdminPartnerships();
   const ads = isMockMode() ? localAds : (realAdsQuery.data ?? []).map(fromServiceAd);
+  const applications = isMockMode() ? localApplications : (realApplicationsQuery.data ?? localApplications);
   const [notifications, setNotifications] = notificationsStore.useStore();
   const [, setAdminNotifications] = adminNotificationsStore.useStore();
   const [now, setNow] = useState<number | null>(null);
@@ -118,9 +146,28 @@ function AdDetailPage() {
   const [makeGoodReason, setMakeGoodReason] = useState('');
   const [makeGoodMessage, setMakeGoodMessage] = useState<string | null>(null);
   const [savingMakeGood, setSavingMakeGood] = useState(false);
+  const [freshAd, setFreshAd] = useState<ActiveAd | null>(null);
   const hasFiredExpiry = useRef(false);
 
-  const ad = ads.find((a) => a.id === id);
+  useEffect(() => {
+    if (isMockMode()) return;
+    let active = true;
+    setFreshAd(null);
+    void fetch(`/api/admin/ad-revenue?id=${encodeURIComponent(id)}`, { cache: "no-store" })
+      .then(async (response) => {
+        if (!response.ok) return;
+        const body = await response.json() as { data?: AdEntry };
+        if (active && body.data) setFreshAd(fromServiceAd(body.data));
+      })
+      .catch(() => undefined);
+    return () => { active = false; };
+  }, [id]);
+
+  const existingAd = ads.find((a) => a.id === id || a.applicationId === id || "AD-" + a.applicationId === id);
+  const routeApplication = applications.find((application) =>
+    application.id === id || "AD-" + application.id === id || application.id === existingAd?.applicationId,
+  );
+  const ad = freshAd ?? existingAd ?? (routeApplication ? fromApplication(routeApplication) : undefined);
   const linkedApplication = ad ? applications.find((item) => item.id === ad.applicationId) : undefined;
 
   async function recordMakeGood(event: FormEvent<HTMLFormElement>) {
@@ -352,6 +399,7 @@ function AdDetailPage() {
             <div className="mt-5 border-t border-white/[0.06] pt-4">
               <p className="text-[9px] font-black uppercase tracking-wide !text-white/30">Game Click-Tracking URL</p>
               <p className="mt-1 text-xs leading-relaxed !text-white/50">Set this as the click-through destination for the promotion image or button in the game. The site records aggregate click-throughs and uses a random first-party cookie to estimate unique browsers. It does not record player usernames or PlayFab IDs, and it cannot confirm that the brand page loaded.</p>
+              {ad.status === "Approved" && <p className="mt-2 text-xs font-bold !text-[#f3c747]">You can copy this link now. Visit tracking begins when the promotion status changes to On-going.</p>}
               <div className="mt-2 flex flex-wrap items-center gap-3">
                 <code className="min-w-0 flex-1 break-all rounded-md bg-[#101923] p-3 text-xs !text-white/70">{ad.trackedLink}</code>
                 <button type="button" onClick={async () => {
@@ -377,6 +425,7 @@ function AdDetailPage() {
               </div>
             </div>
           )}
+          {isMockMode() && !ad.trackedLink && <div className="mt-5 rounded-md border border-white/10 bg-[#101923] p-3 text-xs leading-relaxed !text-white/55">Mock mode supports opening application details, but it does not create a live visit-tracking link.</div>}
           {!isMockMode() && !ad.trackingEnabled && (
             <div className="mt-5 rounded-md border border-[#d9a514]/30 bg-[#d9a514]/10 p-3 text-xs leading-relaxed !text-white/70">
               Click tracking is not configured, so a tracked game link is not available. Add the <code className="font-bold">DATABASE_URL</code> Neon connection string to the Vercel environment and redeploy to enable durable click counts.

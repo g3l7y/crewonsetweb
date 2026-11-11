@@ -100,6 +100,7 @@ export const Route = createFileRoute('/api/admin/player-reports')({
           const reports = await getWebsiteRecords<PlayerReport>(
             WEBSITE_DATA_KEYS.playerReports,
             getSecretKey(),
+            true,
           );
           return Response.json({ success: true, data: reports });
         } catch (error) {

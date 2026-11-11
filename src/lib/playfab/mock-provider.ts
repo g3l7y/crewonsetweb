@@ -49,6 +49,15 @@ const MOCK_PRODUCTION_LOGS = mapDataToProductionLogs([{
   productionFeedback: 'The key light revealed the petals. Leave more space above the vase in the close-up.',
   postProductionFeedback: 'The final cut kept the product in focus and met the requested duration.',
   nextStep: 'Compare the framing in your opening and closing shots.',
+}, {
+  id: 'mock-multiplayer-terrari', playerId: 'MOCK-PLAYER-001', mode: 'multiplayer', level: 3,
+  production: 'Terrari', date: '2026-10-14T10:00:00Z', role: 'Cameraman', roles: ['Cameraman'],
+  score: 93.8, rank: 'A', decision: 'passed',
+  preProductionScore: 90, productionScore: 95, postProductionScore: 96,
+  preProductionFeedback: 'The crew followed the brief and prepared the set.',
+  productionFeedback: 'The camera work kept the product clear throughout the shoot.',
+  postProductionFeedback: 'The finished commercial met the client requirements.',
+  nextStep: 'Keep coordinating camera moves with the lighting setup.',
 }]);
 
 function randomDelay(): Promise<void> {

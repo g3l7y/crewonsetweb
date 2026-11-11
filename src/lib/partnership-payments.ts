@@ -6,6 +6,7 @@ import {
 } from '@/lib/playfab/websiteData';
 import type { PartnershipApplication, PartnershipPayment } from '@/lib/playfab/types';
 import { sendPartnershipStatusEmail } from '@/lib/partnership-email';
+import { createBrandPromotionToken } from '@/lib/brand-promotion-token';
 
 export function createPartnershipPaymentId(): string {
   return 'COS-BRAND-' + Date.now() + '-' + Math.random().toString(36).slice(2, 8);
@@ -104,6 +105,7 @@ export async function markPartnershipPaymentPaid(
 ): Promise<{ updated: boolean; alreadyPaid: boolean }> {
   const wasAlreadyPaid = payment.status === 'fulfilled';
   const paidAt = new Date().toISOString();
+  const approvedToken = await createBrandPromotionToken(payment.applicationId, secretKey);
 
   if (!wasAlreadyPaid || (paymentMethod && !payment.paymentMethod)) {
     const paymentUpdated = await updatePartnershipPayment(
@@ -130,10 +132,10 @@ export async function markPartnershipPaymentPaid(
       paymentId: payment.id,
       paymentAmount: payment.amountInCentavos / 100,
       paymentPaidAt: application.paymentPaidAt || payment.paidAt || paidAt,
-      ...(application.status === 'Pending'
+      ...(['New', 'Pending'].includes(application.status)
         ? {
             status: 'Approved',
-            brandPromotionToken: application.brandPromotionToken || crypto.randomUUID(),
+            brandPromotionToken: application.brandPromotionToken || approvedToken,
           }
         : {}),
     }),
