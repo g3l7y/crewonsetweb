@@ -182,9 +182,7 @@ function AdRevenuePage() {
   ];
 
   function openApplication(row: (typeof rows)[number]) {
-    if (row.ad) {
-      router.push(`/admin/ads/${row.ad.id}?source=ad-revenue`);
-    }
+    router.push(`/admin/ads/${row.ad?.id || `AD-${row.app.id}`}?source=ad-revenue`);
   }
 
   return (
@@ -271,7 +269,7 @@ function AdRevenuePage() {
           <div className="admin-filter-results-scroll grid gap-4 md:grid-cols-2 xl:grid-cols-3">
             {filteredRows.map((row) => {
               const { app, ad } = row;
-              const clickable = Boolean(ad);
+              const clickable = true;
               return (
                 <article
                   key={app.id}
@@ -302,6 +300,7 @@ function AdRevenuePage() {
                       <span className={`mt-2 inline-flex rounded px-2 py-1 text-[9px] font-black uppercase ${app.status === "Approved" ? "bg-[#d9a514]/15 !text-[#f3c747]" : app.status === "Done" ? "bg-[#2d9d8f]/15 !text-[#4bc4b4]" : "bg-[#3a7bd5]/15 !text-[#7cb0ee]"}`}>
                         {app.status}
                       </span>
+                      {app.status === "Approved" && ad?.trackedLink && <p className="mt-2 text-[10px] font-bold uppercase tracking-wide !text-[#f3c747]">Tracking link ready · activates when On-going</p>}
                     </div>
                     {clickable && (
                       <ChevronRight className="mt-1 size-5 shrink-0 !text-white/30 transition group-hover:!text-coral" />

@@ -6,6 +6,7 @@ import {
 } from '@/lib/playfab/websiteData';
 import type { PartnershipApplication, PartnershipPayment } from '@/lib/playfab/types';
 import { sendPartnershipStatusEmail } from '@/lib/partnership-email';
+import { createBrandPromotionToken } from '@/lib/brand-promotion-token';
 
 export function createPartnershipPaymentId(): string {
   return 'COS-BRAND-' + Date.now() + '-' + Math.random().toString(36).slice(2, 8);
@@ -104,6 +105,7 @@ export async function markPartnershipPaymentPaid(
 ): Promise<{ updated: boolean; alreadyPaid: boolean }> {
   const wasAlreadyPaid = payment.status === 'fulfilled';
   const paidAt = new Date().toISOString();
+  const approvedToken = await createBrandPromotionToken(payment.applicationId, secretKey);
 
   if (!wasAlreadyPaid || (paymentMethod && !payment.paymentMethod)) {
     const paymentUpdated = await updatePartnershipPayment(
@@ -124,13 +126,13 @@ export async function markPartnershipPaymentPaid(
   const applications = await getWebsiteRecords<PartnershipApplication>(WEBSITE_DATA_KEYS.partnerships, secretKey);
   const existingApplication = applications.find((application) => application.id === payment.applicationId);
   if (!existingApplication) return { updated: false, alreadyPaid: false };
-  const brandPromotionToken = existingApplication.brandPromotionToken || await createPromotionAccessToken(payment.applicationId, secretKey);
+  const brandPromotionToken = existingApplication.brandPromotionToken || approvedToken;
   const applicationUpdated = await updateWebsiteRecord<PartnershipApplication>(
     WEBSITE_DATA_KEYS.partnerships,
     payment.applicationId,
     (application) => ({
       ...application,
-      ...(application.status === 'Pending' ? { status: 'Approved' } : {}),
+      ...(['New', 'Pending'].includes(application.status) ? { status: 'Approved' } : {}),
       brandPromotionToken: application.brandPromotionToken || brandPromotionToken,
       paymentStatus: 'Paid',
       paymentId: payment.id,
@@ -170,13 +172,6 @@ export async function markPartnershipPaymentPaid(
   }
 
   return { updated: !wasAlreadyPaid, alreadyPaid: wasAlreadyPaid };
-}
-
-async function createPromotionAccessToken(applicationId: string, secretKey: string): Promise<string> {
-  const key = await crypto.subtle.importKey('raw', new TextEncoder().encode(secretKey), { name: 'HMAC', hash: 'SHA-256' }, false, ['sign']);
-  const signature = await crypto.subtle.sign('HMAC', key, new TextEncoder().encode(applicationId));
-  const encoded = Array.from(new Uint8Array(signature)).map((byte) => byte.toString(16).padStart(2, '0')).join('');
-  return applicationId + '.' + encoded;
 }
 
 export async function ensureApprovedPartnershipEmail(

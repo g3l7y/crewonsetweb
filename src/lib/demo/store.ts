@@ -241,16 +241,25 @@ async function loadSharedTable<T>(key: string) {
   try {
     const response = await fetch(endpoint, { cache: "no-store" });
     if (!response.ok) {
+      const message = await responseError(response);
       console.error("[Crew On Set] Failed to load shared records.", {
         endpoint,
-        message: await responseError(response),
+        message,
       });
+      if (isBrowser()) window.dispatchEvent(new CustomEvent("cos:shared-load", { detail: { key, error: message } }));
       return null;
     }
     const body = (await response.json()) as { data?: T[] };
-    return Array.isArray(body.data) ? body.data : [];
+    if (!Array.isArray(body.data)) {
+      const message = "The server returned an unreadable report list.";
+      if (isBrowser()) window.dispatchEvent(new CustomEvent("cos:shared-load", { detail: { key, error: message } }));
+      return null;
+    }
+    if (isBrowser()) window.dispatchEvent(new CustomEvent("cos:shared-load", { detail: { key, error: "" } }));
+    return body.data;
   } catch (error) {
     console.error("[Crew On Set] Failed to load shared records.", { endpoint, error });
+    if (isBrowser()) window.dispatchEvent(new CustomEvent("cos:shared-load", { detail: { key, error: "The report list could not be loaded." } }));
     return null;
   }
 }

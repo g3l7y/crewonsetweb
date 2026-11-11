@@ -17,6 +17,7 @@ import { sendPartnershipStatusEmail } from '@/lib/partnership-email';
 import { getPromotionEndDate, processExpiredPromotions, sendPromotionCompletionEmail } from '@/lib/brand-promotion-lifecycle';
 import { ensureBrandPromotionExpiryWorkflow } from '@/lib/brand-promotion-scheduler';
 import { getBrandPromotionPackage } from '@/lib/brand-promotion-packages';
+import { createBrandPromotionToken } from '@/lib/brand-promotion-token';
 import { sendPartnershipDeliveryAdjustmentEmail } from '@/lib/partnership-email';
 import { isMockMode } from '@/lib/playfab/config';
 
@@ -99,21 +100,6 @@ function calculatePromotionEnd(startedAt: string, duration?: number, durationUni
     end.setUTCDate(end.getUTCDate() + amount);
   }
   return end.toISOString();
-}
-
-async function createPromotionAccessToken(applicationId: string, secretKey: string): Promise<string> {
-  const key = await crypto.subtle.importKey(
-    'raw',
-    new TextEncoder().encode(secretKey),
-    { name: 'HMAC', hash: 'SHA-256' },
-    false,
-    ['sign'],
-  );
-  const signature = await crypto.subtle.sign('HMAC', key, new TextEncoder().encode(applicationId));
-  const encoded = Array.from(new Uint8Array(signature))
-    .map((byte) => byte.toString(16).padStart(2, '0'))
-    .join('');
-  return applicationId + '.' + encoded;
 }
 
 function getPromotionUrl(request: Request, token: string): string {
@@ -456,16 +442,13 @@ export const Route = createFileRoute('/api/admin/partnerships')({
             if (application.paymentStatus !== 'Paid') {
               return Response.json({ error: 'The application cannot be approved until the brand payment is completed.' }, { status: 409 });
             }
-            nextApplication.brandPromotionToken = application.brandPromotionToken || await createPromotionAccessToken(application.id, secretKey);
-            const emailError = await trySendPartnershipStatusEmail({ application, status: 'Approved' });
-            if (emailError) emailWarning = 'The status was saved, but the approval email could not be delivered: ' + emailError;
-            else nextApplication.approvalEmailSentAt = new Date().toISOString();
+            nextApplication.brandPromotionToken = application.brandPromotionToken || await createBrandPromotionToken(application.id, secretKey);
           } else if (nextStatus === 'On-going') {
             if (application.paymentStatus !== 'Paid') {
               return Response.json({ error: 'The application cannot go on-going until the brand payment is completed.' }, { status: 409 });
             }
             const promotionStartedAt = application.promotionStartedAt || new Date().toISOString();
-            const brandPromotionToken = application.brandPromotionToken || await createPromotionAccessToken(application.id, secretKey);
+            const brandPromotionToken = application.brandPromotionToken || await createBrandPromotionToken(application.id, secretKey);
             nextApplication.brandPromotionToken = brandPromotionToken;
             nextApplication.promotionStartedAt = promotionStartedAt;
             nextApplication.promotionEndsAt = application.promotionEndsAt || calculatePromotionEnd(

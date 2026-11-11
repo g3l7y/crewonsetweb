@@ -11,7 +11,7 @@ export const Route = createFileRoute("/admin/player-reports")({
   component: PlayerReportsRouteComponent,
 });
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Eye, FileText, Search, Trash2, UserRound, X, Check, Ban } from "lucide-react";
 import { ReportStatusDropdown } from "@/components/admin/report-status-dropdown";
 import { isMockMode } from "@/lib/playfab/config";
@@ -59,6 +59,7 @@ function PlayerReportsRouteComponent() {
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const [bulkDeleteTarget, setBulkDeleteTarget] = useState<PlayerReport[] | null>(null);
   const [statusError, setStatusError] = useState("");
+  const [reportsLoadError, setReportsLoadError] = useState("");
   const [appealBusy, setAppealBusy] = useState(false);
   const [appealNotes, setAppealNotes] = useState("");
   const [appealEmailWarning, setAppealEmailWarning] = useState("");
@@ -74,6 +75,15 @@ function PlayerReportsRouteComponent() {
         (status === "All Statuses" || (report.banAppeal ? report.appealStatus === status : report.status === status)),
     );
   }, [reports, query, category, status]);
+
+  useEffect(() => {
+    const handleLoad = (event: Event) => {
+      const detail = (event as CustomEvent<{ key?: string; error?: string }>).detail;
+      if (detail?.key === "cos.playerReports") setReportsLoadError(detail.error || "");
+    };
+    window.addEventListener("cos:shared-load", handleLoad);
+    return () => window.removeEventListener("cos:shared-load", handleLoad);
+  }, []);
 
   async function updateStatus(report: PlayerReport, next: PlayerReportStatus) {
     if (!canAdvanceReportStatus(report.status, next)) return;
@@ -190,6 +200,11 @@ function PlayerReportsRouteComponent() {
       {statusError && (
         <div role="alert" className="mb-4 rounded-lg border border-[#ff6248]/40 bg-[#ff6248]/10 px-4 py-3 text-xs font-bold text-[#ff9a8a]">
           {statusError}
+        </div>
+      )}
+      {reportsLoadError && (
+        <div role="alert" className="mb-4 rounded-lg border border-[#f3c747]/40 bg-[#f3c747]/10 px-4 py-3 text-xs font-bold text-[#f3c747]">
+          Player reports and ban appeals could not be loaded: {reportsLoadError} Please refresh the page or check the server connection.
         </div>
       )}
       <section className="admin-card mb-4 flex flex-col gap-3 rounded-lg border border-white/[0.06] bg-[#182330] p-4 shadow-xl sm:flex-row">

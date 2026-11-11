@@ -13,7 +13,7 @@ export const Route = createFileRoute("/admin/partnerships")({
   component: PartnershipsPage,
 });
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import Link from "@/components/next-compat/link";
 import { normalizeExternalHttpUrl } from "@/lib/external-url";
 import { PartnershipStatusDropdown } from "@/components/admin/partnership-status-dropdown";
@@ -132,6 +132,7 @@ function PartnershipsPage() {
   const [applicationQuery, setApplicationQuery] = useState("");
   const [productTypeFilter, setProductTypeFilter] = useState<"All" | (typeof partnershipProductTypes)[number]>("All");
   const [emailConfirmation, setEmailConfirmation] = useState<string | null>(null);
+  const updatingApplicationIds = useRef(new Set<string>());
 
   const [ads, setAds] = adsStore.useStore();
   const [revenue, setRevenue] = revenueStore.useStore();
@@ -145,9 +146,13 @@ function PartnershipsPage() {
           if (!response.ok) return;
           const body = await response.json() as { data?: PartnershipApplication[] };
           if (!active || !Array.isArray(body.data)) return;
-          setApplications(body.data);
+          const pendingIds = updatingApplicationIds.current;
+          const latest = applicationsStore.get();
+          const pendingById = new Map(latest.filter((application) => pendingIds.has(application.id)).map((application) => [application.id, application]));
+          const refreshed = body.data.map((application) => pendingById.get(application.id) ?? application);
+          setApplications(refreshed);
           setSelected((current) => current
-            ? body.data?.find((application) => application.id === current.id) ?? current
+            ? refreshed.find((application) => application.id === current.id) ?? current
             : current);
         } catch {
           // Keep the current admin view usable when a background refresh fails.
@@ -291,6 +296,7 @@ function PartnershipsPage() {
     }
 
     if (!isMockMode()) {
+      updatingApplicationIds.current.add(id);
       const optimisticApplication = { ...app, status };
       setApplications((current) => current.map((item) => item.id === id ? optimisticApplication : item));
       setSelected((current) => current?.id === id ? optimisticApplication : current);
@@ -334,6 +340,7 @@ function PartnershipsPage() {
     } else {
       const result = await updatePartnershipStatus(app, status, completionReason);
       if (!result.success || !result.data) {
+        updatingApplicationIds.current.delete(id);
         setApplications((current) => current.map((item) => item.id === id ? app : item));
         setSelected((current) => current?.id === id ? app : current);
         showStatusMessage(result.error || 'The status change could not be saved.');
@@ -341,6 +348,7 @@ function PartnershipsPage() {
       }
       savedApplication = result.data;
       emailWarning = result.emailWarning;
+      updatingApplicationIds.current.delete(id);
     }
 
     setApplications((current) => current.map((item) => item.id === id ? savedApplication : item));

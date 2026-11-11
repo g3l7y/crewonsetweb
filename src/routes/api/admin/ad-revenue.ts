@@ -1,9 +1,10 @@
 import { createFileRoute } from '@tanstack/react-router';
 import { unauthorizedSessionResponse, validateSessionFromRequest } from '@/lib/playfab/session';
-import { WEBSITE_DATA_KEYS, getWebsiteRecords } from '@/lib/playfab/websiteData';
+import { WEBSITE_DATA_KEYS, getWebsiteRecords, updateWebsiteRecord } from '@/lib/playfab/websiteData';
 import type { AdEntry, PartnershipApplication } from '@/lib/playfab/types';
 import { getPromotionEndDate, processExpiredPromotions } from '@/lib/brand-promotion-lifecycle';
 import { getBrandPromotionMetrics, isBrandPromotionTrackingConfigured } from '@/lib/brand-promotion-tracking';
+import { createBrandPromotionToken } from '@/lib/brand-promotion-token';
 
 function getSecretKey(): string {
   const key = process.env['PLAYFAB_SECRET_KEY'];
@@ -85,7 +86,21 @@ export const Route = createFileRoute('/api/admin/ad-revenue')({
           const eligible = applications.filter((application) =>
             !application.archived && ['Approved', 'On-going', 'Done'].includes(application.status),
           );
-          const ads = await Promise.all(eligible.map(async (application) => {
+          const prepared = await Promise.all(eligible.map(async (application) => {
+            if (application.brandPromotionToken) return application;
+            const token = await createBrandPromotionToken(application.id, getSecretKey());
+            const saved = await updateWebsiteRecord<PartnershipApplication>(
+              WEBSITE_DATA_KEYS.partnerships,
+              application.id,
+              (current) => current.brandPromotionToken
+                ? current
+                : { ...current, brandPromotionToken: token },
+              getSecretKey(),
+            );
+            if (!saved) throw new Error('Could not save the promotion tracking link.');
+            return { ...application, brandPromotionToken: token };
+          }));
+          const ads = await Promise.all(prepared.map(async (application) => {
             const metrics = isBrandPromotionTrackingConfigured()
               ? await getBrandPromotionMetrics(application.id)
               : undefined;
