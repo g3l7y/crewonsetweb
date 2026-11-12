@@ -48,6 +48,7 @@ import {
   setMockPlayerAdminStatus,
 } from "@/lib/playfab/mock-provider";
 import type { AdminPlayerDetails, PlayerProfile } from "@/lib/playfab/types";
+import { formatScore } from "@/lib/format-score";
 import { formatSocialUsername, getSocialProfileUrl, type SocialPlatform } from "@/lib/profile-socials";
 
 export const Route = createFileRoute("/admin/players")({
@@ -1590,7 +1591,7 @@ function PlayersPage() {
 
                       <td className="px-4 py-3 text-center">
                         <span className="text-[11px] font-bold text-white/60">
-                          {player.score == null ? "—" : player.score.toLocaleString()}
+                          {player.score == null ? "—" : formatScore(player.score)}
                         </span>
                       </td>
 
@@ -1909,7 +1910,7 @@ function PlayersPage() {
                     <div className="mt-5 grid gap-4 sm:grid-cols-2">
                       <div className="rounded-xl border border-white/[.07] bg-[#1c2636] p-5">
                         <p className="text-3xl font-black text-white">
-                          {displayScore == null ? "—" : displayScore.toLocaleString()}
+                          {displayScore == null ? "—" : formatScore(displayScore)}
                         </p>
 
                         <p className="mt-1 text-[9px] font-black uppercase tracking-wide text-white/30">

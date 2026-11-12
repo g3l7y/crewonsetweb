@@ -69,6 +69,7 @@ import { isMockMode } from "@/lib/playfab/config";
 import { sortNewestFirst } from "@/lib/validation";
 import { achievementEmoji } from "@/lib/achievement-emoji";
 import { hasRecordedGameProgress } from "@/lib/playfab/progression";
+import { formatScore } from "@/lib/format-score";
 import { recordMockGameDownload } from "@/lib/mock-game-download-tracking";
 
 const Avatar3DPreview = lazy(() => import("@/components/portal/avatar-3d-preview").then((module) => ({ default: module.Avatar3DPreview })));
@@ -121,7 +122,7 @@ function formatPlaytime(minutes: number): string {
 }
 
 const career = [
-  { label: "Productions Completed", value: "87", icon: Film },
+  { label: "Productions", value: "87", icon: Film },
   { label: "Sessions Played", value: "214", icon: Play },
   { label: "Total Play Time", value: "146h", icon: Clock3 },
   { label: "Best Rating", value: "98%", icon: Star },
@@ -227,6 +228,7 @@ function PlayerDashboardPage() {
   const level = hasGameProgress ? progressionQuery.data?.level : undefined;
   const currentXp = progressionQuery.data?.currentXp ?? 0;
   const xpToNextLevel = progressionQuery.data?.xpToNextLevel ?? 0;
+  const progressMetric = progressionQuery.data?.progressMetric ?? "xp";
   const progressPercent =
     xpToNextLevel > 0 ? Math.min(100, Math.round((currentXp / xpToNextLevel) * 100)) : 0;
   const productionLogs = productionLogsQuery.data ?? [];
@@ -243,7 +245,7 @@ function PlayerDashboardPage() {
         : item)
     : [
         {
-          label: "Productions Completed",
+          label: "Productions",
           value: String(productionLogsQuery.data?.length ?? 0),
           icon: Film,
         },
@@ -260,11 +262,11 @@ function PlayerDashboardPage() {
         {
           label: "Best Rating",
           value: productionLogsQuery.data?.length
-            ? Math.max(
+            ? `${formatScore(Math.max(
                 ...productionLogsQuery.data.map((log) =>
                   Number(log.overallScore ?? log.score ?? 0),
                 ),
-              ) + "%"
+              ))}%`
             : "—",
           icon: Star,
         },
@@ -460,7 +462,9 @@ function PlayerDashboardPage() {
                     />
                   </div>
                   <span className="text-xs font-bold text-navy/45">
-                    {currentXp.toLocaleString()} / {xpToNextLevel.toLocaleString()} XP
+                    {progressMetric === "productions"
+                      ? `${currentXp} / ${xpToNextLevel} PRODUCTIONS`
+                      : `${currentXp.toLocaleString()} / ${xpToNextLevel.toLocaleString()} XP`}
                   </span>
                 </div>
               )}

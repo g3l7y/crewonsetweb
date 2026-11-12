@@ -250,6 +250,7 @@ function CrewProfilePage() {
   const profileLevel = progressionQuery.data?.level;
   const profileCurrentXp = progressionQuery.data?.currentXp ?? 0;
   const profileXpToNextLevel = progressionQuery.data?.xpToNextLevel ?? 0;
+  const profileProgressMetric = progressionQuery.data?.progressMetric ?? "xp";
   const profileXpPercent = profileXpToNextLevel > 0
     ? Math.min(100, Math.max(0, (profileCurrentXp / profileXpToNextLevel) * 100))
     : 0;
@@ -607,7 +608,9 @@ function CrewProfilePage() {
                   </div>
 
                   <span className="whitespace-nowrap text-xs text-white/40">
-                    {profileCurrentXp.toLocaleString("en-US")} / {profileXpToNextLevel.toLocaleString("en-US")} XP
+                    {profileProgressMetric === "productions"
+                      ? `${profileCurrentXp} / ${profileXpToNextLevel} PRODUCTIONS`
+                      : `${profileCurrentXp.toLocaleString("en-US")} / ${profileXpToNextLevel.toLocaleString("en-US")} XP`}
                   </span>
                 </div>}
               </div>

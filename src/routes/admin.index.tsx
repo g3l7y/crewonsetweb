@@ -1,4 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
+import { formatScore } from "@/lib/format-score";
 
 export const Route = createFileRoute("/admin/")({
   head: () => ({
@@ -301,7 +302,7 @@ function AdminDashboardPage() {
                   <td className="px-3 py-3 text-sm font-bold !text-white">{entry.displayName}</td>
                   <td className="px-3 py-3 text-sm !text-white/60">{entry.level}</td>
                   <td className="px-3 py-3 text-sm !text-white/60">{entry.productions}</td>
-                  <td className="px-3 py-3 text-sm font-black !text-white">{entry.averageScore.toFixed(1)}</td>
+                  <td className="px-3 py-3 text-sm font-black !text-white">{formatScore(entry.averageScore)}</td>
                 </tr>
               ))}
               {!progressLeaderboardQuery.isLoading && (progressLeaderboardQuery.data?.length ?? 0) === 0 && (

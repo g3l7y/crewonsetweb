@@ -7,6 +7,7 @@ import { useAchievements, useFriends, usePlayerProfile, useProgressLeaderboard }
 import type { Achievement, PlayerProfile } from "@/lib/playfab/types";
 import { formatSocialUsername, getSocialProfileUrl, type SocialLinks, type SocialPlatform } from "@/lib/profile-socials";
 import { SyncedPlayerAvatar } from "@/components/portal/player-avatar";
+import { formatScore } from "@/lib/format-score";
 
 type Leader = {
   playFabId?: string;
@@ -339,11 +340,11 @@ export function Leaderboards() {
                   </td>
 
                   <td className="px-5 py-4 text-sm text-white/55">
-                    {formatMetric(leader.rating, "%")}
+                    {leader.rating === null ? "—" : `${formatScore(leader.rating)}%`}
                   </td>
 
                   <td className="px-5 py-4 font-black text-white">
-                    {formatMetric(leader.score)}
+                    {formatScore(leader.score)}
                   </td>
 
                 </tr>
@@ -442,7 +443,7 @@ export function Leaderboards() {
                 </p>
 
                 <p className="mt-1 min-w-0 whitespace-nowrap text-sm font-black leading-none text-white">
-                  {formatMetric(selectedLeader.score)}
+                  {formatScore(selectedLeader.score)}
                 </p>
 
               </div>
@@ -484,7 +485,7 @@ export function Leaderboards() {
                 </p>
 
                 <p className="mt-1 min-w-0 whitespace-nowrap text-sm font-black leading-none text-white">
-                  {formatMetric(selectedLeader.rating, "%")}
+                  {selectedLeader.rating === null ? "—" : `${formatScore(selectedLeader.rating)}%`}
                 </p>
 
               </div>
