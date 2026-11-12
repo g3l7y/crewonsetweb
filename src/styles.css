@@ -141,6 +141,15 @@
 @layer utilities {
   .section-padding { @apply py-20 sm:py-28 lg:py-32; }
 
+  .zebra-exclamation {
+    background-image: repeating-linear-gradient(12deg, #075a38 0 12px, #fefdf8 12px 16px);
+    background-clip: text;
+    -webkit-background-clip: text;
+    color: transparent;
+    -webkit-text-fill-color: transparent;
+    filter: drop-shadow(0 2px 5px rgba(255, 255, 255, .62)) drop-shadow(0 0 3px rgba(255, 255, 255, .4));
+  }
+
   .display-title {
     font-family: var(--font-display);
     font-size: clamp(3.25rem, 9vw, 8.5rem);

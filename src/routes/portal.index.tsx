@@ -22,7 +22,6 @@ import Image from "@/components/next-compat/image";
 import Link from "@/components/next-compat/link";
 import { lazy, Suspense, useEffect, useMemo } from "react";
 import {
-  Clock3,
   Film,
   Hash,
   Play,
@@ -62,7 +61,6 @@ import {
   usePlayerLoadout,
   usePlayerProgression,
   useProductionLogs,
-  usePlayerPlaytimeMinutes,
   useProgressLeaderboard,
 } from "@/lib/playfab/hooks";
 import { isMockMode } from "@/lib/playfab/config";
@@ -110,21 +108,9 @@ const badges = [
   },
 ];
 
-function parseRuntimeMinutes(value: unknown): number {
-  const runtime = String(value || "").toLowerCase();
-  const hours = Number(runtime.match(/(\d+)\s*h/)?.[1] || 0);
-  const minutes = Number(runtime.match(/(\d+)\s*m/)?.[1] || 0);
-  return hours * 60 + minutes;
-}
-
-function formatPlaytime(minutes: number): string {
-  return `${Math.floor(minutes / 60)}h ${minutes % 60}m`;
-}
-
 const career = [
   { label: "Productions", value: "87", icon: Film },
   { label: "Sessions Played", value: "214", icon: Play },
-  { label: "Total Play Time", value: "146h", icon: Clock3 },
   { label: "Best Rating", value: "98%", icon: Star },
   { label: "Global Rank", value: "#1,284", icon: Hash },
 ];
@@ -200,7 +186,6 @@ function PlayerDashboardPage() {
   const progressionQuery = usePlayerProgression();
   const achievementsQuery = useAchievements();
   const productionLogsQuery = useProductionLogs();
-  const playtimeStatisticQuery = usePlayerPlaytimeMinutes();
   const progressLeaderboardQuery = useProgressLeaderboard();
   const realNotificationsQuery = useNotifications();
   const [gameBuilds] = gameBuildStore.useStore();
@@ -232,15 +217,11 @@ function PlayerDashboardPage() {
   const progressPercent =
     xpToNextLevel > 0 ? Math.min(100, Math.round((currentXp / xpToNextLevel) * 100)) : 0;
   const productionLogs = productionLogsQuery.data ?? [];
-  const recordedPlaytime = productionLogs.reduce((total, log) => total + parseRuntimeMinutes(log.runtime), 0);
-  const playtimeMinutes = recordedPlaytime > 0 ? recordedPlaytime : playtimeStatisticQuery.data;
   const leaderboardEntry = progressLeaderboardQuery.data?.find(
     (entry) => entry.playFabId.trim().toUpperCase() === (profileQuery.data?.playFabId || profileQuery.data?.id)?.trim().toUpperCase(),
   );
   const dashboardCareer = mockMode
-    ? career.map((item) => item.label === "Total Play Time"
-      ? { ...item, value: playtimeMinutes == null ? "—" : formatPlaytime(playtimeMinutes) }
-      : item.label === "Global Rank"
+    ? career.map((item) => item.label === "Global Rank"
         ? { ...item, value: leaderboardEntry ? `#${leaderboardEntry.position.toLocaleString()}` : "—" }
         : item)
     : [
@@ -253,11 +234,6 @@ function PlayerDashboardPage() {
           label: "Sessions Played",
           value: String(productionLogsQuery.data?.length ?? 0),
           icon: Play,
-        },
-        {
-          label: "Total Play Time",
-          value: playtimeMinutes == null ? "—" : formatPlaytime(playtimeMinutes),
-          icon: Clock3,
         },
         {
           label: "Best Rating",
@@ -546,7 +522,7 @@ function PlayerDashboardPage() {
             <h2 className="text-lg font-black uppercase text-white">Career Overview</h2>
           </div>
 
-          <div className="grid gap-px overflow-hidden rounded-xl border border-white/10 bg-white/10 sm:grid-cols-2 xl:grid-cols-5">
+          <div className="grid gap-px overflow-hidden rounded-xl border border-white/10 bg-white/10 sm:grid-cols-2 xl:grid-cols-4">
             {dashboardCareer.map((stat) => {
               const Icon = stat.icon;
               return (
