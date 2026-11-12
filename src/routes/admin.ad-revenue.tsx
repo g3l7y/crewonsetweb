@@ -77,6 +77,7 @@ function fromServiceAd(ad: AdEntry): ActiveAd {
     placement: ad.placement || 'Crew On Set production placement',
     submittedLink: ad.submittedLink,
     trackedLink: ad.trackedLink,
+    monitoringUrl: ad.monitoringUrl,
     endedAt: ad.endedAt,
     endReason: ad.endReason,
   };
@@ -378,6 +379,7 @@ function AdRevenuePage() {
                       </span>
                     )}
                   </div>
+                  {ad?.monitoringUrl && <a href={ad.monitoringUrl} target="_blank" rel="noreferrer" className="mt-3 inline-block text-[10px] font-bold text-coral hover:underline">Open brand monitoring tracker</a>}
                 </article>
               );
             })}

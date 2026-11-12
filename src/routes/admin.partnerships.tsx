@@ -354,6 +354,7 @@ function PartnershipsPage() {
       savedApplication = {
         ...app,
         status,
+        ...(status === 'Approved' ? { brandPromotionToken: app.brandPromotionToken || uid('PROMO') } : {}),
         ...(completionAt ? {
           promotionEndedAt: completionAt,
           promotionEndType: endedEarly ? 'ended-early' as const : 'expired' as const,
@@ -396,6 +397,10 @@ function PartnershipsPage() {
     } else if (isMockMode() && status === 'Done') {
       setAds((current) => current.map((item) => item.applicationId === id ? { ...item, status: 'Done', endedAt: completionAt, endReason: completionReason } : item));
       setRevenue((current) => current.map((item) => item.applicationId === id ? { ...item, status: 'Done', endedAt: completionAt, endReason: completionReason } : item));
+    } else if (isMockMode() && status === 'Approved') {
+      const nextAd = buildMockAd(savedApplication, 'Approved');
+      setAds((current) => [nextAd, ...current.filter((item) => item.id !== nextAd.id)]);
+      setRevenue((current) => [nextAd, ...current.filter((item) => item.id !== nextAd.id)]);
     }
     if (selected?.id === id) setSelected(savedApplication);
     logAdminActivity({ kind: "partnership", label: "Brand application status updated", detail: `${app.brand} application moved to ${status}.` });
@@ -730,8 +735,8 @@ function PartnershipsPage() {
                       <p className="text-[10px] !text-white/35">{ad.id}</p></div></div>
                     </td>
                     <td className="px-5 py-4 text-sm !text-white/55">{ad.exactModel}</td>
-                    <td className="px-5 py-4 text-sm !text-white/50">{formatDate(ad.startDate)}</td>
-                    <td className="px-5 py-4 text-sm !text-white/50">{formatDate(ad.expiresAt)}</td>
+                    <td className="px-5 py-4 text-sm !text-white/50">{ad.startDate ? formatDate(ad.startDate) : "—"}</td>
+                    <td className="px-5 py-4 text-sm !text-white/50">{ad.expiresAt ? formatDate(ad.expiresAt) : "—"}</td>
                     <td className="px-5 py-4">
                       <span
                         className={`rounded px-2.5 py-1 text-[10px] font-black uppercase ${adStatusStyles[ad.status]}`}

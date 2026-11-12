@@ -21,7 +21,7 @@ import { PageHero } from "@/components/marketing/page-hero";
 import { PartnershipForm } from "@/components/marketing/partnership-form";
 
 const contacts = [
-  { icon: Mail, label: "General inquiries", value: "crewonsetgame@gmail.com", href: "mailto:crewonsetgame@gmail.com" },
+  { icon: Mail, label: "General inquiries", value: "crewonsetgame@gmail.com", href: "https://mail.google.com/mail/?view=cm&fs=1&to=crewonsetgame@gmail.com" },
   { icon: Facebook, label: "Facebook", value: "Crew On Set", href: "https://www.facebook.com/profile.php?id=61594770855744" },
   { icon: Instagram, label: "Instagram", value: "@crewonset", href: "https://www.instagram.com/crewonset/" },
 ];

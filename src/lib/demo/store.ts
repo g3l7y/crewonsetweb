@@ -861,6 +861,7 @@ export type ActiveAd = {
   placement: string;
   submittedLink?: string | undefined;
   trackedLink?: string | undefined;
+  monitoringUrl?: string | undefined;
   trackingEnabled?: boolean | undefined;
 };
 
