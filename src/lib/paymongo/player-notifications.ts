@@ -9,6 +9,16 @@ type CompletedTopUp = {
   completedAt?: string;
 };
 
+type CompletedRefund = {
+  id: string;
+  playFabId: string;
+  username?: string;
+  amountInCentavos: number;
+  createdAt: string;
+  reason: string;
+  notes?: string;
+};
+
 type PlayerNotificationRecord = {
   id: string;
   title: string;
@@ -54,6 +64,42 @@ export async function recordPlayerTopUpNotification(
     href: "/portal/shop?view=transactions",
     target: { kind: "players", playerIds: [order.playFabId] },
     ...(order.username ? { recipientUsername: order.username } : {}),
+  };
+  return setWebsiteRecords(
+    WEBSITE_DATA_KEYS.playerNotifications,
+    [notification, ...existing],
+    secretKey,
+  );
+}
+
+/** Persist one account-scoped notice for a completed refund. */
+export async function recordPlayerRefundNotification(
+  refund: CompletedRefund,
+  secretKey: string,
+): Promise<boolean> {
+  const existing = await getWebsiteRecords<PlayerNotificationRecord>(
+    WEBSITE_DATA_KEYS.playerNotifications,
+    secretKey,
+  );
+  const id = "paymongo-refund-" + refund.id;
+  if (existing.some((notification) => notification.id === id)) return true;
+
+  const amount = new Intl.NumberFormat("en-PH", {
+    style: "currency",
+    currency: "PHP",
+    minimumFractionDigits: 2,
+  }).format(refund.amountInCentavos / 100);
+  const notification: PlayerNotificationRecord = {
+    id,
+    title: "Refund processed",
+    body: amount + " has been refunded to the original payment method. Your bank may take additional time to post it.",
+    createdAt: refund.createdAt,
+    kind: "transaction",
+    channel: "notification",
+    read: false,
+    href: "/portal/shop?view=transactions",
+    target: { kind: "players", playerIds: [refund.playFabId] },
+    ...(refund.username ? { recipientUsername: refund.username } : {}),
   };
   return setWebsiteRecords(
     WEBSITE_DATA_KEYS.playerNotifications,

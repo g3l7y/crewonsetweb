@@ -11,8 +11,9 @@ export const Route = createFileRoute("/admin/transactions")({
 });
 
 import { useEffect, useMemo, useState } from "react";
-import { Coins, Eye, ReceiptText, Search, Wallet2, X } from "lucide-react";
-import { formatMoney } from "@/lib/demo/store";
+import { useQueryClient } from "@tanstack/react-query";
+import { Coins, Eye, ReceiptText, Search, Wallet2, X, RotateCcw } from "lucide-react";
+import { formatMoney, notificationsStore, transactionsStore } from "@/lib/demo/store";
 import { topUps, topUpsStore } from "@/lib/admin-demo-data";
 import { isMockMode } from "@/lib/playfab/config";
 import { useAdminPayMongoOrders } from "@/lib/admin-paymongo-orders";
@@ -23,15 +24,24 @@ const statusStyles: Record<string, string> = {
   Completed: "bg-[#2d9d8f]/15 text-[#4bc4b4]",
   Pending: "bg-[#d9a514]/15 text-[#e1b42b]",
   Failed: "bg-coral/15 text-[#ff7663]",
+  "Partially Refunded": "bg-[#d9a514]/15 text-[#e1b42b]",
+  Refunded: "bg-[#2d9d8f]/15 text-[#4bc4b4]",
 };
 
 function TransactionsPage() {
   const [query, setQuery] = useState("");
-  const [statusFilter, setStatusFilter] = useState<"All Statuses" | "Completed" | "Pending" | "Failed">("All Statuses");
+  const [statusFilter, setStatusFilter] = useState<"All Statuses" | TopUpRecord["status"]>("All Statuses");
   const [dateFrom, setDateFrom] = useState("");
   const [dateTo, setDateTo] = useState("");
   const [selectedTransaction, setSelectedTransaction] = useState<TopUpRecord | null>(null);
+  const [refundAmount, setRefundAmount] = useState("");
+  const [refundReason, setRefundReason] = useState("requested_by_customer");
+  const [refundNotes, setRefundNotes] = useState("");
+  const [refundBusy, setRefundBusy] = useState(false);
+  const [refundMessage, setRefundMessage] = useState("");
+  const [refundError, setRefundError] = useState("");
   const mockMode = isMockMode();
+  const queryClient = useQueryClient();
   const [demoTopUps] = topUpsStore.useStore();
   const liveTopUpsQuery = useAdminPayMongoOrders();
   useEffect(() => {
@@ -45,6 +55,106 @@ function TransactionsPage() {
     () => (mockMode ? demoTopUps : (liveTopUpsQuery.data ?? [])),
     [demoTopUps, liveTopUpsQuery.data, mockMode],
   );
+
+  useEffect(() => {
+    if (!selectedTransaction) return;
+    setRefundAmount(remainingRefund(selectedTransaction).toFixed(2));
+    setRefundReason("requested_by_customer");
+    setRefundNotes("");
+    setRefundMessage("");
+    setRefundError("");
+  }, [selectedTransaction?.id]);
+
+  function remainingRefund(record: TopUpRecord) {
+    const reserved = (record.refunds ?? []).filter((refund) => refund.status !== "failed").reduce((sum, refund) => sum + refund.amount, 0);
+    return Math.max(0, record.amount - reserved);
+  }
+
+  async function submitRefund() {
+    if (!selectedTransaction) return;
+    const amount = Number(refundAmount);
+    if (!Number.isFinite(amount) || amount < 1 || amount > remainingRefund(selectedTransaction)) {
+      setRefundError(`Enter an amount from ₱1.00 to ₱${remainingRefund(selectedTransaction).toFixed(2)}.`);
+      return;
+    }
+    setRefundBusy(true);
+    setRefundError("");
+    setRefundMessage("");
+    try {
+      if (mockMode) {
+        const refund = {
+          id: `MOCK-REF-${Date.now()}`,
+          amount,
+          status: "succeeded" as const,
+          reason: refundReason,
+          ...(refundNotes.trim() ? { notes: refundNotes.trim() } : {}),
+          createdAt: new Date().toISOString(),
+          simulated: true,
+        };
+        const updated: TopUpRecord = {
+          ...selectedTransaction,
+          refunds: [...(selectedTransaction.refunds ?? []), refund],
+          refundedAmount: (selectedTransaction.refundedAmount ?? 0) + amount,
+        };
+        updated.status = updated.refundedAmount >= updated.amount ? "Refunded" : "Partially Refunded";
+        topUpsStore.set((current) => current.map((row) => row.id === updated.id ? updated : row));
+        if (updated.transactionType !== "partnership") {
+          transactionsStore.set((current) => {
+            const prior = current.find((transaction) => transaction.id === updated.id);
+            const transaction = {
+              id: updated.id,
+              label: prior?.label || "C-Coin Top-Up",
+              detail: prior?.detail || `PayMongo top-up — ${(updated.coins ?? 0).toLocaleString("en-PH")} C-Coins`,
+              amount: prior?.amount ?? updated.coins ?? 0,
+              kind: "topup" as const,
+              createdAt: prior?.createdAt || updated.timestamp || new Date().toISOString(),
+              paymentAmountPhp: updated.amount,
+              paymentMethod: updated.paymentMethod || "PayMongo · Demo",
+              payMongo: true,
+              playerId: updated.playerId,
+              paymentStatus: updated.status,
+              refundedAmount: updated.refundedAmount,
+              simulated: true,
+              refunds: updated.refunds,
+            };
+            return [transaction, ...current.filter((item) => item.id !== updated.id)];
+          });
+          notificationsStore.set((current) => current.some((item) => item.id === refund.id) ? current : [{
+            id: refund.id,
+            title: "Refund recorded",
+            body: `${formatMoney(amount)} has been marked as refunded for your C-Coin top-up. This is a simulation; no money was moved.`,
+            createdAt: refund.createdAt,
+            kind: "transaction",
+            channel: "notification",
+            read: false,
+            href: "/portal/shop?view=transactions",
+            recipientUsername: updated.playerName,
+            target: { kind: "players", playerIds: [updated.playerId] },
+          }, ...current]);
+        }
+        setSelectedTransaction(updated);
+        setRefundMessage("Simulated refund recorded. No money was moved.");
+      } else {
+        const response = await fetch("/api/admin/paymongo-refunds", {
+          method: "POST",
+          credentials: "include",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ transactionId: selectedTransaction.id, transactionType: selectedTransaction.transactionType ?? "top-up", amount, reason: refundReason, notes: refundNotes }),
+        });
+        const result = await response.json().catch(() => ({})) as { error?: string; refund?: NonNullable<TopUpRecord["refunds"]>[number]; remaining?: number };
+        if (!response.ok || !result.refund) throw new Error(result.error || "Could not create the refund.");
+        const updated: TopUpRecord = { ...selectedTransaction, refunds: [...(selectedTransaction.refunds ?? []), result.refund], status: result.refund.status === "succeeded" ? (result.remaining === 0 ? "Refunded" : "Partially Refunded") : selectedTransaction.status };
+        if (result.refund.status === "succeeded") updated.refundedAmount = (selectedTransaction.refundedAmount ?? 0) + result.refund.amount;
+        setSelectedTransaction(updated);
+        setRefundMessage(`PayMongo refund created (${result.refund.status}).`);
+        await queryClient.invalidateQueries({ queryKey: ["admin", "paymongo-orders", "shared"] });
+      }
+    } catch (error) {
+      setRefundError(error instanceof Error ? error.message : "Could not create the refund.");
+    } finally {
+      setRefundBusy(false);
+    }
+  }
 
   const matches = useMemo(() => {
     const search = query.trim().toLowerCase();
@@ -71,7 +181,7 @@ function TransactionsPage() {
   );
 
   const total = topUps.reduce((sum, row) => sum + row.amount, 0);
-  const completed = topUps.filter((r) => r.status === "Completed").length;
+  const completed = topUps.filter((r) => r.status === "Completed" || r.status === "Partially Refunded" || r.status === "Refunded").length;
 
   const summaries = [
     {
@@ -141,6 +251,8 @@ function TransactionsPage() {
             <option>Completed</option>
             <option>Pending</option>
             <option>Failed</option>
+            <option>Partially Refunded</option>
+            <option>Refunded</option>
           </select>
         </label>
         <label className="block">
@@ -280,6 +392,9 @@ function TransactionsPage() {
                     status={selectedTransaction.status}
                     checkoutSessionId={selectedTransaction.checkoutSessionId}
                     eventId={selectedTransaction.eventId}
+                    refundedAmount={selectedTransaction.refundedAmount ?? 0}
+                    refunds={selectedTransaction.refunds}
+                    simulated={selectedTransaction.refunds?.some((refund) => refund.simulated) ?? false}
                   />
                 </div>
               ) : <div className="mx-auto max-w-xl rounded-lg bg-[#fffdf6] p-5 text-[#101923] shadow-lg sm:p-8">
@@ -337,6 +452,36 @@ function TransactionsPage() {
                   <p className="text-right text-xs font-bold uppercase text-[#657080]">PHP</p>
                 </div>
 
+                {(selectedTransaction.refunds?.length ?? 0) > 0 && (
+                  <section className="border-t border-[#101923]/15 py-5">
+                    <div className="flex flex-wrap items-end justify-between gap-2">
+                      <div>
+                        <p className="text-[10px] font-black uppercase tracking-wider text-[#7b8490]">Refund history</p>
+                        <p className="mt-1 text-sm font-bold">{formatMoney(selectedTransaction.refundedAmount ?? 0)} confirmed refunded</p>
+                      </div>
+                      <p className="text-xs font-bold text-[#657080]">Remaining: {formatMoney(remainingRefund(selectedTransaction))}</p>
+                    </div>
+                    <ul className="mt-3 space-y-3">
+                      {selectedTransaction.refunds?.map((refund) => (
+                        <li key={refund.id} className="rounded-lg border border-[#101923]/10 bg-[#101923]/[.035] p-3 text-xs">
+                          <div className="flex flex-wrap justify-between gap-2">
+                            <strong>{formatMoney(refund.amount)} · {refund.status}</strong>
+                            <span className="text-[#657080]">{new Date(refund.createdAt).toLocaleString("en-PH", { dateStyle: "medium", timeStyle: "short" })}</span>
+                          </div>
+                          <p className="mt-1">Reason: {refund.reason.replaceAll("_", " ")}{refund.notes ? ` · ${refund.notes}` : ""}</p>
+                          <p className="mt-1 break-all text-[#657080]">Refund reference: {refund.id}</p>
+                          {refund.simulated ? (
+                            <p className="mt-2 font-bold text-amber-800">Simulated only: no funds moved and no email was sent.</p>
+                          ) : (
+                            <p className="mt-2 text-[#657080]">Brand email receipt: {refund.receiptEmailSentAt ? `sent ${new Date(refund.receiptEmailSentAt).toLocaleString("en-PH", { dateStyle: "medium", timeStyle: "short" })}` : "not yet confirmed as sent"}</p>
+                          )}
+                        </li>
+                      ))}
+                    </ul>
+                    <p className="mt-3 text-[11px] text-[#657080]">Refunds go back to the original payment method. The brand’s bank or provider may take additional time to post the funds.</p>
+                  </section>
+                )}
+
                 <div className="space-y-2 border-t border-dashed border-[#101923]/20 pt-4 text-[11px] text-[#657080]">
                   <p>
                     {selectedTransaction.transactionType === "partnership" ? "Application" : "Player account"}: {" "}
@@ -355,6 +500,37 @@ function TransactionsPage() {
                   </p>
                 </div>
               </div>}
+              {selectedTransaction.status !== "Pending" && selectedTransaction.status !== "Failed" && (
+                <section className="mt-5 rounded-lg border border-white/10 bg-[#101923] p-4 text-white">
+                  <div className="flex items-center gap-2 text-sm font-black uppercase"><RotateCcw className="size-4 text-coral" /> Refund payment</div>
+                  <p className="mt-1 text-xs text-white/55">Refundable balance: {formatMoney(remainingRefund(selectedTransaction))}. Refunds of at least ₱1.00 are supported.</p>
+                  <div className="mt-4 grid gap-3 sm:grid-cols-2">
+                    <label className="text-[10px] font-black uppercase tracking-wider text-white/50">Amount (PHP)
+                      <input type="number" min="1" max={remainingRefund(selectedTransaction)} step="0.01" value={refundAmount} onChange={(event) => setRefundAmount(event.target.value)} className="mt-1 h-10 w-full rounded border border-white/15 bg-[#182330] px-3 text-sm font-bold text-white outline-none focus:border-coral" />
+                    </label>
+                    <label className="text-[10px] font-black uppercase tracking-wider text-white/50">Reason
+                      <select value={refundReason} onChange={(event) => setRefundReason(event.target.value)} className="mt-1 h-10 w-full rounded border border-white/15 bg-[#182330] px-3 text-sm font-bold text-white outline-none focus:border-coral">
+                        <option value="requested_by_customer">Requested by customer</option>
+                        <option value="duplicate">Duplicate</option>
+                        <option value="fraudulent">Fraudulent</option>
+                        <option value="others">Other</option>
+                      </select>
+                    </label>
+                    <label className="text-[10px] font-black uppercase tracking-wider text-white/50 sm:col-span-2">Notes (optional)
+                      <textarea maxLength={255} value={refundNotes} onChange={(event) => setRefundNotes(event.target.value)} rows={2} className="mt-1 w-full rounded border border-white/15 bg-[#182330] px-3 py-2 text-sm font-medium text-white outline-none focus:border-coral" />
+                    </label>
+                  </div>
+                  {refundError && <p role="alert" className="mt-3 text-xs font-bold text-[#ff7663]">{refundError}</p>}
+                  {refundMessage && <p role="status" className="mt-3 text-xs font-bold text-[#4bc4b4]">{refundMessage}</p>}
+                  <button type="button" disabled={refundBusy || remainingRefund(selectedTransaction) < 1} onClick={submitRefund} className="mt-4 inline-flex h-10 items-center gap-2 rounded bg-coral px-4 text-xs font-black uppercase text-[#101923] disabled:cursor-not-allowed disabled:opacity-50">
+                    <RotateCcw className="size-3.5" /> {refundBusy ? "Processing..." : "Issue Refund"}
+                  </button>
+                  {(selectedTransaction.refunds?.length ?? 0) > 0 && <div className="mt-4 border-t border-white/10 pt-3">
+                    <p className="text-[10px] font-black uppercase tracking-wider text-white/45">Refund history</p>
+                    <ul className="mt-2 space-y-2">{selectedTransaction.refunds?.map((refund) => <li key={refund.id} className="flex flex-wrap justify-between gap-x-3 gap-y-1 text-xs text-white/70"><span>{refund.id} · {refund.reason.replaceAll("_", " ")}{refund.simulated ? " · Simulated" : ""}</span><span>{formatMoney(refund.amount)} · {refund.status}</span></li>)}</ul>
+                  </div>}
+                </section>
+              )}
             </div>
           </section>
         </div>

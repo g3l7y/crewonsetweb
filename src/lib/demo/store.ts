@@ -1062,6 +1062,21 @@ export type PlayerTransaction = {
   paymentAmountPhp?: number;
   paymentMethod?: string;
   payMongo?: boolean;
+  playerId?: string;
+  paymentStatus?: "Completed" | "Pending" | "Failed" | "Partially Refunded" | "Refunded";
+  refundedAmount?: number;
+  simulated?: boolean;
+  refunds?: Array<{
+    id: string;
+    amount: number;
+    status: "pending" | "processing" | "succeeded" | "failed";
+    reason: string;
+    notes?: string;
+    createdAt: string;
+    simulated?: boolean;
+    receiptEmailSentAt?: string;
+    notificationSentAt?: string;
+  }>;
 };
 
 const daysAgo = (days: number) => new Date(Date.now() - days * 24 * 60 * 60 * 1000).toISOString();

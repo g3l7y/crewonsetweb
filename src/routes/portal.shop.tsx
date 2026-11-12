@@ -375,6 +375,23 @@ function ShopPage() {
                     ...current,
                   ],
             );
+            transactionsStore.set((current) => [
+              {
+                id: transactionId,
+                label: "C-Coin Top-Up",
+                detail: `PayMongo top-up — ${confirmedCoins.toLocaleString("en-PH")} C-Coins`,
+                amount: confirmedCoins,
+                kind: "topup",
+                createdAt: completedAt,
+                paymentAmountPhp: paymentAmount,
+                paymentMethod: lastResult.paymentMethod || "PayMongo · Demo",
+                payMongo: true,
+                playerId,
+                paymentStatus: "Completed",
+                simulated: true,
+              },
+              ...current.filter((transaction) => transaction.id !== transactionId),
+            ]);
             notificationsStore.set((current) => [
               {
                 id: "topup-" + transactionId,
@@ -923,6 +940,9 @@ function ShopPage() {
                   status={selectedHistoryRecord.payMongoStatus || "Completed"}
                   checkoutSessionId={selectedHistoryRecord.checkoutSessionId}
                   eventId={selectedHistoryRecord.eventId}
+                  refundedAmount={selectedHistoryRecord.refundedAmount ?? 0}
+                  refunds={selectedHistoryRecord.refunds}
+                  simulated={selectedHistoryRecord.simulated}
                 />
               </div>
             ) : selectedHistoryRecord.isSpend && selectedHistoryRecord.currency === "C-Coins" ? (
