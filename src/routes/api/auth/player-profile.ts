@@ -4,6 +4,7 @@ import { PLAYFAB_DATA_KEYS } from "@/lib/playfab/constants";
 import { mapUserDataToAchievements } from "@/lib/playfab/achievements";
 import { validateSessionFromRequest } from "@/lib/playfab/session";
 import { DEFAULT_PROFILE_PICTURE_URL, isManagedProfileAvatarUrl } from "@/lib/profile-avatar";
+import { getPublicPlayerLevel } from "@/lib/playfab/public-player-level";
 
 type ProfileMetadata = {
   avatarUrl?: string;
@@ -51,7 +52,7 @@ export const Route = createFileRoute("/api/auth/player-profile")({
         }
 
         try {
-          const [profileResponse, userDataResponse] = await Promise.all([
+          const [profileResponse, userDataResponse, level] = await Promise.all([
             serverRequest("/Server/GetPlayerProfile", {
               PlayFabId: playFabId,
               ProfileConstraints: {
@@ -64,6 +65,7 @@ export const Route = createFileRoute("/api/auth/player-profile")({
             serverRequest("/Server/GetUserData", {
               PlayFabId: playFabId,
             }, secretKey),
+            getPublicPlayerLevel(playFabId, secretKey).catch(() => undefined),
           ]);
 
           if (!profileResponse.response.ok || profileResponse.result.code !== 200) {
@@ -104,6 +106,7 @@ export const Route = createFileRoute("/api/auth/player-profile")({
               playFabId,
               username: profile.DisplayName || "Player",
               displayName: profile.DisplayName || "Player",
+              ...(level !== undefined ? { level } : {}),
               avatarUrl: isManagedProfileAvatarUrl(metadata.avatarUrl) ? metadata.avatarUrl : DEFAULT_PROFILE_PICTURE_URL,
               profileVisible,
               showCrewActivity,

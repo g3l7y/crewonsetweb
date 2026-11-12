@@ -77,7 +77,7 @@ type CareerOverview = {
 type Friend = {
   playFabId?: string;
   name: string;
-  level: number;
+  level: number | null;
   role: string;
   online: boolean;
   showStatus?: boolean;
@@ -127,7 +127,7 @@ function mapSearchResultToPlayer(result: PlayerSearchResult): Player {
   return {
     playFabId: result.playFabId,
     name: result.username || result.displayName || "Player",
-    level: result.level ?? 1,
+    level: result.level ?? null,
     role: result.role ?? "Crew Member",
     online: result.online ?? false,
     crewId: result.playFabId,
@@ -378,8 +378,8 @@ function FriendsPage() {
     () =>
       (friendsQuery.data ?? []).map((friend) => ({
         playFabId: friend.playFabId,
-        name: friend.username || friend.displayName,
-        level: friend.level ?? 1,
+        name: friend.username || friend.displayName || "Player",
+        level: friend.level ?? null,
         role: String(friend.role ?? "Crew Member"),
         online: friend.online ?? false,
         showStatus: friend.showStatus,
@@ -1007,7 +1007,7 @@ function FriendsPage() {
                               {player.name}
                             </span>
                             <span className="block truncate text-xs text-white/40">
-                              Level {player.level} · {player.role}
+                              Level {player.level ?? "—"} · {player.role}
                             </span>
                           </span>
                         </button>
@@ -1193,7 +1193,7 @@ function FriendsPage() {
                               <div className="min-w-0 flex-1">
                                 <h3 className="truncate font-black text-white">{player.name}</h3>
 
-                                <p className="text-xs text-white/40">Level {player.level}</p>
+                                <p className="text-xs text-white/40">Level {player.level ?? "—"}</p>
                               </div>
 
                               <button
@@ -1413,7 +1413,7 @@ function FriendsPage() {
                       <div className="min-w-0 flex-1">
                         <h3 className="truncate font-black text-white">{player.name}</h3>
 
-                        <p className="text-xs text-white/40">Level {player.level}</p>
+                        <p className="text-xs text-white/40">Level {player.level ?? "—"}</p>
                       </div>
 
                       <button
@@ -1542,6 +1542,7 @@ function PlayerProfile({
           success?: boolean;
           profile?: {
             username?: string;
+            level?: number;
             avatarUrl?: string | null;
             profileVisible?: boolean;
             showCrewActivity?: boolean;
@@ -1558,6 +1559,7 @@ function PlayerProfile({
         setLivePlayer((current) => ({
           ...current,
           name: remote.username || current.name,
+          level: remote.level ?? current.level,
           profileImage: remote.avatarUrl || current.profileImage,
           profileVisible: remote.profileVisible ?? true,
           showCrewActivity: remote.showCrewActivity ?? true,
@@ -1665,7 +1667,7 @@ function PlayerProfile({
                 </div>
 
                 <div className="mt-3 flex flex-wrap items-center justify-center gap-x-4 gap-y-1 text-[10px] font-bold uppercase tracking-wider text-white/30 sm:justify-start">
-                  <span>Level {player.level}</span>
+                  <span>Level {player.level ?? "—"}</span>
 
                   {relationship === "available" && (
                     <button
@@ -1789,7 +1791,7 @@ function PlayerProfile({
 
                 <ProfileDetail label="Joined" value={player.joinedDate} />
 
-                <ProfileDetail label="Level" value={`Level ${player.level}`} />
+                <ProfileDetail label="Level" value={player.level == null ? "Not recorded" : `Level ${player.level}`} />
 
                 {visibleStatus && (
                   <ProfileDetail
@@ -1838,7 +1840,7 @@ function FriendRow({
       <div className="min-w-0 flex-1">
         <h3 className="truncate font-black text-white">{friend.name}</h3>
 
-        <p className="text-xs text-white/40">Level {friend.level}</p>
+        <p className="text-xs text-white/40">Level {friend.level ?? "—"}</p>
       </div>
 
       {visibleStatus && (
