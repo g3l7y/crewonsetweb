@@ -79,22 +79,22 @@ export async function isPartnershipCheckoutPaid(
   }
 
   const attributes = asRecord(result.data?.attributes);
-  const payments = Array.isArray(attributes.payments) ? attributes.payments : [];
+  const payments = Array.isArray(attributes['payments']) ? attributes['payments'] : [];
   const paidPayment = payments.some((entry) => {
-    const paymentAttributes = asRecord(asRecord(entry).attributes);
-    const status = String(paymentAttributes.status || '').toLowerCase();
-    const currency = String(paymentAttributes.currency || 'PHP').toUpperCase();
-    const rawAmount = paymentAttributes.amount ?? paymentAttributes.net_amount;
+    const paymentAttributes = asRecord(asRecord(entry)['attributes']);
+    const status = String(paymentAttributes['status'] || '').toLowerCase();
+    const currency = String(paymentAttributes['currency'] || 'PHP').toUpperCase();
+    const rawAmount = paymentAttributes['amount'] ?? paymentAttributes['net_amount'];
     const amount = rawAmount === undefined ? undefined : Number(rawAmount);
     return status === 'paid' && currency === 'PHP' && amount === payment.amountInCentavos;
   });
   if (paidPayment) return true;
 
-  const paymentIntent = asRecord(attributes.payment_intent);
-  const paymentIntentAttributes = asRecord(paymentIntent.attributes);
-  return String(paymentIntentAttributes.status || '').toLowerCase() === 'succeeded'
-    && String(paymentIntentAttributes.currency || 'PHP').toUpperCase() === 'PHP'
-    && Number(paymentIntentAttributes.amount) === payment.amountInCentavos;
+  const paymentIntent = asRecord(attributes['payment_intent']);
+  const paymentIntentAttributes = asRecord(paymentIntent['attributes']);
+  return String(paymentIntentAttributes['status'] || '').toLowerCase() === 'succeeded'
+    && String(paymentIntentAttributes['currency'] || 'PHP').toUpperCase() === 'PHP'
+    && Number(paymentIntentAttributes['amount']) === payment.amountInCentavos;
 }
 
 export async function markPartnershipPaymentPaid(
@@ -123,21 +123,21 @@ export async function markPartnershipPaymentPaid(
     if (!paymentUpdated) return { updated: false, alreadyPaid: false };
   }
 
+  const applications = await getWebsiteRecords<PartnershipApplication>(WEBSITE_DATA_KEYS.partnerships, secretKey);
+  const existingApplication = applications.find((application) => application.id === payment.applicationId);
+  if (!existingApplication) return { updated: false, alreadyPaid: false };
+  const brandPromotionToken = existingApplication.brandPromotionToken || approvedToken;
   const applicationUpdated = await updateWebsiteRecord<PartnershipApplication>(
     WEBSITE_DATA_KEYS.partnerships,
     payment.applicationId,
     (application) => ({
       ...application,
+      ...(['New', 'Pending'].includes(application.status) ? { status: 'Approved' } : {}),
+      brandPromotionToken: application.brandPromotionToken || brandPromotionToken,
       paymentStatus: 'Paid',
       paymentId: payment.id,
       paymentAmount: payment.amountInCentavos / 100,
       paymentPaidAt: application.paymentPaidAt || payment.paidAt || paidAt,
-      ...(['New', 'Pending'].includes(application.status)
-        ? {
-            status: 'Approved',
-            brandPromotionToken: application.brandPromotionToken || approvedToken,
-          }
-        : {}),
     }),
     secretKey,
   );

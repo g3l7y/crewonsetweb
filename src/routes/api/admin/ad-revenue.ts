@@ -59,10 +59,13 @@ function toAdEntry(application: PartnershipApplication, request: Request, metric
     trackedLink: application.brandPromotionToken
       ? baseUrl + '/api/brand-promotions/click?token=' + encodeURIComponent(application.brandPromotionToken)
       : undefined,
+    monitoringUrl: application.brandPromotionToken
+      ? baseUrl + '/brand-promotions/' + encodeURIComponent(application.brandPromotionToken)
+      : undefined,
     trackingEnabled: isBrandPromotionTrackingConfigured(),
     endedAt: application.promotionEndedAt,
     endReason: application.promotionEndReason,
-    status: ['Approved', 'On-going', 'Done'].includes(application.status) ? application.status : undefined,
+    status: application.status,
   };
 }
 

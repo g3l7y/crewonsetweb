@@ -383,7 +383,7 @@ export function createStore<T>(key: string, seed: T[]) {
     const resolved = typeof next === "function" ? next(current) : next;
     if (usesServerApi) {
       serverItems = resolved;
-      if (key === "cos.admin.alerts.read") void persistServerTable(key, resolved);
+      void persistServerTable(key, resolved);
       if (isBrowser()) window.dispatchEvent(new CustomEvent(event));
       return;
     }
@@ -861,6 +861,7 @@ export type ActiveAd = {
   placement: string;
   submittedLink?: string | undefined;
   trackedLink?: string | undefined;
+  monitoringUrl?: string | undefined;
   trackingEnabled?: boolean | undefined;
 };
 

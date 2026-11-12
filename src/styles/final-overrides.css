@@ -253,9 +253,13 @@ body {
 
 /* Footer links share the copyright label color in every interaction state. */
 .footer-contact-link,
+.footer-social-link,
 .footer-contact-link:visited,
+.footer-social-link:visited,
 .footer-contact-link:hover,
+.footer-social-link:hover,
 .footer-contact-link:focus-visible,
+.footer-social-link:focus-visible,
 .footer-contact-link:active {
   color: #c6c5c2 !important;
 }
@@ -265,7 +269,9 @@ body {
 }
 
 .footer-contact-link:hover,
+.footer-social-link:hover,
 .footer-contact-link:focus-visible,
+.footer-social-link:focus-visible,
 .footer-contact-link:active {
   border-color: #fbbf24 !important;
   background-color: #0f1728 !important;
