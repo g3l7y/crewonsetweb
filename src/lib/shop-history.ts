@@ -14,6 +14,9 @@ export type PayMongoOrder = {
   email?: string | undefined;
   eventId?: string | undefined;
   updatedAt?: string | undefined;
+  refundedAmount?: number | undefined;
+  refunds?: Array<{ id: string; amount: number; status: "pending" | "processing" | "succeeded" | "failed"; reason: string; notes?: string; createdAt: string; receiptEmailSentAt?: string; notificationSentAt?: string; simulated?: boolean }>;
+  simulated?: boolean;
 };
 export type ShopHistoryRecord = {
   id: string;
@@ -32,7 +35,10 @@ export type ShopHistoryRecord = {
   email?: string | undefined;
   checkoutSessionId?: string | undefined;
   eventId?: string | undefined;
-  payMongoStatus?: "Completed" | "Pending" | "Failed";
+  payMongoStatus?: "Completed" | "Pending" | "Failed" | "Partially Refunded" | "Refunded";
+  refundedAmount?: number;
+  refunds?: PayMongoOrder["refunds"];
+  simulated?: boolean;
 };
 
 export function buildShopHistory(mockMode: boolean, transactions: PlayerTransaction[], playerTransactions: Transaction[], payMongoOrders: PayMongoOrder[]): ShopHistoryRecord[] {
@@ -51,12 +57,16 @@ export function buildShopHistory(mockMode: boolean, transactions: PlayerTransact
           amount: paymentAmountPhp ?? Math.abs(amount),
           isSpend: transaction.kind === "purchase" || amount < 0,
           currency: paymentAmountPhp !== undefined ? "PHP" : "C-Coins",
-          status: transaction.payMongo || seededPayMongoTopUp ? "Completed" : "Recorded",
+          status: transaction.paymentStatus ?? (transaction.payMongo || seededPayMongoTopUp ? "Completed" : "Recorded"),
           payMongo: transaction.payMongo ?? seededPayMongoTopUp,
+          ...(transaction.payMongo ? { payMongoStatus: transaction.paymentStatus ?? "Completed" } : {}),
           reference: transaction.id,
           ...(transaction.kind === "topup" ? { coinsReceived } : {}),
           ...(transaction.kind === "purchase" ? { paymentMethod: "C-Coins" } : {}),
           ...(transaction.paymentMethod || seededPayMongoTopUp ? { paymentMethod: transaction.paymentMethod || "QR Ph · Demo" } : {}),
+          ...(transaction.refundedAmount !== undefined ? { refundedAmount: transaction.refundedAmount } : {}),
+          ...(transaction.refunds ? { refunds: transaction.refunds } : {}),
+          ...(transaction.simulated ? { simulated: true } : {}),
         };
       }
       const playFabTransaction = transaction as Transaction;
@@ -80,6 +90,8 @@ export function buildShopHistory(mockMode: boolean, transactions: PlayerTransact
       };
     });
     const topUpHistory: ShopHistoryRecord[] = payMongoOrders.map((order) => {
+      const refunded = (order.refundedAmount ?? 0) / 100;
+      const paymentStatus = order.status === "fulfilled" ? (refunded >= order.amountInCentavos ? "Refunded" : refunded > 0 ? "Partially Refunded" : "Completed") : order.status === "failed" ? "Failed" : "Pending";
       return {
         id: order.id,
         title: "C-Coin Top Up",
@@ -87,7 +99,7 @@ export function buildShopHistory(mockMode: boolean, transactions: PlayerTransact
         createdAt: order.paidAt || order.createdAt,
         amount: order.amountInCentavos / 100,
         currency: "PHP",
-        status: order.status === "fulfilled" ? "Completed" : order.status === "failed" ? "Failed" : "Pending",
+        status: paymentStatus,
         payMongo: true,
         reference: order.id,
         paymentMethod: "PayMongo",
@@ -95,7 +107,10 @@ export function buildShopHistory(mockMode: boolean, transactions: PlayerTransact
         email: order.email,
         checkoutSessionId: order.checkoutSessionId,
         eventId: order.eventId,
-        payMongoStatus: order.status === "fulfilled" ? "Completed" : order.status === "failed" ? "Failed" : "Pending",
+        payMongoStatus: paymentStatus,
+        ...(refunded > 0 ? { refundedAmount: refunded } : {}),
+        ...(order.refunds ? { refunds: order.refunds.map((refund) => ({ ...refund, amount: refund.amount / 100 })) } : {}),
+        simulated: order.simulated ?? false,
       };
     });
     return [...topUpHistory, ...walletHistory].sort((left, right) =>

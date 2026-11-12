@@ -1,4 +1,4 @@
-type ReceiptStatus = "Completed" | "Pending" | "Failed";
+type ReceiptStatus = "Completed" | "Pending" | "Failed" | "Partially Refunded" | "Refunded";
 
 type PayMongoTopUpReceiptProps = {
   reference: string;
@@ -11,12 +11,17 @@ type PayMongoTopUpReceiptProps = {
   status: ReceiptStatus;
   checkoutSessionId?: string;
   eventId?: string;
+  refundedAmount?: number;
+  simulated?: boolean;
+  refunds?: Array<{ id: string; amount: number; status: "pending" | "processing" | "succeeded" | "failed"; reason: string; notes?: string; createdAt: string; receiptEmailSentAt?: string; notificationSentAt?: string; simulated?: boolean }>;
 };
 
 const statusStyles: Record<ReceiptStatus, string> = {
   Completed: "bg-emerald-50 text-emerald-800",
   Pending: "bg-amber-50 text-amber-800",
   Failed: "bg-rose-50 text-rose-800",
+  "Partially Refunded": "bg-amber-50 text-amber-800",
+  Refunded: "bg-emerald-50 text-emerald-800",
 };
 
 function formatPhp(amount: number) {
@@ -44,8 +49,11 @@ export function PayMongoTopUpReceipt({
   status,
   checkoutSessionId,
   eventId,
+  refundedAmount = 0,
+  simulated = false,
+  refunds = [],
 }: PayMongoTopUpReceiptProps) {
-  const completed = status === "Completed";
+  const completed = status !== "Pending" && status !== "Failed";
 
   return (
     <article className="relative overflow-hidden border border-[#d8d3c7] bg-[#fffdf7] text-[#17231f] shadow-[0_18px_45px_rgba(15,23,42,.14)]">
@@ -105,10 +113,27 @@ export function PayMongoTopUpReceipt({
           </div>
         </section>
 
+        {refunds.length > 0 && <section className="border-b border-dashed border-[#b9b6ad] py-5">
+          <div className="flex items-baseline justify-between gap-3">
+            <p className="text-[10px] font-black uppercase tracking-[.16em] text-[#7b8580]">Refund history</p>
+            <p className="text-sm font-bold">Confirmed refunded: {formatPhp(refundedAmount)}</p>
+          </div>
+          <div className="mt-3 space-y-3">{refunds.map((refund) => <div key={refund.id} className="rounded-lg border border-[#d8d3c7] p-3 text-xs">
+            <div className="flex flex-wrap justify-between gap-2"><strong>{formatPhp(refund.amount)} · {refund.status}</strong><span>{formatReceiptDate(refund.createdAt)}</span></div>
+            <p className="mt-1">Reason: {refund.reason.replaceAll("_", " ")}{refund.notes ? ` · ${refund.notes}` : ""}</p>
+            <p className="mt-1 break-all text-[#68736f]">Refund reference: {refund.id}</p>
+            {refund.simulated ? <p className="mt-1 font-bold text-amber-800">Simulated only: no money moved and no email was sent.</p> : <>
+              <p className="mt-1">Email receipt: {refund.receiptEmailSentAt ? `sent ${formatReceiptDate(refund.receiptEmailSentAt)}` : "not yet confirmed as sent"}</p>
+              <p>In-app notification: {refund.notificationSentAt ? `sent ${formatReceiptDate(refund.notificationSentAt)}` : "not yet confirmed as sent"}</p>
+            </>}
+          </div>)}</div>
+          <p className="mt-3 text-xs text-[#68736f]">{simulated ? "Mock mode records the refund for display only. No real payment is refunded." : "A confirmed refund is sent to the original payment method. Your bank or provider may take additional time to post it."}</p>
+        </section>}
+
         <div className="space-y-2 bg-transparent pt-4 font-mono text-[10px] leading-relaxed text-[#68736f]">
           {checkoutSessionId && <p className="break-all">PayMongo checkout: {checkoutSessionId}</p>}
           {eventId && <p className="break-all">Payment event: {eventId}</p>}
-          <p className="pt-2 font-sans text-xs">Keep this receipt for your records. C-Coins are credited to the player account shown above. PayMongo may also send a receipt to your email.</p>
+          <p className="pt-2 font-sans text-xs">Keep this receipt for your records. {simulated ? "This is a simulated payment; no money moved and no email was sent." : "C-Coins are credited to the player account shown above. PayMongo may also send a receipt to your email."}</p>
         </div>
       </div>
     </article>

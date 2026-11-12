@@ -46,14 +46,15 @@ export async function sendAccountEmailChangeLink(
   const heading = "Email change requested";
   const body = `A request was made to change the email address on your ${accountName} account. If this was you, use the button below to return to Account Settings and enter your new email address. This link expires in 30 minutes and can only be used once. If you did not make this request, you can ignore this message.`;
   const safeUrl = escapeHtml(actionUrl);
-  await mailer.transporter.sendMail({
+    await mailer.transporter.sendMail({
     from: mailer.from,
     replyTo: mailer.replyTo,
     to,
     subject,
     text: `${heading}\n\n${body}\n\nContinue: ${actionUrl}`,
     html: `<!doctype html><html><body style="font-family:Arial,sans-serif;color:#0a0e19;line-height:1.6"><h1>${heading}</h1><p>${body}</p><p><a href="${safeUrl}" style="display:inline-block;background:#f4513b;color:#fff;padding:13px 20px;border-radius:7px;text-decoration:none;font-weight:700">Continue to account settings</a></p><p style="color:#667085;font-size:12px">Crew On Set! If you did not request this, no action is needed.</p></body></html>`,
-  });
+    });
+    return true;
 }
 
 export async function sendAccountEmailChangeConfirmation(
@@ -157,4 +158,37 @@ export function accountEmailActionUrl(request: Request, path: string, token: str
 export async function sendAccountDeletionEmail(to: string, username: string) {
   const mailer = getMailer();
   await mailer.transporter.sendMail({ from: mailer.from, to, subject: "Your Crew On Set account has been deleted", text: `Hello ${username}, your Crew On Set account deletion request has been accepted and your account is closed. Thank you for being part of the crew.` });
+}
+
+export async function sendPayMongoRefundReceiptEmail(
+  to: string,
+  details: {
+    recipientName: string;
+    transactionLabel: string;
+    refundAmountPhp: number;
+    originalAmountPhp: number;
+    refundId: string;
+    paymentReference: string;
+    reason: string;
+    notes?: string;
+    refundDate: string;
+  },
+): Promise<boolean> {
+  const mailer = getMailer();
+  const name = details.recipientName.trim() || "Crew On Set customer";
+  const refundAmount = new Intl.NumberFormat("en-PH", { style: "currency", currency: "PHP" }).format(details.refundAmountPhp);
+  const originalAmount = new Intl.NumberFormat("en-PH", { style: "currency", currency: "PHP" }).format(details.originalAmountPhp);
+  const date = new Intl.DateTimeFormat("en-PH", { dateStyle: "medium", timeStyle: "short", timeZone: "Asia/Manila" }).format(new Date(details.refundDate));
+  const subject = "Your Crew On Set refund receipt";
+  const body = `Hello ${name},\n\nA refund of ${refundAmount} for ${details.transactionLabel} has been processed to the original payment method. Your original payment was ${originalAmount}. The time it takes to appear depends on your payment provider or bank.\n\nPayment reference: ${details.paymentReference}\nRefund reference: ${details.refundId}\nProcessed: ${date}\nReason: ${details.reason}${details.notes?.trim() ? `\nAdmin note: ${details.notes.trim()}` : ""}\n\nKeep this email for your records. If you have questions, contact Crew On Set support.`;
+  const safe = (value: string) => escapeHtml(value);
+  await mailer.transporter.sendMail({
+    from: mailer.from,
+    replyTo: mailer.replyTo,
+    to,
+    subject,
+    text: `${body}\n\nCrew On Set!`,
+    html: `<!doctype html><html><body style="font-family:Arial,sans-serif;color:#0a0e19;line-height:1.6"><h1>Refund processed</h1><p>Hello ${safe(name)},</p><p>A refund of <strong>${safe(refundAmount)}</strong> for ${safe(details.transactionLabel)} has been processed to the original payment method. Your original payment was ${safe(originalAmount)}. The time it takes to appear depends on your payment provider or bank.</p><table style="border-collapse:collapse"><tr><td style="padding:5px 16px 5px 0">Payment reference</td><td>${safe(details.paymentReference)}</td></tr><tr><td style="padding:5px 16px 5px 0">Refund reference</td><td>${safe(details.refundId)}</td></tr><tr><td style="padding:5px 16px 5px 0">Processed</td><td>${safe(date)}</td></tr><tr><td style="padding:5px 16px 5px 0">Reason</td><td>${safe(details.reason)}</td></tr>${details.notes?.trim() ? `<tr><td style="padding:5px 16px 5px 0">Admin note</td><td>${safe(details.notes.trim())}</td></tr>` : ""}</table><p>Keep this email for your records. If you have questions, contact Crew On Set support.</p><p style="color:#667085;font-size:12px">Crew On Set!</p></body></html>`,
+  });
+  return true;
 }

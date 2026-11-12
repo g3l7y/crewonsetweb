@@ -60,6 +60,7 @@ import { Route as ApiAdminDownloadsRouteImport } from './routes/api/admin/downlo
 import { Route as ApiAdminGameInstallerRouteImport } from './routes/api/admin/game-installer'
 import { Route as ApiAdminPartnershipsRouteImport } from './routes/api/admin/partnerships'
 import { Route as ApiAdminPaymongoOrdersRouteImport } from './routes/api/admin/paymongo-orders'
+import { Route as ApiAdminPaymongoRefundsRouteImport } from './routes/api/admin/paymongo-refunds'
 import { Route as ApiAdminPlayerMailRouteImport } from './routes/api/admin/player-mail'
 import { Route as ApiAdminPlayerReportsRouteImport } from './routes/api/admin/player-reports'
 import { Route as ApiAdminPlayersRouteImport } from './routes/api/admin/players'
@@ -358,6 +359,11 @@ const ApiAdminPaymongoOrdersRoute = ApiAdminPaymongoOrdersRouteImport.update({
   path: '/api/admin/paymongo-orders',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiAdminPaymongoRefundsRoute = ApiAdminPaymongoRefundsRouteImport.update({
+  id: '/api/admin/paymongo-refunds',
+  path: '/api/admin/paymongo-refunds',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiAdminPlayerMailRoute = ApiAdminPlayerMailRouteImport.update({
   id: '/api/admin/player-mail',
   path: '/api/admin/player-mail',
@@ -633,6 +639,7 @@ export interface FileRoutesByFullPath {
   '/api/admin/game-installer': typeof ApiAdminGameInstallerRoute
   '/api/admin/partnerships': typeof ApiAdminPartnershipsRoute
   '/api/admin/paymongo-orders': typeof ApiAdminPaymongoOrdersRoute
+  '/api/admin/paymongo-refunds': typeof ApiAdminPaymongoRefundsRoute
   '/api/admin/player-mail': typeof ApiAdminPlayerMailRoute
   '/api/admin/player-reports': typeof ApiAdminPlayerReportsRoute
   '/api/admin/players': typeof ApiAdminPlayersRoute
@@ -726,6 +733,7 @@ export interface FileRoutesByTo {
   '/api/admin/game-installer': typeof ApiAdminGameInstallerRoute
   '/api/admin/partnerships': typeof ApiAdminPartnershipsRoute
   '/api/admin/paymongo-orders': typeof ApiAdminPaymongoOrdersRoute
+  '/api/admin/paymongo-refunds': typeof ApiAdminPaymongoRefundsRoute
   '/api/admin/player-mail': typeof ApiAdminPlayerMailRoute
   '/api/admin/player-reports': typeof ApiAdminPlayerReportsRoute
   '/api/admin/players': typeof ApiAdminPlayersRoute
@@ -822,6 +830,7 @@ export interface FileRoutesById {
   '/api/admin/game-installer': typeof ApiAdminGameInstallerRoute
   '/api/admin/partnerships': typeof ApiAdminPartnershipsRoute
   '/api/admin/paymongo-orders': typeof ApiAdminPaymongoOrdersRoute
+  '/api/admin/paymongo-refunds': typeof ApiAdminPaymongoRefundsRoute
   '/api/admin/player-mail': typeof ApiAdminPlayerMailRoute
   '/api/admin/player-reports': typeof ApiAdminPlayerReportsRoute
   '/api/admin/players': typeof ApiAdminPlayersRoute
@@ -919,6 +928,7 @@ export interface FileRouteTypes {
     | '/api/admin/game-installer'
     | '/api/admin/partnerships'
     | '/api/admin/paymongo-orders'
+    | '/api/admin/paymongo-refunds'
     | '/api/admin/player-mail'
     | '/api/admin/player-reports'
     | '/api/admin/players'
@@ -1012,6 +1022,7 @@ export interface FileRouteTypes {
     | '/api/admin/game-installer'
     | '/api/admin/partnerships'
     | '/api/admin/paymongo-orders'
+    | '/api/admin/paymongo-refunds'
     | '/api/admin/player-mail'
     | '/api/admin/player-reports'
     | '/api/admin/players'
@@ -1107,6 +1118,7 @@ export interface FileRouteTypes {
     | '/api/admin/game-installer'
     | '/api/admin/partnerships'
     | '/api/admin/paymongo-orders'
+    | '/api/admin/paymongo-refunds'
     | '/api/admin/player-mail'
     | '/api/admin/player-reports'
     | '/api/admin/players'
@@ -1182,6 +1194,7 @@ export interface RootRouteChildren {
   ApiAdminGameInstallerRoute: typeof ApiAdminGameInstallerRoute
   ApiAdminPartnershipsRoute: typeof ApiAdminPartnershipsRoute
   ApiAdminPaymongoOrdersRoute: typeof ApiAdminPaymongoOrdersRoute
+  ApiAdminPaymongoRefundsRoute: typeof ApiAdminPaymongoRefundsRoute
   ApiAdminPlayerMailRoute: typeof ApiAdminPlayerMailRoute
   ApiAdminPlayerReportsRoute: typeof ApiAdminPlayerReportsRoute
   ApiAdminPlayersRoute: typeof ApiAdminPlayersRoute
@@ -1580,6 +1593,13 @@ declare module '@tanstack/react-router' {
       path: '/api/admin/paymongo-orders'
       fullPath: '/api/admin/paymongo-orders'
       preLoaderRoute: typeof ApiAdminPaymongoOrdersRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/admin/paymongo-refunds': {
+      id: '/api/admin/paymongo-refunds'
+      path: '/api/admin/paymongo-refunds'
+      fullPath: '/api/admin/paymongo-refunds'
+      preLoaderRoute: typeof ApiAdminPaymongoRefundsRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/api/admin/player-mail': {
@@ -1994,6 +2014,7 @@ const rootRouteChildren: RootRouteChildren = {
   ApiAdminGameInstallerRoute: ApiAdminGameInstallerRoute,
   ApiAdminPartnershipsRoute: ApiAdminPartnershipsRoute,
   ApiAdminPaymongoOrdersRoute: ApiAdminPaymongoOrdersRoute,
+  ApiAdminPaymongoRefundsRoute: ApiAdminPaymongoRefundsRoute,
   ApiAdminPlayerMailRoute: ApiAdminPlayerMailRoute,
   ApiAdminPlayerReportsRoute: ApiAdminPlayerReportsRoute,
   ApiAdminPlayersRoute: ApiAdminPlayersRoute,
