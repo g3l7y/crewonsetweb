@@ -432,7 +432,7 @@ export function Leaderboards() {
 
             {/* STATS */}
 
-            <div className="mt-7 grid grid-cols-2 gap-3 sm:grid-cols-4">
+            <div className="mt-7 grid grid-cols-2 gap-3 sm:grid-cols-3">
 
               <div className="min-w-0 rounded-xl border border-white/[0.06] bg-white/[0.035] p-3 sm:p-4">
 
@@ -450,23 +450,9 @@ export function Leaderboards() {
 
               <div className="min-w-0 rounded-xl border border-white/[0.06] bg-white/[0.035] p-3 sm:p-4">
 
-                <Star className="size-4 text-coral" />
-
-                <p className="mt-3 min-h-[1.5rem] break-words text-[8px] font-black uppercase leading-tight tracking-wider text-white/30 sm:text-[9px]">
-                  XP
-                </p>
-
-                <p className="mt-1 min-w-0 whitespace-nowrap text-sm font-black leading-none text-white">
-                  {formatMetric(selectedLeader.xp)}
-                </p>
-
-              </div>
-
-              <div className="min-w-0 rounded-xl border border-white/[0.06] bg-white/[0.035] p-3 sm:p-4">
-
                 <Film className="size-4 text-coral" />
 
-                <p className="mt-3 min-h-[1.5rem] whitespace-nowrap text-[8px] font-black uppercase leading-tight tracking-normal text-white/30">
+                <p className="mt-3 min-h-[1.5rem] break-words text-[8px] font-black uppercase leading-tight tracking-wider text-white/30 sm:text-[9px]">
                   Productions
                 </p>
 
