@@ -415,7 +415,7 @@ export type TopUpRecord = {
   timestamp?: string;
   bank: string;
   amount: number;
-  status: "Completed" | "Pending" | "Failed";
+  status: "Completed" | "Pending" | "Failed" | "Partially Refunded" | "Refunded";
   email?: string;
   item?: string;
   coins?: number;
@@ -425,6 +425,18 @@ export type TopUpRecord = {
   transactionType?: "top-up" | "partnership";
   paidAt?: string;
   eventId?: string;
+  refundedAmount?: number;
+  refunds?: Array<{
+    id: string;
+    amount: number;
+    status: "pending" | "processing" | "succeeded" | "failed";
+    reason: string;
+    notes?: string;
+    createdAt: string;
+    simulated?: boolean;
+    receiptEmailSentAt?: string;
+    notificationSentAt?: string;
+  }>;
 };
 
 /** Shared demo ledger used by player checkout and admin sales views. */
