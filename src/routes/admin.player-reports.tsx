@@ -143,7 +143,7 @@ function PlayerReportsRouteComponent() {
       if (mockMode) {
         if (decision === "Approved") setMockPlayerAdminStatus("Active");
         const resultText = decision === "Approved"
-          ? "Your appeal was approved and your account ban has been lifted. Your account is active again, and you can sign in to the website and game."
+          ? `Your appeal was approved and your account ban has been lifted. Your account is active again, and you can sign in to the website and game.${appealNotes.trim() ? ` Admin note: ${appealNotes.trim()}` : ""}`
           : `Your ban appeal was reviewed and denied. Your account remains banned, and you cannot sign in while the ban is active.${report.banEndsAt ? ` You can sign in after ${new Date(report.banEndsAt).toLocaleString()}.` : " This is a permanent ban unless an administrator restores access."}${appealNotes.trim() ? ` Admin note: ${appealNotes.trim()}` : ""}`;
         addMockPlayerAccountMessage({
           subject: decision === "Approved" ? "Your Crew On Set ban appeal was approved" : "Update on your Crew On Set ban appeal",

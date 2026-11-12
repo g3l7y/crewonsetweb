@@ -2367,16 +2367,25 @@ body { min-width: 320px; }
   -webkit-text-fill-color: #0f1626 !important;
 }
 
-/* PLAYER FILTER MENU: give the popover one stable, wide, non-scrolling
-   footprint so every option stays on one line in both filter states. */
+/* PLAYER FILTER MENU: keep the popover a steady size and scroll its options
+   inside the panel when the viewport cannot show the full list. */
 .admin-player-filter-menu {
   width: 15rem !important;
   min-width: 15rem !important;
   max-width: none !important;
-  height: 22rem !important;
-  min-height: 22rem !important;
-  max-height: 22rem !important;
-  overflow: hidden !important;
+  height: auto !important;
+  min-height: 0 !important;
+  max-height: min(80vh, 34rem) !important;
+  overflow-x: hidden !important;
+  overflow-y: auto !important;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(254, 253, 248, .28) transparent;
+}
+
+.admin-theme main > :not(.admin-notification-bar) :where(.admin-player-table) {
+  width: 100% !important;
+  min-width: 1280px !important;
+  table-layout: fixed !important;
 }
 
 .admin-theme:not(.admin-light) .admin-player-filter-menu {

@@ -26,6 +26,8 @@ export async function persistAdminPlayerMessage(args: {
   recipientUsername: string;
   kind: PlayerMessageKind;
   secretKey: string;
+  noticeTitle?: string;
+  noticeBody?: string;
 }) {
   const target = { kind: "players" as const, playerIds: [args.recipientPlayerId] };
   const href = "/portal/inbox?tab=mail&contact=admin";
@@ -47,8 +49,8 @@ export async function persistAdminPlayerMessage(args: {
   };
   const notice: StoredPlayerRecord = {
     id: args.id + "-notice",
-    title: "New message from Administrator",
-    body: "The admin team sent you a message: " + args.subject + ". Open your Inbox to read it.",
+    title: args.noticeTitle ?? "New message from Administrator",
+    body: args.noticeBody ?? "The admin team sent you a message: " + args.subject + ". Open your Inbox to read it.",
     kind: args.kind,
     channel: "notification",
     read: false,

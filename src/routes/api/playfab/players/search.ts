@@ -2,6 +2,7 @@ import { createFileRoute } from '@tanstack/react-router';
 import { PLAYFAB_API_BASE } from '@/lib/playfab/config';
 import { unauthorizedSessionResponse, validateSessionFromRequest } from '@/lib/playfab/session';
 import { DEFAULT_PROFILE_PICTURE_URL, isManagedProfileAvatarUrl } from '@/lib/profile-avatar';
+import { getPublicPlayerLevel } from '@/lib/playfab/public-player-level';
 
 type PlayFabAccountInfo = {
   PlayFabId?: string;
@@ -12,14 +13,14 @@ type PlayFabAccountInfo = {
   };
 };
 
-function publicPlayer(account: PlayFabAccountInfo) {
+function publicPlayer(account: PlayFabAccountInfo, level?: number) {
   const displayName = account.TitleInfo?.DisplayName || account.Username || 'Player';
   return {
     playFabId: account.PlayFabId ?? '',
     username: displayName,
     displayName,
     avatarUrl: isManagedProfileAvatarUrl(account.TitleInfo?.AvatarUrl) ? account.TitleInfo?.AvatarUrl : DEFAULT_PROFILE_PICTURE_URL,
-    level: 1,
+    ...(level !== undefined ? { level } : {}),
     role: 'Crew Member',
     online: false,
   };
@@ -57,7 +58,12 @@ export const Route = createFileRoute('/api/playfab/players/search')({
             const playFabId = account?.PlayFabId ?? '';
 
             if (account && playfabResponse.ok && result?.code === 200 && playFabId && playFabId !== session.playFabId) {
-              return Response.json({ success: true, data: [publicPlayer(account)] });
+              const secretKey = process.env['PLAYFAB_SECRET_KEY']?.trim();
+              let level: number | undefined;
+              if (secretKey) {
+                try { level = await getPublicPlayerLevel(playFabId, secretKey); } catch { /* show unknown when progression is unavailable */ }
+              }
+              return Response.json({ success: true, data: [publicPlayer(account, level)] });
             }
           } catch {
             // Try the other supported PlayFab identifier before returning no match.

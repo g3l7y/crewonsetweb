@@ -9,7 +9,7 @@ export async function getFriendsList(sessionTicket: string): Promise<FriendInfo[
   try {
     let data: { Friends: any[] };
     try {
-      data = await playfabClientApi<{ Friends: any[] }>('/Client/GetFriendsList', { ProfileConstraints: { ShowAvatarUrl: true } }, sessionTicket);
+      data = await playfabClientApi<{ Friends: any[] }>('/Client/GetFriendsList', { ProfileConstraints: { ShowAvatarUrl: true, ShowDisplayName: true, ShowStatistics: true } }, sessionTicket);
     } catch {
       data = await playfabClientApi<{ Friends: any[] }>('/Client/GetFriendsList', {}, sessionTicket);
     }
@@ -17,11 +17,13 @@ export async function getFriendsList(sessionTicket: string): Promise<FriendInfo[
     return (data.Friends || []).map((friend: any) => ({
       playFabId: friend.FriendPlayFabId,
       friendPlayFabId: friend.FriendPlayFabId,
-      username: friend.TitleInfo?.DisplayName || friend.Profile?.DisplayName || friend.Username || 'Crew Member',
-      displayName: friend.TitleInfo?.DisplayName || friend.Profile?.DisplayName || 'Crew Member',
+      username: friend.TitleInfo?.DisplayName || friend.Profile?.DisplayName || friend.Username || undefined,
+      displayName: friend.TitleInfo?.DisplayName || friend.Profile?.DisplayName || friend.Username || '',
       status: 'confirmed' as const,
       role: 'cameraman' as const,
-      level: 1,
+      level: Array.isArray(friend.Profile?.Statistics)
+        ? (friend.Profile.Statistics.find((stat: any) => String(stat.Name ?? stat.StatisticName).toLowerCase() === 'level')?.Value ?? undefined)
+        : undefined,
       online: Boolean(friend.IsOnline ?? friend.Online ?? false),
       showStatus: typeof friend.ShowStatus === 'boolean' ? friend.ShowStatus : undefined,
       avatarUrl: isManagedProfileAvatarUrl(friend.Profile?.AvatarUrl ?? friend.TitleInfo?.AvatarUrl)
