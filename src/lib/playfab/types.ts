@@ -181,6 +181,8 @@ export interface PlayerProgression {
   xpToNextLevel: number;
   /** Cumulative experience points earned across all games */
   totalXp: number;
+  /** Whether the profile progress values are true saved XP or a PlayFab campaign fallback. */
+  progressMetric?: "xp" | "productions" | undefined;
   /** Highest stage/level unlocked in career campaign */
   highestLevelUnlocked: number;
   /** List of completed level IDs */
@@ -587,6 +589,8 @@ export interface PlayerNotification {
   target?: { kind: "all" | "players"; playerIds?: string[] } | undefined;
   /** Sender username for player-to-player mail. */
   senderUsername?: string | undefined;
+  /** Sender account ID for opening the correct friend conversation. */
+  senderPlayerId?: string | undefined;
   /** True for a message or notice authored by an administrator. */
   adminMessage?: boolean | undefined;
   /** Conversation recipient username. */

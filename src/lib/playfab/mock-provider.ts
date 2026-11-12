@@ -157,10 +157,11 @@ function getStoredMockProfileAccount(): { username: string; email: string } | nu
 }
 
 const MOCK_PROGRESSION: PlayerProgression = {
-  level: 27,
-  currentXp: 6820,
-  xpToNextLevel: 10000,
-  totalXp: 276820,
+  level: 4,
+  currentXp: 3,
+  xpToNextLevel: 5,
+  totalXp: 0,
+  progressMetric: 'productions',
   highestLevelUnlocked: 4,
   completedLevels: ['crystal_blooms', 'goke_cola', 'lambormini'],
   completedStages: {

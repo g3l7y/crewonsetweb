@@ -2,6 +2,7 @@ import { playfabClientApi } from './client';
 import { getUserData } from './player';
 import { PLAYFAB_DATA_KEYS, PLAYFAB_STATISTICS } from './constants';
 import { getHighestGameCareerLevel } from './game-careers';
+import { mapUserDataToProductionLogs } from './productions';
 import type { PlayerProgression, RoleStatistics } from './types';
 
 /** True when PlayFab has recorded gameplay progress beyond its empty defaults. */
@@ -45,6 +46,26 @@ export async function getPlayerProgression(sessionTicket: string): Promise<Playe
     tutorial_progress: 0,
     campaign_completed: 0,
     multiplayer_unlocked: 0,
+    progressMetric: 'productions',
+  };
+
+  const withPlayFabCampaignProgress = (progression: PlayerProgression, userData: Record<string, string>): PlayerProgression => {
+    let completedProductions = 0;
+    try {
+      completedProductions = Math.min(5, mapUserDataToProductionLogs(userData).length);
+    } catch {
+      // Campaign level and completed-level fields remain usable if the optional log payload is malformed.
+    }
+    const campaignProgress = Math.min(5, Math.max(
+      completedProductions,
+      progression.completedLevels.length,
+    ));
+    return {
+      ...progression,
+      currentXp: campaignProgress,
+      xpToNextLevel: 5,
+      progressMetric: 'productions',
+    };
   };
 
   try {
@@ -55,7 +76,7 @@ export async function getPlayerProgression(sessionTicket: string): Promise<Playe
     if (rawProg) {
       try {
         const parsed = JSON.parse(rawProg);
-        return {
+        const mapped: PlayerProgression = {
           ...defaultProgression,
           ...parsed,
           level: Math.max(Number(parsed.level ?? defaultProgression.level), careerLevel ?? 1),
@@ -70,7 +91,9 @@ export async function getPlayerProgression(sessionTicket: string): Promise<Playe
           tutorialsCompleted: Boolean(parsed.tutorialsCompleted),
           campaignCompleted: Boolean(parsed.campaignCompleted ?? parsed.campaign_completed),
           multiplayerUnlocked: Boolean(parsed.multiplayerUnlocked ?? parsed.multiplayer_unlocked),
+          progressMetric: Number(parsed.totalXp ?? parsed.total_xp ?? 0) > 0 || Number(parsed.currentXp ?? parsed.xp ?? 0) > 0 ? 'xp' : 'productions',
         };
+        return mapped.progressMetric === 'xp' ? mapped : withPlayFabCampaignProgress(mapped, userData);
       } catch {
         console.warn('[Progression] Failed to parse progression JSON from PlayFab.');
       }
@@ -83,12 +106,13 @@ export async function getPlayerProgression(sessionTicket: string): Promise<Playe
 
     const stats = statsData.Statistics || [];
     if (stats.length === 0) {
-      return careerLevel ? {
+      const progression = careerLevel ? {
         ...defaultProgression,
         level: careerLevel,
         highestLevelUnlocked: careerLevel,
         highest_level: careerLevel,
       } : defaultProgression;
+      return withPlayFabCampaignProgress(progression, userData);
     }
 
     const statMap: Record<string, number> = {};
@@ -104,7 +128,7 @@ export async function getPlayerProgression(sessionTicket: string): Promise<Playe
     const campaignCompleted = (statMap[PLAYFAB_STATISTICS.campaign_completed] ?? 0) > 0;
     const multiplayerUnlocked = (statMap[PLAYFAB_STATISTICS.multiplayer_unlocked] ?? 0) > 0;
 
-    return {
+    const progression: PlayerProgression = {
       ...defaultProgression,
       level,
       currentXp,
@@ -119,7 +143,9 @@ export async function getPlayerProgression(sessionTicket: string): Promise<Playe
       tutorial_progress: tutorialProgress,
       campaign_completed: campaignCompleted ? 1 : 0,
       multiplayer_unlocked: multiplayerUnlocked ? 1 : 0,
+      progressMetric: totalXp > 0 ? 'xp' : 'productions',
     };
+    return progression.progressMetric === 'xp' ? progression : withPlayFabCampaignProgress(progression, userData);
   } catch (error) {
     console.error('Failed to get player progression:', error);
     return defaultProgression;

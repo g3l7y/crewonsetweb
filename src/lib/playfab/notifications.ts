@@ -30,6 +30,7 @@ function normalizeNotification(item: Record<string, unknown>): PlayerNotificatio
     target:
       target && typeof target === "object" ? (target as PlayerNotification["target"]) : undefined,
     senderUsername: typeof senderUsername === "string" ? senderUsername : undefined,
+    senderPlayerId: typeof item["senderPlayerId"] === "string" ? item["senderPlayerId"] : undefined,
     adminMessage: adminMessage === true,
     recipientUsername: typeof recipientUsername === "string" ? recipientUsername : undefined,
   };
