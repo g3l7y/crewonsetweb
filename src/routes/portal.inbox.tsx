@@ -15,7 +15,6 @@ export const Route = createFileRoute("/portal/inbox")({
 });
 
 import { useEffect, useMemo, useState, type FormEvent } from "react";
-import Image from "@/components/next-compat/image";
 import { useRouter, useSearchParams } from "@/components/next-compat/navigation";
 import {
   ArrowRight,
@@ -74,6 +73,7 @@ type InboxNotification = {
   recipientEmail?: string | undefined;
   target?: { kind: "all" | "players"; playerIds?: string[] | undefined } | undefined;
   senderUsername?: string | undefined;
+  senderPlayerId?: string | undefined;
   adminMessage?: boolean | undefined;
 };
 
@@ -136,6 +136,7 @@ type RawInboxNotification = {
   recipientEmail?: string | undefined;
   target?: InboxNotification["target"];
   senderUsername?: string | undefined;
+  senderPlayerId?: string | undefined;
   adminMessage?: boolean | undefined;
 };
 
@@ -153,6 +154,7 @@ function normalizeNotification(notification: RawInboxNotification): InboxNotific
     recipientEmail: notification.recipientEmail,
     target: notification.target,
     senderUsername: notification.senderUsername,
+    senderPlayerId: notification.senderPlayerId,
     adminMessage: notification.adminMessage,
   };
 }
@@ -393,6 +395,7 @@ function InboxPage() {
   const selectedFriend = allFriends.find(
     (friend) => friend.name.toLowerCase() === recipient.toLowerCase(),
   );
+  const requestedContact = searchParams.get("contact");
   const selectedAdminMail = recipient === "ADMINISTRATOR";
   const selectedMessages = selectedFriend
     ? mailRows.filter(
@@ -453,6 +456,18 @@ function InboxPage() {
     realMailQuery,
     visibleNotifications,
   ]);
+
+  useEffect(() => {
+    if (requestedTab !== "mail" || !requestedContact || requestedContact === "admin") return;
+    const contact = allFriends.find((friend) =>
+      [friend.playFabId, friend.crewId, friend.name].some(
+        (identity) => identity?.toLowerCase() === requestedContact.toLowerCase(),
+      ),
+    );
+    if (contact && recipient.toLowerCase() !== contact.name.toLowerCase()) {
+      selectContact(contact.name);
+    }
+  }, [allFriends, recipient, requestedContact, requestedTab]);
 
   function selectTab(tab: "notifications" | "mail") {
     setActiveTab(tab);
@@ -604,6 +619,24 @@ function InboxPage() {
         kind: "friend",
       },
       ...playerMailStore.get(),
+    ]);
+    notificationsStore.set([
+      {
+        id: "friend-message-" + Date.now(),
+        title: `Player ${currentUsername} sent you a message`,
+        body: "Open Mail to read their message.",
+        kind: "friend",
+        channel: "notification",
+        createdAt: new Date().toISOString(),
+        read: false,
+        href:
+          "/portal/inbox?tab=mail&contact=" +
+          encodeURIComponent(mockMode ? currentUsername : currentPlayerId || currentUsername),
+        senderUsername: currentUsername,
+        recipientUsername: friend.name,
+        target: { kind: "players", playerIds: [friend.playFabId || friend.crewId] },
+      },
+      ...notificationsStore.get(),
     ]);
     setMessage("");
     setComposerMessage("Message sent to " + friend.name + ".");
@@ -827,14 +860,11 @@ function InboxPage() {
                         {selectedFriend ? (
                           <>
                             <span className="relative size-10 shrink-0 overflow-hidden rounded-full border border-white/15 bg-yellow">
-                              <Image
-                                src={
-                                  selectedFriend.profileImage ||
-                                  getProfileArtwork(selectedFriend.name)
-                                }
-                                alt={selectedFriend.name + " profile"}
-                                fill
-                                className="object-cover"
+                              <SyncedPlayerAvatar
+                                playFabId={selectedFriend.playFabId}
+                                displayName={selectedFriend.name}
+                                fallbackUrl={selectedFriend.profileImage || getProfileArtwork(selectedFriend.name)}
+                                className="size-full object-cover"
                               />
                             </span>
                             <span>

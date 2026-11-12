@@ -1,7 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { getFriendsList } from "@/lib/playfab/friends";
 import { validateSessionFromRequest } from "@/lib/playfab/session";
-import { getWebsiteRecords, setWebsiteRecords } from "@/lib/playfab/websiteData";
+import { getWebsiteRecords, setWebsiteRecords, WEBSITE_DATA_KEYS } from "@/lib/playfab/websiteData";
 import type { PlayerMailMessage } from "@/lib/playfab/types";
 
 type MailRecord = {
@@ -142,7 +142,9 @@ export const Route = createFileRoute("/api/mail")({
             href: "/portal/inbox?tab=mail",
             threadId,
             senderUsername,
+            senderPlayerId: session.playFabId,
             recipientUsername,
+            recipientPlayerId,
           };
 
           const records =
@@ -164,9 +166,38 @@ export const Route = createFileRoute("/api/mail")({
           ];
 
           const success = await setWebsiteRecords("website_player_mail", next, secretKey);
-          return success
-            ? Response.json({ success: true, id: messageId }, { status: 201 })
-            : Response.json({ error: "Failed to save the message." }, { status: 500 });
+          if (!success) {
+            return Response.json({ error: "Failed to save the message." }, { status: 500 });
+          }
+
+          const noticeId = `${messageId}-notice`;
+          const notices = await getWebsiteRecords<Record<string, unknown>>(
+            WEBSITE_DATA_KEYS.playerNotifications,
+            secretKey,
+          );
+          const notice = {
+            id: noticeId,
+            title: `Player ${senderUsername} sent you a message`,
+            body: "Open Mail to read their message.",
+            kind: "friend",
+            channel: "notification",
+            read: false,
+            createdAt,
+            senderUsername,
+            senderPlayerId: session.playFabId,
+            recipientUsername,
+            target: { kind: "players", playerIds: [recipientPlayerId] },
+            href: `/portal/inbox?tab=mail&contact=${encodeURIComponent(session.playFabId)}`,
+          };
+          const noticeSaved = await setWebsiteRecords(
+            WEBSITE_DATA_KEYS.playerNotifications,
+            [notice, ...notices.filter((item) => item.id !== noticeId)],
+            secretKey,
+          );
+          if (!noticeSaved) {
+            console.error("[API] Friend message saved, but its notification could not be saved.");
+          }
+          return Response.json({ success: true, id: messageId, notificationCreated: noticeSaved }, { status: 201 });
         } catch (error) {
           console.error("[API] POST mail error:", error);
           return Response.json({ error: "Failed to send the message." }, { status: 500 });
