@@ -276,16 +276,32 @@ export const Route = createFileRoute('/api/admin/player-reports')({
             if (!updated) return Response.json({ error: 'The appeal could not be updated.' }, { status: 500 });
             let emailWarning: string | undefined;
             let emailSent = false;
+            if (appealDecision === 'Approved') {
+              const recipientUsername = appeal.reporterName || 'Player';
+              const note = adminNotes?.trim();
+              const delivered = await persistAdminPlayerMessage({
+                id: `appeal-${appeal.id}-approved`,
+                subject: 'Your ban appeal was approved',
+                body: `Hello ${recipientUsername}, your ban appeal was approved and your account access has been restored.${note ? ` Admin note: ${note}` : ''}`,
+                recipientPlayerId: appeal.reporterId || '',
+                recipientUsername,
+                kind: 'report',
+                secretKey,
+                noticeTitle: 'Appeal approved',
+                noticeBody: 'Your account access has been restored. Open your Inbox to read the administrator’s note.',
+              });
+              if (!delivered) emailWarning = 'The appeal was approved, but its Inbox notification could not be delivered.';
+            }
             if (appeal.verifiedEmail) {
               try {
                 await sendBanAppealDecisionEmail(appeal.verifiedEmail, appeal.reporterName || 'Crew Player', appealDecision, adminNotes, appeal.banEndsAt);
                 emailSent = true;
               } catch (error) {
                 console.error('[Ban Appeals] Decision email failed:', error);
-                emailWarning = 'The decision was saved, but the email could not be sent.';
+                emailWarning = [emailWarning, 'The decision was saved, but the email could not be sent.'].filter(Boolean).join(' ');
               }
             } else {
-              emailWarning = 'The decision was saved, but this appeal has no verified email address to notify.';
+              emailWarning = [emailWarning, 'The decision was saved, but this appeal has no verified email address to notify.'].filter(Boolean).join(' ');
             }
             return Response.json({ success: true, emailSent, ...(emailWarning ? { emailWarning } : {}) });
           }

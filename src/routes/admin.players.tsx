@@ -1091,11 +1091,11 @@ function PlayersPage() {
     const active = sortKey === sort;
 
     return (
-      <th className="px-4 py-3 text-left">
+      <th className="px-4 py-3 text-center">
         <button
           type="button"
           onClick={() => handleSort(sort)}
-          className={`flex items-center gap-1.5 text-[9px] font-black uppercase tracking-[.08em] transition ${
+          className={`mx-auto flex items-center justify-center gap-1.5 text-center text-[9px] font-black uppercase tracking-[.08em] transition ${
             active ? "text-white/75" : "text-white/30 hover:text-white/60"
           }`}
         >
@@ -1202,7 +1202,7 @@ function PlayersPage() {
                   ================================================= */}
 
               {showFilterMenu && (
-                <div className="admin-player-filter-menu absolute right-0 top-12 z-50 box-border max-h-[min(80vh,34rem)] w-[15rem] min-w-[15rem] max-w-none overflow-y-auto rounded-lg border border-white/10 bg-[#151c21] p-3 shadow-2xl">
+                <div className="admin-player-filter-menu absolute right-0 top-12 z-50 box-border w-[15rem] min-w-[15rem] max-w-none overflow-y-auto rounded-lg border border-white/10 bg-[#151c21] p-3 shadow-2xl">
                   <div className="mb-3 border-b border-white/[.06] pb-3">
                     <p className="text-[9px] font-black uppercase tracking-[.16em] text-white/30">
                       Filters
@@ -1447,7 +1447,17 @@ function PlayersPage() {
       <section className="min-h-0 flex-1 overflow-hidden pb-4">
         <div className="h-full overflow-hidden rounded-lg border border-white/[.07] bg-[#11171b]">
           <div className="admin-player-table-scroll h-full min-h-[20rem] overflow-auto">
-            <table className="min-w-[1180px] w-full border-collapse">
+            <table className="admin-player-table min-w-[1280px] w-full border-collapse">
+              <colgroup>
+                <col className="w-[4%]" />
+                <col className="w-[22%]" />
+                <col className="w-[11%]" />
+                <col className="w-[12%]" />
+                <col className="w-[10%]" />
+                <col className="w-[14%]" />
+                <col className="w-[13%]" />
+                <col className="w-[14%]" />
+              </colgroup>
               <thead className="sticky top-0 z-20">
                 <tr className="border-b border-white/[.06] bg-[#151c21]">
                   <th className="w-12 px-4 py-3">
@@ -1482,7 +1492,7 @@ function PlayersPage() {
 
                   <SortableHeader label="Games Played" sort="gamesPlayed" />
 
-                  <th className="w-[150px] px-4 py-3 text-right text-[9px] font-black uppercase tracking-[.08em] text-white/30">
+                  <th className="px-4 py-3 text-center text-[9px] font-black uppercase tracking-[.08em] text-white/30">
                     Action
                   </th>
                 </tr>
@@ -1578,7 +1588,7 @@ function PlayersPage() {
 
                       {/* SCORE */}
 
-                      <td className="px-4 py-3">
+                      <td className="px-4 py-3 text-center">
                         <span className="text-[11px] font-bold text-white/60">
                           {player.score == null ? "—" : player.score.toLocaleString()}
                         </span>
@@ -1586,13 +1596,13 @@ function PlayersPage() {
 
                       {/* JOINED */}
 
-                      <td className="px-4 py-3">
+                      <td className="px-4 py-3 text-center">
                         <span className="text-[10px] text-white/35">{player.joined}</span>
                       </td>
 
                       {/* GAMES */}
 
-                      <td className="px-4 py-3">
+                      <td className="px-4 py-3 text-center">
                         <span className="text-[10px] text-white/40">
                           {player.gamesPlayed ?? "—"}
                         </span>
@@ -1600,7 +1610,7 @@ function PlayersPage() {
 
                       {/* ACTION */}
 
-                      <td className="px-4 py-3 text-right">
+                      <td className="px-4 py-3 text-center">
                         <button
                           type="button"
                           onClick={(event) => {
@@ -1608,7 +1618,7 @@ function PlayersPage() {
 
                             setSelectedPlayer(player);
                           }}
-                          className="ml-auto flex items-center gap-2 rounded-md border border-[#39b7a5]/20 bg-[#39b7a5]/10 px-3 py-2 text-[9px] font-black uppercase tracking-wide text-[#54c9b8] opacity-100 transition hover:border-[#39b7a5]/40 hover:bg-[#39b7a5]/20"
+                          className="mx-auto flex items-center justify-center gap-2 whitespace-nowrap rounded-md border border-[#39b7a5]/20 bg-[#39b7a5]/10 px-3 py-2 text-[9px] font-black uppercase tracking-wide text-[#54c9b8] opacity-100 transition hover:border-[#39b7a5]/40 hover:bg-[#39b7a5]/20"
                         >
                           <Eye className="size-3.5" />
                           View Profile
