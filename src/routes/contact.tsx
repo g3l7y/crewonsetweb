@@ -13,6 +13,9 @@ export const Route = createFileRoute("/contact")({
 });
 
 import { Facebook, Instagram, Mail } from "lucide-react";
+import type { ReactNode } from "react";
+import { useState } from "react";
+import Image from "@/components/next-compat/image";
 import { MarketingShell } from "@/components/marketing/marketing-shell";
 import { PageHero } from "@/components/marketing/page-hero";
 import { PartnershipForm } from "@/components/marketing/partnership-form";
@@ -24,7 +27,8 @@ const contacts = [
 ];
 
 function ContactPage() {
-  const faqs = [
+  const [expandedFaqImage, setExpandedFaqImage] = useState<null | { src: string; alt: string }>(null);
+  const faqs: { question: string; answer: ReactNode }[] = [
     {
       question: "What is Crew On Set!?",
       answer: "Crew On Set! is a desktop game about making video commercials. Play solo and take on the Director, AV Technician, Cameraman, and Editor roles, or invite up to three friends and split up the production.",
@@ -35,15 +39,115 @@ function ContactPage() {
     },
     {
       question: "Can I play with friends?",
-      answer: "Of course. You can run the whole shoot solo or team up online with up to three friends. Each player can take on a different part of the production.",
-    },
-    {
-      question: "How can a brand or product team partner with Crew On Set!?",
-      answer: "Fill out the partnership form below with your product details, business email, proposed budget, and campaign length. Add a link or a short description to help us picture your idea.",
+      answer: (
+        <div className="max-w-5xl">
+          <p className="leading-relaxed text-white/65">
+            Of course. You can run the whole shoot solo or team up online with up to three friends. Each player can take on a different part of the production. Host a lobby and share its room code, or join a friend&apos;s lobby with their code.
+          </p>
+          <div className="mt-5 grid gap-5 md:grid-cols-2">
+            <figure className="overflow-hidden rounded-xl border border-white/15 bg-white/[.04]">
+              <button
+                type="button"
+                onClick={() => setExpandedFaqImage({
+                  src: "/assets/multiplayer-host-lobby.png",
+                  alt: "Crew On Set! multiplayer lobby screen showing a hosted room and its shareable room code",
+                })}
+                className="block w-full cursor-zoom-in focus-visible:outline focus-visible:outline-2 focus-visible:outline-yellow"
+                aria-label="View larger image of hosting a multiplayer lobby"
+              >
+                <Image
+                  src="/assets/multiplayer-host-lobby.png"
+                  alt="Crew On Set! multiplayer lobby screen showing a hosted room and its shareable room code"
+                  width={2560}
+                  height={1600}
+                  className="aspect-[8/5] w-full object-cover"
+                />
+              </button>
+              <figcaption className="px-4 py-3 text-sm font-bold text-white/70">Host a lobby room</figcaption>
+            </figure>
+            <figure className="overflow-hidden rounded-xl border border-white/15 bg-white/[.04]">
+              <button
+                type="button"
+                onClick={() => setExpandedFaqImage({
+                  src: "/assets/multiplayer-join-lobby.png",
+                  alt: "Crew On Set! multiplayer join screen where a player enters a server code to join a lobby",
+                })}
+                className="block w-full cursor-zoom-in focus-visible:outline focus-visible:outline-2 focus-visible:outline-yellow"
+                aria-label="View larger image of joining a multiplayer lobby"
+              >
+                <Image
+                  src="/assets/multiplayer-join-lobby.png"
+                  alt="Crew On Set! multiplayer join screen where a player enters a server code to join a lobby"
+                  width={2560}
+                  height={1600}
+                  className="aspect-[8/5] w-full object-cover"
+                />
+              </button>
+              <figcaption className="px-4 py-3 text-sm font-bold text-white/70">Join a lobby room</figcaption>
+            </figure>
+          </div>
+        </div>
+      ),
     },
     {
       question: "Where can I ask a question or share feedback?",
       answer: "Send us a message through any of the contact links here. If you have a brand idea, the partnership form is the best way to get it in front of our team.",
+    },
+    {
+      question: "How can a brand or product team partner with Crew On Set!?",
+      answer: "Fill out the partnership form below with your product details, business email, proposed budget, and campaign length. Add a link or a short description to help us picture your idea. Our team will contact you and send application updates to the email address you provide.",
+    },
+    {
+      question: "How will a brand promotion be implemented?",
+      answer: (
+        <div className="max-w-5xl">
+          <p className="leading-relaxed text-white/65">
+            Approved brand products can be displayed inside the player&apos;s in-game studio and featured on the player&apos;s website dashboard.
+          </p>
+          <div className="mt-5 grid gap-5 md:grid-cols-2">
+            <figure className="overflow-hidden rounded-xl border border-white/15 bg-white/[.04]">
+              <button
+                type="button"
+                onClick={() => setExpandedFaqImage({
+                  src: "/assets/brand-promotion-game-studio.png",
+                  alt: "Example brand product promotion displayed inside the Crew On Set! game studio",
+                })}
+                className="block w-full cursor-zoom-in focus-visible:outline focus-visible:outline-2 focus-visible:outline-yellow"
+                aria-label="View larger image of an in-game studio promotion"
+              >
+                <Image
+                  src="/assets/brand-promotion-game-studio.png"
+                  alt="Example brand product promotion displayed inside the Crew On Set! game studio"
+                  width={1024}
+                  height={683}
+                  className="aspect-[3/2] w-full object-cover"
+                />
+              </button>
+              <figcaption className="px-4 py-3 text-sm font-bold text-white/70">In-game studio</figcaption>
+            </figure>
+            <figure className="overflow-hidden rounded-xl border border-white/15 bg-white/[.04]">
+              <button
+                type="button"
+                onClick={() => setExpandedFaqImage({
+                  src: "/assets/brand-promotion-player-dashboard.png",
+                  alt: "Example brand promotion featured on a player's Crew On Set! website dashboard",
+                })}
+                className="block w-full cursor-zoom-in focus-visible:outline focus-visible:outline-2 focus-visible:outline-yellow"
+                aria-label="View larger image of a player dashboard promotion"
+              >
+                <Image
+                  src="/assets/brand-promotion-player-dashboard.png"
+                  alt="Example brand promotion featured on a player's Crew On Set! website dashboard"
+                  width={1024}
+                  height={576}
+                  className="aspect-[16/9] w-full object-cover"
+                />
+              </button>
+              <figcaption className="px-4 py-3 text-sm font-bold text-white/70">Player website dashboard</figcaption>
+            </figure>
+          </div>
+        </div>
+      ),
     },
   ];
 
@@ -81,7 +185,7 @@ function ContactPage() {
                     {faq.question}
                     <span aria-hidden="true" className="text-2xl font-normal text-coral transition-transform group-open:rotate-45">+</span>
                   </summary>
-                  <p className="max-w-2xl pt-4 leading-relaxed text-white/65">{faq.answer}</p>
+                  <div className="max-w-5xl pt-4 leading-relaxed text-white/65">{faq.answer}</div>
                 </details>
               ))}
             </div>
@@ -94,6 +198,35 @@ function ContactPage() {
           </div>
         </div>
       </section>
+      {expandedFaqImage && (
+        <div
+          className="fixed inset-0 z-[100] grid place-items-center bg-black/85 p-4 sm:p-8"
+          role="presentation"
+          onClick={() => setExpandedFaqImage(null)}
+        >
+          <div
+            className="relative max-h-[92vh] max-w-[94vw]"
+            role="dialog"
+            aria-modal="true"
+            aria-label="Expanded FAQ image"
+            onClick={(event) => event.stopPropagation()}
+          >
+            <button
+              type="button"
+              onClick={() => setExpandedFaqImage(null)}
+              className="absolute -right-3 -top-3 z-10 grid size-10 place-items-center rounded-full border border-white/30 bg-[#0a0e19] text-2xl text-white shadow-lg hover:bg-coral"
+              aria-label="Close expanded image"
+            >
+              ×
+            </button>
+            <Image
+              src={expandedFaqImage.src}
+              alt={expandedFaqImage.alt}
+              className="max-h-[88vh] max-w-[94vw] rounded-xl border border-white/20 object-contain shadow-2xl"
+            />
+          </div>
+        </div>
+      )}
       </div>
 
     </MarketingShell>

@@ -353,8 +353,6 @@ function PlayersPage() {
     livePlayerDetail?.career?.productionScore ?? (mockMode ? selectedPlayer?.score ?? null : null);
   const displayGamesPlayed =
     (mockPlayerWasReset ? 0 : livePlayerDetail?.career?.gamesPlayed) ?? selectedPlayer?.gamesPlayed ?? null;
-  const displayPlaytime =
-    (mockPlayerWasReset ? "Not recorded" : livePlayerDetail?.career?.playtime) ?? selectedPlayer?.playtime ?? "Not recorded";
   const displayLevel =
     mockPlayerWasReset
       ? null
@@ -1927,14 +1925,6 @@ function PlayersPage() {
                       </div>
                     </div>
 
-                    <div className="mt-4 rounded-xl border border-white/[.07] bg-[#1c2636] p-5">
-                      <p className="text-[9px] font-black uppercase tracking-wide text-white/30">
-                        RECORDED RUNTIME
-                      </p>
-
-                      <p className="mt-2 text-lg font-black text-white/75">{displayPlaytime}</p>
-                      <p className="mt-1 text-[10px] text-white/30">Only runtime saved by the game is included.</p>
-                    </div>
                   </section>
 
                   {/* ADMIN ACTIONS */}
