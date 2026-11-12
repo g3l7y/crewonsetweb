@@ -139,12 +139,23 @@ export function PlayerShell({ children }: { children: React.ReactNode }) {
   }, []);
 
   async function signOut(destination = "/login") {
-    await getPlayFabService().auth.logout();
-    if (mockMode) await fetch("/api/auth/logout", { method: "POST" });
+    try {
+      await getPlayFabService().auth.logout();
+    } catch {
+      // Continue to the public destination even if the provider logout call fails.
+    }
+    if (mockMode) {
+      try {
+        await fetch("/api/auth/logout", { method: "POST" });
+      } catch {
+        // The mock provider has already cleared its local session state.
+      }
+    }
     queryClient.setQueryData(QUERY_KEYS.session, null);
     setBanDialogOpen(false);
-    router.replace(destination);
-    router.refresh();
+    // A full navigation avoids the protected portal's session refresh racing
+    // the ban dialog's destination (especially for the public appeal form).
+    window.location.replace(destination);
   }
 
   function isActive(href: string) {
