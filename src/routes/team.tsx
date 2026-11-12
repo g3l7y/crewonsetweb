@@ -368,7 +368,6 @@ function TeamPage() {
                 >
                   <div className="crew-profile-placeholder" aria-hidden="true">
                     <CircleUserRound />
-                    <span>PROFILE PHOTO</span>
                   </div>
 
                   <div className="member-number">

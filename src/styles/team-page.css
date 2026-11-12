@@ -512,14 +512,6 @@
   opacity: 0.72;
 }
 
-.crew-profile-placeholder span {
-  font-family: monospace;
-  font-size: 11px;
-  font-weight: 700;
-  letter-spacing: 0.2em;
-  color: rgba(255, 255, 255, 0.54);
-}
-
 .crew-image-gradient {
   position: absolute;
   z-index: 2;
