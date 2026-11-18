@@ -347,7 +347,7 @@ body { min-width: 320px; }
 .features-almanac .story-hero-description { color: var(--cos-light) !important; }
 
 .features-almanac .story-hero-copy h1 { text-shadow: 4px 4px 0 rgba(10, 14, 25, .72); }
-.features-almanac .story-hero-copy h1 .zebra-exclamation { text-shadow: none !important; }
+.features-almanac .story-hero-copy h1 .zebra-exclamation { text-shadow: 4px 4px 0 rgba(10, 14, 25, .72) !important; }
 
 .features-almanac .story-timeline,
 .features-almanac .almanac-hero,
